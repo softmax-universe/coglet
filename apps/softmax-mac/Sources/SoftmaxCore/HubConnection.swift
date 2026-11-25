@@ -29,6 +29,7 @@ public final class HubConnection {
     private struct ReconnectCommand {
         let id: UUID
         let target: HubPairing
+        let enrolling: Bool
         let authorize: @MainActor () throws -> Void
         let completion: CheckedContinuation<Void, any Error>
     }
@@ -56,7 +57,7 @@ public final class HubConnection {
         changed?()
     }
     public func enroll(_ value: HubPairing) throws {
-        guard running, ready, let deviceID,
+        guard reconnectCommand == nil, running, ready, let deviceID,
               value.device == nil || value.device == deviceID else { throw HubError.pairing }
         guard pairing == nil else { throw HubError.pairing }
         if pending != nil {
@@ -92,8 +93,21 @@ public final class HubConnection {
     /// It does not swallow errors or complete merely because connect was queued.
     /// The caller must gate its original custody at every deferred native effect.
     public func reconnectOnce(authorized: @escaping @MainActor () throws -> Void = {}) async throws {
-        try Task.checkCancellation()
         guard reconnectCommand == nil, pending == nil, let target = pairing else { throw HubError.unavailable }
+        try await connectOnce(target, enrolling: false, authorized: authorized)
+    }
+    /// Enrollment uses the same correlated completion path as reconnect. The
+    /// invitation exists only in the live command, never a background retry.
+    /// Success requires the helper's actual connection AND persisted enrollment.
+    public func enrollOnce(_ target: HubPairing, authorized: @escaping @MainActor () throws -> Void = {}) async throws {
+        guard reconnectCommand == nil, pending == nil, pairing == nil,
+              running, ready, let deviceID,
+              target.device == nil || target.device == deviceID else { throw HubError.pairing }
+        try await connectOnce(target, enrolling: true, authorized: authorized)
+    }
+    private func connectOnce(_ target: HubPairing, enrolling: Bool,
+                             authorized: @escaping @MainActor () throws -> Void) async throws {
+        try Task.checkCancellation()
         let id = UUID()
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -102,7 +116,8 @@ public final class HubConnection {
                     try authorized()
                     retry?.cancel(); retry = nil
                     stopLink()
-                    reconnectCommand = ReconnectCommand(id: id, target: target, authorize: authorized, completion: continuation)
+                    reconnectCommand = ReconnectCommand(id: id, target: target, enrolling: enrolling,
+                                                        authorize: authorized, completion: continuation)
                     installed = true
                     let key = try account.identity()
                     let current = generation
@@ -129,7 +144,8 @@ public final class HubConnection {
         do {
             switch event {
             case .ready(let device):
-                guard HubPairing.isHex(device) else { throw HubError.unavailable }
+                guard HubPairing.isHex(device),
+                      command.target.device == nil || command.target.device == device else { throw HubError.pairing }
                 guard !ready else { return }
                 deviceID = device; ready = true
                 try link.connect(command.target)
@@ -154,11 +170,13 @@ public final class HubConnection {
         reconnectCommand = nil
         retry?.cancel(); retry = nil
         stopLink(); state = .offline
-        errorMessage = "Could not complete router reconnection."
+        errorMessage = command.enrolling ? "Could not complete router enrollment." : "Could not complete router reconnection."
         command.completion.resume(throwing: error)
         // Restore the pre-existing product's background connection lifecycle,
         // not this action: no command, continuation or authorization is retained.
         // Explicit stop/sign-out, cancellation and custody refusal do not restart.
+        // Enrollment recovery starts ONLY the empty pairing channel: its target
+        // was owned by the retired command and was never assigned to pending.
         if recover { scheduleRetry(restart: true) }
         changed?()
     }

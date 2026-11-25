@@ -133,8 +133,9 @@ private struct HubPairingSheet: View {
                 CogletButton("Cancel", id: "\(idPrefix).pairing.cancel", registry: model.appControls, window: window,
                     route: route, failure: model.appControlFailure) { clearSecrets(); dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                CogletButton("Connect router", id: "\(idPrefix).pairing.connect", registry: model.appControls, window: window,
-                    route: route, sensitive: true, adapterSynchronous: false, failure: model.appControlFailure, action: connect)
+                CogletAsyncButton("Connect router", id: "\(idPrefix).pairing.connect", registry: model.appControls, window: window,
+                    route: route, sensitive: true, failure: model.appControlFailure,
+                    action: connect)
                     .disabled(configuration == nil || (!model.testing && model.hubConnection?.deviceID == nil))
                     .keyboardShortcut(.defaultAction)
             }
@@ -160,17 +161,22 @@ private struct HubPairingSheet: View {
             })
     }
     private func clearSecrets() { code = ""; invite = "" }
-    private func connect() {
-        guard let configuration else { error = "Check the pairing envelope or pinned router address."; return }
+    @MainActor private func connect(context: ControlRegistry.EffectContext?) async throws {
+        guard let configuration else { throw HubError.pairing }
         guard !model.testing, let connection = model.hubConnection else {
-            error = "Pairing is disabled in isolated previews and UI tests."; return
+            throw HubError.unavailable
         }
         do {
-            try connection.enroll(configuration)
-            // The summary owns connecting/offline/error state. Never retain a
-            // second copy of the invitation in a dismissed view or preferences.
-            clearSecrets(); dismiss()
-        } catch { self.error = "Could not begin pairing. Check the invitation’s device ID and router configuration." }
+            try await connection.enrollOnce(configuration, authorized: { if let context { try context.perform {} } })
+            // Do not dismiss (and retire the mount) until actual persisted
+            // completion. The same command is used for user and adapter presses.
+            if let context { try context.perform { clearSecrets(); dismiss() } }
+            else { clearSecrets(); dismiss() }
+        } catch {
+            let showError = { self.error = "Could not complete pairing. Check the invitation’s device ID and router configuration." }
+            if let context { try? context.perform(showError) } else { showError() }
+            throw error
+        }
     }
     private func importQR() {
         let panel = NSOpenPanel()
