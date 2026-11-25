@@ -58,23 +58,34 @@ fn swift_sdk_ready_health_obstruction_and_control() {
         )
         .unwrap();
         std::fs::write(dir.join("startup.json"), serde_json::to_vec(&json!({"wal":dir.join("state.wal"),"setup":setup,"native_schedule":setup["native_schedule"]})).unwrap()).unwrap();
-        let result = Command::new(swift.join("ready-output-sdk"))
+        let mut child = Command::new(swift.join("ready-output-sdk"))
             .arg(target.join("debug/libcoglet_runtime.dylib"))
             .arg(&dir)
             .arg(mode)
-            .output()
+            .stdout(std::fs::File::create(dir.join("stdout.log")).unwrap())
+            .stderr(std::fs::File::create(dir.join("stderr.log")).unwrap())
+            .spawn()
             .unwrap();
-        eprintln!(
-            "Swift {mode}: {}\n{}",
-            String::from_utf8_lossy(&result.stdout),
-            String::from_utf8_lossy(&result.stderr)
-        );
-        assert!(
-            result.status.success(),
-            "Swift SDK oracle {mode}: {}",
-            result.status
-        );
-        assert!(String::from_utf8_lossy(&result.stdout).contains("SDK_READY_HEALTH_EXECUTED"));
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!(
+                    "Swift SDK process watchdog: {}",
+                    std::fs::read_to_string(dir.join("stderr.log")).unwrap()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        let stdout = std::fs::read_to_string(dir.join("stdout.log")).unwrap();
+        let stderr = std::fs::read_to_string(dir.join("stderr.log")).unwrap();
+        eprintln!("Swift {mode}: {stdout}\n{stderr}");
+        assert!(status.success(), "Swift SDK oracle {mode}: {status}");
+        assert!(stdout.contains("SDK_READY_HEALTH_EXECUTED"));
         let recovered = RuntimeService::open(&dir.join("state.wal"), &setup, 128).unwrap();
         assert_eq!(recovered.records().len(), 1);
         let record = &recovered.records()[0];

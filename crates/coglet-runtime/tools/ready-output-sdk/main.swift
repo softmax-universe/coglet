@@ -37,6 +37,7 @@ func require(_ condition: Bool, _ message: String) {
 final class Backend: SurfaceNativeBackend {
     var stops = 0
     var effects = 0
+    var lastStop: UInt64 = 0
     func preflight(action: CBORValue, now: UInt64) throws {}
     func begin(action: CBORValue, epoch: UInt64, now: UInt64) throws -> NativeSurfaceResult? {
         effects += 1; return .succeeded(.map([]))
@@ -44,7 +45,7 @@ final class Backend: SurfaceNativeBackend {
     func read(operation: String, args: CBORValue, owner: String, now: UInt64) throws -> CBORValue {
         throw NativeSurfaceError("unavailable")
     }
-    func stop(owner: String?) { stops += 1 }
+    func stop(owner: String?) { stops += 1; lastStop = now() }
 }
 // Only this box crosses queues; SDK state remains on the main control thread.
 final class Reply: @unchecked Sendable {
@@ -95,8 +96,10 @@ DispatchQueue.global().async {
 }
 var receipt: UInt64?
 var timeout: UInt64?
+var loopError: Swift.Error?
 // Eight-second pump watchdog is production-test-hook bounded. This outer loop
 // never touches the exclusive ABI link until the worker signals completion.
+do {
 while now() - baseline < 3_100_000 {
     if receipt == nil, let result = box.get() {
         guard let bytes = try result.get() else { fatalError("expected naturally due health") }
@@ -109,6 +112,9 @@ while now() - baseline < 3_100_000 {
     }
     Thread.sleep(forTimeInterval: 0.005)
 }
+} catch { loopError = error }
+let loopExit = now()
+let stopAt = backend.lastStop
 let pumpEntries = control.map { entries($0) } ?? 0
 let stopObserved = backend.stops > stopsBefore
 if let control { release(control) }
@@ -124,8 +130,11 @@ print("ADR0034 SOURCE-BOUND mode=\(obstruct ? "obstruct" : "control") sdk_baseli
 print(String(decoding: capture, as: UTF8.self))
 if let control { freeHold(control) }
 transport.close(); try session.close(); require(stop() == 0, "runtime stop after exclusive close")
+if let loopError { throw loopError }
 require(backend.effects == 0, "pre-heard effect escaped")
 if let timeout {
+    require(stopAt <= timeout && timeout - stopAt < 50_000 && loopExit - timeout < 50_000,
+        "SDK local stop callback not prompt (environment threshold, not physical I/O proof)")
     require(timeout - baseline >= 3_000_000 && stopObserved && receipt == nil && pumpEntries > 0,
         "timeout without source-bound obstruction/native stop")
     print("SDK_TIMEOUT_NATIVE_STOP_EXECUTED")
