@@ -587,7 +587,7 @@ covers which engine ran, not just which coglet.</em></p>
   <span class="sd">Everything one step reads besides the coglet&#x27;s own tree. One commit per step.</span>
   events.cbor       [Event]    The batch, oldest first.
   context.cbor      StepContext
-  boundary.cbor     [Change]   Debug writes and inbox appends applied before this step.
+  boundary.cbor     [Change]   Manage writes and inbox appends applied before this step.
   replies/&lt;id&gt;      bytes      Model replies and read results delivered as events, verbatim.
 
 <span class="nc">StepContext</span>
@@ -1251,7 +1251,7 @@ storage and its git transport.</p>
 </tr>
 <tr>
 <td><code>spec/hub-protocol.md</code></td>
-<td>Git transfer moves from SHA-1 bundles to fetch and push of SHA-256 refs over a git ALPN, with partial push for <code>data/</code>. ADR-0031 already replaces <code>hub.git.push</code> with <code>manage.patch</code> over plain files; here <code>manage.patch</code> would become a push to <code>…/policy</code>, and <code>install</code> and <code>start</code> become ref moves. Per-coglet repositories become one repository per cogent, namespaced by runtime.</td>
+<td>ADR-0031 already replaces <code>hub.git.push</code> and the SHA-1 bundles with <code>manage.patch</code> over plain files. Under this design code and state move as fetch and push of SHA-256 refs over a git ALPN, with partial push for <code>data/</code>; <code>manage.patch</code> becomes a push to <code>…/policy</code>, and <code>install</code> and <code>start</code> become ref moves. One repository per cogent, namespaced by runtime.</td>
 </tr>
 <tr>
 <td><code>spec/promotion.md</code>, <code>spec/policy.md</code></td>

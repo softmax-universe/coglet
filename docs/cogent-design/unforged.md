@@ -124,7 +124,7 @@ InputTree
   # Everything one step reads besides the coglet's own tree. One commit per step.
   events.cbor       [Event]    The batch, oldest first.
   context.cbor      StepContext
-  boundary.cbor     [Change]   Debug writes and inbox appends applied before this step.
+  boundary.cbor     [Change]   Manage writes and inbox appends applied before this step.
   replies/<id>      bytes      Model replies and read results delivered as events, verbatim.
 
 StepContext
@@ -394,7 +394,7 @@ storage and its git transport.
 | `spec/conventions.md` | Object ids are git SHA-256. CBOR stays for message and file contents. |
 | `spec/abi.md` | State hash is the git tree id. Paths may not be `.git` names or both a file and a directory. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under `out/`. The `llm` host capability and `llm-request` effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events. |
 | `spec/manifest.schema.json` | The manifest lives in the tree as `manifest.cbor` and names its resolver (engine) by id. |
-| `spec/hub-protocol.md` | Git transfer moves from SHA-1 bundles to fetch and push of SHA-256 refs over a git ALPN, with partial push for `data/`. ADR-0031 already replaces `hub.git.push` with `manage.patch` over plain files; here `manage.patch` would become a push to `…/policy`, and `install` and `start` become ref moves. Per-coglet repositories become one repository per cogent, namespaced by runtime. |
+| `spec/hub-protocol.md` | ADR-0031 already replaces `hub.git.push` and the SHA-1 bundles with `manage.patch` over plain files. Under this design code and state move as fetch and push of SHA-256 refs over a git ALPN, with partial push for `data/`; `manage.patch` becomes a push to `…/policy`, and `install` and `start` become ref moves. One repository per cogent, namespaced by runtime. |
 | `spec/promotion.md`, `spec/policy.md` | Promotion is a signed compare-and-swap of `refs/published/<id>`. Gates are replays on the cold path. |
 | `spec/tickets.md` | A ticket's result names a `policy` commit and the receipts of the gate that tested it. |
 | `spec/surface-protocol.md` | Adapters publish their tools as a catalog ref; tools carry an effect class (`read` or `write`) and an approval rule. Outcomes are scrubbed of leased values. |
