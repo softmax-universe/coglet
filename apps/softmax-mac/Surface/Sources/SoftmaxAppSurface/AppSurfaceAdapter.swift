@@ -184,6 +184,29 @@ public final class AppSurfaceAdapter {
 
     // MARK: Perform
 
+    func isAsynchronous(_ prepared: Prepared) throws -> Bool {
+        guard prepared.adapter == identity, !prepared.consumed else { throw AppSurfaceFailure.conflict }
+        switch prepared.payload {
+        case .invoke(let request), .setting(let request, _, _): return try registry.isAsynchronous(request)
+        default: return false
+        }
+    }
+
+    func performAsync(_ prepared: Prepared, authorized: @escaping () -> Bool) async throws -> CBORValue {
+        guard prepared.adapter == identity, !prepared.consumed else { throw AppSurfaceFailure.conflict }
+        guard try isAsynchronous(prepared) else { throw AppSurfaceFailure.unsupported }
+        prepared.consumed = true
+        switch prepared.payload {
+        case .invoke(let request): try await registry.performAsync(request, authorized: authorized)
+        case .setting(let request, let key, let expected):
+            try await registry.performAsync(request, authorized: authorized)
+            guard authorized() else { throw AppSurfaceFailure.permissionDenied }
+            guard try actualSetting(key) == expected else { throw AppSurfaceFailure.conflict }
+        default: throw AppSurfaceFailure.unsupported
+        }
+        return .map([])
+    }
+
     /// Returns the closed empty map only after the effect and postconditions held.
     /// `authorized` is evaluated at effect time, after every native availability check.
     public func perform(_ prepared: Prepared, authorized: () -> Bool) throws -> CBORValue {

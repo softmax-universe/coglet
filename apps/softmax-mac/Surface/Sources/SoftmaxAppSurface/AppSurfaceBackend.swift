@@ -95,8 +95,14 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
         public let ticket: Ticket
         public let result: NativeSurfaceResult
     }
-    private enum Stage { case queued, entered }
-    private struct Pending { let ticket: Ticket; var stage: Stage; var result: NativeSurfaceResult? }
+    private enum Stage { case queued, entered, running }
+    private struct Pending {
+        let ticket: Ticket
+        var stage: Stage
+        var result: NativeSurfaceResult?
+        var receiptDrained = false
+        var task: Task<Void, Never>?
+    }
     private let lock = NSLock()
     private var active = false, everActive = false, retired = false
     private var incarnation: UInt64?
@@ -238,6 +244,19 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
         let result: NativeSurfaceResult
         do {
             let prepared = try adapter.prepareCaptured(ticket.command)
+            if try adapter.isAsynchronous(prepared) {
+                guard claimAsync(ticket) else { return }
+                let task = Task { @MainActor in
+                    let result: NativeSurfaceResult
+                    do {
+                        let value = try await adapter.performAsync(prepared, authorized: { self.authorizeAsync(ticket) })
+                        result = .succeeded(try CogletTypes.CBORCodec.decodeProfile(CBORCodec.encodeProfile(value)))
+                    } catch { result = .failed(Self.failure(error)) }
+                    self.finishAsync(ticket, result: result)
+                }
+                installTask(task, ticket: ticket)
+                return
+            }
             let value = try adapter.perform(prepared, authorized: {
                 self.lock.lock(); defer { self.lock.unlock() }
                 guard let now = try? self.sampleLocked() else { return false }
@@ -255,36 +274,86 @@ public final class AppSurfaceMailbox: @unchecked Sendable {
         // result; the SDK owns later expiry/kill/revocation disposition.
         if pending[ticket.identity]?.result == nil { pending[ticket.identity]?.result = result }
     }
+    private func claimAsync(_ ticket: Ticket) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard pending[ticket.identity]?.stage == .queued, pending[ticket.identity]?.result == nil else { return false }
+        pending[ticket.identity]?.stage = .running
+        return true
+    }
+    private func authorizeAsync(_ ticket: Ticket) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard let now = try? sampleLocked() else { return false }
+        return active && epoch == ticket.epoch && grant?.coglet == ticket.owner &&
+            (grant?.expires ?? 0) > now && ticket.deadline > now &&
+            pending[ticket.identity]?.stage == .running && pending[ticket.identity]?.result == nil
+    }
+    private func installTask(_ task: Task<Void, Never>, ticket: Ticket) {
+        lock.lock()
+        pending[ticket.identity]?.task = task
+        let cancelled = pending[ticket.identity]?.result != nil || !active
+        lock.unlock()
+        if cancelled { task.cancel() }
+    }
+    private func finishAsync(_ ticket: Ticket, result: NativeSurfaceResult) {
+        lock.lock(); defer { lock.unlock() }
+        guard var row = pending[ticket.identity] else { return }
+        row.task = nil
+        row.stage = .entered
+        if row.result == nil { row.result = result }
+        pending[ticket.identity] = row.receiptDrained ? nil : row
+    }
+    /// Bounded custody snapshot for joining a known started command outside the
+    /// independent stop path. Never wait for these tasks while holding a lock.
+    func runningCommandTasks() -> [Task<Void, Never>] {
+        lock.lock(); defer { lock.unlock() }
+        return pending.values.compactMap(\.task)
+    }
     public func drainReceipts() -> [Receipt] {
         lock.lock(); defer { lock.unlock() }
-        let completed = pending.values.compactMap { row in row.result.map { Receipt(ticket: row.ticket, result: $0) } }
-        for receipt in completed { pending[receipt.ticket.identity] = nil }
+        let completed = pending.values.filter { !$0.receiptDrained }.compactMap { row in row.result.map { Receipt(ticket: row.ticket, result: $0) } }
+        for receipt in completed {
+            if pending[receipt.ticket.identity]?.stage == .running {
+                // Noncooperative suspended work retains its capacity slot even
+                // after its cancellation outcome has been delivered once.
+                pending[receipt.ticket.identity]?.receiptDrained = true
+            } else { pending[receipt.ticket.identity] = nil }
+        }
         return completed
     }
     public func stop() {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
         stopLocked()
+        let tasks = pending.values.compactMap(\.task)
+        lock.unlock()
+        for task in tasks { task.cancel() }
     }
     /// Product lifecycle/off-switch, unlike the SDK's preactivation safety stop,
     /// permanently refuses a startup that is still awaiting durable admission.
     public func retire() {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
         retired = true; stopLocked()
+        let tasks = pending.values.compactMap(\.task)
+        lock.unlock()
+        for task in tasks { task.cancel() }
     }
     /// SDK owner-local action expiry/stop fences all not-yet-entered commands of
     /// that owner, without inventing a grant revocation or replacing its source.
     /// Global stop, grant replacement and disconnect still retire the incarnation.
     public func cancelPending(owner: String) {
-        lock.lock(); defer { lock.unlock() }
-        for id in pending.keys where pending[id]?.ticket.owner == owner && pending[id]?.stage == .queued && pending[id]?.result == nil {
+        lock.lock()
+        var tasks: [Task<Void, Never>] = []
+        for id in pending.keys where pending[id]?.ticket.owner == owner && pending[id]?.stage != .entered && pending[id]?.result == nil {
             pending[id]?.result = .failed(NativeSurfaceError("cancelled"))
+            if let task = pending[id]?.task { tasks.append(task) }
         }
+        lock.unlock()
+        for task in tasks { task.cancel() }
     }
     private func stopLocked() {
         active = false; capture = nil; grant = nil
         nativeEvents = []; eventBytes = 0
         if everActive { retired = true }
-        for id in pending.keys where pending[id]?.stage == .queued && pending[id]?.result == nil {
+        for id in pending.keys where pending[id]?.stage != .entered && pending[id]?.result == nil {
             pending[id]?.result = .failed(NativeSurfaceError("cancelled"))
         }
     }

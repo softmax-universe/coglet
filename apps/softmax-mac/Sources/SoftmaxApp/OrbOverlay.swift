@@ -217,9 +217,9 @@ struct MicrophoneControls: View {
                 Text(guidance).modifier(SoftmaxErrorText()).fixedSize(horizontal: false, vertical: true)
             }
             if model.permissions.microphone == .notDetermined {
-                CogletButton("Allow Microphone", id: "\(idPrefix).allow_microphone", registry: model.appControls,
-                    window: window, route: route, sensitive: true, adapterSynchronous: false,
-                    failure: model.appControlFailure) { Task { await model.requestMicrophone() } }
+                CogletAsyncButton("Allow Microphone", id: "\(idPrefix).allow_microphone", registry: model.appControls,
+                    window: window, route: route, sensitive: true,
+                    failure: model.appControlFailure) { context in try await model.requestMicrophone(context: context) }
             }
             ViewThatFits(in: .horizontal) {
                 HStack { permissionButtons }

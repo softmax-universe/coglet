@@ -152,6 +152,103 @@ private actor BackendHarness {
 }
 
 final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
+    @MainActor private final class Suspension {
+        let entered = XCTestExpectation(description: "native async command started")
+        var waits: [CheckedContinuation<Void, Never>] = []
+        func wait() async {
+            await withCheckedContinuation { continuation in waits.append(continuation); entered.fulfill() }
+        }
+        func resume() { let all = waits; waits = []; for continuation in all { continuation.resume() } }
+    }
+    private func asyncHost(_ suspension: Suspension) async throws -> (Host, AppSurfaceCapture, ControlRegistry.Mount) {
+        try await MainActor.run {
+            let host = try Host()
+            let mount = try host.registry.mount(id: "async.control", window: "settings", route: "general", role: "button", label: "Deferred",
+                verbs: ["press"], value: { .map([.init("kind", .text("none"))]) },
+                invokeAsync: { _, context in
+                    await suspension.wait() // Deliberately ignores Task cancellation.
+                    try context.perform { host.pressCalls += 1 }
+                }, invoke: { _ in XCTFail("async control used sync fallback") })
+            return (host, try host.adapter.capture(), mount)
+        }
+    }
+    private func awaitResult(_ harness: BackendHarness) async throws -> [W] {
+        for task in harness.mailbox.runningCommandTasks() { await task.value }
+        return try await harness.reconcile()
+    }
+    func testAsyncCommandAcceptsBeforeCompletionAndCompletesExactlyOnce() async throws {
+        let suspension = Suspension()
+        let (host, capture, _) = try await asyncHost(suspension)
+        let harness = try BackendHarness(capture: capture, clock: BackendClock())
+        let accepted = try await harness.act("softmax.app.invoke", args: invoke("async.control"))
+        XCTAssertEqual(accepted.first?["body"]?["accepted"], .boolean(true))
+        let ticket = try XCTUnwrap(harness.mailbox.queuedCommands().first)
+        await MainActor.run {
+            harness.mailbox.execute(ticket, adapter: host.adapter)
+            harness.mailbox.execute(ticket, adapter: host.adapter)
+        }
+        await fulfillment(of: [suspension.entered], timeout: 2)
+        let before = try await harness.reconcile()
+        XCTAssertTrue(before.isEmpty)
+        await MainActor.run { XCTAssertEqual(host.pressCalls, 0); suspension.resume() }
+        let done = try await awaitResult(harness)
+        XCTAssertEqual(done.first?["body"]?["payload"]?["status"], .text("succeeded"))
+        await MainActor.run { XCTAssertEqual(host.pressCalls, 1); harness.mailbox.execute(ticket, adapter: host.adapter) }
+        let duplicate = try await harness.reconcile()
+        XCTAssertTrue(duplicate.isEmpty)
+        try await harness.close()
+    }
+    func testAsyncDeferredEffectFencedByStopDeadlineAndMountReplacement() async throws {
+        for reason in ["stop", "deadline", "mount", "route"] {
+            let suspension = Suspension()
+            let (host, capture, mount) = try await asyncHost(suspension)
+            let clock = BackendClock()
+            let harness = try BackendHarness(capture: capture, clock: clock)
+            _ = try await harness.act("softmax.app.invoke", args: invoke("async.control"), deadline: 50)
+            let ticket = try XCTUnwrap(harness.mailbox.queuedCommands().first)
+            await MainActor.run { harness.mailbox.execute(ticket, adapter: host.adapter) }
+            await fulfillment(of: [suspension.entered], timeout: 2)
+            if reason == "stop" { harness.mailbox.stop() }
+            if reason == "deadline" { clock.advance(50) }
+            try await MainActor.run {
+                if reason == "mount" {
+                    try host.registry.unmount(mount)
+                    _ = try host.registry.mount(id: "async.control", window: "settings", route: "general", role: "button", label: "Replacement",
+                        verbs: ["press"], value: { .map([.init("kind", .text("none"))]) }, invoke: { _ in host.pressCalls += 100 })
+                }
+                if reason == "route" { host.windows["settings"] = "audio" }
+                suspension.resume()
+            }
+            let done = try await awaitResult(harness)
+            XCTAssertNotEqual(done.first?["body"]?["payload"]?["status"], .text("succeeded"))
+            await MainActor.run { XCTAssertEqual(host.pressCalls, 0) }
+            try await harness.close()
+        }
+    }
+    func testCancelledSuspendedCommandsRetainCapacityUntilActuallyReturned() async throws {
+        let suspension = Suspension()
+        await MainActor.run { suspension.entered.expectedFulfillmentCount = 16 }
+        let (host, capture, _) = try await asyncHost(suspension)
+        let harness = try BackendHarness(capture: capture, clock: BackendClock())
+        for index in 1...16 {
+            let id = String(format: "%032x", index)
+            _ = try await harness.act("softmax.app.invoke", args: invoke("async.control"), id: id)
+        }
+        let tickets = harness.mailbox.queuedCommands()
+        await MainActor.run { for ticket in tickets { harness.mailbox.execute(ticket, adapter: host.adapter) } }
+        await fulfillment(of: [suspension.entered], timeout: 2)
+        harness.mailbox.cancelPending(owner: owner)
+        let cancellations = try await harness.reconcile()
+        XCTAssertEqual(cancellations.count, 16)
+        let refused = try await harness.act("softmax.app.invoke", args: invoke("async.control"), id: String(repeating: "e", count: 32))
+        XCTAssertEqual(refused.first?["body"]?["accepted"], .boolean(false))
+        await MainActor.run { suspension.resume() }
+        for task in harness.mailbox.runningCommandTasks() { await task.value }
+        let recovered = try await harness.act("softmax.app.invoke", args: invoke("async.control"), id: String(repeating: "d", count: 32))
+        XCTAssertEqual(recovered.first?["body"]?["accepted"], .boolean(true))
+        await MainActor.run { XCTAssertEqual(host.pressCalls, 0) }
+        try await harness.close()
+    }
     func testOwnerLocalDeadlineCancelsTicketsWithoutRetiringReadOrEventStream() async throws {
         let clock = BackendClock()
         let (host, capture) = try await MainActor.run { let host = try Host(); return (host, try host.adapter.capture()) }

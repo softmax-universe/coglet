@@ -263,11 +263,27 @@ final class ShellModel: ObservableObject {
     }
 
     func requestMicrophone() async {
-        guard !testing else { return }
+        try? await requestMicrophone(context: nil)
+    }
+    /// Same completion-bearing command for user and adapter. Entering an OS
+    /// prompt is irreversible; revocation fences later effects, not that prompt.
+    func requestMicrophone(context: ControlRegistry.EffectContext?) async throws {
+        guard !testing else { throw ControlRegistryFailure.unavailable }
         if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-            _ = await AVCaptureDevice.requestAccess(for: .audio)
+            let granted: Bool = try await withCheckedThrowingContinuation { continuation in
+                let request = {
+                    AVCaptureDevice.requestAccess(for: .audio) { allowed in continuation.resume(returning: allowed) }
+                }
+                do {
+                    if let context { try context.perform(request) } else { request() }
+                } catch { continuation.resume(throwing: error) }
+            }
+            if let context { try context.perform { refreshPermissions() } } else { refreshPermissions() }
+            guard granted else { throw ControlRegistryFailure.permissionDenied }
+        } else {
+            if let context { try context.perform { refreshPermissions() } } else { refreshPermissions() }
+            guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { throw ControlRegistryFailure.permissionDenied }
         }
-        refreshPermissions()
     }
 
     func requestInputMonitoring() {

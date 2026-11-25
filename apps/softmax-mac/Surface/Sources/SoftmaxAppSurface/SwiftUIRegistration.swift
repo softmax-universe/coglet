@@ -18,6 +18,7 @@ private struct CogletRegistration: ViewModifier {
     let verbs: Set<String>
     let value: () throws -> CBORValue
     let invoke: (CBORValue) throws -> Void
+    let invokeAsync: ControlRegistry.AsyncInvocation?
     let focus: (() throws -> Bool)?
     let focused: (() -> Bool)?
     let failure: (ControlRegistryFailure) -> Void
@@ -46,7 +47,7 @@ private struct CogletRegistration: ViewModifier {
         do {
             mount = try registry.mount(id: id, window: window, route: route, role: role, label: label,
                 sensitive: sensitive, secure: secure, verbs: verbs, value: value,
-                enabled: { enabled }, focus: focus, focused: focused, invoke: invoke)
+                enabled: { enabled }, focus: focus, focused: focused, invokeAsync: invokeAsync, invoke: invoke)
         } catch let error as ControlRegistryFailure { failure(error) }
         catch { failure(.invalidRegistration) }
     }
@@ -65,11 +66,12 @@ public extension View {
                 role: String, label: String, sensitive: Bool = false, secure: Bool = false,
                 verbs: Set<String>, value: @escaping () throws -> CBORValue,
                 focus: (() throws -> Bool)? = nil, focused: (() -> Bool)? = nil,
+                invokeAsync: ControlRegistry.AsyncInvocation? = nil,
                 failure: @escaping (ControlRegistryFailure) -> Void,
                 invoke: @escaping (CBORValue) throws -> Void) -> some View {
         modifier(CogletRegistration(registry: registry, id: id, window: window, route: route,
             role: role, label: label, sensitive: sensitive, secure: secure, verbs: verbs,
-            value: value, invoke: invoke, focus: focus, focused: focused, failure: failure))
+            value: value, invoke: invoke, invokeAsync: invokeAsync, focus: focus, focused: focused, failure: failure))
     }
 }
 
@@ -103,6 +105,35 @@ public struct CogletButton: View {
                 guard adapterSynchronous else { throw ControlRegistryFailure.unsupported }
                 action()
             })
+    }
+}
+
+/// One completion-bearing command for both native user and adapter presses.
+/// Every mutation after suspension must use the optional adapter effect context.
+/// A user invocation has no adapter grant and passes nil, never a fabricated one.
+@available(macOS 14.0, *)
+@MainActor
+public struct CogletAsyncButton: View {
+    private let title: String, id: String, window: String, route: String
+    private let registry: ControlRegistry
+    private let sensitive: Bool
+    private let failure: (ControlRegistryFailure) -> Void
+    private let action: (ControlRegistry.EffectContext?) async throws -> Void
+    private let userFailure: () -> Void
+    public init(_ title: String, id: String, registry: ControlRegistry, window: String, route: String,
+                sensitive: Bool = false, failure: @escaping (ControlRegistryFailure) -> Void,
+                userFailure: @escaping () -> Void = {},
+                action: @escaping (ControlRegistry.EffectContext?) async throws -> Void) {
+        self.title = title; self.id = id; self.registry = registry; self.window = window; self.route = route
+        self.sensitive = sensitive; self.failure = failure; self.userFailure = userFailure; self.action = action
+    }
+    public var body: some View {
+        Button(title) { Task { do { try await action(nil) } catch { userFailure() } } }
+            .coglet(id: id, registry: registry, window: window, route: route,
+                role: "button", label: title, sensitive: sensitive, verbs: ["press"],
+                value: { .map([.init("kind", .text("none"))]) },
+                invokeAsync: { _, context in try await action(context) }, failure: failure,
+                invoke: { _ in throw ControlRegistryFailure.unsupported })
     }
 }
 
