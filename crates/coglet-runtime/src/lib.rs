@@ -2,6 +2,7 @@
 #[macro_use]
 mod timing;
 mod admission;
+
 #[cfg(feature = "ffi-test-hooks")]
 mod timing_summary;
 pub use admission::{admit_manifest, admit_module};
