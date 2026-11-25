@@ -70,6 +70,18 @@ adapter pump. The corrected test uses an admitted inbox wake and explicit real
 the original bounded guest observation. Neither failed fixture attempt counts
 as execution proof. Full new-head qualification remains required.
 
+The driver checkpoint `d8467fb` workspace suite completed (834 passed, 0 failed,
+7 ignored, 105 filtered across 161 summaries). Its separate native suite was
+intentionally interrupted during device-lifecycle tests after a tranche review
+found that the idle apply path incorrectly reused the expired RPC deadline as
+application authority. The new deterministic fault-seam test first reproduced a
+retained failed receipt after admission; the fix applies with original authority
+and path checks only, leaving the reply deadline distinct. The new native
+receiver group passes 11/11 including both inbox/write timeout cases and reopened
+applied receipts/files. Strict native all-target clippy and fmt/diff pass. The
+interrupted native suite is not whole-suite proof, and the review is not final
+ship approval.
+
 ## Acceptance work still required
 
 1. **Real in-progress guest concurrency now implemented, frozen harness pending.**

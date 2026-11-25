@@ -117,6 +117,63 @@ async fn back_channel_real_receiver_write_read_receipt_and_restart() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn idle_durable_admission_outlives_rpc_timeout_without_terminal_failure() {
+    use coglet_proto::transport::{OperationHandler, RequestContext};
+    for (seed, method) in [(210, "hub.inbox"), (211, "debug.write")] {
+        let mut env = receiver_env(seed).await;
+        let params = if method == "hub.inbox" {
+            json!({"message":{"id":correlation(840),"sender":env.actor,
+                "event":{"source":env.actor,"kind":"test.note","seq":0,"logical_time":T0,
+                "payload":{},"correlation_id":correlation(841)}}})
+        } else {
+            json!({"path":"/data/notes/timeout","text":"durable","expected_hash":initial_hash(&env)})
+        };
+        let request = intervention(&mut env, method, params);
+        let id = request["correlation_id"].as_str().unwrap().to_owned();
+        let fired = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let seen = fired.clone();
+        let sample = env.reads.load(Ordering::SeqCst) + 5;
+        *env.trap.lock().unwrap() = Some((
+            sample,
+            Box::new(move || {
+                // Fault seam only: delay the first post-admission authority recheck,
+                // not a production timeout/clock override. No guest is involved.
+                seen.store(true, Ordering::SeqCst);
+                std::thread::sleep(Duration::from_millis(250));
+            }),
+        ));
+        let context = RequestContext {
+            peer: env.hub.id(),
+            local: env.endpoint.id(),
+            deadline: tokio::time::Instant::now() + Duration::from_millis(150),
+        };
+        let reply = env.handler.as_ref().unwrap().handle(context, request).await;
+        assert!(
+            fired.load(Ordering::SeqCst),
+            "post-admission fault must execute"
+        );
+        assert_eq!(
+            reply["type"], "error",
+            "reply deadline is exhausted: {reply}"
+        );
+        env.restart_handler().await;
+        let receipt = env.request("hub.receipt", json!({"operation_id":id}));
+        let receipt = env.call(receipt).await;
+        assert_eq!(
+            receipt["result"]["state"], "applied",
+            "durable work must not fail on reply timeout: {receipt}"
+        );
+        let path = if method == "hub.inbox" {
+            "/data/inbox.jsonl"
+        } else {
+            "/data/notes/timeout"
+        };
+        let read = env.request("debug.read", json!({"path":path,"offset":0,"limit":65536}));
+        assert_eq!(env.call(read).await["type"], "reply");
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn back_channel_real_receiver_scope_and_path_limits() {
     let mut env = receiver_env(201).await;
     let hash = initial_hash(&env);

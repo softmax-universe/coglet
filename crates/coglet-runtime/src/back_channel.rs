@@ -205,7 +205,16 @@ impl DeviceHandler {
                         let id = request["correlation_id"]
                             .as_str()
                             .ok_or("invalid_argument")?;
-                        locked.receiver_apply(id, &gate)?;
+                        // Admission is already durable. The RPC reply deadline
+                        // cannot cancel that work; only original authority/path
+                        // checks govern materialization (as in the retry driver).
+                        locked.receiver_apply(id, &|| {
+                            recheck()?;
+                            if !pin.back_channel.permits(method, &request) {
+                                return Err("permission_denied".into());
+                            }
+                            Ok(())
+                        })?;
                         result = locked.receiver_admit(&request)?;
                     }
                     gate()?;
