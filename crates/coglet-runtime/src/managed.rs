@@ -391,8 +391,8 @@ impl RuntimeService {
         self.commit_managed(next)
     }
 
-    /// Exclusive &mut access is the safe serialized boundary: no guest can be
-    /// running concurrently. Retained translated envelopes may have escaped to
+    /// Fence new execution immediately, retaining a queued stop receipt while
+    /// a detached guest still owns its attempt. Retained envelopes may escape to
     /// an adapter, so never invent outcomes for them or erase their receipts.
     pub fn managed_stop(&mut self, now: u64) -> Result<()> {
         self.managed_stop_inner(now, None)
@@ -436,7 +436,56 @@ impl RuntimeService {
             }
         }
         Self::record_operation(&mut next, operation, None, self.managed_last_step())?;
+        if next.runtime.unresolved_attempt.is_some()
+            && let Some((id, _, _)) = operation
+        {
+            let receipt = &mut next
+                .managed
+                .as_mut()
+                .unwrap()
+                .operations
+                .get_mut(id)
+                .unwrap()
+                .receipt;
+            receipt["state"] = json!("queued");
+            receipt["step"] = Value::Null;
+            validate("hub-mutation-receipt", receipt)?;
+        }
         self.commit_managed(next)
+    }
+
+    /// Complete stops only in the same transition that reconciles the original
+    /// guest journal. Unknown attempts retain queued receipts across reopen.
+    pub(super) fn finish_pending_stops(next: &mut ServiceState, step: u64) -> Result<()> {
+        let Some(managed) = &next.managed else {
+            return Ok(());
+        };
+        if !managed.cancellation_pending || next.runtime.unresolved_attempt.is_some() {
+            return Ok(());
+        }
+        let now = managed.stopped_at.max(next.runtime.time);
+        // Cancellation failure retains the durable stopped obligation, matching
+        // the synchronous stop path, without partially publishing cancellation.
+        let mut candidate = next.clone();
+        let error = Self::cancel_managed_undelivered(&mut candidate, now).err();
+        if error.is_none() {
+            *next = candidate;
+        }
+        for saved in next.managed.as_mut().unwrap().operations.values_mut() {
+            if saved.scope.as_ref().is_some_and(|s| s.method == "hub.stop")
+                && saved.receipt["state"] == "queued"
+            {
+                saved.receipt["state"] = json!(if error.is_some() { "failed" } else { "applied" });
+                saved.receipt["step"] = if error.is_some() {
+                    Value::Null
+                } else {
+                    json!(step)
+                };
+                saved.receipt["error"] = error.as_ref().map(|_| json!({"code":"unavailable","message":"Stop cancellation remains pending","retryable":false})).unwrap_or(Value::Null);
+                validate("hub-mutation-receipt", &saved.receipt)?;
+            }
+        }
+        Ok(())
     }
 
     /// Authenticated caller supplies a digest of peer/method/target/params/context,

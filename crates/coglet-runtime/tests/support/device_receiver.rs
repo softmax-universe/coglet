@@ -397,6 +397,83 @@ async fn real_bounded_guest_allows_durable_inbox_cancel_while_running() {
 
 #[cfg(feature = "native-engine")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn stop_waits_for_detached_guest_safe_boundary_and_receipt() {
+    let wat = r#"(module (memory (export "memory") 1 2)
+        (func (export "abi_alloc") (param i32) (result i32) i32.const 0)
+        (func (export "handle") (param i32 i32 i64 i64 i64) (result i32)
+          (loop $busy i32.const 0 i32.const 0 i32.const 65536 memory.fill br $busy)
+          i32.const 0))"#;
+    let mut env = receiver_env_guest(210, wat, 2_000_000_000).await;
+    assert_eq!(
+        env.simple("debug.pause").await["result"]["state"],
+        "applied"
+    );
+    let step = env.request("debug.step", json!({}));
+    let session = env.session.clone();
+    let running = tokio::spawn(async move { session.request(step).await.unwrap() });
+    let shared = env
+        .handler
+        .as_ref()
+        .unwrap()
+        .share_service(&env.coglet)
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if shared
+                .try_lock()
+                .is_ok_and(|locked| locked.has_unresolved_attempt())
+            {
+                break;
+            }
+            assert!(!running.is_finished(), "real guest must still be executing");
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    let stop = env.request("hub.stop", json!({}));
+    let stop_id = stop["correlation_id"].as_str().unwrap().to_owned();
+    let retry = stop.clone();
+    let session = env.session.clone();
+    let stopping = tokio::spawn(async move { session.request(stop).await.unwrap() });
+    // Poll the original stop ID until durable admission, without serializing the guest.
+    let receipt = tokio::time::timeout(Duration::from_secs(1), async {
+        loop {
+            let request = env.request("hub.receipt", json!({"operation_id":stop_id}));
+            let reply = env.call(request).await;
+            if reply["type"] == "reply" {
+                break reply;
+            }
+            assert_eq!(reply["error"]["code"], "not_found", "{reply}");
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        receipt["result"]["state"], "queued",
+        "terminal stop receipt must wait for the real guest boundary"
+    );
+    assert!(
+        !stopping.is_finished(),
+        "stop must not acknowledge before safe boundary"
+    );
+    assert!(shared.lock().unwrap().has_unresolved_attempt());
+    let result = running.await.unwrap();
+    assert_eq!(result["result"]["receipt"]["state"], "failed", "{result}");
+    let stopped = stopping.await.unwrap();
+    assert_eq!(stopped["result"]["state"], "applied", "{stopped}");
+    assert!(!shared.lock().unwrap().has_unresolved_attempt());
+    assert_eq!(shared.lock().unwrap().records().len(), 1);
+    drop(shared);
+    env.restart_handler().await;
+    assert_eq!(env.call(retry).await, stopped);
+    assert_eq!(terminal(&mut env, &stop_id).await["state"], "applied");
+    assert_eq!(env.simple("hub.status").await["result"]["state"], "stopped");
+}
+
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ordinary_guest_completion_drives_deferred_inbox_without_another_request() {
     use coglet_runtime::{SurfaceBinding, SurfaceSession, cbor};
     let wat = r#"(module (memory (export "memory") 1 2)

@@ -939,6 +939,34 @@ impl DeviceHandler {
         coglet: String,
         pin: TargetPin,
     ) -> Result<Value> {
+        loop {
+            // A queued receipt durably fences new execution while the original
+            // detached guest finishes. Never wait with SQL/service custody held.
+            let receipt = self
+                .stop_once(
+                    context.clone(),
+                    request.clone(),
+                    coglet.clone(),
+                    pin.clone(),
+                )
+                .await?;
+            if receipt["state"] != "queued" {
+                return Ok(receipt);
+            }
+            if tokio::time::Instant::now() >= context.deadline {
+                return Err("unavailable".into());
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }
+
+    async fn stop_once(
+        &self,
+        context: RequestContext,
+        request: Value,
+        coglet: String,
+        pin: TargetPin,
+    ) -> Result<Value> {
         let handler = self.clone();
         tokio::task::spawn_blocking(move || {
             // Stopping must not require accepting or executing replacement code.

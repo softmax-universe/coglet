@@ -59,7 +59,8 @@ one. This keeps the bounded guest alive through queue setup without exhausting
 the interpreter's maximum instruction allowance first. The pressure fixture has
 an eight-second guest wall bound and delays readiness until 2.5 seconds after
 entry, while retaining the case's unchanged two-second wire expectations and the
-harness's separate ten-second teardown cap. Failure to observe a genuinely full,
+harness's separate ten-second teardown cap (the owned child driver uses a
+nine-second deadline within that cap). Failure to observe a genuinely full,
 still-running fixture fails setup. No timer or production budget is relaxed.
 
 ## Durable implementation and operational regressions
@@ -78,6 +79,11 @@ still-running fixture fails setup. No timer or production budget is relaxed.
   admissions/cancel; unknown outcomes remain fenced and are never blindly retried.
 - Installed-push `code_pending`, artifact/restart validation and kill gates apply
   before every guest entry. Integration includes merged PR #152 `c46b214`.
+- `hub.stop` fences new execution immediately but retains a queued original
+  receipt while a detached guest owns an unresolved attempt. The same WAL frame
+  that reconciles the real journal completes stop cancellation/receipt; unknown
+  outcomes remain queued across reopen. The stop RPC waits without holding SQL
+  or coordinator custody and reauthorizes each observation before acknowledging.
 - The runtime-owned weak driver retries at 250ms, backs off transient errors to
   five seconds, and handles at most 16 operations per batch. It skips an already
   owned target instead of queuing another strong handler waiter. Queued inbox
@@ -95,6 +101,7 @@ Named operational regressions (Rust suites, separate from frozen cases):
 `back_channel_pause_is_durable_and_single_step_requires_pause`,
 `real_bounded_guest_allows_durable_inbox_cancel_while_running`,
 `ordinary_guest_completion_drives_deferred_inbox_without_another_request`,
+`stop_waits_for_detached_guest_safe_boundary_and_receipt`,
 `back_channel_single_step_runs_real_wasm_once_and_reuses_original_receipt`, and
 `idle_durable_admission_outlives_rpc_timeout_without_terminal_failure`.
 The last is an explicit trusted-clock fault seam, not frozen-wire qualification.

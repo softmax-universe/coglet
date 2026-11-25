@@ -231,6 +231,29 @@ fn unresolved_step_cannot_cancel_and_reconciliation_finishes_original_receipt() 
     let id = step["correlation_id"].as_str().unwrap();
     drop(original);
     let mut reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+    let stop_id = "ab".repeat(16);
+    let intent = "cd".repeat(32);
+    let scope = crate::execution::managed::ReceiptScope {
+        actor: step["context"]["actor"].as_str().unwrap().into(),
+        ticket: None,
+        method: "hub.stop".into(),
+    };
+    assert_eq!(
+        reopened
+            .managed_operation(&stop_id, &intent, false, 0, &scope)
+            .unwrap()["state"],
+        "queued"
+    );
+    drop(reopened);
+    let mut reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert!(!reopened.managed_running());
+    assert_eq!(
+        reopened
+            .managed_operation_receipt(&stop_id, &intent)
+            .unwrap()
+            .unwrap()["state"],
+        "queued"
+    );
     assert_eq!(
         reopened
             .receiver_cancel(id, step["context"]["actor"].as_str().unwrap(), None)
@@ -247,6 +270,13 @@ fn unresolved_step_cannot_cancel_and_reconciliation_finishes_original_receipt() 
         .step(&inputs, &mut MockEngine::new(setup["guest_script"].clone()))
         .unwrap();
     reopened.recover_attempt(&observed["journal"]).unwrap();
+    assert_eq!(
+        reopened
+            .managed_operation_receipt(&stop_id, &intent)
+            .unwrap()
+            .unwrap()["state"],
+        "applied"
+    );
     assert!(reopened.state.receiver.active_step.is_none());
     assert_eq!(reopened.receiver_pending_len(), 0);
     assert_eq!(reopened.receiver_admit(&step).unwrap()["state"], "applied");

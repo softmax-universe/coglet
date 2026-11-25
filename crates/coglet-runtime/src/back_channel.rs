@@ -269,10 +269,9 @@ impl DeviceHandler {
                     if let Ok(permit) = handler.inner.receiver_drains[coglet]
                         .clone()
                         .try_lock_owned()
+                        && handler.drain_receiver_owned(coglet, permit).await.is_err()
                     {
-                        if handler.drain_receiver_owned(coglet, permit).await.is_err() {
-                            failed = true;
-                        }
+                        failed = true;
                     }
                 }
                 delay = if failed {

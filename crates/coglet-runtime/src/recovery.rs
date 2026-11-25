@@ -141,6 +141,10 @@ impl RuntimeService {
         }
         #[cfg(feature = "device")]
         Self::receiver_finish_step(&mut next, &json!({"journal":record}))?;
+        Self::finish_pending_stops(
+            &mut next,
+            journal.iter().filter(|r| r.get("step").is_some()).count() as u64,
+        )?;
         Ok(next)
     }
 
