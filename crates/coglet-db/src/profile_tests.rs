@@ -4,6 +4,30 @@ use serde_json::{Value as Json, json};
 const PROFILE: ContractProfile = ContractProfile::Surface02;
 const KIND: &str = "softmax.app.invoke";
 
+// Interpret JSON variants explicitly: workspace feature unification enables
+// serde_json/arbitrary_precision, whose Serialize represents numbers as maps.
+fn json_cbor(value: &Json) -> V {
+    match value {
+        Json::Null => V::Null,
+        Json::Bool(value) => V::Bool(*value),
+        Json::Number(value) => {
+            if let Some(value) = value.as_u64() {
+                V::Integer(value.into())
+            } else {
+                V::Integer(value.as_i64().expect("integer fixture").into())
+            }
+        }
+        Json::String(value) => V::Text(value.clone()),
+        Json::Array(values) => V::Array(values.iter().map(json_cbor).collect()),
+        Json::Object(values) => V::Map(
+            values
+                .iter()
+                .map(|(key, value)| (V::Text(key.clone()), json_cbor(value)))
+                .collect(),
+        ),
+    }
+}
+
 fn request(kind: &str) -> Json {
     json!({"operation":"enqueue", "intent_id":"1".repeat(32),
         "idempotency_key":"2".repeat(32), "kind":kind,
@@ -14,7 +38,7 @@ fn intent(kind: &str) -> Intent {
         intent_id: "1".repeat(32),
         idempotency_key: "2".repeat(32),
         kind: kind.into(),
-        payload: V::serialized(&request(kind)["payload"]).unwrap(),
+        payload: json_cbor(&request(kind)["payload"]),
         correlation_id: "3".repeat(32),
     }
 }
@@ -36,7 +60,7 @@ fn admit<'a>(
     db.admit_with_profile(cat, CODE, a, profile).unwrap()
 }
 fn wire(unit: &mut Unit<'_>, request: &Json) -> (CallResult, Vec<u8>) {
-    let raw = coglet_types::encode_profile(&V::serialized(request).unwrap()).unwrap();
+    let raw = coglet_types::encode_profile(&json_cbor(request)).unwrap();
     let mut memory = vec![0x55; 140000];
     memory[..raw.len()].copy_from_slice(&raw);
     let result = unit.call(
@@ -70,13 +94,11 @@ fn prepared(cat: &Catalog, kind: &str) -> Decision {
         "capability":"llm.complete", "model":"fixture", "input":{}}]);
     value["logs"] = json!([{"level":"info", "message":"provisional", "fields":{}}]);
     value["record_hash"] = json!(
-        coordinator::record_hash_of(
-            &coglet_types::encode_profile(&V::serialized(&value).unwrap()).unwrap()
-        )
-        .unwrap()
+        coordinator::record_hash_of(&coglet_types::encode_profile(&json_cbor(&value)).unwrap())
+            .unwrap()
     );
     Decision {
-        record: coglet_types::encode_profile(&V::serialized(&value).unwrap()).unwrap(),
+        record: coglet_types::encode_profile(&json_cbor(&value)).unwrap(),
         artifacts: d.artifacts,
     }
 }
