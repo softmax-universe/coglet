@@ -27,9 +27,14 @@ it as a trailing/zero-step boundary. Replay uses archive bytes only.
 
 Revocation, disconnect and restart purge abandoned barriers and their private
 queues without rewriting previously journaled snapshots. Runtime scheduling also
-expires grant-bound barriers without depending on a transport poll. Missing or
-failed reads fail closed by disconnecting the native session and purging its private
-input; a read timeout cannot silently authorize reasoning on uncollected history.
+expires grant-bound barriers without depending on a transport poll. An explicit
+negative heard reply still disconnects and purges private input. A local read
+timeout instead completes negatively through the trusted native `take_read_result`
+API without an early disconnect (ADR-0029); its durable heard barrier stays closed
+until normal authority/disconnect cleanup. A late reply is discarded, never used
+to invent history or authorize reasoning. See
+[read-expiry qualification](READ-EXPIRY-QUALIFICATION.md) for result pressure,
+session-local retention and diagnostic boundaries.
 
 Qualification limits: 128 simultaneous observations, 4096 read-ID tombstones per
 connection and 4096 non-evicting archived items; no silent eviction or inferred text.
