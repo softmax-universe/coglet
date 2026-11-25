@@ -179,7 +179,14 @@ obj('hub-failure', {'type': enum('hub-failure-type', ['error']), 'correlation_id
 obj('hub-credit', {'type': enum('hub-credit-type', ['credit']), 'correlation_id': 'correlation-id', 'bytes': 'uint64'})
 obj('hub-chunk', {'type': enum('hub-chunk-type', ['chunk']), 'correlation_id': 'correlation-id', 'offset': 'uint64', 'hex': 'hub-chunk-hex'})
 obj('hub-end', {'type': enum('hub-end-type', ['end']), 'correlation_id': 'correlation-id'})
-text('manage-log-path', '^/logs/[a-zA-Z0-9_./-]{1,512}$', '/logs/stdout')
+# Log entries describe ABI paths, NOT the narrower management request grammar.
+# Portable (including RE2) component alternatives exclude exactly . and .. .
+log_char = r'[^/\x00-\x1f\x7f\\]'
+log_non_dot = r'[^/.\x00-\x1f\x7f\\]'
+log_component = f'({log_non_dot}{log_char}*|[.]{log_non_dot}{log_char}*|[.][.]{log_char}+)'
+text('manage-log-path', f'^/logs/{log_component}(/{log_component})*$', '/logs/stdout')
+# JSON Schema uses ECMA Unicode escapes; CDDL/generated RE2 uses hex escapes.
+D['manage-log-path']['pattern'] = D['manage-log-path']['pattern'].replace(r'\x', r'\u00')
 obj('manage-log-entry', {'path': 'manage-log-path', 'file_offset': 'uint64', 'hex': 'hub-chunk-hex'})
 obj('manage-tail-log-result', {'next_offset': 'uint64'})
 obj('manage-log', {'type': enum('manage-log-type', ['log']), 'correlation_id': 'correlation-id',
@@ -250,6 +257,19 @@ for pattern_rule, request_rule, path in nested_patterns:
                 roots.append('hub-request')
             for root_rule in roots:
                 fixture(f'{pattern_rule}-nested-{i}-{valid}-{root_rule}', root_rule, value, valid)
+
+# These golden paths run through every generated SDK as well as both references.
+for i, path in enumerate(['/logs/café', '/logs/a b', '/logs/e\u0301', '/logs/😀/日誌',
+                          '/logs/' + 'é' * 600, '/logs/.hidden', '/logs/...', '/logs/quote"name', '/logs/\u0085']):
+    fixture(f'log-path-utf8-{i}', 'manage-log-path', path, True)
+    fixture(f'log-entry-utf8-{i}', 'manage-log-entry',
+            {'path': path, 'file_offset': 0, 'hex': 'ff'}, True)
+for i, path in enumerate(['/logs', '/logs/', '/data/a', 'logs/a', '/logs//a', '/logs/a/',
+                          '/logs/.', '/logs/..', '/logs/a/../b', '/logs/a/./b', '/logs/a\\b']
+                         + ['/logs/a' + chr(c) + 'b' for c in [*range(32), 127]]):
+    fixture(f'log-path-invalid-{i}', 'manage-log-path', path, False)
+    fixture(f'log-entry-invalid-{i}', 'manage-log-entry',
+            {'path': path, 'file_offset': 0, 'hex': 'ff'}, False)
 
 folder = SPEC / 'fixtures/hub'
 folder.mkdir(exist_ok=True)

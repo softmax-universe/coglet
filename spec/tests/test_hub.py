@@ -152,6 +152,44 @@ class HubFixtures(unittest.TestCase):
         with self.assertRaisesRegex(Rejected, 'patch_size'):
             apply({}, 0, patch, installed=False)
 
+    def test_log_paths_cover_abi_and_reject_noncanonical_names(self):
+        from manage_oracle import log_bytes
+        good = ['/logs/café', '/logs/a b', '/logs/e\u0301', '/logs/😀/日誌',
+                '/logs/' + 'é' * 600, '/logs/.hidden', '/logs/...', '/logs/a.b',
+                '/logs/quote"name', '/logs/\u0085']
+        bad = ['/logs', '/logs/', '/data/a', 'logs/a', '/logs//a', '/logs/a/',
+               '/logs/.', '/logs/..', '/logs/a/../b', '/logs/a/./b', '/logs/a\\b']
+        bad += ['/logs/a' + chr(c) + 'b' for c in [*range(32), 127]]
+        for path in good + bad:
+            valid = path in good
+            with self.subTest(path=path):
+                self.validate('manage-log-path', path, valid)
+                self.validate('manage-log-entry', {'path': path, 'file_offset': 0, 'hex': 'ff'}, valid)
+                if valid:
+                    self.assertEqual(json.loads(log_bytes(path, 0, b'\xff'))['path'], path)
+                else:
+                    with self.assertRaises(Rejected):
+                        log_bytes(path, 0, b'\xff')
+
+    def test_unicode_log_jsonl_and_split_cursor_restart(self):
+        from manage_oracle import log_bytes
+        first = log_bytes('/logs/café', 0, b'\x00\xff')
+        second = log_bytes('/logs/a b', 0, b'next')
+        self.assertEqual(first, '{"file_offset":0,"hex":"00ff","path":"/logs/café"}\n'.encode())
+        stream = first + second
+        # Byte cursor inside a multibyte code point, not a character/entry cursor.
+        split = first.index('é'.encode()) + 1
+        prefix, offset = tail(stream, 0, split)
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / 'log'
+            p.write_bytes(stream)
+            suffix = subprocess.check_output([__import__('sys').executable, '-c',
+                'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes()[int(sys.argv[2]):])', str(p), str(offset)])
+        self.assertEqual(prefix + suffix, stream)
+        self.assertEqual(tail(stream, offset), (suffix, len(stream)))
+        self.assertEqual([json.loads(line)['path'] for line in (prefix + suffix).splitlines()],
+                         ['/logs/café', '/logs/a b'])
+
     def test_tail_across_fresh_process_restart(self):
         v = json.loads((SPEC / 'fixtures/hub/tail-restart.json').read_text())
         before, after = bytes.fromhex(v['before_hex']), bytes.fromhex(v['after_hex'])

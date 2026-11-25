@@ -315,7 +315,11 @@ position, source event sequence or router-global counter. Every committed log
 append contributes one canonical JSONL entry `{file_offset, hex, path}` in durable
 append order. JSON bytes follow ABI inbox serialization (compact sorted keys,
 unescaped Unicode, standard escapes, one LF). `path` MUST be a canonical absolute
-`/logs/...` path; `file_offset` is that file's prior byte length; `hex` is nonempty
+`/logs/...` path in the full ABI UTF-8 domain, not the bounded ASCII subset
+accepted by management read/write requests. Preserve spaces and exact Unicode
+bytes without normalization or a separate log-entry path-length cap; forbid C0
+controls, DEL, backslash, empty/dot/dot-dot components and trailing slash as in
+the ABI. `file_offset` is that file's prior byte length; `hex` is nonempty
 lowercase hex of the appended bytes, max 32768 raw bytes per entry (split larger
 appends in order). These entries describe all committed log-file writes, including
 stdout/stderr and structured log output; they are not extra guest-writable files.

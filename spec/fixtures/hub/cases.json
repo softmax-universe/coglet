@@ -7011,5 +7011,871 @@
       "offset": 0,
       "hex": "00\n"
     }
+  },
+  {
+    "name": "log-path-utf8-0",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/caf\u00e9",
+    "cbor_hex": "6b2f6c6f67732f636166c3a9"
+  },
+  {
+    "name": "log-entry-utf8-0",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/caf\u00e9",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a36368657862666664706174686b2f6c6f67732f636166c3a96b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-1",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/a b",
+    "cbor_hex": "692f6c6f67732f612062"
+  },
+  {
+    "name": "log-entry-utf8-1",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/a b",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a3636865786266666470617468692f6c6f67732f6120626b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-2",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/e\u0301",
+    "cbor_hex": "692f6c6f67732f65cc81"
+  },
+  {
+    "name": "log-entry-utf8-2",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/e\u0301",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a3636865786266666470617468692f6c6f67732f65cc816b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-3",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/\ud83d\ude00/\u65e5\u8a8c",
+    "cbor_hex": "712f6c6f67732ff09f98802fe697a5e8aa8c"
+  },
+  {
+    "name": "log-entry-utf8-3",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/\ud83d\ude00/\u65e5\u8a8c",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a3636865786266666470617468712f6c6f67732ff09f98802fe697a5e8aa8c6b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-4",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+    "cbor_hex": "7904b62f6c6f67732fc3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9"
+  },
+  {
+    "name": "log-entry-utf8-4",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a36368657862666664706174687904b62f6c6f67732fc3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a96b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-5",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/.hidden",
+    "cbor_hex": "6d2f6c6f67732f2e68696464656e"
+  },
+  {
+    "name": "log-entry-utf8-5",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/.hidden",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a36368657862666664706174686d2f6c6f67732f2e68696464656e6b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-6",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/...",
+    "cbor_hex": "692f6c6f67732f2e2e2e"
+  },
+  {
+    "name": "log-entry-utf8-6",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/...",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a3636865786266666470617468692f6c6f67732f2e2e2e6b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-7",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/quote\"name",
+    "cbor_hex": "702f6c6f67732f71756f7465226e616d65"
+  },
+  {
+    "name": "log-entry-utf8-7",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/quote\"name",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a3636865786266666470617468702f6c6f67732f71756f7465226e616d656b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-utf8-8",
+    "type": "manage-log-path",
+    "valid": true,
+    "value": "/logs/\u0085",
+    "cbor_hex": "682f6c6f67732fc285"
+  },
+  {
+    "name": "log-entry-utf8-8",
+    "type": "manage-log-entry",
+    "valid": true,
+    "value": {
+      "path": "/logs/\u0085",
+      "file_offset": 0,
+      "hex": "ff"
+    },
+    "cbor_hex": "a3636865786266666470617468682f6c6f67732fc2856b66696c655f6f666673657400"
+  },
+  {
+    "name": "log-path-invalid-0",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs"
+  },
+  {
+    "name": "log-entry-invalid-0",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-1",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/"
+  },
+  {
+    "name": "log-entry-invalid-1",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-2",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/data/a"
+  },
+  {
+    "name": "log-entry-invalid-2",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/data/a",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-3",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "logs/a"
+  },
+  {
+    "name": "log-entry-invalid-3",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "logs/a",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-4",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs//a"
+  },
+  {
+    "name": "log-entry-invalid-4",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs//a",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-5",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a/"
+  },
+  {
+    "name": "log-entry-invalid-5",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a/",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-6",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/."
+  },
+  {
+    "name": "log-entry-invalid-6",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/.",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-7",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/.."
+  },
+  {
+    "name": "log-entry-invalid-7",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/..",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-8",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a/../b"
+  },
+  {
+    "name": "log-entry-invalid-8",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a/../b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-9",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a/./b"
+  },
+  {
+    "name": "log-entry-invalid-9",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a/./b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-10",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\\b"
+  },
+  {
+    "name": "log-entry-invalid-10",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\\b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-11",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0000b"
+  },
+  {
+    "name": "log-entry-invalid-11",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0000b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-12",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0001b"
+  },
+  {
+    "name": "log-entry-invalid-12",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0001b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-13",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0002b"
+  },
+  {
+    "name": "log-entry-invalid-13",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0002b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-14",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0003b"
+  },
+  {
+    "name": "log-entry-invalid-14",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0003b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-15",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0004b"
+  },
+  {
+    "name": "log-entry-invalid-15",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0004b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-16",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0005b"
+  },
+  {
+    "name": "log-entry-invalid-16",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0005b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-17",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0006b"
+  },
+  {
+    "name": "log-entry-invalid-17",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0006b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-18",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0007b"
+  },
+  {
+    "name": "log-entry-invalid-18",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0007b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-19",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\bb"
+  },
+  {
+    "name": "log-entry-invalid-19",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\bb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-20",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\tb"
+  },
+  {
+    "name": "log-entry-invalid-20",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\tb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-21",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\nb"
+  },
+  {
+    "name": "log-entry-invalid-21",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\nb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-22",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u000bb"
+  },
+  {
+    "name": "log-entry-invalid-22",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u000bb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-23",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\fb"
+  },
+  {
+    "name": "log-entry-invalid-23",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\fb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-24",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\rb"
+  },
+  {
+    "name": "log-entry-invalid-24",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\rb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-25",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u000eb"
+  },
+  {
+    "name": "log-entry-invalid-25",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u000eb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-26",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u000fb"
+  },
+  {
+    "name": "log-entry-invalid-26",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u000fb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-27",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0010b"
+  },
+  {
+    "name": "log-entry-invalid-27",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0010b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-28",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0011b"
+  },
+  {
+    "name": "log-entry-invalid-28",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0011b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-29",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0012b"
+  },
+  {
+    "name": "log-entry-invalid-29",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0012b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-30",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0013b"
+  },
+  {
+    "name": "log-entry-invalid-30",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0013b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-31",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0014b"
+  },
+  {
+    "name": "log-entry-invalid-31",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0014b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-32",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0015b"
+  },
+  {
+    "name": "log-entry-invalid-32",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0015b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-33",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0016b"
+  },
+  {
+    "name": "log-entry-invalid-33",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0016b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-34",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0017b"
+  },
+  {
+    "name": "log-entry-invalid-34",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0017b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-35",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0018b"
+  },
+  {
+    "name": "log-entry-invalid-35",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0018b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-36",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u0019b"
+  },
+  {
+    "name": "log-entry-invalid-36",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u0019b",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-37",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u001ab"
+  },
+  {
+    "name": "log-entry-invalid-37",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u001ab",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-38",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u001bb"
+  },
+  {
+    "name": "log-entry-invalid-38",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u001bb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-39",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u001cb"
+  },
+  {
+    "name": "log-entry-invalid-39",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u001cb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-40",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u001db"
+  },
+  {
+    "name": "log-entry-invalid-40",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u001db",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-41",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u001eb"
+  },
+  {
+    "name": "log-entry-invalid-41",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u001eb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-42",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u001fb"
+  },
+  {
+    "name": "log-entry-invalid-42",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u001fb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
+  },
+  {
+    "name": "log-path-invalid-43",
+    "type": "manage-log-path",
+    "valid": false,
+    "value": "/logs/a\u007fb"
+  },
+  {
+    "name": "log-entry-invalid-43",
+    "type": "manage-log-entry",
+    "valid": false,
+    "value": {
+      "path": "/logs/a\u007fb",
+      "file_offset": 0,
+      "hex": "ff"
+    }
   }
 ]

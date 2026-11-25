@@ -74,7 +74,16 @@ def apply(files, generation, patch, installed=True):
 
 def log_bytes(path, file_offset, content):
     # Same canonical JSONL convention as ABI inbox; logs may contain arbitrary bytes.
-    assert path.startswith('/logs/') and content
+    if (not isinstance(path, str) or not path.startswith('/logs/')
+            or any(part in {'', '.', '..'} for part in path[1:].split('/'))
+            or any(ord(c) < 32 or ord(c) == 127 or c == '\\' for c in path)):
+        raise Rejected('invalid_argument', 'log_path')
+    # Python permits lone surrogates; the wire/ABI requires actual UTF-8.
+    try:
+        path.encode('utf-8')
+    except UnicodeEncodeError as e:
+        raise Rejected('invalid_argument', 'log_path') from e
+    assert content
     return (json.dumps({'path': path, 'file_offset': file_offset, 'hex': content.hex()},
                        sort_keys=True, separators=(',', ':'), ensure_ascii=False) + '\n').encode()
 
