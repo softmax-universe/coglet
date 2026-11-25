@@ -190,7 +190,7 @@ the ADR says so.</p>
    Replay each step as an unforged job with caching off; the resulting tree ids
    must match the recorded state hashes. Repeat with caching on and confirm the
    jobs report cache hits.</li>
-<li><strong>Centre cold path.</strong> Use unforged at the centre for replays, forks and
+<li><strong>Hosted cold path.</strong> Use unforged on Softmax-hosted runtimes for replays, forks and
    factory gates, where latency does not matter. Requires unforged to include
    the resolved worker image in its cache key and to emit receipts that say
    whether a job executed.</li>

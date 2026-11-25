@@ -3,8 +3,10 @@ use serde_json::Value;
 
 #[test]
 fn frozen_signatures_are_verified_with_pinned_authority_and_domain() {
-    let vectors: Vec<Value> =
-        serde_json::from_str(include_str!("../../../spec/fixtures/hub/signatures.json")).unwrap();
+    let vectors: Vec<Value> = serde_json::from_str(include_str!(
+        "../../coglet-types-hub0/fixtures/signatures.json"
+    ))
+    .unwrap();
     for vector in vectors {
         let purpose = vector["statement"]["purpose"].as_str().unwrap();
         let signer = vector["signer"].as_str().unwrap();

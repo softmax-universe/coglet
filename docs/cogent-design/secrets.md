@@ -12,8 +12,8 @@ proposal for one.
 ## Three rules
 
 1. **Coglets never hold secrets.** A coglet names a credential by id; the bytes
-   never enter its files, its logs, its commits or its traces. A replay at the
-   centre needs no credentials at all.
+   never enter its files, its logs, its commits or its traces. A replay on a
+   hosted runtime needs no credentials at all.
 2. **Only adapters use secrets.** The adapter is already the boundary that
    decides what is allowed, so it is the one that holds the token and makes the
    call. A coglet gets grants to actions, not to keys.
@@ -48,7 +48,7 @@ SecretRecord
   state        "active" | "rotating" | "revoked"
 ```
 
-**The bytes** live in a real key store. At the centre that is a cloud key
+**The bytes** live in a real key store. On a hosted runtime that is a cloud key
 manager or HashiCorp Vault; on a device it is the OS keychain or secure
 enclave. Git refers to them only by `store` path.
 

@@ -7,9 +7,22 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::Path;
 
+/// Files, inbox wakes, pending LLM requests, pending actions and next source
+/// seq, after boundary staging.
+type StagedBoundaryInputs = (
+    Snapshot,
+    VecDeque<u64>,
+    BTreeMap<String, Value>,
+    BTreeMap<String, Value>,
+    u64,
+);
+
 #[path = "clock.rs"]
 mod clock;
 
+#[cfg(test)]
+#[path = "boundary_stage_tests.rs"]
+mod boundary_stage_tests;
 #[cfg(feature = "native-engine")]
 #[path = "database_replay.rs"]
 mod database_replay;
@@ -992,16 +1005,10 @@ impl Runtime {
             self.contract_profile.validate("event", event)?;
         }
         let before_hash = self.files.tree_hash()?;
-        let mut boundary_state = self.clone();
-        boundary_state
-            .apply_boundary_changes(inputs["boundary"].as_array().ok_or("missing boundary")?)?;
-        let input = boundary_state.files;
-        let mut inbox_wakes = boundary_state.inbox_wakes;
-        let mut pending_llm = boundary_state.pending_llm;
-        let mut pending_actions = boundary_state.pending_actions;
+        let (input, mut inbox_wakes, mut pending_llm, mut pending_actions, mut next_source_seq) =
+            self.stage_boundary(inputs["boundary"].as_array().ok_or("missing boundary")?)?;
         let inbox = crate::boundary::inbox_with_profile(&input, self.contract_profile)?;
         let mut pending_timers = self.pending_timers.clone();
-        let mut next_source_seq = boundary_state.next_source_seq;
         for event in events {
             if event["source"] == inputs["coglet"] {
                 next_source_seq = next_source_seq.max(
@@ -1081,9 +1088,20 @@ impl Runtime {
         } else {
             engine.database_observation(committed)?
         };
-        let code_hash = digest(
-            &hex::decode(&self.files.files()["/code/bin/step.wasm"]).map_err(|e| e.to_string())?,
-        );
+        #[cfg(feature = "native-engine")]
+        let code_hash = self
+            .files
+            .decoded_fs()?
+            .blob_hash("/code/bin/step.wasm")
+            .map_err(|e| e.to_string())?
+            .to_owned();
+        #[cfg(not(feature = "native-engine"))]
+        let code_hash = digest(&crate::filesystem::decode_hex(
+            self.files
+                .files()
+                .get("/code/bin/step.wasm")
+                .ok_or("missing /code/bin/step.wasm")?,
+        )?);
         let mut record = json!({
             "version":if observation.is_some() { "0.2" } else { "0.1" },
             "trace_id":inputs["trace_id"], "coglet":inputs["coglet"],
@@ -1291,6 +1309,30 @@ impl Runtime {
             return Err("recovered runtime/journal head mismatch".into());
         }
         Ok(())
+    }
+
+    /// Boundary-staged step inputs. An empty boundary applies nothing, so it
+    /// copies only the state a step consumes instead of cloning the whole
+    /// runtime (manifest, previous record, ledger, timers) first.
+    fn stage_boundary(&self, changes: &[Value]) -> Result<StagedBoundaryInputs> {
+        if changes.is_empty() {
+            return Ok((
+                self.files.clone(),
+                self.inbox_wakes.clone(),
+                self.pending_llm.clone(),
+                self.pending_actions.clone(),
+                self.next_source_seq,
+            ));
+        }
+        let mut staged = self.clone();
+        staged.apply_boundary_changes(changes)?;
+        Ok((
+            staged.files,
+            staged.inbox_wakes,
+            staged.pending_llm,
+            staged.pending_actions,
+            staged.next_source_seq,
+        ))
     }
 
     // Apply only to a private candidate; callers publish it after validation and

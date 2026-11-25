@@ -55,7 +55,7 @@ def generate(write_files=True):
         return sample
 
     def write(path, before, after):
-        return dict(actor=hub, audit_id='6'*32, ticket=None, method='debug.write',
+        return dict(actor=hub, audit_id='6'*32, ticket=None, method='manage.write',
                     target=coglet, path=path, before=before, after=after)
 
     standalone = clone(trace)
@@ -231,7 +231,7 @@ def generate(write_files=True):
             dict(send=dict(operation='abi.validate_trace', trace=vector['value'])),
             dict(expect=result, within_ms=200)]))
     if write_files:
-        (SPEC.parent / 'conformance/abi/boundary-receipts.json').write_text(json.dumps(timelines, indent=2)+'\n')
+        (SPEC / 'fixtures/abi/boundary-receipts-timeline.fixture').write_text(json.dumps(timelines, indent=2)+'\n')
     return vectors, timelines
 
 
