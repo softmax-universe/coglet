@@ -220,13 +220,25 @@ The Python (`python -m coglet_surface.reference --conformance-clock`) and Go
 environment through their SDK provisioning entry points (`coglet_surface.reference.provision`,
 Go `provision()`), then pass `contract_profile`/`TrustedCatalog` to the SDK constructor.
 
-**Not claimed:** the production Rust runtime/reference/mock surfaces and the Swift SDK have no
-`surface-0.2` registration; they are owned by `t_01a20fdfde58e6ba` and must not be added to
-`impls-surface02.toml` until an executable adapter honours the env contract above. The cases
-above cover wire/dispatch seams only; the `s02-*` rule families (event, action, capabilities,
-grants, read, act) are not exercised by these cases beyond what the shared Python/Go reference
-implementations already do. Known adapter seam gap: the Go SDK has no negotiated-version
-accessor, so its downgrade adapter retries a built-ins-only grant when the full grant is refused.
+Swift's compiled reference surface consumes the same profile/catalog/config inputs and runs
+these **exact same five files**, with production real time (`fixture_clock = false`):
+
+    swift build --package-path sdk/surface-swift
+    conformance/run --registry conformance/impls-surface02-swift.toml --contract-profile surface-0.2
+
+The separate registry keeps Python/Go CI independent of a Swift toolchain; native `swift.yml`
+builds the executable first, executes both frozen and selected suites, and retains both reports.
+Local Swift-on-Linux success does not establish native Mac qualification.
+
+**Peer-role boundary:** `peer_role: runtime` is the HARNESS role. These cases test surface
+implementations, not the production Rust runtime. The latter receives `hello` and issues
+`read`/`act`, the opposite direction; registering a surface SDK or fabricating surface responses
+cannot establish runtime conformance. Complementary runtime-facing `peer_role: surface` cases
+must reuse the same pinned catalog and operation payloads and drive the actual runtime.
+The Rust surface SDK remains unqualified for `surface-0.2` and is not registered here.
+These cases cover wire/dispatch seams only, not all generated `s02-*` rules or native hardware.
+The Go reference filters grants only on positively negotiated `0.1` downgrade via the SDK's
+`NegotiatedVersion()` accessor; arbitrary `0.2` grant refusal is not retried as downgrade.
 
 ## Reports and proof boundaries
 
