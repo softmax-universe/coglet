@@ -68,10 +68,26 @@ utterance is first submitted. Recognition requires on-device support and never
 falls back to cloud recognition. A finalized local transcript publishes typed
 `speech.start` and `speech.end` through `SurfaceSession`; raw PCM never enters the
 control protocol. Speech/expression dispatches reach the bounded `RuntimeAction`
-sink (`onAction`). The current Face adapter is deliberately an unavailable sink:
-it records the semantic action but sends a failed/unavailable terminal outcome,
-not fictitious playback success. Chat text sending, hub enrollment, provider/media
-routing and physical TTS/acoustic qualification are not delivered here.
+sink (`onAction`), installed by `ShellModel` on its single `FaceHost`. Speech uses
+an explicitly selected installed English Apple voice (`AVSpeechSynthesizer.write`,
+PCM only), then the existing `FacePlaybackSession` / `FaceSpeechSink` and
+`EngineFacePlayback` speaker. No credentials, voice downloads or cloud fallback
+are requested. Missing voices, malformed PCM and native failures fail honestly.
+Actions stay pending in the real SDK ledger until played-back callbacks; synthesis
+or scheduling alone never reports success. Expressions are applied to `FaceDriver`
+before acknowledgement. No callback enters the ABI from an audio thread.
+
+The ADAPTER bounds outstanding native actions and speech items to 16, synthesis
+to 1,920,000 samples / 4,096 native callbacks / 8,192 PCM frames, text to 4,096
+UTF-8 bytes, sample rates to 8–48 kHz mono, and stream history to 4,096 records.
+Exhaustion fails, never truncates speech or silently evicts closed-stream fences.
+Playback retries the same frame under the sink's ten-second queue backpressure.
+Barge-in, runtime stop/failure and native SDK cancellation synchronously stop
+synthesis and playback, fence queued/late receipts, and close the current stream.
+Only a fresh transcript or runtime start enables new output after a local stop.
+Native transport tests use real Wasm/SDK/ABI plus controlled media callbacks;
+installed-voice audibility, real microphone input, acoustic barge-in latency and
+device failures remain the physical acceptance on `t_01a206030d60a354`.
 
 **Fault boundary:** guest traps, runtime API failures, deadline/budget failures
 and unwinding Rust panics caught at every C ABI entry become UI `error`. Restart
@@ -105,8 +121,8 @@ paths on `macos-latest`. It does not prove x86_64 execution or physical speech.
   Dragging snaps to the nearest left/right visible-screen edge with a 16-point inset.
   Monitor removal rehomes it on the main display. Toggle off also hides the conversation.
   Open Chat / Open Voice remain accessible from the menu bar when the orb is off.
-  The conversation's small menu clears the draft or hides the orb. Chat sending and
-  runtime speech delivery remain explicitly unavailable until runtime integration lands.
+  The conversation's small menu clears the draft or hides the orb. Chat sending
+  remains unavailable; runtime speech delivery uses the local ADAPTER above.
   Check for Updates opens the honest Updates placeholder; it does not claim that
   an update check ran.
 - Microphone is checked with `AVCaptureDevice`; Input Monitoring with CoreGraphics
@@ -175,16 +191,13 @@ seconds); `startedAt` and `endedAt` use the same timebase. Audio is buffered in 
 not written to disk. `AudioCapture.stop()` synchronously drains the authoritative
 session buffer; its bounded `frames` stream is for live observers only.
 
-The runtime card must consume that stream and call
-`finishSpeechInput(operation: utterance.operationID)` on delivery completion/failure.
-**Until that integration exists, thinking intentionally means an
-utterance is awaiting the runtime, not that transcription was performed.** No speech
-provider request is made here. Before Face playback starts, runtime calls
-`beginFacePlayback(stop:)` with its synchronous stop closure and retain the returned
-operation ID; when playback ends, call `finishFacePlayback(operation: id)`. Stale
-completions are ignored and cannot cancel a newer capture. A press during that interval invokes stop before capture
-and emits bargeIn. `machine` external state changes also synchronize the controller.
-This is the playback seam, not a new TTS implementation.
+`ShellModel.configureRuntime` consumes the stream, performs on-device recognition,
+and calls `finishSpeechInput(operation:)` after delivery/failure. `RuntimeSpeechPlayback`
+begins `FacePlaybackSession` before synthesis, so pressing PTT during generation
+also stops output before capture. A successful played-back completion returns PTT
+to idle without invoking its cancellation hook. Stale operation IDs cannot end
+a newer capture. The older `beginFacePlayback` seam remains for other integrations;
+the production Face route does not call both seams.
 
 ## Face host and speech output
 
@@ -203,11 +216,11 @@ viseme payload. Reduce Motion removes scale motion and transition interpolation;
 semantic mouth/eye changes remain visible. VoiceOver has a state label and native
 buttons. Hiding suspends the render timer; expression expiry uses monotonic time.
 
-Runtime integration owns synthesis, grants, deadlines and action outcomes. It
-replaces the demo driver and calls `FaceHost.beginSpeech()` to obtain a fresh token,
-then `host.speech.enqueue(PCMFrame(...), token:)` for mono Float32 TTS frames and
-`host.speech.finish(token:)` at synthesis end. Do not also call the older
-`ShellModel.beginFacePlayback` seam for this host. `FacePlaybackSession` joins this
+Runtime integration owns synthesis, grants, deadlines and action outcomes. Its
+`RuntimeSpeechPlayback` stops the demo and feeds mono Float32 PCM through
+`FacePlaybackSession`, using its fresh speech token for every frame and finish.
+The manual `FaceHost.beginSpeech()` seam remains available for external callers.
+Do not also call the older `ShellModel.beginFacePlayback` seam. `FacePlaybackSession` joins this
 sink to PTT; replacing or stopping output fences old frames/completions. The sink
 finishes only after native played-back callbacks, not after synthesis/scheduling.
 It bounds queued audio to ten seconds, one second per frame and 512 pending
