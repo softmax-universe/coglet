@@ -3,8 +3,30 @@
 `Wamr::interpreter()` implements `coglet_engine::Engine`. `load` validates bytes
 and limits without executing guests. `instantiate` creates a one-shot descriptor;
 `Instance::handle` instantiates a **fresh native instance**, runs initialization,
-allocation and handle under ONE allowance/deadline, then discards all native state.
+allocation and handle under ONE allowance/deadline, then discards instance state.
 There is no persistent guest instance to accidentally reuse after a failed call.
+
+One serialized loaded-module owner may survive between steps while its immutable
+admitted `Module` lease (or an unexecuted instance retaining that lease) is alive.
+The owner key is a checked, never-reused lease ID, exact original bytes, configured
+`runtime_bytes`, and effective DB-import policy. Each execution still creates new
+globals, memory, tables, instance and execution environment. Page and stack grants
+are passed afresh; admission and dynamic-limit checks are unchanged. Replacement
+evicts before allocating; construction/instance/environment failure leaves no
+native owner. The original bytes and WAMR's writable loader backing are separate;
+the backing lives until unload. Rust does not copy bytes on every execution.
+
+The Rust owner record retains only a weak lease. Final lease destruction uses
+`try_lock`, never a blocking mutex acquisition: a Host callback may drop an
+unrelated module or join a thread dropping it. Every runtime guard sweeps dead
+leases at entry, at exit while locked, and once more nonblocking **after unlock**.
+A final drop before unlock that loses the lock is covered by that last sweep; if
+a concurrent guard wins, its exit repeats the sweep. After the post-unlock sweep,
+a later final drop can itself acquire the idle lock. Cleanup never upgrades a
+weak reference, and generation-matched release cannot retire a replacement.
+Instances are destroyed only after the watchdog joins and before guard cleanup.
+Same-thread nested native execution is explicitly refused with `Error::Trap`;
+poisoned execution fails closed, while final-lease cleanup remains nonpanicking.
 
 ## Build and accounting policy
 
@@ -34,7 +56,8 @@ prevents another guest call. The shared native runtime/allocator/registry lifeti
 is serialized process-wide; waiting for it never renews the absolute deadline.
 The watchdog is cancellable and joined BEFORE native instance destruction on all
 paths, including unwinding. Native host callbacks are trusted, cooperative,
-bounded/cancellable and must never wait for network or reenter this engine.
+bounded/cancellable and must never wait for network or another native execution.
+Same-thread reentry returns an error rather than waiting for its own mutex.
 A guest termination flag cannot preempt arbitrary blocking trusted host code.
 
 The default feature selects the interpreter. `aot` selects an unsupported default
@@ -47,12 +70,15 @@ or permit shared memory. `Wamr::aot()` fails admission even on malformed bytes.
 - Initial AND declared maximum linear pages are checked before native execution;
   memory is unshared wasm32 with exactly one exported `memory`. Growth is also
   capped by WAMR's page limit. Zero, imported/unbounded memory and over-grants fail.
-- `runtime_bytes` bounds WAMR's **non-linear allocator pool** (including module
-  metadata and execution-stack allocations). Linux linear memory uses mmap, not
+- `runtime_bytes` provisions WAMR's **non-linear allocator pool** (including module
+  metadata and execution-stack allocations) plus both owner byte buffers. Both
+  byte lengths are checked and subtracted before allocating the remaining pool;
+  replacement never holds two pools. Linux linear memory uses mmap, not
   this pool, and is bounded separately by the page grant. The regression test
   exhausts metadata with many tiny functions, not a misleading linear-page test.
 - `stack_bytes` bounds the interpreter execution stack. Native watchdog stack is
-  fixed at 128 KiB. Rust parser/module/event buffers and caller-owned host state
+  fixed at 128 KiB. Rust immutable proof/parser/event buffers, owner/context
+  structs, thread bookkeeping and caller-owned host state
   are separate; this is **not a total process RSS/OS stack limit**. A runtime that
   requires a total RSS/process cap must provide qualified process isolation or
   refuse that route. Never advertise an EO1 128 MiB native RSS result from QEMU.

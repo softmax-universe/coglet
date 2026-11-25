@@ -14,6 +14,7 @@ pub struct Wamr {
 }
 #[derive(Clone)]
 pub struct Module {
+    lease: Arc<native::ModuleLease>,
     /// Private immutable admitted bytes; never exposed or mutated after `load`.
     bytes: Arc<[u8]>,
     /// Static admission proof key. Mode, dynamic compute and deadline are never
@@ -43,6 +44,7 @@ impl Engine for Wamr {
         self.check_limits(limits)?;
         admit_with(wasm, limits, self.admission())?;
         Ok(Module {
+            lease: native::ModuleLease::new()?,
             bytes: Arc::from(wasm),
             memory_pages: limits.memory_pages,
             runtime_bytes: limits.runtime_bytes,
@@ -67,7 +69,14 @@ impl Engine for Wamr {
 }
 impl InstanceTrait for WamrInstance {
     fn handle(self, input: StepInput, host: &mut dyn Host) -> StepOutcome {
-        native::execute(&self.module.bytes, self.limits, input, host, self.allow_db)
+        native::execute(
+            &self.module.lease,
+            &self.module.bytes,
+            self.limits,
+            input,
+            host,
+            self.allow_db,
+        )
     }
 }
 #[allow(clippy::derivable_impls)]
