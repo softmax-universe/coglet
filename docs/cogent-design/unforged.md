@@ -11,6 +11,12 @@ state-hash change is planned now; see
 disagree, this page describes the intended change; the
 [spec changes](#spec-changes) section lists what each spec would need.
 
+This design runs against one decision already on main:
+[ADR-0031](../adr/0031-manage-port-and-filesystem-patches.md) keeps Git out of
+coglets (§2–§5): a coglet holds plain files, a patch is a set of whole files
+with a tree hash as its `base`, and tree identity is the `coglet-fs` CBOR hash.
+Adopting this page would supersede those sections and needs its own ADR.
+
 ## The idea
 
 Today a coglet's state is a flat map of files hashed as one CBOR value, its
@@ -83,16 +89,17 @@ CogletTree
   data/…               bytes      Its memory. The guest writes these.
   data/inbox.jsonl     bytes      Append-only. Only the runtime writes it.
   logs/events.jsonl    bytes      Append-only.
-  out/actions/<id>     Action     Effects this step staged. Empty after a failed step.
+  out/actions/<id>     Action     Effects this step staged, model calls included. Empty after a failed step.
   out/timers/<id>      Timer
-  out/llm/<id>         LlmRequest
 ```
 
 Rules for the tree:
 
 - Every file is a regular file with mode `100644`. No symlinks, no gitlinks,
-  no `.git*` entries, no empty directories. The ABI's path rules already rule
-  these out, so every valid ABI snapshot maps to exactly one tree and back.
+  no `.git*` entries, no empty directories. The ABI already forbids symlinks,
+  hardlinks and device nodes; it would also have to forbid `.git` names and a
+  path that is both a file and a directory, so that every valid snapshot maps
+  to exactly one tree and back.
 - `out/` holds only what this step staged. The next step starts with `out/`
   empty. A dispatcher reads `out/` from the commit the `state` ref points at
   and records what it sent in `refs/notes/dispatched`, keyed by commit; that
@@ -218,7 +225,7 @@ can become git:
 | Code updates and update fencing | A merge of `policy` at the next boundary |
 | Install, push, deploy | Ref moves the device fetches |
 | Inbox, logs, effect ledger | Input commits, files in the tree, `refs/notes/dispatched` |
-| Debug reads and writes | Git reads of a commit; boundary commits |
+| Manage-port reads and writes (`manage.read`, `manage.write`) | Git reads of a commit; boundary commits |
 | Replays, forks, gates | `river exec` jobs, cached |
 | The `llm.complete` capability | An adapter like any other ([LLMs on unforged](llms.md)) |
 
@@ -288,21 +295,22 @@ PatchAttributes
   logs/**         merge=ours       Logs are never patched.
 ```
 
-- **`base` is a compare-and-swap.** `Patch.base` is the `policy` commit the
-  patch was made from. If the ref has moved, the push is refused, as the back
-  channel already specifies.
+- **`base` is a compare-and-swap.** Here `Patch.base` is the `policy` commit
+  the patch was made from, and the push is refused if the ref has moved. Under
+  ADR-0031 `base` is a tree hash over plain files with the same refusal; this
+  design would make it a commit.
 - **A conflict pauses the coglet.** If the migration fails or the new
   manifest asks for more than is granted, the merge stops with a conflict
-  tree, the coglet is `paused`, and its manager resolves it through the back
-  channel. This is unforged's `PAUSED_CONFLICT` with a coglet as the process.
+  tree, the coglet is `paused`, and its manager resolves it through the manage
+  port. This is unforged's `PAUSED_CONFLICT` with a coglet as the process.
 - **The patch is tested the same way it is applied.** The factory merges the
   patch into recorded states and runs the recorded inputs through it as a
   gate before pushing. That is the "build, test" step in the
   [end-to-end request](README.md#a-request-end-to-end).
 
-The back channel maps onto git operations:
+The manage port maps onto git operations:
 
-| Back channel | Becomes |
+| Manage port | Becomes |
 |---|---|
 | `patch` | Push to `…/policy`; the runtime merges it at the next boundary |
 | `tail_log` | Fetch of `logs/` from new step commits; live tailing stays a stream |
@@ -384,9 +392,9 @@ storage and its git transport.
 | Spec | Change |
 |---|---|
 | `spec/conventions.md` | Object ids are git SHA-256. CBOR stays for message and file contents. |
-| `spec/abi.md` | State hash is the git tree id. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under `out/`. The `llm` host capability and `llm-request` effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events. |
+| `spec/abi.md` | State hash is the git tree id. Paths may not be `.git` names or both a file and a directory. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under `out/`. The `llm` host capability and `llm-request` effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events. |
 | `spec/manifest.schema.json` | The manifest lives in the tree as `manifest.cbor` and names its resolver (engine) by id. |
-| `spec/hub-protocol.md` | Git transfer moves from SHA-1 bundles to fetch and push of SHA-256 refs over a git ALPN, with partial push for `data/`. `hub.git.push`, `install` and `start` become ref moves. Per-coglet repositories become one repository per cogent, namespaced by runtime. |
+| `spec/hub-protocol.md` | Git transfer moves from SHA-1 bundles to fetch and push of SHA-256 refs over a git ALPN, with partial push for `data/`. ADR-0031 already replaces `hub.git.push` with `manage.patch` over plain files; here `manage.patch` would become a push to `…/policy`, and `install` and `start` become ref moves. Per-coglet repositories become one repository per cogent, namespaced by runtime. |
 | `spec/promotion.md`, `spec/policy.md` | Promotion is a signed compare-and-swap of `refs/published/<id>`. Gates are replays on the cold path. |
 | `spec/tickets.md` | A ticket's result names a `policy` commit and the receipts of the gate that tested it. |
 | `spec/surface-protocol.md` | Adapters publish their tools as a catalog ref; tools carry an effect class (`read` or `write`) and an approval rule. Outcomes are scrubbed of leased values. |

@@ -140,7 +140,7 @@ proof test.</p>
 <h2 id="why-now-and-why-only-this">Why now, and why only this<a class="headerlink" href="#why-now-and-why-only-this" title="Permanent link">#</a></h2>
 <p>The full design (coglet = ref, step = commit, patch = merge, router = unforged
 repository) is attractive, but adopting it now would rewrite the journal, trace
-format, hub git transfer and router storage while M1 and the v0 freeze are in
+format, the router's Git transfer and router storage while M1 and the v0 freeze are in
 flight. unforged is also not ready to sit on the critical path: it needs git
 2.45+ for reftable, its CAOS cache-key and signature findings are untested, and
 it has never run a coglet step.</p>
@@ -167,17 +167,22 @@ format, of the snapshot laid out as a directory tree.</p>
   characters everywhere else.</li>
 <li>The empty snapshot hashes to the SHA-256 empty tree id.</li>
 </ul>
-<p>The ABI's existing path rules already exclude symlinks, empty directories,
-file/directory collisions and <code>.git</code> entries, so every valid snapshot maps to
-exactly one tree.</p>
+<p>The ABI already forbids symlinks, hardlinks and device nodes. It does not yet
+forbid <code>.git</code> names or a path that is both a file and a directory, and both
+would break the one-to-one mapping (git refuses <code>.git</code> entries). The ADR adds
+those two path rules, so every valid snapshot maps to exactly one tree.</p>
+<p><a href="../adr/0031-manage-port-and-filesystem-patches.md">ADR-0031</a> §2 defines tree
+identity as the <code>coglet-fs</code> CBOR hash. This change supersedes that clause, and
+the ADR says so.</p>
 <h2 id="what-does-not-change">What does not change<a class="headerlink" href="#what-does-not-change" title="Permanent link">#</a></h2>
 <ul>
 <li><code>record_hash</code>, <code>code_hash</code>, <code>manifest_hash</code> and every other hash that is not
   a filesystem state hash keep their current definitions.</li>
 <li>The trace and journal formats keep their fields. Only the values of
   <code>initial_hash</code>, <code>final_hash</code>, <code>output_hash</code> and <code>state_hash</code> change meaning.</li>
-<li>No dependency on unforged, no git binary at runtime, no change to the hub git
-  transfer (bundles stay as specified), no change to the surface protocol.</li>
+<li>No dependency on unforged, no git binary at runtime, no change to how code
+  reaches a runtime (ADR-0031's <code>manage.patch</code> over plain files), no change to
+  the adapter protocol.</li>
 </ul>
 <h2 id="later-stages-not-part-of-this-change">Later stages (not part of this change)<a class="headerlink" href="#later-stages-not-part-of-this-change" title="Permanent link">#</a></h2>
 <ol>
@@ -209,11 +214,10 @@ SHA-256 tree id, before more traces and fixtures are recorded against the old
 definition. Scope is narrow: do not start any other unforged integration work.</p>
 <p><strong>Process (ground rules apply).</strong></p>
 <ol>
-<li>File an ADR first, per Ground rule 4. Copy <code>docs/adr/0000-template.md</code> to
-   <code>docs/adr/0034-state-hash-git-tree-id.md</code> (use the next free number if 0034
-   is taken). Use the Decision, The change and What does not change sections of
-   this document as its content. Open the ADR PR and link it from every
-   implementation PR.</li>
+<li>File an ADR first, per Ground rule 4. This is filed as ADR-0035
+   (<code>docs/adr/0035-state-hash-git-tree-id.md</code>, PR #179), from the
+   Decision, The change and What does not change sections of this document.
+   Link it from every implementation PR.</li>
 <li>Assign one card, owned by the Coglet Core session, titled
    <code>coglet: state hash = git SHA-256 tree id</code>. The orchestrator should treat it
    as blocking for any new golden fixtures and for the v0 freeze if the freeze
@@ -223,10 +227,13 @@ definition. Scope is narrow: do not start any other unforged integration work.</
 <ol start="3">
 <li>Write one function that computes a git SHA-256 tree id from the ABI snapshot
    map, with no git binary and no new heavy dependencies (<code>sha2</code> is already
-   used). Put it in <code>coglet-fs</code> and have <code>coglet-runtime</code>'s
-   <code>Snapshot::tree_hash</code> call it, so there is one implementation, not two.</li>
-<li>Replace both <code>tree_hash</code> bodies with that function. Keep the method names and
-   return type (64 lowercase hex).</li>
+   used), so there is one implementation, not two. <code>coglet-runtime</code> depends on
+   <code>coglet-fs</code> only with its <code>native-engine</code> feature, so either make that
+   dependency unconditional for this function or put it in a crate both always
+   use.</li>
+<li>Replace both <code>tree_hash</code> bodies with that function. Keep the method names
+   and each method's return type (<code>String</code> in <code>coglet-fs</code>, <code>Result&lt;String&gt;</code> in
+   <code>coglet-runtime</code>); the id is 64 lowercase hex.</li>
 <li>Update the comment in <code>crates/coglet-fs/src/git.rs</code> that says git object ids
    are not ABI tree hashes; the logs-only <code>GitStore</code> itself is unchanged.</li>
 <li>Update <code>spec/abi.md</code> (Batching and filesystem, Journal and trace) and
@@ -243,6 +250,8 @@ definition. Scope is narrow: do not start any other unforged integration work.</
   contents), the computed id equals the id that real <code>git</code> produces in a
   repository initialized with <code>--object-format=sha256</code> (via <code>git mktree</code> or
   <code>git write-tree</code>). This test may use the git binary; production code may not.</li>
+<li><code>state_hash_rejects_unmappable_paths</code>: a snapshot with a <code>.git</code> name, or
+  with a path that is both a file and a directory, is refused before hashing.</li>
 <li><code>state_hash_single_implementation</code>: <code>coglet-fs</code> and <code>coglet-runtime</code> return
   the same id for the same snapshot.</li>
 <li>The existing <code>cli_build_run_replay_equal_hash_list_and_inspect</code> and all
@@ -250,8 +259,8 @@ definition. Scope is narrow: do not start any other unforged integration work.</
   where applicable.</li>
 <li>Green CI and an independent review, then merge through the queue.</li>
 </ul>
-<p><strong>Out of scope.</strong> Do not change the trace or journal structure, the hub git
-transfer, the router, step semantics, or effect staging. Do not add an unforged
+<p><strong>Out of scope.</strong> Do not change the trace or journal structure, how code
+reaches a runtime, the router, step semantics, or effect staging. Do not add an unforged
 dependency. Questions about the later stages go to David, not into this card.</p>
 </main>
 </div>

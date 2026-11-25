@@ -100,9 +100,9 @@
 <text x="578" y="267" text-anchor="start" class="dg-code">logs/events.jsonl</text>
 <text x="904" y="267" text-anchor="end" class="dg-m">append-only</text>
 <rect x="566" y="284" width="348" height="30" rx="6" class="dg-adapter"/>
-<text x="578" y="303" text-anchor="start" class="dg-code">out/actions/&lt;id&gt;.cbor</text>
-<text x="904" y="303" text-anchor="end" class="dg-m">effects staged by this step</text>
+<text x="578" y="303" text-anchor="start" class="dg-code">out/actions/&lt;id&gt;</text>
+<text x="904" y="303" text-anchor="end" class="dg-m">effects staged, model calls too</text>
 <rect x="566" y="320" width="348" height="30" rx="6" class="dg-adapter"/>
-<text x="578" y="339" text-anchor="start" class="dg-code">out/timers/  out/llm/</text>
+<text x="578" y="339" text-anchor="start" class="dg-code">out/timers/&lt;id&gt;</text>
 <text x="904" y="339" text-anchor="end" class="dg-m">sent only after the ref moves</text>
 </svg>

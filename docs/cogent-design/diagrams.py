@@ -799,8 +799,8 @@ def unforged_tree() -> Svg:
         ("data/…", "its memory, written by the guest"),
         ("data/inbox.jsonl", "append-only, written by the runtime"),
         ("logs/events.jsonl", "append-only"),
-        ("out/actions/<id>.cbor", "effects staged by this step"),
-        ("out/timers/  out/llm/", "sent only after the ref moves"),
+        ("out/actions/<id>", "effects staged, model calls too"),
+        ("out/timers/<id>", "sent only after the ref moves"),
     ]
     for i, (path, what) in enumerate(rows):
         y = 68 + i * 36
@@ -1018,7 +1018,7 @@ def runtime_split() -> Svg:
         ("Crash recovery", "read the ref: it is the last committed step"),
         ("Code updates, install, deploy", "merges and ref moves"),
         ("Inbox, logs, effect ledger", "input commits, files, a git note"),
-        ("Debug reads and writes", "git reads, boundary commits"),
+        ("Manage reads and writes", "git reads, boundary commits"),
         ("Replays, forks, gates", "river exec jobs, cached"),
     ]
     for i, (name, what) in enumerate(moves):

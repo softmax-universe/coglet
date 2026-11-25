@@ -138,6 +138,11 @@ state-hash change is planned now; see
 <a href="unforged-staging.html">Coglets and unforged: staged integration</a>. Where this page and the specs
 disagree, this page describes the intended change; the
 <a href="#spec-changes">spec changes</a> section lists what each spec would need.</p>
+<p>This design runs against one decision already on main:
+<a href="../adr/0031-manage-port-and-filesystem-patches.md">ADR-0031</a> keeps Git out of
+coglets (§2–§5): a coglet holds plain files, a patch is a set of whole files
+with a tree hash as its <code>base</code>, and tree identity is the <code>coglet-fs</code> CBOR hash.
+Adopting this page would supersede those sections and needs its own ADR.</p>
 <h2 id="the-idea">The idea<a class="headerlink" href="#the-idea" title="Permanent link">#</a></h2>
 <p>Today a coglet's state is a flat map of files hashed as one CBOR value, its
 journal is a separate trace format, and code reaches a device as a git bundle.
@@ -424,10 +429,10 @@ both runners produce the same commit id.</strong> That is the conformance check.
 <text x="578" y="267" text-anchor="start" class="dg-code">logs/events.jsonl</text>
 <text x="904" y="267" text-anchor="end" class="dg-m">append-only</text>
 <rect x="566" y="284" width="348" height="30" rx="6" class="dg-adapter"/>
-<text x="578" y="303" text-anchor="start" class="dg-code">out/actions/&lt;id&gt;.cbor</text>
-<text x="904" y="303" text-anchor="end" class="dg-m">effects staged by this step</text>
+<text x="578" y="303" text-anchor="start" class="dg-code">out/actions/&lt;id&gt;</text>
+<text x="904" y="303" text-anchor="end" class="dg-m">effects staged, model calls too</text>
 <rect x="566" y="320" width="348" height="30" rx="6" class="dg-adapter"/>
-<text x="578" y="339" text-anchor="start" class="dg-code">out/timers/  out/llm/</text>
+<text x="578" y="339" text-anchor="start" class="dg-code">out/timers/&lt;id&gt;</text>
 <text x="904" y="339" text-anchor="end" class="dg-m">sent only after the ref moves</text>
 </svg>
 </figure>
@@ -477,14 +482,15 @@ here a namespace is a runtime instead of a process.</p>
   data/…               bytes      Its memory. The guest writes these.
   data/inbox.jsonl     bytes      Append-only. Only the runtime writes it.
   logs/events.jsonl    bytes      Append-only.
-  out/actions/&lt;id&gt;     Action     Effects this step staged. Empty after a failed step.
-  out/timers/&lt;id&gt;      Timer
-  out/llm/&lt;id&gt;         LlmRequest</pre></div>
+  out/actions/&lt;id&gt;     Action     Effects this step staged, model calls included. Empty after a failed step.
+  out/timers/&lt;id&gt;      Timer</pre></div>
 <p>Rules for the tree:</p>
 <ul>
 <li>Every file is a regular file with mode <code>100644</code>. No symlinks, no gitlinks,
-  no <code>.git*</code> entries, no empty directories. The ABI's path rules already rule
-  these out, so every valid ABI snapshot maps to exactly one tree and back.</li>
+  no <code>.git*</code> entries, no empty directories. The ABI already forbids symlinks,
+  hardlinks and device nodes; it would also have to forbid <code>.git</code> names and a
+  path that is both a file and a directory, so that every valid snapshot maps
+  to exactly one tree and back.</li>
 <li><code>out/</code> holds only what this step staged. The next step starts with <code>out/</code>
   empty. A dispatcher reads <code>out/</code> from the commit the <code>state</code> ref points at
   and records what it sent in <code>refs/notes/dispatched</code>, keyed by commit; that
@@ -779,7 +785,7 @@ coglet many times a second, so the three clocks are kept apart:</p>
 <text x="528" y="243" text-anchor="start" class="dg-b">Inbox, logs, effect ledger</text>
 <text x="528" y="260" text-anchor="start" class="dg-m">input commits, files, a git note</text>
 <rect x="512" y="278" width="408" height="44" rx="8" class="dg-hub"/>
-<text x="528" y="297" text-anchor="start" class="dg-b">Debug reads and writes</text>
+<text x="528" y="297" text-anchor="start" class="dg-b">Manage reads and writes</text>
 <text x="528" y="314" text-anchor="start" class="dg-m">git reads, boundary commits</text>
 <rect x="512" y="332" width="408" height="44" rx="8" class="dg-hub"/>
 <text x="528" y="351" text-anchor="start" class="dg-b">Replays, forks, gates</text>
@@ -819,7 +825,7 @@ can become git:</p>
 <td>Input commits, files in the tree, <code>refs/notes/dispatched</code></td>
 </tr>
 <tr>
-<td>Debug reads and writes</td>
+<td>Manage-port reads and writes (<code>manage.read</code>, <code>manage.write</code>)</td>
 <td>Git reads of a commit; boundary commits</td>
 </tr>
 <tr>
@@ -1090,23 +1096,24 @@ coglet's resolver:</p>
   data/**         merge=migrate    Runs the patch&#x27;s migration program, if it has one; otherwise keeps data.
   logs/**         merge=ours       Logs are never patched.</pre></div>
 <ul>
-<li><strong><code>base</code> is a compare-and-swap.</strong> <code>Patch.base</code> is the <code>policy</code> commit the
-  patch was made from. If the ref has moved, the push is refused, as the back
-  channel already specifies.</li>
+<li><strong><code>base</code> is a compare-and-swap.</strong> Here <code>Patch.base</code> is the <code>policy</code> commit
+  the patch was made from, and the push is refused if the ref has moved. Under
+  ADR-0031 <code>base</code> is a tree hash over plain files with the same refusal; this
+  design would make it a commit.</li>
 <li><strong>A conflict pauses the coglet.</strong> If the migration fails or the new
   manifest asks for more than is granted, the merge stops with a conflict
-  tree, the coglet is <code>paused</code>, and its manager resolves it through the back
-  channel. This is unforged's <code>PAUSED_CONFLICT</code> with a coglet as the process.</li>
+  tree, the coglet is <code>paused</code>, and its manager resolves it through the manage
+  port. This is unforged's <code>PAUSED_CONFLICT</code> with a coglet as the process.</li>
 <li><strong>The patch is tested the same way it is applied.</strong> The factory merges the
   patch into recorded states and runs the recorded inputs through it as a
   gate before pushing. That is the "build, test" step in the
   <a href="index.html#a-request-end-to-end">end-to-end request</a>.</li>
 </ul>
-<p>The back channel maps onto git operations:</p>
+<p>The manage port maps onto git operations:</p>
 <div class="tablewrap"><table>
 <thead>
 <tr>
-<th>Back channel</th>
+<th>Manage port</th>
 <th>Becomes</th>
 </tr>
 </thead>
@@ -1236,7 +1243,7 @@ storage and its git transport.</p>
 </tr>
 <tr>
 <td><code>spec/abi.md</code></td>
-<td>State hash is the git tree id. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under <code>out/</code>. The <code>llm</code> host capability and <code>llm-request</code> effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events.</td>
+<td>State hash is the git tree id. Paths may not be <code>.git</code> names or both a file and a directory. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under <code>out/</code>. The <code>llm</code> host capability and <code>llm-request</code> effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events.</td>
 </tr>
 <tr>
 <td><code>spec/manifest.schema.json</code></td>
@@ -1244,7 +1251,7 @@ storage and its git transport.</p>
 </tr>
 <tr>
 <td><code>spec/hub-protocol.md</code></td>
-<td>Git transfer moves from SHA-1 bundles to fetch and push of SHA-256 refs over a git ALPN, with partial push for <code>data/</code>. <code>hub.git.push</code>, <code>install</code> and <code>start</code> become ref moves. Per-coglet repositories become one repository per cogent, namespaced by runtime.</td>
+<td>Git transfer moves from SHA-1 bundles to fetch and push of SHA-256 refs over a git ALPN, with partial push for <code>data/</code>. ADR-0031 already replaces <code>hub.git.push</code> with <code>manage.patch</code> over plain files; here <code>manage.patch</code> would become a push to <code>…/policy</code>, and <code>install</code> and <code>start</code> become ref moves. Per-coglet repositories become one repository per cogent, namespaced by runtime.</td>
 </tr>
 <tr>
 <td><code>spec/promotion.md</code>, <code>spec/policy.md</code></td>

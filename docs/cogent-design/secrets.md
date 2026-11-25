@@ -96,9 +96,16 @@ AdapterMount
 - **Writing stages; it never calls.** Writing a request to `…/call/<id>` is
   the same as staging `out/actions/<id>`. Nothing leaves until the step
   commits, exactly as for any other action.
-- **Calls go through `fd 3`.** unforged already gives every sandboxed process a
-  capability socket on file descriptor 3. Staging an adapter call becomes a new
-  operation on it, so a process can only reach the adapters it was handed.
+- **On the cold path, calls go through `fd 3`.** unforged already gives every
+  sandboxed process a capability socket on file descriptor 3. Staging an
+  adapter call becomes a new operation on it, so a process can only reach the
+  adapters it was handed. On devices there is no sandboxed process per step:
+  `cogletd` stages the call itself, against the same grants.
+- **The catalog names the action.** A tool's mount path is
+  `/net/<mount>/<tool>/`, and its action name is the `name` in its catalog
+  entry; the catalog maps one to the other. For example
+  `/net/github/create_issue/` is `mcp.github.create_issue`, and
+  `/net/llm/<provider>/complete/` is `llm.<provider>.complete`.
 - **Not `/dev`.** In unforged, `/dev` is the git directory, not devices.
 
 ### One call, end to end
