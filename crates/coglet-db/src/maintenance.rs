@@ -167,7 +167,7 @@ fn integrity(db: &Connection) -> Result<()> {
     }
     Ok(())
 }
-fn alignment(db: &Database, bundle: &RecoveryBundle) -> Result<()> {
+fn alignment(db: &Database, bundle: &RecoveryBundle, profile: ContractProfile) -> Result<()> {
     if !valid_hash(&bundle.journal_head) || !valid_hash(&bundle.catalog_hash) {
         return Err("invalid journal head/catalog pin".into());
     }
@@ -178,7 +178,7 @@ fn alignment(db: &Database, bundle: &RecoveryBundle) -> Result<()> {
     }
     let mut records = BTreeMap::new();
     for decision in &bundle.decisions {
-        let r = coglet_types::DatabaseDbStepRecord1::from_cbor(&decision.record)?;
+        let r = super::coordinator::validate_committed(&decision.record, profile)?;
         if r.coglet != db.owner
             || r.status != "committed"
             || r.version != "0.2"
@@ -237,9 +237,18 @@ impl Database {
         bundle: &RecoveryBundle,
         verifier: &mut dyn RestoreVerifier,
     ) -> Result<Snapshot> {
+        self.snapshot_with_profile(directory, bundle, verifier, ContractProfile::default())
+    }
+    pub fn snapshot_with_profile(
+        &mut self,
+        directory: &Path,
+        bundle: &RecoveryBundle,
+        verifier: &mut dyn RestoreVerifier,
+        profile: ContractProfile,
+    ) -> Result<Snapshot> {
         self.quiesced()?;
         integrity(&self.connection)?;
-        alignment(self, bundle)?;
+        alignment(self, bundle, profile)?;
         verifier.verify_replay_and_references(&self.owner, bundle)?;
         private_dir(directory)?;
         let target = directory.join("database.sqlite3");
@@ -289,6 +298,21 @@ impl Database {
         snapshot: &Snapshot,
         verifier: &mut dyn RestoreVerifier,
     ) -> Result<RestoreReport> {
+        Self::restore_isolated_with_profile(
+            root,
+            owner,
+            snapshot,
+            verifier,
+            ContractProfile::default(),
+        )
+    }
+    pub fn restore_isolated_with_profile(
+        root: &Path,
+        owner: &str,
+        snapshot: &Snapshot,
+        verifier: &mut dyn RestoreVerifier,
+        profile: ContractProfile,
+    ) -> Result<RestoreReport> {
         if fs::symlink_metadata(&snapshot.directory)
             .map_err(err)?
             .file_type()
@@ -328,7 +352,7 @@ impl Database {
         {
             return Err("snapshot boundary mismatch".into());
         }
-        alignment(&db, &bundle)?;
+        alignment(&db, &bundle, profile)?;
         verifier.verify_replay_and_references(owner, &bundle)?;
         drop(db);
         // Exercise actual disk reopen, not only the backup connection.

@@ -9,8 +9,8 @@ import struct
 import sys
 import time
 
-from .surface import MAX_FRAME, ProtocolError, private_frame, authority_frame, WIRE
-from .codec import decode
+from .surface import MAX_FRAME, ProtocolError, private_frame, authority_frame
+from .codec import decode_profile
 
 
 def frame(raw):
@@ -63,7 +63,7 @@ class Output:
         if len(self.frames) >= 128:
             raise ProtocolError('resource_exhausted: transport queue overflow')
         item = (frame(raw), generation, private_frame(raw), authority_frame(raw))
-        message = decode(WIRE, raw)
+        message = decode_profile(raw)
         if message['type'] == 'kill':
             # Never interrupt a partially transmitted frame. Kill/health are
             # notifications; native stop has already happened independently.
@@ -71,7 +71,7 @@ class Output:
             self.frames.insert(index, item)
         elif message['type'] == 'health' and message['body']['state'] == 'stopped':
             index = 1 if self.offset else 0
-            if len(self.frames) > index and decode(WIRE, self.frames[index][0][4:])['type'] == 'kill':
+            if len(self.frames) > index and decode_profile(self.frames[index][0][4:])['type'] == 'kill':
                 index += 1
             self.frames.insert(index, item)
         else:

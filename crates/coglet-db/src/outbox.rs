@@ -149,7 +149,8 @@ impl Unit<'_> {
             (text("payload"), intent.payload.clone()),
             (text("correlation_id"), text(&intent.correlation_id)),
         ]);
-        let bytes = coglet_types::encode_typed("database::db-enqueue", &request)?;
+        let bytes =
+            coglet_types::encode_typed(self.profile.rule("database::db-enqueue"), &request)?;
         if bytes.len() > 65536 {
             return Err("invalid request bounds".into());
         }

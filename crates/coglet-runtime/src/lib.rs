@@ -3,12 +3,16 @@ mod admission;
 pub use admission::{admit_manifest, admit_module};
 mod boundary;
 mod catalog;
+mod contract_profile;
 mod trusted_catalog;
+pub use contract_profile::ContractProfile;
 pub use trusted_catalog::TrustedExtensionCatalog;
 #[cfg(feature = "device")]
 mod device;
 #[cfg(feature = "device")]
-pub use device::{AdapterConfig, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, TargetPin};
+pub use device::{
+    AdapterConfig, BackChannelLimits, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, TargetPin,
+};
 #[cfg(feature = "native-engine")]
 pub mod database;
 mod execution;
@@ -160,8 +164,10 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
     Ok(out)
 }
 
+mod profile_codec;
+
 pub fn validate(rule: &str, value: &Value) -> Result<()> {
-    coglet_types::validate(rule, &profile_value(value, 0)?)
+    profile_codec::validate(rule, &profile_value(value, 0)?)
 }
 
 #[cfg(test)]

@@ -42,6 +42,38 @@ pub(super) fn data_writer_setup(mut setup: Value) -> Value {
 }
 
 #[test]
+#[cfg(feature = "native-engine")]
+fn installed_code_cut_waits_for_detached_reservation_before_unresolved_fence() {
+    let root = TempDir::new().unwrap();
+    let setup = setup();
+    let mut service = service(&root, &setup);
+    service.managed_start().unwrap();
+    service
+        .enqueue(setup["inputs"]["events"][0].clone())
+        .unwrap();
+    let _run = service.prepare_detached(&setup["inputs"]).unwrap().unwrap();
+    assert!(service.state.runtime.unresolved_attempt.is_none());
+    let before = serde_json::to_value(&service.state).unwrap();
+    let error = service
+        .complete_code_revision(&revision(&setup, 1), &|| {
+            panic!("no code cut during detached engine custody")
+        })
+        .unwrap_err();
+    assert!(
+        error.starts_with("unavailable: detached runtime custody"),
+        "{error}"
+    );
+    assert_eq!(serde_json::to_value(&service.state).unwrap(), before);
+    assert!(service.state.completed_segments.is_empty());
+    service.detached_execution = false;
+    let applied = service
+        .complete_code_revision(&revision(&setup, 1), &|| Ok(0))
+        .unwrap();
+    assert_eq!(applied["state"], "applied");
+    assert_eq!(applied["operation_id"], format!("{:032x}", 1));
+}
+
+#[test]
 fn installed_code_pending_fences_next_step_across_reopen() {
     let root = TempDir::new().unwrap();
     let setup = setup();

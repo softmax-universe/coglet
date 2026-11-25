@@ -19,8 +19,13 @@ zip = { version = "7", default-features = false, features = ["deflate"] }
 wasm-encoder = { version = "=0.245.1", features = ["wasmparser"] }
 wasmparser = "=0.245.1"
 
-[dev-dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
+# The publication executable is qualified only on native Linux. Keep the
+# portable transform/verifier library free of a Darwin WAMR native dependency.
 coglet-engine = { path = "../coglet-engine" }
 coglet-engine-wamr = { path = "../coglet-engine-wamr" }
+
+[dev-dependencies]
+coglet-transform = { path = ".", features = ["test-fixtures"] }
 coglet-engine-wasmtime = { path = "../coglet-engine-wasmtime" }
 wat = "1.245.1"

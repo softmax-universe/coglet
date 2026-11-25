@@ -164,7 +164,7 @@ async fn exercise(push_only: bool) {
     );
     let kill = root.path().join("kill.json");
     std::fs::write(&kill, b"{\"latched\":false}").unwrap();
-    let handler=DeviceHandler::new(DeviceConfig{hub:router.id(),device,wal_root:root.path().join("wal"),quarantine:root.path().join("quarantine"),catalog:json!([]),grants:json!({"coglet":target,"operations":[],"resources":[]}),kill_switch:Some(kill),targets:BTreeMap::from([(target.clone(),TargetPin{grant_generation:1,delegation_generation:1,native_schedule:Some(json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8388608,"stack_bytes":65536}))})]),adapter:None},authority,&validator,Arc::new(||Some(NOW))).unwrap();
+    let handler=DeviceHandler::new(DeviceConfig{hub:router.id(),device,wal_root:root.path().join("wal"),quarantine:root.path().join("quarantine"),catalog:json!([]),grants:json!({"coglet":target,"operations":[],"resources":[]}),kill_switch:Some(kill),targets:BTreeMap::from([(target.clone(),TargetPin{grant_generation:1,delegation_generation:1,back_channel:Default::default(),fetch_snapshots:BTreeMap::new(),native_schedule:Some(json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8388608,"stack_bytes":65536}))})]),adapter:None},authority,&validator,Arc::new(||Some(NOW))).unwrap();
     let source = root.path().join("source");
     std::fs::create_dir(&source).unwrap();
     let manifest=serde_json::to_vec(&json!({"version":"0.1","id":target,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr-2.4.3-fast-cumulative-v1","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}})).unwrap();

@@ -200,7 +200,12 @@ mod tests {
             hex::encode(&code),
         )]))
         .unwrap();
-        let host = StepHost::new(files, Default::default(), &inputs);
+        let host = StepHost::new(
+            files,
+            Default::default(),
+            &inputs,
+            crate::ContractProfile::Surface01,
+        );
         let engine = NativeEngine::new(code, &budgets, 8_388_608, 65_536).unwrap();
         (engine, inputs, host)
     }
@@ -346,6 +351,9 @@ impl crate::RuntimeService {
         self.native.is_some() && self.managed_running()
     }
     pub fn enable_native(&mut self, mut config: NativeSchedule) -> Result<()> {
+        if self.detached_execution {
+            return Err("runtime execution already reserved".into());
+        }
         if self
             .state
             .completed_segments
@@ -382,30 +390,65 @@ impl crate::RuntimeService {
         self.native = Some((config, engine));
         Ok(())
     }
-    pub(crate) fn run_native(&mut self, session: &crate::SurfaceSession, now: u64) -> Result<()> {
-        if !self.managed_running()
-            || self.native.is_none()
-            || self.state.runtime.unresolved_attempt.is_some()
-            || self.surface_epoch(session.surface()) != session.grant_epoch()
-        {
-            return Ok(());
-        }
-        let manifest = &self.state.runtime.manifest;
-        let Some(grants) = session.execution_grants(manifest, now)? else {
+    pub(crate) fn run_native(
+        service: &std::sync::Arc<std::sync::Mutex<Self>>,
+        session: &crate::SurfaceSession,
+        now: u64,
+    ) -> Result<()> {
+        let Some((run, config, mut engine)) = ({
+            let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
+            if !locked.managed_running()
+                || locked.managed_paused()
+                || locked.code_pending()
+                || locked.receiver_pending_for_execution()
+                || locked.native.is_none()
+                || locked.detached_execution
+                || locked.state.runtime.unresolved_attempt.is_some()
+                || locked.surface_epoch(session.surface()) != session.grant_epoch()
+            {
+                None
+            } else {
+                let manifest = &locked.state.runtime.manifest;
+                if let Some(grants) = session.execution_grants(manifest, now)? {
+                    let config = &locked.native.as_ref().unwrap().0;
+                    let seed_bytes = cbor(&json!([config.seed, locked.state.runtime.step]))?;
+                    let seed = u64::from_str_radix(&digest(&seed_bytes)[..16], 16)
+                        .map_err(|e| e.to_string())?;
+                    let context = json!({"trace_id":config.trace_id,"logical_time":now,"seed":seed,
+                        "budgets":manifest["budgets"],"grants":grants,"boundary":[]});
+                    locked.prepare_detached(&context)?.map(|run| {
+                        let (config, engine) = locked.native.take().unwrap();
+                        (run, config, engine)
+                    })
+                } else {
+                    None
+                }
+            }
+        }) else {
             return Ok(());
         };
-        let Some((config, mut engine)) = self.native.take() else {
-            return Ok(());
-        };
-        // Derive seeds from supervisor seed + durable step. Restart never resets
-        // step identity. No OS randomness enters the guest or replay path.
-        let seed_bytes = cbor(&json!([config.seed, self.state.runtime.step]))?;
-        let hash = digest(&seed_bytes);
-        let seed = u64::from_str_radix(&hash[..16], 16).map_err(|e| e.to_string())?;
-        let context = json!({"trace_id":config.trace_id,"logical_time":now,"seed":seed,
-            "budgets":manifest["budgets"],"grants":grants,"boundary":[]});
-        let result = self.run_next(&context, &mut engine);
-        self.native = Some((config, engine));
-        result.map(|_| ())
+        let result = Self::execute_detached(
+            service,
+            run,
+            &mut engine,
+            &|fence| fence(),
+            &|locked, inputs| {
+                if locked.surface_epoch(session.surface()) != session.grant_epoch() {
+                    return Err("permission_denied".into());
+                }
+                let fresh = locked.supervised_now()?;
+                if session
+                    .execution_grants(&locked.state.runtime.manifest, fresh)?
+                    .is_none_or(|grants| json!(grants) != inputs["grants"])
+                {
+                    return Err("permission_denied".into());
+                }
+                Ok(())
+            },
+        );
+        let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
+        locked.native = Some((config, engine));
+        locked.detached_execution = false;
+        result
     }
 }

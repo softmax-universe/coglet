@@ -234,8 +234,9 @@ impl SurfaceSession {
 
     fn remove_queued_read(&mut self, id: &str) {
         self.output.retain(|raw| {
-            let decoded: Result<Value> = coglet_types::decode("surface-message", raw)
-                .and_then(|v| v.deserialized().map_err(|e| e.to_string()));
+            let decoded: Result<Value> =
+                crate::profile_codec::decode(self.wire.rule("surface-message"), raw)
+                    .and_then(|v| v.deserialized().map_err(|e| e.to_string()));
             !decoded.is_ok_and(|v| v["type"] == "read" && v["body"]["correlation_id"] == id)
         });
     }

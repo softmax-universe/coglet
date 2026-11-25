@@ -137,6 +137,10 @@ impl RuntimeService {
         if !self.store.is_healthy() || self.state.runtime.unresolved_attempt.is_some() {
             return Err("unavailable: unresolved runtime custody prevents code change".into());
         }
+        #[cfg(feature = "native-engine")]
+        if self.detached_execution {
+            return Err("unavailable: detached runtime custody prevents code change".into());
+        }
         gate()?;
         let previous = self
             .state

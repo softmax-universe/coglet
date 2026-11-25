@@ -1,6 +1,6 @@
 # Cogent
 
-![The Softmax logo as the router in the middle, with pipes to a robot dog, a monitor, a laptop, a phone, two factories with gears inside and a database; the pipes to the dog, the factories and the database are lit.](images/cogent.png)
+![The Softmax logo as the router in the middle, joining a robot dog, a monitor running Blender, a laptop, a phone, two factories, a database and a memory jar. The pipes to the laptop and the monitor glow and the two devices have a halo: that is where the cogent is present. The rest run on their own.](images/cogent.png)
 
 A **cogent** is one logical agent. It has an **identity**, a **name** and an
 **owner**, and it runs as a **collection of coglets** spread over many runtimes,

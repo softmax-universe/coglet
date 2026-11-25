@@ -15,7 +15,28 @@ on:
 permissions:
   contents: read
 jobs:
+  source:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.select.outputs.sha }}
+      scope: ${{ steps.select.outputs.scope }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Immutable event merge supplies workflow tooling even for legacy PRs.
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Workflow/source compatibility regression
+        run: python3 scripts/ci/test_rust_source.py -v
+      - name: Select and report immutable qualification source
+        id: select
+        env:
+          SOURCE_EVENT: ${{ github.event_name }}
+          SOURCE_RUN_SHA: ${{ github.sha }}
+          SOURCE_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/ci/rust_source.py
   transform-native:
+    needs: [source]
     strategy:
       fail-fast: false
       matrix:
@@ -28,8 +49,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Qualify the run's head, never a PR's synthetic merge checkout.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Scope is reported by source; manifests retain this actual checkout.
+          ref: ${{ needs.source.outputs.sha }}
       - name: Execute native R3 component inventory without skips
         env:
           CARGO_BUILD_JOBS: 2
@@ -45,16 +66,18 @@ jobs:
           path: ${{ runner.temp }}/transform-proof
           if-no-files-found: error
   rust:
-    needs: transform-native
+    needs: [source, transform-native]
     if: always()
     runs-on: ubuntu-24.04
     steps:
-      - name: Both native architecture legs are mandatory
-        run: test '${{ needs.transform-native.result }}' = 'success'
+      - name: Source selection and both native architecture legs are mandatory
+        run: |
+          test '${{ needs.source.result }}' = 'success'
+          test '${{ needs.transform-native.result }}' = 'success'
       - uses: actions/checkout@v4
         with:
-          # Qualify the run's head, never a PR's synthetic merge checkout.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Scope is reported by source; manifests retain this actual checkout.
+          ref: ${{ needs.source.outputs.sha }}
       - uses: ./.github/actions/dependency-restore
         with:
           job: rust
@@ -126,6 +149,21 @@ jobs:
         with:
           name: visualizer-native-proof-${{ inputs.bundle-mode || 'normal' }}
           path: tools/visualizer/proof/native/
+          if-no-files-found: error
+      - name: Production runtime selected-profile peer qualification
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          cargo build --locked -p coglet-runtime --bin cogletd
+          export COGLET_FIXTURE_COGLETD="$PWD/target/debug/cogletd"
+          uv run --no-project --python 3.12 python crates/coglet-runtime/tools/test_profile_fixture_bridge.py
+          uv run --no-project --python 3.12 python -m unittest discover -s conformance/tests -p test_expect_close.py -v
+          uv run --no-project --python 3.12 python conformance/run --registry conformance/impls-surface02-runtime.toml --contract-profile surface-0.2 --junit target/runtime-surface02.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: runtime-surface02-${{ inputs.bundle-mode || 'normal' }}
+          path: target/runtime-surface02.xml
           if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'

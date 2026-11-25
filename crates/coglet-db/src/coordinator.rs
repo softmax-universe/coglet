@@ -112,8 +112,14 @@ pub(super) fn record_hash_of(raw: &[u8]) -> Result<String> {
 
 /// Validate a prepared committed record: closed ABI 0.2 shape, canonical bytes,
 /// correct hash. Returns the typed record.
-fn validate_committed(raw: &[u8]) -> Result<coglet_types::DatabaseDbStepRecord1> {
-    let record = coglet_types::DatabaseDbStepRecord1::from_cbor(raw)?;
+pub(super) fn validate_committed(
+    raw: &[u8],
+    profile: ContractProfile,
+) -> Result<coglet_types::DatabaseDbStepRecord1> {
+    let record: coglet_types::DatabaseDbStepRecord1 =
+        coglet_types::decode(profile.rule("database::db-step-record"), raw)?
+            .deserialized()
+            .map_err(|e| e.to_string())?;
     if record.version != "0.2" || record.status != "committed" {
         return Err("not a committed ABI 0.2 record".into());
     }
@@ -128,7 +134,13 @@ fn validate_committed(raw: &[u8]) -> Result<coglet_types::DatabaseDbStepRecord1>
 /// Retains calls, events, boundary, input snapshot and usage; discards guest
 /// files and staged effects; `db_after = db_before`; new record hash.
 pub fn recovery_abort_record(prepared: &[u8]) -> Result<Vec<u8>> {
-    let c = validate_committed(prepared)?;
+    recovery_abort_record_with_profile(prepared, ContractProfile::default())
+}
+pub fn recovery_abort_record_with_profile(
+    prepared: &[u8],
+    profile: ContractProfile,
+) -> Result<Vec<u8>> {
+    let c = validate_committed(prepared, profile)?;
     let failure = V::Map(vec![
         (V::Text("kind".into()), V::Text("db_recovery_abort".into())),
         (
@@ -170,10 +182,13 @@ pub fn recovery_abort_record(prepared: &[u8]) -> Result<Vec<u8>> {
         status: "aborted".into(),
         failure,
     };
-    a.record_hash = record_hash_of(&a.to_cbor()?)?;
-    let out = a.to_cbor()?;
+    let rule = profile.rule("database::db-step-record");
+    a.record_hash = record_hash_of(&coglet_types::encode_typed(rule, &a)?)?;
+    let out = coglet_types::encode_typed(rule, &a)?;
     // Re-read through the closed schema before anything can publish it.
-    coglet_types::DatabaseDbStepRecord2::from_cbor(&out)?;
+    let _: coglet_types::DatabaseDbStepRecord2 = coglet_types::decode(rule, &out)?
+        .deserialized()
+        .map_err(|e| e.to_string())?;
     Ok(out)
 }
 
@@ -182,8 +197,9 @@ impl Prepared {
         decision: &Decision,
         pins_catalog: &str,
         owner: &str,
+        profile: ContractProfile,
     ) -> Result<(Self, coglet_types::DatabaseDbStepRecord1)> {
-        let r = validate_committed(&decision.record)?;
+        let r = validate_committed(&decision.record, profile)?;
         if r.coglet != owner {
             return Err("record names another owner".into());
         }
@@ -417,6 +433,13 @@ impl Database {
     /// a decision is only rolled forward from its exact preparation when its
     /// marker is committed, or authoritatively aborted when the marker is absent.
     pub fn recover(&mut self, journal: &mut dyn Journal) -> Result<Recovered> {
+        self.recover_with_profile(journal, ContractProfile::default())
+    }
+    pub fn recover_with_profile(
+        &mut self,
+        journal: &mut dyn Journal,
+        profile: ContractProfile,
+    ) -> Result<Recovered> {
         self.refuse_if_halted()?;
         if !self.connection.is_autocommit() {
             // An uncertain in-process commit: roll back whatever is uncommitted;
@@ -445,7 +468,7 @@ impl Database {
             .file_name()
             .is_some_and(|n| n == prepared.file_name().as_str())
             && prepared.id.coglet == self.owner
-            && validate_committed(&prepared.record).is_ok_and(|r| {
+            && validate_committed(&prepared.record, profile).is_ok_and(|r| {
                 r.db_catalog_hash == prepared.catalog_hash
                     && r.db_after == prepared.revision
                     && r.step == prepared.id.step
@@ -488,7 +511,7 @@ impl Database {
                 if later != 0 {
                     return Err(self.halt("later marker exists without this decision".into()));
                 }
-                let abort = recovery_abort_record(&prepared.record)?;
+                let abort = recovery_abort_record_with_profile(&prepared.record, profile)?;
                 journal
                     .publish_abort(&prepared.id, &abort)
                     .map_err(held_once)?;
@@ -548,7 +571,7 @@ impl Unit<'_> {
             return Err("no database calls: use ordinary ABI commit".into());
         }
         let (prepared, record) =
-            Prepared::from_decision(decision, &pins.catalog_hash, &self.db.owner)?;
+            Prepared::from_decision(decision, &pins.catalog_hash, &self.db.owner, self.profile)?;
         if record.db_before != self.revision
             || record.db_after != self.resulting_revision()?
             || record.db_schema_version != pins.schema_version
@@ -614,10 +637,15 @@ impl Unit<'_> {
 /// Test-only forgery of a preparation file (corruption scenarios).
 #[cfg(test)]
 pub(super) fn forge_prepared(db: &Database, decision: &Decision) -> Result<()> {
-    let (p, _) = Prepared::from_decision(decision, &decision_catalog(decision)?, &db.owner)?;
-    db.persist_prepared(&p)
+    forge_prepared_with_profile(db, decision, ContractProfile::default())
 }
 #[cfg(test)]
-fn decision_catalog(decision: &Decision) -> Result<String> {
-    Ok(validate_committed(&decision.record)?.db_catalog_hash)
+pub(super) fn forge_prepared_with_profile(
+    db: &Database,
+    decision: &Decision,
+    profile: ContractProfile,
+) -> Result<()> {
+    let catalog = validate_committed(&decision.record, profile)?.db_catalog_hash;
+    let (p, _) = Prepared::from_decision(decision, &catalog, &db.owner, profile)?;
+    db.persist_prepared(&p)
 }
