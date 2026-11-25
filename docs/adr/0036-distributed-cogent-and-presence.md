@@ -66,7 +66,8 @@ carries the `correlation_id` of a call the attention made is never held. That
 covers the answer itself (`memory.result`, `ticket.result`) and the updates that
 follow from the call (`ticket.update`), so the attention's own work never waits
 for a check-in. Messages between other coglets are unaffected. The attention
-coglet itself is always treated as present.
+coglet itself is always treated as present; it is not listed in `present` and
+does not count toward `limit`.
 
 **Who holds them.** The router. It holds what crosses runtimes. A runtime that
 would deliver locally, because the sender and the attention share it, forwards
@@ -165,7 +166,8 @@ needs a grant for the exact method.
 ### 4. Spec changes
 
 `spec/hub-protocol.md` adds the `presence.*` messages and the
-`presence.attention` grant above as an additive change, in the next minor
+`presence.attention` grant above, and the router telling each runtime the
+cogent's presence, as an additive change, in the next minor
 version of the router protocol, with CDDL in `spec/messages/` and cases in
 `conformance/hub/`. Nothing existing changes meaning. The spec text lands with
 the implementation card, not in this ADR's PR.
