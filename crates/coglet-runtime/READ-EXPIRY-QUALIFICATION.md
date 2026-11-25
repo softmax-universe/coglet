@@ -49,7 +49,7 @@ The validated correlation ID and u64 clocks bound each record. The five fields
 are event name, ID, deadline, expiry tick and `queued_inbound_frames_ahead: null`.
 The adapter-owned outgoing FIFO is not visible at this synchronous boundary:
 null means unknown, not measured zero. No text, args, frame bytes or private result
-is logged. Emissions are once per expired ID (at most4096 per session); stderr
+is logged. Emissions are once per expired ID (at most 4096 per session); stderr
 retention belongs to the native host's log sink, not this in-memory ring.
 
 ## Baseline and scope
@@ -62,4 +62,4 @@ increase is used.
 These are runtime-boundary tests with real WAL commits, not physical Face audio,
 Swift FIFO or real-engine/C-pointer proof. Face owner t_01a2084da345e698 consumes
 the merged runtime revision and requalifies its own original C-ABI proof, delay
-experiment and20 plain runs. Runtime acceptance does not change Face acceptance.
+experiment and 20 plain runs. Runtime acceptance does not change Face acceptance.
