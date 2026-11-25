@@ -43,6 +43,10 @@ has an inert bounded implementation; other host effects refuse. The native
 supervisor separately caps process CPU, address space, output and wall time.
 This is an explicit thin publication gate, not a general journal replay,
 AOT qualification, arbitrary host-import adapter or general R5 claim.
+It is an execution smoke test at the fixed gate budgets, not proof of behavior
+at a manifest's larger compute allowance. The exact-output pin identifies bytes,
+not exhaustive input or budget coverage. The native gate is Linux-only;
+other platforms compile an explicit refusal, never a substitute engine.
 
 Order is rewrite → structural/ABI + exact-output/native execution gates → signed
 archive preflight under a disposable non-router key → IMMEDIATE Store transaction
