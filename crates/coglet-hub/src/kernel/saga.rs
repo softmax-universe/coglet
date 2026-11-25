@@ -401,9 +401,16 @@ impl Kernel {
             }
             let reply = reply.ok_or(Error::Invalid)?;
             if reply["type"] == "error" {
-                if reply["error"]["retryable"] == true {
-                    // A transient refusal is not an effect receipt. Retain
-                    // attempted custody; the next pass reconciles the same ID.
+                if reply["error"]["retryable"] == true
+                    || reply["error"]["code"] == "unauthenticated"
+                {
+                    // Enrollment and reverse requests use independent QUIC
+                    // streams: the peer can reject before consuming protocol
+                    // selection. This refusal is not an effect receipt. Keep
+                    // custody queued; a later pass rechecks local authority and
+                    // reconciles ORIGINAL mutation IDs before any resend.
+                    // Local missing enrollment still fails via authorize(),
+                    // never through this peer-reply readiness handling.
                     return Ok(response);
                 }
                 // A peer refusal is authoritative; never hide partial earlier

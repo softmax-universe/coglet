@@ -161,9 +161,10 @@ impl Service {
             sessions.remove(&peer.to_string());
         }
     }
-    /// Dispatch readiness follows a successful post-enrollment request. Its
-    /// arrival proves the peer received protocol selection; sending before that
-    /// reply races independently ordered QUIC streams.
+    /// A committed enrollment makes this authenticated connection eligible for
+    /// dispatch. The peer may not yet have consumed protocol selection on its
+    /// independent enrollment stream; the saga retains peer `unauthenticated`
+    /// refusals as queued and reconciles original mutation IDs before retrying.
     pub fn connection(
         self: &Arc<Self>,
         session: Session,
@@ -237,9 +238,8 @@ impl coglet_proto::transport::OperationHandler for Connection {
         request: Value,
     ) -> Pin<Box<dyn Future<Output = Value> + Send + 'a>> {
         Box::pin(async move {
-            let ready = request["method"] != "hub.enroll";
             let reply = self.service.kernel.handle(context, request).await;
-            if ready && reply["type"] == "reply" {
+            if reply["type"] == "reply" {
                 let _ = self.service.attach_token(self.session.clone(), self.token);
             }
             reply

@@ -70,6 +70,7 @@ struct CrashBoundary {
     method: Option<&'static str>,
     armed: std::sync::atomic::AtomicBool,
     busy: std::sync::atomic::AtomicBool,
+    not_ready: std::sync::atomic::AtomicBool,
     reached: tokio::sync::Notify,
     release: tokio::sync::Notify,
     requests: std::sync::Mutex<Vec<Value>>,
@@ -102,6 +103,15 @@ impl OperationHandler for CrashBoundary {
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Value> + Send + 'a>> {
         Box::pin(async move {
             self.record(&r);
+            // Deterministic independent-stream negotiation race: a real peer
+            // can refuse before selection without ever reaching its handler.
+            if r["method"] == "hub.status"
+                && self
+                    .not_ready
+                    .swap(false, std::sync::atomic::Ordering::SeqCst)
+            {
+                return json!({"type":"error","correlation_id":r["correlation_id"],"error":{"code":"unauthenticated","message":"protocol not selected","retryable":false,"details":{}}});
+            }
             // Fault injection is denial before admission, never a success receipt.
             if r["method"] == "hub.install"
                 && self.busy.swap(false, std::sync::atomic::Ordering::SeqCst)
@@ -135,7 +145,21 @@ impl OperationHandler for CrashBoundary {
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn operator_real_iroh_deploy_running_stop_status() {
-    exercise(None).await;
+    exercise(None, false).await;
+}
+/// Explicit binary acceptance: build cogletd with native-engine first and supply
+/// COGLET_TEST_COGLETD. Never substitute the in-process handler for this proof.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "requires an explicitly built native cogletd; run with COGLET_TEST_COGLETD"]
+async fn operator_cogletd_deploy_running_stop_status() {
+    exercise(None, true).await;
+}
+struct Daemon(std::process::Child);
+impl Drop for Daemon {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn operator_saga_crash_each_stage() {
@@ -148,10 +172,10 @@ async fn operator_saga_crash_each_stage() {
         "hub.start",
         "running",
     ] {
-        exercise(Some(method)).await;
+        exercise(Some(method), false).await;
     }
 }
-async fn exercise(crash: Option<&'static str>) {
+async fn exercise(crash: Option<&'static str>, daemon: bool) {
     let root = tempfile::tempdir().unwrap();
     let router_root = root.path().join("router");
     std::fs::create_dir(&router_root).unwrap();
@@ -168,7 +192,7 @@ async fn exercise(crash: Option<&'static str>) {
         .bind()
         .await
         .unwrap();
-    let endpoint = LifecyclePeer::bind(device_key).await.unwrap();
+    let endpoint = LifecyclePeer::bind(device_key.clone()).await.unwrap();
     let device = endpoint.id();
     let proof = sign(
         &coglet_key,
@@ -241,21 +265,11 @@ async fn exercise(crash: Option<&'static str>) {
         method: crash,
         armed: std::sync::atomic::AtomicBool::new(true),
         busy: std::sync::atomic::AtomicBool::new(crash.is_none()),
+        not_ready: std::sync::atomic::AtomicBool::new(crash.is_none()),
         reached: tokio::sync::Notify::new(),
         release: tokio::sync::Notify::new(),
         requests: std::sync::Mutex::new(vec![]),
     });
-    let (fixture, device_session, session) =
-        LifecyclePeer::connect(endpoint, &router, boundary.clone())
-            .await
-            .unwrap();
-    let kernel_serve = kernel.clone();
-    let incoming = session.clone();
-    let server = tokio::spawn(async move {
-        let _ = incoming.serve(Arc::new(kernel_serve)).await;
-    });
-    let enrolled=device_session.request(json!({"method":"hub.enroll","target":null,"correlation_id":"aa".repeat(16),"timeout_ms":10000,"params":{"invite":invite,"offer":{"versions":["0.1"]}}})).await.unwrap();
-    assert_eq!(enrolled["type"], "reply", "{enrolled}");
     let source = root.path().join("source");
     std::fs::create_dir(&source).unwrap();
     let manifest = json!({"version":"0.1","id":target,"subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],"budgets":{"compute":10000,"compute_mode":"wamr-2.4.3-fast-cumulative-v1","memory_pages":2,"wall_time_us":100000,"max_events":16,"host_bytes":65536}});
@@ -319,7 +333,106 @@ async fn exercise(crash: Option<&'static str>) {
             .unwrap()
             .with_executor(executor.clone()),
     );
-    service.attach(session.clone()).unwrap();
+    let mut child = None;
+    let mut daemon_token = None;
+    let (fixture, mut session, mut server) = if daemon {
+        // Unlike LifecyclePeer's explicit attach, use the SAME connection handler
+        // as production startup, and let the actual daemon enroll itself.
+        endpoint.close().await;
+        let identity = root.path().join("device.key");
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .mode(0o600)
+            .open(&identity)
+            .unwrap()
+            .write_all(&device_key.to_bytes())
+            .unwrap();
+        let config = root.path().join("device.json");
+        std::fs::write(&config, serde_json::to_vec(&json!({
+            "hub":router.id().to_string(), "device":device.to_string(),
+            "identity_path":identity,"authority_path":root.path().join("device.db"),
+            "validator_path":executor.recipes[0].validator,
+            "wal_root":root.path().join("wal"),"quarantine":root.path().join("device-quarantine"),
+            "catalog":[],"grants":{"coglet":target,"operations":[],"resources":[]},
+            "kill_switch":root.path().join("kill.json"),"invite":invite,
+            "hub_addr":router.addr().ip_addrs().next().unwrap(),
+            "targets":{(target.clone()):{"grant_generation":1,"delegation_generation":1,
+            "native_schedule":{"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8388608,"stack_bytes":65536}}}
+        })).unwrap()).unwrap();
+        let log = root.path().join("daemon.log");
+        child = Some(Daemon(
+            Command::new(
+                std::env::var_os("COGLET_TEST_COGLETD").expect("explicit native cogletd path"),
+            )
+            .args(["--router-service"])
+            .arg(&config)
+            .env("TOKIO_WORKER_THREADS", "2")
+            .stdout(std::process::Stdio::null())
+            .stderr(std::fs::File::create(&log).unwrap())
+            .spawn()
+            .unwrap(),
+        ));
+        let connection = tokio::time::timeout(Duration::from_secs(20), async {
+            router.accept().await.unwrap().await.unwrap()
+        })
+        .await
+        .expect("actual cogletd connects");
+        let session = coglet_proto::transport::Session::new(
+            connection,
+            router.id(),
+            coglet_proto::transport::Role::Hub,
+        )
+        .unwrap();
+        let token = kernel.transport_connected(device).await.unwrap();
+        daemon_token = Some(token);
+        let handler = service.connection(session.clone(), token);
+        let incoming = session.clone();
+        let server = tokio::spawn(async move {
+            let _ = incoming.serve(handler).await;
+        });
+        tokio::time::timeout(Duration::from_secs(10), async {
+            loop {
+                let db = rusqlite::Connection::open(router_root.join("kernel.db")).unwrap();
+                let enrolled: bool = db
+                    .query_row(
+                        "SELECT EXISTS(SELECT 1 FROM proto_peers WHERE peer=?1)",
+                        [device.to_string()],
+                        |r| r.get(0),
+                    )
+                    .unwrap();
+                if enrolled {
+                    break;
+                }
+                if let Some(status) = child.as_mut().unwrap().0.try_wait().unwrap() {
+                    panic!(
+                        "cogletd exited {status}: {}",
+                        std::fs::read_to_string(&log).unwrap()
+                    );
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .expect("real cogletd enrollment committed");
+        (None, session, server)
+    } else {
+        let (fixture, device_session, session) =
+            LifecyclePeer::connect(endpoint, &router, boundary.clone())
+                .await
+                .unwrap();
+        let kernel_serve = kernel.clone();
+        let incoming = session.clone();
+        let server = tokio::spawn(async move {
+            let _ = incoming.serve(Arc::new(kernel_serve)).await;
+        });
+        let enrolled=device_session.request(json!({"method":"hub.enroll","target":null,"correlation_id":"aa".repeat(16),"timeout_ms":10000,"params":{"invite":invite,"offer":{"versions":["0.1"]}}})).await.unwrap();
+        assert_eq!(enrolled["type"], "reply", "{enrolled}");
+        service.attach(session.clone()).unwrap();
+        (Some(fixture), session, server)
+    };
     let mut driver = tokio::spawn(service.clone().run());
     let lock = StateLock::acquire(&router_root).unwrap();
     let socket = OperatorSocket::bind_locked(&lock).await.unwrap();
@@ -446,6 +559,63 @@ async fn exercise(crash: Option<&'static str>) {
     let stop = json!({"version":"local-1","operation_id":"03".repeat(16),"op":"stop","timeout_ms":30000,"params":{"device":device.to_string(),"target":target}});
     let stopped = call(&router_root, &stop).await;
     assert_eq!(stopped["receipt"]["state"], "applied", "{stopped}");
+    if daemon {
+        // Actual process death, not an in-process handler reconstruction. Resume
+        // enrollment without an invite and preserve both device WAL and local IDs.
+        drop(child.take());
+        let token = daemon_token.unwrap();
+        service.detach(device, token);
+        kernel.transport_disconnected(device, token).await.unwrap();
+        server.abort();
+        let _ = (&mut server).await;
+        let config_path = root.path().join("device.json");
+        let mut config: Value =
+            serde_json::from_slice(&std::fs::read(&config_path).unwrap()).unwrap();
+        config["invite"] = Value::Null;
+        std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
+        child = Some(Daemon(
+            Command::new(std::env::var_os("COGLET_TEST_COGLETD").unwrap())
+                .arg("--router-service")
+                .arg(&config_path)
+                .env("TOKIO_WORKER_THREADS", "2")
+                .stdout(std::process::Stdio::null())
+                .stderr(std::fs::File::create(root.path().join("daemon-restart.log")).unwrap())
+                .spawn()
+                .unwrap(),
+        ));
+        let connection = tokio::time::timeout(Duration::from_secs(20), async {
+            router.accept().await.unwrap().await.unwrap()
+        })
+        .await
+        .expect("restarted cogletd connects");
+        session = coglet_proto::transport::Session::new(
+            connection,
+            router.id(),
+            coglet_proto::transport::Role::Hub,
+        )
+        .unwrap();
+        let token = kernel.transport_connected(device).await.unwrap();
+        let connection_handler = service.connection(session.clone(), token);
+        let incoming = session.clone();
+        server = tokio::spawn(async move {
+            let _ = incoming.serve(connection_handler).await;
+        });
+        let mut fresh = status.clone();
+        fresh["operation_id"] = json!("20".repeat(16));
+        let observation = call(&router_root, &fresh).await;
+        assert_eq!(observation["receipt"]["state"], "applied", "{observation}");
+        assert_eq!(observation["result"]["state"], "stopped", "{observation}");
+        assert_eq!(
+            call(&router_root, &deploy).await,
+            response,
+            "restart must not redeploy a retained operation"
+        );
+        assert_eq!(
+            call(&router_root, &stop).await,
+            stopped,
+            "restart retains local stop receipt"
+        );
+    }
     assert_eq!(
         call(&router_root, &status).await,
         running,
@@ -535,6 +705,9 @@ async fn exercise(crash: Option<&'static str>) {
     let _ = socket_task.await;
     server.abort();
     let _ = server.await;
-    fixture.close().await;
+    if let Some(fixture) = fixture {
+        fixture.close().await;
+    }
+    drop(child);
     router.close().await;
 }

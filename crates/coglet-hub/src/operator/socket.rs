@@ -24,6 +24,54 @@ fn denied() -> io::Error {
     )
 }
 
+fn verified_peer(
+    credential: io::Result<PeerIdentity>,
+    service_uid: u32,
+) -> io::Result<PeerIdentity> {
+    let peer = credential?;
+    if peer.uid != service_uid {
+        return Err(denied());
+    }
+    Ok(peer)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn operator_fail_closed_creds() {
+        assert!(verified_peer(Err(io::Error::other("credentials unavailable")), 1000).is_err());
+        for uid in [0, 1001] {
+            assert_eq!(
+                verified_peer(
+                    Ok(PeerIdentity {
+                        uid,
+                        gid: None,
+                        pid: None
+                    }),
+                    1000
+                )
+                .unwrap_err()
+                .kind(),
+                io::ErrorKind::PermissionDenied
+            );
+        }
+        assert_eq!(
+            verified_peer(
+                Ok(PeerIdentity {
+                    uid: 1000,
+                    gid: Some(1000),
+                    pid: Some(1)
+                }),
+                1000
+            )
+            .unwrap()
+            .uid,
+            1000
+        );
+    }
+}
+
 /// Exclusive process ownership of a private router state directory. The socket
 /// retains this guard, so dropping a caller's copy cannot release ownership early.
 #[derive(Clone)]
@@ -168,18 +216,15 @@ impl OperatorSocket {
     }
     pub async fn accept(&self) -> io::Result<(UnixStream, PeerIdentity)> {
         let (stream, _) = self.listener.accept().await?;
-        let cred = stream.peer_cred()?;
-        if cred.uid() != self.uid {
-            return Err(denied());
-        }
-        Ok((
-            stream,
-            PeerIdentity {
+        let peer = verified_peer(
+            stream.peer_cred().map(|cred| PeerIdentity {
                 uid: cred.uid(),
                 gid: Some(cred.gid()),
                 pid: cred.pid().and_then(|p| u32::try_from(p).ok()),
-            },
-        ))
+            }),
+            self.uid,
+        )?;
+        Ok((stream, peer))
     }
 }
 impl Drop for OperatorSocket {

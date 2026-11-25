@@ -21,10 +21,14 @@ and a different installed commit is `conflict`. These are existing error codes.
 
 `Service::with_executor` enables execution; production startup owns and joins its
 background runner. Socket client deadlines only stop waiting. The durable
-admitted work continues without a socket waiter. A runtime Session becomes
-available after a successful post-enrollment request, avoiding a reverse-request
-race with protocol negotiation on independent QUIC streams. Disconnect removes
-only the matching connection generation.
+admitted work continues without a socket waiter. A committed enrollment makes a
+Session eligible for dispatch; no unsolicited health/event request is required
+from an idle runtime. Independently ordered QUIC streams can deliver a reverse
+request before the runtime consumes enrollment selection. A peer's
+`unauthenticated` refusal therefore leaves the operation queued, with current
+local authority rechecked on the next pass and original-ID receipt reconciliation
+before any mutation resend. Local missing enrollment still returns its typed
+terminal error. Disconnect removes only the matching connection generation.
 
 ## Durable custody and recovery
 
@@ -81,8 +85,47 @@ coordinator before it can retain that reply. Recovery constructs a fresh
 Kernel/SQLite connection and socket service against retained disk state.
 
 These are coordinator task-abort/reopen crash simulations, not SIGKILL of a
-router OS process or a daemon deployment. The runtime's own queued-push and WAL
-SIGKILL/restart proof belongs to its separately qualified boundary. No physical
-device, iOS execution, hot update, or live deployment is claimed. The unchanged
-router event conformance runner qualifies only its ten named event cases, not
-the full protocol or all runtime behavior.
+router OS process. `operator_cogletd_deploy_running_stop_status` additionally
+runs the **same** initial-deploy/retry/stop/status and typed-error exercise against
+an actual native `cogletd --router-service` subprocess and the production router
+connection handler, without manual session attachment. It kills and reaps that
+runtime after stop, restarts it with null-invite enrollment recovery, and observes
+its durable stopped state and unchanged local receipts. It does not qualify
+resuming a running guest after runtime restart. Execute explicitly (this binary
+acceptance and the privileged UID test are ignored in ordinary Cargo runs):
+
+```sh
+cargo build --locked -p coglet-runtime --features native-engine --bin cogletd
+COGLET_TEST_COGLETD="$PWD/target/debug/cogletd" cargo test --locked -p coglet-hub --test operator_saga operator_cogletd_deploy_running_stop_status -- --ignored --exact
+cargo test --locked -p coglet-hub --test operator_peer_process operator_peer_uid_nonowner_subprocess -- --ignored --exact
+```
+
+The real binary test first failed with a permanently queued deploy before the
+enrollment/session attachment fix. The mock exercise separately injects a
+non-retryable pre-handler `unauthenticated` refusal, then requires actual runtime
+success (no injected successful receipts). Its conflicting-install control still
+requires a terminal failure; local grant/enrollment controls still require typed
+errors.
+
+## ADR-0018 security matrix
+
+The ADR's requirement names map to these executable cases, rather than aliases
+that conceal which assertion runs:
+
+| ADR requirement | Executable case |
+| --- | --- |
+| `operator_peer_uid` | `operator_peer_uid_nonowner_subprocess`: actual root peer rejected before audit, service-UID positive control |
+| `operator_socket_permissions` | `operator_socket_permissions`: private socket and real OS peer credentials |
+| `operator_fail_closed_creds` | `operator::socket::tests::operator_fail_closed_creds`: unavailable credentials and foreign/root UID decisions; actual acquisition/rejection exercised above |
+| `operator_frame_limits` | `operator_frame_limits`, `operator_socket_frame_bounds`, and bounded server tests |
+| `operator_idempotency_conflict` | `operator_idempotency_conflict` and both lifecycle backend exercises |
+| `operator_status_snapshot_retry` | `operator_status_snapshot_retry` and lifecycle status-after-stop immutable retry |
+| `operator_saga_crash_each_stage` | same-named test: five coordinator abort/reopen barriers, original child IDs and actual receipt polls |
+| `operator_receipt_audit_atomicity` | same-named test plus `operator_grant_receipt_audit_and_authority_share_one_commit` and production socket rollback controls |
+| `operator_revocation_before_dispatch` | `operator_socket_revocation_resets_blocked_real_iroh_write` plus lifecycle grant-revoke denial |
+| `operator_invite_hash_only` | `operator_invite_hash_only_restart_and_window_retry_stay_closed`, known-token TTL/close controls and production socket audit rollback |
+| `operator_no_remote_listener` | same-named real-iroh test: all eight local operations sent raw after enrollment reset with code 1, no audit change, local socket positive control |
+
+No physical device, iOS execution, hot update, or live deployment is claimed. The
+unchanged router event conformance runner qualifies only its ten named event
+cases, not the full protocol or all runtime behavior.
