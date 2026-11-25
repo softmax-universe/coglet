@@ -72,6 +72,26 @@ these trusted configuration APIs.
   Unknown item is `not_found`; foreign owner/epoch is `permission_denied`. Unknown
   native alignment still yields empty text; no full proposal/duration estimate leaks.
 
+## Embedded-worker reply ordering
+
+`FaceEmbeddedRuntimeLink` promotes a validated `read_reply` across only the
+contiguous trailing run of unsent `event` frames in its bounded outgoing mailbox.
+Events retain their relative order. All non-event frames (including earlier
+replies, grants and kill frames) are ordering barriers. A head selected for ABI
+send stays pinned until success, including across would-block retries; concurrent
+insertion cannot change its retry bytes or the frame removed after success.
+Closing drops queued frames and fences further admission, but cannot retract an
+already-entered ABI call. Grant-epoch disconnect and native off-switch rules above
+are unchanged. The 128-frame / 8 MiB limits include the pinned head.
+
+This is mailbox scheduling, not preemption: a slow in-flight event, a would-blocked
+head or an earlier non-event barrier can still delay a reply. It does not extend
+read deadlines or alter runtime expiry, heard-history authorization or reasoning
+fences. `FaceRuntimeWorkerTests` uses gated ABI fixtures and a fake microsecond
+clock (two event commits at 600,000 µs each) to exercise ordering deterministically;
+wall-clock waits are watchdogs only. These tests are not actual C-ABI runtime,
+native media, deadline-success or acoustic qualification.
+
 ## Compiled adapter simulator path
 
 `swift build --package-path surfaces/face-mac --product face-mac` produces an
@@ -127,13 +147,18 @@ The CLI remains simulator-only; there is no native command-line permission UI.
 Native route source and deterministic conversion/callback tests do not establish
 installed-voice behavior, recognition accuracy, acoustic quality or runtime guest execution.
 
-The production C ABI probe and operation/lifecycle audit passed on Linux and
-macOS at source head `693aff5` (Swift Actions run `45470479845`), with separate
-independent exact-head source and operational approval. That head's required Rust
-check failed in the separately owned lifecycle restart test. The landed PR #136
-repair is integrated; the resulting head still requires fresh CI and independent
-operational delta review before merge. Historical native success is not proof of
-the new head.
+The landed lifecycle repair (PR #136) and native read-expiry completion
+(PR #156 / ADR-0029) are integrated. Face-owned reply scheduling is qualified
+locally against the original two post-read 600 ms event-commit delays: the reply
+arrives within its unchanged deadline, the barge reaches the guest, and the exact
+stopped 1200 ms `Hello` projection and all independent replay hashes verify.
+Twenty fresh plain production C-ABI runs also pass those assertions. The driver
+now drains admitted outgoing traffic under a bounded watchdog before its original
+settling interval; it must not close over a queued barge while a prior ABI send
+performs durable work. This changes no protocol or guest deadline. The failed
+pre-drain experiment is retained, not counted as a passing run.
+Current-head native macOS CI and independent source/operational review remain
+required before merge; historical native success is not current-head proof.
 `FaceEmbeddedTests` remains explicitly an ABI wrapper fixture. `Integration/` is
 separate: it links the real release native-engine library without test hooks,
 asserts off-main entry at every C symbol, and drives the real scheduled persisted

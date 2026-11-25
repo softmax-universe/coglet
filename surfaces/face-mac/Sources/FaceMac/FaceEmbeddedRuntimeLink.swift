@@ -81,7 +81,14 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
     let abi: FaceRuntimeABI
     private let queue = DispatchQueue(label: "org.coglet.face.runtime", qos: .userInitiated)
     private let lock = NSLock()
-    private var outgoing: [[UInt8]] = []
+    private struct OutgoingFrame {
+        let bytes: [UInt8]
+        let isEvent: Bool
+    }
+    private var outgoing: [OutgoingFrame] = []
+    // Lock-protected: once selected, the head stays fixed across ABI execution
+    // and would-block retries until success (or mailbox closure).
+    private var outgoingHeadPinned = false
     private var incoming: [[UInt8]] = []
     private var outgoingBytes = 0
     private var incomingBytes = 0
@@ -132,11 +139,21 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
         // Encoding is checked on the caller before copying; the worker validates
         // once more at its actual ABI boundary through the SDK transport.
         guard bytes.count <= SurfaceWire.maximumFrame else { throw FaceRuntimeFailure.oversized }
-        _ = try SurfaceWire.decode(bytes, from: .surface)
+        let message = try SurfaceWire.decode(bytes, from: .surface)
+        let isEvent = message["type"] == .text("event")
+        let isReadReply = message["type"] == .text("read_reply")
         return try lock.withLock {
             guard !closed else { throw failure.map { $0 as any Swift.Error } ?? FaceRuntimeFailure.closed }
             guard outgoing.count < 128, outgoingBytes + bytes.count <= Self.byteLimit else { return false }
-            outgoing.append(bytes); outgoingBytes += bytes.count; return true
+            var index = outgoing.count
+            if isReadReply {
+                // Only cross the contiguous trailing event run. Every other
+                // frame (including another reply) and the pinned head is a fence.
+                let floor = outgoingHeadPinned ? 1 : 0
+                while index > floor && outgoing[index - 1].isEvent { index -= 1 }
+            }
+            outgoing.insert(.init(bytes: bytes, isEvent: isEvent), at: index)
+            outgoingBytes += bytes.count; return true
         }
     }
     func receive() throws -> [UInt8]? {
@@ -155,7 +172,7 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
     func close() {
         let first = lock.withLock {
             if closed { return false }
-            closed = true; incoming = []; outgoing = []; incomingBytes = 0; outgoingBytes = 0
+            closed = true; incoming = []; outgoing = []; outgoingHeadPinned = false; incomingBytes = 0; outgoingBytes = 0
             return true
         }
         if first { queue.async { [self] in cleanup() } }
@@ -173,12 +190,20 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
         do {
             for _ in 0..<16 {
                 guard !lock.withLock({ closed }) else { cleanup(); return }
-                if let first = lock.withLock({ outgoing.first }) {
+                if let first = lock.withLock({ () -> OutgoingFrame? in
+                    guard !closed, let first = outgoing.first else { return nil }
+                    outgoingHeadPinned = true
+                    return first
+                }) {
                     phase = .send
-                    if try transport.send(first) {
+                    if try transport.send(first.bytes) {
                         lock.withLock {
-                            // close may have erased the mailbox while ABI send ran.
-                            if !closed { outgoing.removeFirst(); outgoingBytes -= first.count }
+                            // Insertion cannot move the pinned head. close may
+                            // have erased it while ABI send ran; never pop then.
+                            if !closed {
+                                outgoing.removeFirst(); outgoingBytes -= first.bytes.count
+                                outgoingHeadPinned = false
+                            }
                         }
                     }
                 }
@@ -196,7 +221,7 @@ private final class FaceRuntimeWorker: @unchecked Sendable {
             }
         } catch {
             let diagnostic = FaceRuntimeDiagnostic(phase: phase, error: error)
-            lock.withLock { failure = diagnostic; closed = true; incoming = []; outgoing = []; incomingBytes = 0; outgoingBytes = 0 }
+            lock.withLock { failure = diagnostic; closed = true; incoming = []; outgoing = []; outgoingHeadPinned = false; incomingBytes = 0; outgoingBytes = 0 }
             cleanup()
         }
     }

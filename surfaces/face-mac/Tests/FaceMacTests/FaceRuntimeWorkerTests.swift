@@ -27,6 +27,12 @@ private final class WorkerFixture: @unchecked Sendable {
     var configureEntered: DispatchSemaphore?
     var inbound: [[UInt8]] = []
     var received = 0
+    var attempts: [[UInt8]] = []
+    var sendSteps: [WorkerSendStep] = []
+    var receiveStep: WorkerSendStep?
+    var eventDelayUS: UInt64 = 0
+    var clockUS: UInt64 = 0
+    var replyTimesUS: [UInt64] = []
     func record(_ name: String) { lock.withLock { calls.append(name); if Thread.isMainThread { mainCalls += 1 } } }
 }
 private func fixture() -> WorkerFixture { WorkerFixture.lock.withLock { WorkerFixture.current! } }
@@ -47,18 +53,34 @@ private func openWorker(_ v: UInt32, _ out: UnsafeMutablePointer<OpaquePointer?>
         return f.openResult
     }
 }
+private final class WorkerSendStep: @unchecked Sendable {
+    let entered = DispatchSemaphore(value: 0)
+    let release = DispatchSemaphore(value: 0)
+    let result: Int32
+    init(_ result: Int32 = 0) { self.result = result }
+}
 private func sendWorker(_ p: OpaquePointer?, _ raw: UnsafePointer<UInt8>?, _ n: Int) -> Int32 {
     let f = fixture(); f.record("send")
-    let (gate, entered) = f.lock.withLock { (f.gate, f.entered) }
+    let bytes = Array(UnsafeBufferPointer(start: raw!, count: n))
+    let (gate, entered, step) = f.lock.withLock {
+        f.attempts.append(bytes)
+        return (f.gate, f.entered, f.sendSteps.isEmpty ? nil : f.sendSteps.removeFirst())
+    }
     entered?.signal(); gate?.wait()
+    step?.entered.signal(); step?.release.wait()
     return f.lock.withLock {
-        if let result = f.sendResult { return result }
-        if f.blocked { return 1 }
-        f.messages.append(Array(UnsafeBufferPointer(start: raw!, count: n))); return 0
+        let result = step?.result ?? f.sendResult ?? (f.blocked ? 1 : 0)
+        guard result == 0 else { return result }
+        let type = try? SurfaceWire.decode(bytes, from: .surface)["type"]
+        if type == .text("event") { f.clockUS += f.eventDelayUS }
+        if type == .text("read_reply") { f.replyTimesUS.append(f.clockUS) }
+        f.messages.append(bytes); return 0
     }
 }
 private func recvWorker(_ p: OpaquePointer?, _ raw: UnsafeMutablePointer<UInt8>?, _ n: Int, _ size: UnsafeMutablePointer<Int>?) -> Int32 {
     let f = fixture(); f.record("recv")
+    let step = f.lock.withLock { let step = f.receiveStep; f.receiveStep = nil; return step }
+    step?.entered.signal(); step?.release.wait()
     return f.lock.withLock {
         if raw == nil, let result = f.recvQueryResult { size?.pointee = 0; return result }
         if raw != nil, let result = f.recvReadResult { return result }
@@ -85,7 +107,181 @@ private final class WorkerLedger: SurfaceLedgerStore {
     func load() throws -> [UInt8] { bytes }
     func save(_ bytes: [UInt8]) throws { self.bytes = bytes }
 }
+private func workerEvent(_ sequence: UInt64, payload: CBORValue = .record([])) throws -> [UInt8] {
+    try SurfaceWire.encode(.message("event", .record([
+        ("source", .text("surface:" + String(repeating: "b", count: 64))),
+        ("kind", .text("speech.partial")), ("seq", .unsigned(sequence)),
+        ("logical_time", .unsigned(0)), ("payload", payload),
+        ("correlation_id", .text(String(format: "%032x", sequence)))])), from: .surface)
+}
+private func workerReply(_ id: UInt64) throws -> [UInt8] {
+    try SurfaceWire.encode(.message("read_reply", .record([
+        ("correlation_id", .text(String(format: "%032x", id))),
+        ("ok", .boolean(true)), ("value", .record([])), ("snapshot", .unsigned(0))])), from: .surface)
+}
 final class FaceRuntimeWorkerTests: XCTestCase {
+    @MainActor private static func waitForDrain(_ link: FaceEmbeddedRuntimeLink) async throws {
+        let deadline = ContinuousClock.now + .seconds(3)
+        while !(try link.flush()) && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertTrue(try link.flush(), "worker did not drain within watchdog")
+    }
+    func testReadReplyDelayPairAvoidsTwoEarlierEventCommits() async throws {
+        try await Self.exerciseReadReplyDelayPair()
+    }
+    @MainActor private static func exerciseReadReplyDelayPair() async throws {
+        for delay: UInt64 in [0, 600_000] {
+            let f = WorkerFixture(), head = WorkerSendStep()
+            f.blocked = false; f.eventDelayUS = delay; f.sendSteps = [head]
+            WorkerFixture.lock.withLock { WorkerFixture.current = f }
+            let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+            defer { head.release.signal(); link.close() }
+            let initial = try hello(), e0 = try workerEvent(0), e1 = try workerEvent(1), reply = try workerReply(2)
+            XCTAssertTrue(try link.send(initial))
+            XCTAssertEqual(head.entered.wait(timeout: .now() + 2), .success)
+            // The ABI call is held, so both events and the reply are queued
+            // before pumping resumes. Only successful event sends advance time.
+            for frame in [e0, e1, reply] { XCTAssertTrue(try link.send(frame)) }
+            head.release.signal()
+            try await waitForDrain(link)
+            XCTAssertEqual(f.lock.withLock { f.replyTimesUS }, [0], "delay=\(delay)")
+            XCTAssertLessThan(f.lock.withLock { f.replyTimesUS.first ?? UInt64.max }, 1_000_000)
+            XCTAssertEqual(f.lock.withLock { f.clockUS }, delay * 2)
+            XCTAssertEqual(f.lock.withLock { f.messages }, [initial, reply, e0, e1])
+            try await link.shutdown()
+        }
+    }
+    func testReadReplyCannotDisplaceConcurrentInFlightEvent() async throws {
+        try await Self.exercisePinnedEvent(wouldBlock: false)
+    }
+    func testReadReplyCannotDisplaceWouldBlockedEventBetweenAttempts() async throws {
+        try await Self.exercisePinnedEvent(wouldBlock: true)
+    }
+    @MainActor private static func exercisePinnedEvent(wouldBlock: Bool) async throws {
+        let f = WorkerFixture(), head = WorkerSendStep(wouldBlock ? 1 : 0), between = WorkerSendStep()
+        f.blocked = false; f.sendSteps = [head]
+        WorkerFixture.lock.withLock { WorkerFixture.current = f }
+        let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+        defer { head.release.signal(); between.release.signal(); link.close() }
+        let e0 = try workerEvent(0), e1 = try workerEvent(1), e2 = try workerEvent(2), reply = try workerReply(3)
+        XCTAssertTrue(try link.send(e0))
+        XCTAssertEqual(head.entered.wait(timeout: .now() + 2), .success)
+        if wouldBlock {
+            // Pause after send returned would-block, before the next head
+            // selection. This catches pinning only during an active ABI call.
+            f.lock.withLock { f.receiveStep = between }
+            head.release.signal()
+            XCTAssertEqual(between.entered.wait(timeout: .now() + 2), .success)
+        }
+        for frame in [e1, e2, reply] { XCTAssertTrue(try link.send(frame)) }
+        if wouldBlock { between.release.signal() } else { head.release.signal() }
+        try await waitForDrain(link)
+        XCTAssertEqual(f.lock.withLock { f.messages }, [e0, reply, e1, e2])
+        XCTAssertEqual(f.lock.withLock { f.attempts }, wouldBlock ? [e0, e0, reply, e1, e2] : [e0, reply, e1, e2])
+        try await link.shutdown()
+    }
+    func testReadReplyStopsAtNonEventBarriersAndPreviousReplies() async throws {
+        try await Self.exerciseOrderingFences()
+    }
+    @MainActor private static func exerciseOrderingFences() async throws {
+        let correlation = CBORValue.text(String(repeating: "c", count: 32))
+        let barriers: [CBORValue] = [
+            .message("health", .record([("state", .text("ready")), ("clock", .unsigned(0)),
+                ("pending", .unsigned(0)), ("correlation_id", correlation)])),
+            .message("grants", .record([("epoch", .unsigned(1)), ("entries", .array([])), ("correlation_id", correlation)])),
+            .message("kill", .record([("reason", .text("stop")), ("correlation_id", correlation)]))]
+        for value in barriers {
+            let f = WorkerFixture(), head = WorkerSendStep()
+            f.blocked = false; f.sendSteps = [head]
+            WorkerFixture.lock.withLock { WorkerFixture.current = f }
+            let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+            defer { head.release.signal(); link.close() }
+            let initial = try hello(), before = try workerEvent(0), after = try workerEvent(1),
+                last = try workerEvent(2), r0 = try workerReply(3), r1 = try workerReply(4),
+                barrier = try SurfaceWire.encode(value, from: .surface)
+            XCTAssertTrue(try link.send(initial))
+            XCTAssertEqual(head.entered.wait(timeout: .now() + 2), .success)
+            for frame in [before, barrier, after, r0, last, r1] { XCTAssertTrue(try link.send(frame)) }
+            head.release.signal()
+            try await waitForDrain(link)
+            XCTAssertEqual(f.lock.withLock { f.messages }, [initial, before, barrier, r0, r1, after, last])
+            try await link.shutdown()
+        }
+    }
+    func testCloseDropsPromotedReplyAndQueuedEventsWithoutRetryingHead() async throws {
+        try await Self.exerciseCloseWithReply()
+    }
+    @MainActor private static func exerciseCloseWithReply() async throws {
+        for result: Int32 in [0, 1] {
+            let f = WorkerFixture(), head = WorkerSendStep(result)
+            f.blocked = false; f.sendSteps = [head]
+            WorkerFixture.lock.withLock { WorkerFixture.current = f }
+            let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+            defer { head.release.signal(); link.close() }
+            let e0 = try workerEvent(0), e1 = try workerEvent(1), reply = try workerReply(2)
+            XCTAssertTrue(try link.send(e0))
+            XCTAssertEqual(head.entered.wait(timeout: .now() + 2), .success)
+            for frame in [e1, reply] { XCTAssertTrue(try link.send(frame)) }
+            link.close()
+            XCTAssertThrowsError(try link.send(reply))
+            XCTAssertThrowsError(try link.receive())
+            XCTAssertThrowsError(try link.flush())
+            head.release.signal(); try await link.shutdown()
+            XCTAssertEqual(f.lock.withLock { f.attempts }, [e0])
+            // An already-entered successful ABI call cannot be retracted.
+            XCTAssertEqual(f.lock.withLock { f.messages }, result == 0 ? [e0] : [])
+            XCTAssertEqual(f.lock.withLock { f.calls.filter { $0 == "close" }.count }, 1)
+        }
+    }
+    func testReadReplyPromotionRespectsMailboxCountLimitAndReclaimsCapacity() async throws {
+        try await Self.exerciseReplyCapacity()
+    }
+    @MainActor private static func exerciseReplyCapacity() async throws {
+        let f = WorkerFixture(), head = WorkerSendStep()
+        f.blocked = false; f.sendSteps = [head]
+        WorkerFixture.lock.withLock { WorkerFixture.current = f }
+        let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+        defer { head.release.signal(); link.close() }
+        let initial = try hello(), event = try workerEvent(0), reply = try workerReply(1)
+        XCTAssertTrue(try link.send(initial))
+        XCTAssertEqual(head.entered.wait(timeout: .now() + 2), .success)
+        for _ in 0..<126 { XCTAssertTrue(try link.send(event)) }
+        XCTAssertTrue(try link.send(reply))
+        XCTAssertFalse(try link.send(reply))
+        head.release.signal(); try await waitForDrain(link)
+        XCTAssertEqual(f.lock.withLock { f.messages }, [initial, reply] + Array(repeating: event, count: 126))
+        XCTAssertTrue(try link.send(reply)); try await waitForDrain(link)
+        XCTAssertEqual(f.lock.withLock { f.messages.last }, reply)
+        try await link.shutdown()
+    }
+    func testReadReplyPromotionRespectsByteLimitAndReclaimsExactBytes() async throws {
+        try await Self.exerciseReplyByteCapacity()
+    }
+    @MainActor private static func exerciseReplyByteCapacity() async throws {
+        let f = WorkerFixture(); f.blocked = false
+        WorkerFixture.lock.withLock { WorkerFixture.current = f }
+        let link = try await FaceEmbeddedRuntimeLink.start(abi: functions(), binding: [], configuration: [])
+        let initial = try hello(), reply = try workerReply(1)
+        defer { link.close() }
+        let event = try workerEvent(0, payload: .record([("padding", .text(String(repeating: "x", count: 950_000)))]))
+        let count = (8 * 1024 * 1024 - initial.count - reply.count) / event.count
+        XCTAssertLessThan(count + 2, 128, "must exercise bytes, not the message-count limit")
+        for _ in 0..<2 {
+            let head = WorkerSendStep()
+            defer { head.release.signal() }
+            f.lock.withLock { f.sendSteps = [head] }
+            XCTAssertTrue(try link.send(initial))
+            XCTAssertEqual(head.entered.wait(timeout: .now() + 2), .success)
+            for _ in 0..<count { XCTAssertTrue(try link.send(event)) }
+            XCTAssertTrue(try link.send(reply))
+            XCTAssertFalse(try link.send(event))
+            head.release.signal(); try await waitForDrain(link)
+            XCTAssertEqual(f.lock.withLock { Array(f.messages.suffix(count + 2)) },
+                [initial, reply] + Array(repeating: event, count: count))
+        }
+        try await link.shutdown()
+    }
     func testPumpFailureRetainsSanitizedPhaseAndAvailableStatus() async throws {
         try await Self.exercisePumpFailureDiagnostics()
     }

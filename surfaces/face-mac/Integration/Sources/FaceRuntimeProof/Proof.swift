@@ -94,6 +94,17 @@ private enum ProofFailure: Swift.Error { case timeout, failed }
         }
         io.renderedFrames = 28_800
         _ = try host.beginCapture(recognition: recognition, positionMS: 1200)
+        // The final barge can still be in the worker mailbox while a prior
+        // synchronous ABI send performs durable work. Do not close over admitted
+        // traffic merely because the original fixed settling interval elapsed.
+        // This is a driver watchdog, not a runtime/read/guest deadline extension.
+        let drainDeadline = ContinuousClock.now + .seconds(5)
+        while try !link.flush() {
+            guard ContinuousClock.now < drainDeadline else { throw ProofFailure.timeout }
+            try await Task.sleep(for: .milliseconds(5)); try host.pump()
+        }
+        // After the admitted events reach the runtime, service the heard read
+        // and scheduled guest as before; offline verification remains mandatory.
         for _ in 0..<300 { try await Task.sleep(for: .milliseconds(5)); try host.pump() }
         guard host.lastFailure == nil else { throw ProofFailure.failed }
         try host.localOffSwitch()
