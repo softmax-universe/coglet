@@ -62,15 +62,17 @@ runs on some runtime like every other coglet.
 
 **What is held.** Only messages an absent coglet sends to the attention on its
 own initiative: reports, requests for help, feature requests. A message that
-answers a call the attention made (it carries that call's `correlation_id`),
-such as `memory.result` or `ticket.result`, is never held, so the attention's
-own work never waits for a check-in. Messages between other coglets are
-unaffected.
+carries the `correlation_id` of a call the attention made is never held. That
+covers the answer itself (`memory.result`, `ticket.result`) and the updates that
+follow from the call (`ticket.update`), so the attention's own work never waits
+for a check-in. Messages between other coglets are unaffected. The attention
+coglet itself is always treated as present.
 
-**Who holds them.** Whoever would deliver the message. The router holds what
-crosses runtimes. A runtime that delivers locally, because the sender and the
-attention share it, applies the same rule; it learns the cogent's presence from
-the router through `presence.changed`.
+**Who holds them.** The router. It holds what crosses runtimes. A runtime that
+would deliver locally, because the sender and the attention share it, forwards
+such a message to the router instead, so every hold, bound and check-in is the
+router's. The router tells each runtime the cogent's presence along with its
+other router-to-runtime traffic, so a runtime knows which messages to forward.
 
 Typical presence: Face on the device the user is using, and the app coglet for
 the app they are working in. The factory, memory, database and game coglets are
@@ -122,8 +124,8 @@ Router
       `invalid_argument` if the result would exceed `limit`, the same coglet is in
       both `add` and `remove`, or a coglet is not one of this cogent's.
   presence.request(PresenceRequest)
-      Delivered to the attention at once. Refused with `rate_limited` if the same
-      coglet asked within the last minute and that request is still unanswered.
+      Delivered to the attention at once. At most one per coglet per minute;
+      more are refused with `resource_exhausted`.
   presence.changed(Presence)
       An event to subscribers, and to every coglet that entered or left presence.
   presence.check_in(CheckIn)
@@ -135,10 +137,11 @@ needs a grant for the exact method.
 
 - `presence.get` and a subscription to `presence.changed` are granted like any
   other method.
-- `presence.set` is granted by default to the attention coglet, and to the peer
-  the owner acts through (for example the Softmax app's runtime).
+- `presence.set` is granted by default to the attention coglet and to the owner,
+  as the actor. A grant to the owner covers the owner's own requests, whichever
+  peer carries them, and not the coglets on that peer.
 - Changing `attention` or `limit` needs the separate `presence.attention` grant,
-  held by default only by the owner's peer.
+  held by default only by the owner.
 - Every coglet is implicitly granted the `presence.changed` events about itself,
   so it always learns whether it is being attended, without a subscription.
 - The router holds the manage port's `status` grant for the cogent's coglets, so
@@ -155,6 +158,9 @@ needs a grant for the exact method.
   slower rate.
 - A coglet that stops or is removed leaves presence, and `presence.changed`
   says so. Its hold is delivered in a final check-in.
+- Removing a coglet that is not present is not an error; it changes nothing.
+- When the attention changes, everything held is delivered to the new attention
+  in its first check-ins.
 
 ### 4. Spec changes
 
@@ -194,10 +200,12 @@ meant a place.
   need policies that can run without the cogent answering at once.
 - The router protocol grows one additive message family and one grant. Existing
   traffic and spec-v0 fixtures do not change.
-- A runtime that delivers locally must apply the hold rule too, so presence is
-  part of what a runtime learns from the router.
+- A runtime forwards to the router what it would otherwise deliver locally to
+  the attention from an absent coglet, so presence is part of what a runtime
+  learns from the router.
 - A coglet cannot pull the cogent's attention to itself except by asking, and
-  asking is rate-limited, so a misbehaving coglet cannot flood the attention.
+  asking is limited to once a minute, so a misbehaving coglet cannot flood the
+  attention.
 
 ## Verification
 
@@ -212,10 +220,12 @@ mock:
 - `presence_present_delivers_immediately`
 - `presence_absent_holds_until_check_in`
 - `presence_answers_never_held`
-- `presence_local_delivery_holds_too`
+- `presence_local_delivery_forwards_to_router`
+- `presence_follow_up_updates_never_held`
+- `presence_attention_change_moves_holds`
 - `presence_check_in_cadence_and_early_rate_limit`
 - `presence_hold_full_counts_dropped`
-- `presence_request_reaches_attention_and_is_rate_limited`
+- `presence_request_reaches_attention_and_is_limited_per_minute`
 - `presence_changed_reaches_entering_and_leaving_coglets`
 - `presence_stopped_coglet_leaves_with_final_check_in`
 - `presence_changes_no_grants`
