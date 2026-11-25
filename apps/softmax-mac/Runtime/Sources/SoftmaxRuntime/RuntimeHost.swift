@@ -163,13 +163,13 @@ private actor RuntimeExecutor {
             let result = sink.actions; sink.actions = []; return result
         } catch { cleanup(); log("runtime fault; restart required"); throw error }
     }
-    func transcript(_ text: String, generation expected: UInt64) throws -> [RuntimeAction] {
+    func transcript(_ text: String, generation expected: UInt64, outputEpoch: UInt64) throws -> [RuntimeAction] {
         guard generation == expected else { return [] }
         guard let session, let token else { throw HostFailure("Runtime not connected") }
         do {
             // Drain old guest output while reflex cancellation is still fenced.
             try pump()
-            sink.output.resume()
+            guard sink.output.resume(ifCurrent: outputEpoch) else { return [] }
             let utterance = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
             guard try session.publishObservation(token, kind: "speech.start", payload: .record([("utterance", .text(utterance)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
             guard try session.publishObservation(token, kind: "speech.end", payload: .record([("utterance", .text(utterance)), ("revision", .unsigned(1)), ("text", .text(text)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
@@ -270,9 +270,10 @@ private actor RuntimeExecutor {
     }
     public func submitTranscript(_ text: String, generation expected: UInt64) async {
         guard state == .running, !busy, generation == expected else { return }
+        let outputEpoch = output.epoch
         beforeTranscriptHandoff?()
         do {
-            let received = try await executor.transcript(text, generation: expected)
+            let received = try await executor.transcript(text, generation: expected, outputEpoch: outputEpoch)
             if generation == expected { deliver(received) }
         } catch { if generation == expected { fail(error) } }
     }

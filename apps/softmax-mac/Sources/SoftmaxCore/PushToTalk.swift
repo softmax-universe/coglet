@@ -95,8 +95,11 @@ public struct Utterance: Sendable, Equatable {
             guard state != .onboarding else { routeToPermissions?(); return }
             let pressTime = timestamp ?? now()
             operationID &+= 1
-            if state == .speaking {
-                stopPlayback?()
+            let wasSpeaking = state == .speaking
+            // A new capture also fences replies pending synthesis or between
+            // chunks. Only actual speaking emits a barge-in MESSAGE.
+            stopPlayback?()
+            if wasSpeaking {
                 output.yield(.bargeIn(timestamp: now()))
             }
             do { try audio.start() }

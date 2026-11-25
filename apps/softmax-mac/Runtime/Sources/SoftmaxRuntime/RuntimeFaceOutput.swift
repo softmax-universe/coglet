@@ -13,6 +13,11 @@ final class RuntimeFaceOutput: @unchecked Sendable {
     private var pending: [UUID: RuntimeAction] = [:]
     private var completed: [UUID: NativeSurfaceResult] = [:]
     private var enabled = false
+    private var cancellationEpoch: UInt64 = 0
+    var epoch: UInt64 {
+        lock.lock(); defer { lock.unlock() }
+        return cancellationEpoch
+    }
     private let stopNative: @MainActor @Sendable () -> Void
     init(stopNative: @escaping @MainActor @Sendable () -> Void) { self.stopNative = stopNative }
     func preflight() throws {
@@ -54,8 +59,19 @@ final class RuntimeFaceOutput: @unchecked Sendable {
         else { DispatchQueue.main.sync { MainActor.assumeIsolated { stopNative() } } }
     }
     func suspend() {
-        lock.lock(); enabled = false; lock.unlock()
+        lock.lock()
+        cancellationEpoch &+= 1; enabled = false
+        for key in pending.keys where completed[key] == nil {
+            completed[key] = .failed(NativeSurfaceError("cancelled"))
+        }
+        lock.unlock()
         stop()
+    }
+    func resume(ifCurrent expected: UInt64) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard cancellationEpoch == expected else { return false }
+        enabled = true
+        return true
     }
     func resume() { lock.lock(); enabled = true; lock.unlock() }
 }
