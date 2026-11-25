@@ -101,6 +101,105 @@ wire models or copy generated built-in bindings to pretend they include the app.
 Retain the existing catalog/WAL pin fence; upgrades must use an explicitly
 selected new WAL when pins differ and preserve the old audit history.
 
+### 1a. Local contract profile selection (clarification)
+
+This section fixes the provisioning contract for all consumers before they split
+implementation. The APIs and fields below are REQUIRED additive implementation
+work, not a claim that current releases expose them. This clarification changes
+no frozen `0.1` source, schema, catalog bytes or conformance case.
+
+Four independent identities MUST NOT be conflated:
+
+| Identity | Meaning and selection |
+| --- | --- |
+| Surface wire minor | The session's negotiated `0.1` or `0.2`; it selects wire validation and the operations usable on that connection, not local provisioning authority. |
+| Manifest format `version` | Selects the manifest format. In particular, `"0.2"` already selects `database::db-manifest` in runtime admission/execution; it MUST NOT be reused to select app naming. |
+| Catalog artifact `version` | Remains exactly integer `1`, with the existing closed artifact fields, limits and digest over exact distribution bytes. No `contract_profile` member is added to the artifact. |
+| Local `contract_profile` | Trusted provisioning context, exactly `surface-0.1` or `surface-0.2`. Omission means `surface-0.1` and exactly the prior `0.1` behavior. |
+
+The local profile selects the name-validation rules applied to manifests and
+catalogs, including subscriptions, required capabilities, operation names and
+local grant/binding validation. It does not select a different manifest format:
+first select the existing format by `version`, then validate its name-bearing
+fields under the provisioned profile. Thus database manifests keep their database
+semantics under either profile; ordinary manifests also need explicit
+`surface-0.2` provisioning before using app names. `surface-0.2` adds only the
+narrow naming alternative in section 1, retaining prior two-component names.
+It does not widen resource/entry authority or grant app operations automatically.
+
+Only the trusted supervisor/product configuration may set the profile, before
+manifest/catalog validation and before a session opens. Never infer it from a
+manifest's contents or `version`, artifact names/URIs, generated types, peer
+`hello`/caps, grants, or the highest offered wire minor. A guest-supplied manifest
+cannot opt itself in. Unknown, empty or malformed explicit values fail closed;
+there is no fallback from an unsupported explicit profile to `0.1`. The Go zero
+value exception below represents omission, not an accepted serialized value.
+
+#### Exact consumer seams
+
+Use these names in the implementation follow-ups. Serialized provisioning uses
+`contract_profile`; language APIs use the explicit spelling below. The catalog
+argument always denotes verified immutable catalog bytes plus their separately
+supplied digest, never a peer advertisement or an unchecked callback map.
+
+| Consumer | Required local API / field and compatibility rule |
+| --- | --- |
+| Rust runtime | Add `ContractProfile::{Surface01, Surface02}` and `TrustedExtensionCatalog::from_pinned_bytes_with_profile(raw, sha256, profile)`. Existing `from_pinned_bytes(raw, sha256)` remains the `Surface01` wrapper. `RuntimeService::open_with_catalog` takes the profile retained by the catalog for manifest admission and WAL recovery; default catalog/open paths remain `Surface01`. Add trusted `SETUP_JSON.contract_profile` for setup/manifest admission (including catalog-free startup); when a catalog is supplied its profile must match the setup profile, with omission selecting `Surface01`, never inference from the catalog. |
+| Daemon / embedded runtime | Add `cogletd --contract-profile surface-0.2`, supplying the same trusted setup field and catalog-loader profile; omitted flag means `surface-0.1`. The embedded C start JSON uses `setup.contract_profile`, outside `trusted_extension_catalog.json`; the catalog loader receives that value. Keep C signatures and existing catalog `{json, sha256}` record unchanged. Conflicting selectors fail before publishing/listening. |
+| Swift SDK | Add `SurfaceContractProfile.surface01` / `.surface02` with raw values `surface-0.1` / `surface-0.2`; add defaulted `SurfaceSession.init(..., contractProfile: SurfaceContractProfile = .surface01, trustedCatalog: TrustedExtensionCatalog? = nil, ...)`. Add `TrustedExtensionCatalog.init(json:sha256:contractProfile:)`, defaulting its profile to `.surface01`; session and catalog profiles must match. These are generic immutable inputs; existing built-in-only initializers/call sites remain source-compatible and behaviorally unchanged. |
+| Python SDK | Add keyword-only `contract_profile="surface-0.1"` to `coglet_surface.surface.Surface.__init__`, and `trusted_catalog=None` for the verified immutable catalog input. The selected profile governs local validation and durable identity; existing `extensions`/`schemas` arguments cannot imply `surface-0.2` or bypass pinned-catalog admission for app names. Existing calls retain `0.1`. |
+| Go SDK | Add `ContractProfile string` and the optional verified catalog input `TrustedCatalog` to `surface.Config`, consumed by existing `surface.New(Config)`. `ContractProfile == ""` is only the Go zero-value spelling of omitted configuration and normalizes to `surface-0.1` before persistence; all other values must be the two exact profile strings. Existing config literals remain valid. |
+| Java SDK (mindister-owned) | Add the trusted configuration builder method `SurfaceConfig.Builder.contractProfile(String)` and optional verified catalog input `SurfaceConfig.Builder.trustedCatalog(TrustedExtensionCatalog)`. The builder defaults the profile to `surface-0.1`; explicit strings use the same strict validation. This names a required new SDK seam in mindister, not an assertion that such a builder already exists in coglet. Existing built-in construction remains available unchanged; the session consumes the built immutable configuration. |
+| Conformance harness | Add `--contract-profile {surface-0.1,surface-0.2}` (default `surface-0.1`) to `conformance/harness.py`, and optional per-implementation registry field `contract_profile` with the same default. A CLI override must agree with the selected registry entry; conflicting selection fails before launch. Pass the selected value into trusted implementation provisioning, not wire frames. Keep existing `conformance/surface` and `conformance/speech` cases unchanged at `0.1`; add separately selected `0.2` cases. |
+
+An unimplemented consumer retains its existing `0.1` defaults and refuses explicit
+`surface-0.2` selection; adding a configuration spelling or generated types alone
+must not enable `0.2`. A profile is a local validation ceiling, not wire
+negotiation: a `surface-0.1` configuration offers only `0.1`; `surface-0.2` may
+offer `0.2` only after its validators/dispatch are implemented, and also supports
+the unchanged `0.1` fallback. Selected wire rules must still run before dispatch.
+
+#### Persistence, recovery and downgrade
+
+Persist normalized `contract_profile` alongside the catalog digest in the
+existing catalog/WAL state record (runtime `ServiceState.catalog_pin` gains its
+sibling `contract_profile`), in the first durable state before exposing service.
+SDKs retain the same pair with the catalog in their existing durable ledger;
+no second journal, sidecar, catalog artifact field or network profile is created.
+For the catalog fence, replay identity is **(catalog digest, contract_profile)**,
+not digest alone. Existing code/manifest/setup pins and other recovery fences
+remain additional requirements. No-catalog state retains an absent digest plus
+its selected profile. Legacy WAL/ledger records lacking the profile mean exactly
+`surface-0.1`; explicitly selecting `surface-0.2` cannot reinterpret them, even
+with identical catalog bytes. Unknown saved profiles, mismatched supplied
+profiles, removed catalogs or changed digests fail recovery. Omitted and explicit
+`surface-0.1` are the same normalized identity. A profile/digest upgrade uses an
+explicitly selected new WAL/ledger and preserves the old audit history; it never
+rewrites old receipts or infers authority during replay.
+
+A peer negotiating `0.1` does not change this stored identity. Keep the
+provisioned app catalog and its `surface-0.2` identity stored, but advertise and
+grant only built-in Face/speech operations on that downgraded connection. App
+reads, actions and events remain unavailable (including queued publications and
+retry dispatch); a saved grant or matching prefix cannot restore them. Do not
+flatten names, erase the catalog, relabel the WAL as `surface-0.1`, or refuse the
+entire built-in session because app operations are unavailable. A manifest that
+requires unavailable app capabilities remains unadmitted; this does not prevent
+an unchanged Face coglet from running. Reconnecting at `0.2` requires fresh valid
+session grants and normal ownership/epoch fences, not resurrection of old grants.
+
+Required successor proofs (names reserved here, NOT tests executed by this
+docs-only clarification): `local_contract_profile_defaults_and_unknowns`,
+`local_contract_profile_manifest_format_independent`,
+`local_contract_profile_catalog_v1_closed`,
+`local_contract_profile_replay_pair_fenced`, and
+`local_contract_profile_downgrade_face_speech`. Exercise each implemented consumer,
+including omitted/default and explicit opt-in, catalog-free startup, conflicting
+selectors, same digest/different profile reopen, legacy profile-less WAL, frozen
+`0.1` negative names and live Face/speech-only downgrade. Add positive `0.2` app
+controls separately. These complement, not replace, the native/transport proofs
+below and the unchanged existing `0.1` suites.
+
 ### 2. Finite operation inventory
 
 Every successful action returns the closed empty map `{}`. Failure uses the
