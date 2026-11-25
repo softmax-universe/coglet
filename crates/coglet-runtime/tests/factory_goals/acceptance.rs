@@ -9,7 +9,7 @@ const T1: &str = "T1";
 fn gid(c: char) -> String {
     format!("{c}{}", "0".repeat(31))
 }
-fn seed(fx: &Fx, workers: u32, budget: u64) {
+pub(super) fn seed(fx: &Fx, workers: u32, budget: u64) {
     let policy = serde_json::to_string(&factory::executive::Policy {
         model: "mock".into(),
         remaining_budget: budget,
@@ -67,7 +67,7 @@ fn tasks(fx: &Fx) -> i64 {
         )
         .unwrap()
 }
-fn policy(fx: &Fx) -> serde_json::Value {
+pub(super) fn policy(fx: &Fx) -> serde_json::Value {
     let text: String = fx
         .observer()
         .query_row(

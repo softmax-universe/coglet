@@ -546,9 +546,26 @@ pub fn handle<H: Host + DbHost>(
             {
                 let queue = repo.get_work_queue(subject).map_err(db)?;
                 let accepted = match &queue {
-                    // Cancellation is an attempt outcome, not a task-wide
-                    // command. It requires the host's retained lease identity.
-                    None => kind != "task.cancelled",
+                    // Tokenless cancellation is only the host's never-submitted
+                    // outcome of this guest's explicit cancellation request.
+                    None => {
+                        kind != "task.cancelled" || {
+                            let data: serde_json::Value = parse(&task.data_json)?;
+                            data.get("cancel_requested")
+                                .and_then(serde_json::Value::as_bool)
+                                == Some(true)
+                                && event
+                                    .payload
+                                    .get("lease")
+                                    .and_then(coglet_types::Value::as_text)
+                                    == Some("")
+                                && event
+                                    .payload
+                                    .get("attempt")
+                                    .and_then(coglet_types::Value::as_integer)
+                                    .is_some_and(|n| i128::from(n) == 1)
+                        }
+                    }
                     Some(queue) => {
                         let attempt = event
                             .payload

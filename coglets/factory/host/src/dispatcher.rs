@@ -2,6 +2,7 @@ use crate::adapter::{AdapterError, FollowUp, HermesAdapter, Outcome, WorkerRepor
 use coglet_db::{Database, OutboxRecord, OutboxState, Result, WorkQueueRow};
 use coglet_types::Value;
 use std::collections::BTreeSet;
+mod cancellation;
 
 const HOST_OWNER: &str = "factory-host";
 const LEASE_MS: i64 = 60_000;
@@ -56,11 +57,15 @@ impl<A: HermesAdapter> Dispatcher<A> {
     /// leases, redispatch, claim new intents, and ingest worker results.
     /// Pending deliveries are returned until acknowledged.
     pub fn run_cycle(&mut self, db: &mut Database, now: i64, limit: u32) -> Result<DispatchBatch> {
+        db.dispatch_fence()?;
         // The previous host may have died after claiming an intent, before
         // submit or after remote create but before persisting its binding.
         // Re-enter create with the original key through the ordinary run path;
         // adapter idempotency reconciles a possibly accepted remote create.
         for row in db.unbound_dispatching()? {
+            if row.kind == "factory.cancel" || cancellation::requested(db, &row)? {
+                continue;
+            }
             db.record_outbox_state(&row.intent_id, row.version, OutboxState::Uncertain)?;
         }
         let reconciled = self.reconcile_bound_unleased(db, now)?;
@@ -68,9 +73,12 @@ impl<A: HermesAdapter> Dispatcher<A> {
         // A durable result may precede local lease expiry. Consume it before
         // unsupported remote retry can hold the remaining operational backlog.
         follow_ups.extend(self.ingest(db, now)?);
+        self.consume_cancellations(db, now)?;
         let expired = self.expire_leases(db, now)?;
         let rebound = self.redispatch_pending(db, now, limit)?;
         let fresh = self.dispatch_pending(db, now, limit)?;
+        self.consume_cancellations(db, now)?;
+        follow_ups.extend(self.pending_follow_ups(db)?);
         follow_ups.extend(self.ingest(db, now)?);
         follow_ups.extend(rebound.follow_ups);
         follow_ups.extend(fresh.follow_ups);
@@ -92,6 +100,9 @@ impl<A: HermesAdapter> Dispatcher<A> {
         let n = claimed.len();
         let mut follow_ups = Vec::new();
         for row in claimed {
+            if row.kind == "factory.cancel" {
+                continue;
+            }
             if let Some(event) = self.submit(db, &row, now)? {
                 follow_ups.push(event);
             }
@@ -120,6 +131,26 @@ impl<A: HermesAdapter> Dispatcher<A> {
         now: i64,
     ) -> Result<Option<FollowUp>> {
         let task_id = task_id_of(row);
+        db.dispatch_fence()?;
+        if cancellation::requested(db, row)? {
+            if row.attempt == 1 && db.get_binding(&row.intent_id)?.is_none() {
+                return self
+                    .finish(
+                        db,
+                        row,
+                        &task_id,
+                        OutboxState::Cancelled,
+                        "task.cancelled",
+                        "cancelled before submit",
+                        None,
+                        now,
+                    )
+                    .map(Some);
+            }
+            // A recovered create may already have escaped. Do not create or
+            // falsely report cancellation; retain it for evidence recovery.
+            return Ok(None);
+        }
         let spec = crate::adapter::TaskSpec {
             idempotency_key: row.idempotency_key.clone(),
             kind: row.kind.clone(),
@@ -162,6 +193,10 @@ impl<A: HermesAdapter> Dispatcher<A> {
     ) -> Result<()> {
         // A renewed attempt must claim again. The stored token is only a
         // crash marker for a lease that was never written locally.
+        db.dispatch_fence()?;
+        if cancellation::requested(db, row)? {
+            return Ok(());
+        }
         db.set_binding_phase(&row.intent_id, "claiming", "")?;
         let until = now.saturating_add(LEASE_MS);
         let claimed = match self
@@ -208,6 +243,9 @@ impl<A: HermesAdapter> Dispatcher<A> {
     fn reconcile_bound_unleased(&mut self, db: &mut Database, now: i64) -> Result<usize> {
         let mut finished = 0;
         for row in db.outbox_in_state(OutboxState::Dispatching.as_str())? {
+            if row.kind != "factory.dispatch" {
+                continue;
+            }
             let Some(binding) = db.get_binding_record(&row.intent_id)? else {
                 continue;
             };
@@ -277,6 +315,9 @@ impl<A: HermesAdapter> Dispatcher<A> {
                         return Err(note);
                     }
                 }
+                if cancellation::requested(db, &row)? {
+                    continue;
+                }
                 let restored = match self.adapter.restore_lease(
                     &binding.remote_id,
                     HOST_OWNER,
@@ -298,6 +339,9 @@ impl<A: HermesAdapter> Dispatcher<A> {
                     restored.until as i64,
                 )?;
             } else {
+                if cancellation::requested(db, &row)? {
+                    continue;
+                }
                 let spec = crate::adapter::TaskSpec {
                     idempotency_key: row.idempotency_key.clone(),
                     kind: row.kind.clone(),
@@ -376,6 +420,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
             .ok_or_else(|| "unknown intent".to_string())?;
         let task_id = task_id_of(&row);
         self.effect_fence(db, &task_id, attempt, lease)?;
+        db.dispatch_fence()?;
         if let Some(remote) = db.get_binding(intent_id)? {
             self.adapter
                 .cancel(&remote, attempt, lease)
@@ -466,6 +511,10 @@ impl<A: HermesAdapter> Dispatcher<A> {
                 if let Some(intent) = intent_for_task(db, &row.task_id)?
                     && let Some(remote) = db.get_binding(&intent)?
                 {
+                    let outbox = db.get_outbox(&intent)?.ok_or("missing outbox")?;
+                    if cancellation::requested(db, &outbox)? {
+                        continue;
+                    }
                     match self.adapter.retry(&remote) {
                         Ok(()) | Err(AdapterError::Uncertain) => {}
                         Err(AdapterError::Failed(note) | AdapterError::Conflict(note)) => {
@@ -473,14 +522,18 @@ impl<A: HermesAdapter> Dispatcher<A> {
                         }
                     }
                 }
-                expired.push(row.task_id);
+                let task = row.task_id.clone();
+                db.put_work_queue(&WorkQueueRow {
+                    state: "pending".into(),
+                    lease_owner: None,
+                    lease_until: None,
+                    attempt: row.attempt.checked_add(1).ok_or("attempt overflow")?,
+                    ..row
+                })?;
+                expired.push(task);
             }
         }
-        if expired.is_empty() {
-            return Ok(expired);
-        }
-        let cleared = db.expire_work_leases(now)?;
-        Ok(cleared)
+        Ok(expired)
     }
 
     pub fn redispatch_pending(
@@ -632,7 +685,7 @@ fn dedupe(items: Vec<FollowUp>) -> Vec<FollowUp> {
 fn intent_for_task(db: &Database, task_id: &str) -> Result<Option<String>> {
     for state in ["dispatching", "pending", "uncertain"] {
         for row in db.outbox_in_state(state)? {
-            if task_id_of(&row) == task_id {
+            if row.kind == "factory.dispatch" && task_id_of(&row) == task_id {
                 return Ok(Some(row.intent_id));
             }
         }

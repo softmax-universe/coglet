@@ -23,9 +23,10 @@ fn review(h: &mut TestHost, from: u64, steps: u64) {
     }
 }
 fn outbox_tasks(h: &TestHost) -> Vec<String> {
-    let mut statement =
-        h.db.prepare("SELECT payload_cbor_hex FROM outbox ORDER BY rowid")
-            .unwrap();
+    let mut statement = h
+        .db
+        .prepare("SELECT payload_cbor_hex FROM outbox WHERE kind='factory.dispatch' ORDER BY rowid")
+        .unwrap();
     let rows: Vec<String> = statement
         .query_map([], |r| r.get::<_, String>(0))
         .unwrap()

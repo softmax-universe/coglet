@@ -2,6 +2,7 @@
 //! complete Phase 3 budget/priority/deferral acceptance suite.
 use super::*;
 mod acceptance;
+mod cancellation;
 mod regressions;
 const GOAL: &str = "44444444444444444444444444444444";
 

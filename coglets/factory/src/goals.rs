@@ -168,10 +168,9 @@ fn live_goal<H: DbHost>(repo: &mut Repository<'_, H>, goal_id: &str) -> Result<O
 }
 
 /// Authenticated cancellation. It is terminal for the goal: later model replies
-/// or attempt results cannot reopen it. An already-dispatched attempt stays an
-/// attempt-aware host matter; the audit event names the exact task so the host's
-/// lease-fenced `cancel_intent` path (never a task-wide guest command) can act,
-/// and its `task.cancelled` result is fenced by the retained lease.
+/// or attempt results cannot reopen it. An active goal emits a separately
+/// granted cancellation intent for its exact task/dispatch identity. The host
+/// owns delivery and lease fencing; the audit is not an effect authority.
 pub(super) fn cancel<H: DbHost>(
     repo: &mut Repository<'_, H>,
     source: &str,
@@ -186,6 +185,41 @@ pub(super) fn cancel<H: DbHost>(
     }
     let mut data: serde_json::Value = parse(&goal.data_json)?;
     let active = data.get("active_task").cloned().unwrap_or_default();
+    if goal.status == "active" {
+        let task_id = active.as_str().ok_or_else(bad)?;
+        let mut task = get(repo, task_id)?;
+        let mut task_data: serde_json::Value = parse(&task.data_json)?;
+        let queue = repo.get_work_queue(task_id).map_err(db)?;
+        let attempt = queue.as_ref().map(|q| q.attempt).unwrap_or(1);
+        task_data["cancel_requested"] = true.into();
+        task.data_json = json(&task_data)?;
+        task.updated_at = at;
+        repo.update_object(&task).map_err(db)?;
+        // Each admitted goal attempt has its own task and immutable dispatch
+        // identity. Cancellation is a granted effect, not an audit consumer.
+        let target = id(&["dispatch", task_id, "1"]);
+        let cancel = id(&["factory-cancel", &target]);
+        repo.enqueue_outbox(&coglet_types::DatabaseDbEnqueue {
+            operation: "enqueue".into(),
+            intent_id: cancel.clone(),
+            idempotency_key: cancel,
+            kind: "factory.cancel".into(),
+            correlation_id: id(&["goal-cancel", &goal.id]),
+            payload: [
+                ("target_intent".into(), coglet_types::Value::Text(target)),
+                (
+                    "target_task".into(),
+                    coglet_types::Value::Text(task_id.into()),
+                ),
+                (
+                    "attempt".into(),
+                    coglet_types::Value::Text(attempt.to_string()),
+                ),
+            ]
+            .into(),
+        })
+        .map_err(db)?;
+    }
     data["cancelled_at"] = at.into();
     goal.status = "cancelled".into();
     goal.data_json = json(&data)?;

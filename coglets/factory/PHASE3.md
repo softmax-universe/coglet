@@ -82,12 +82,20 @@ focused tests does not substitute for it.
 - **Goal-task results**: completion completes the goal; failure/cancel returns
   it to `open` (budget left) or `exhausted`, never to the model, so retries obey
   the goal's own budget. A cancelled goal stays cancelled.
-- **Cancellation is not yet fully wired**: `goal.cancelled` records the active
-  task, but the normal host cycle does not yet consume that intent. The existing
-  lease-fenced `cancel_intent` helper alone is not delivery. Until this is fixed,
-  an already-enqueued task may still launch after goal cancellation. This is a
-  blocking review finding, not Phase 3 acceptance. `HttpKanban` cancel remains
-  unsupported and must fail closed.
+- **Cancellation delivery**: active-goal cancellation atomically emits a
+  `factory.cancel` outbox effect and records `cancel_requested` on its task.
+  Deployments must separately grant `factory.cancel`; missing grant rolls back
+  the complete command. The effect targets the exact dispatch identity and
+  observed attempt, never a mutable goal-wide worker identity. Normal host cycles
+  consume it; never-submitted work produces a durable cancellation delivery
+  without creating remote work, and supported live cancellation requires the
+  retained unexpired lease. The guest accepts a tokenless cancellation only for
+  its requested, never-leased task; capacity is released on result consumption.
+  Cancelled intents fence create, claim, renewal and retry paths. Uncertain
+  unbound creates remain held (not resubmitted or falsely reported cancelled).
+  `HttpKanban` cancellation remains unsupported: the original attempt is retained
+  for result polling without aborting sibling dispatch. This is not a promise
+  to stop remote work whose public adapter has no cancellation operation.
 
 ## Review corrections in progress
 
@@ -106,9 +114,19 @@ focused tests does not substitute for it.
   `goal_scan_revision_fences_inbox_insertion_at_cursor_free_boundaries` test
   passes nonzero: inbox creation between statuses and before admission,
   runtime/DB reopen, and emitted timers select the new higher-priority goal.
-- Remaining blockers: normal-cycle cancellation consumption and restart fencing;
-  actual-WAMR authenticated defer/cancel/stale-reply acceptance; final owned
-  check, independent exact-head review, green required CI and merge.
+- Added five passing host regressions in `host/tests/cancellation/mod.rs`:
+  pre-submit suppression/redelivery after reopen, live cancellation after reopen,
+  stale cancellation against a newer lease, uncertain-create hold, unsupported
+  HTTP cancellation retaining correlation. Native workspace: 30 executive,
+  7 repository and 27 host tests pass.
+- Actual-WAMR `goal_inbox_deferral_and_cancellation_reaches_normal_host_cycle`
+  passes nonzero: authenticated create/defer, timer-driven resume, authenticated
+  cancel, normal host suppression and durable result consumed through another
+  immutable inbox boundary, with capacity restored. Each boundary reopens hosts.
+- Remaining qualification: WAMR stale model reply after cancel and cancellation
+  segment offline replay; strengthen uncertain/claimed-before-submit recovery and
+  unsupported-cancel sibling-progress probes; final owned check, independent
+  exact-head review, green required CI and merge. No final acceptance claimed.
 
 ## Acceptance mapping
 
@@ -118,8 +136,8 @@ focused tests does not substitute for it.
 | `goal_replay_does_not_duplicate` | yes | yes (reopen + offline `replay_database`) |
 | `goal_deferral_and_cancellation` | yes (real command events, stale model reply) | yes (seeded deferred/cancelled state, logical time advance) |
 
-The WAMR cancel/defer *commands* are covered natively; the WAMR run proves that
-cancelled and not-yet-due goals never dispatch and that a due deferral resumes.
+The additional `factory_goals/cancellation.rs` WAMR test exercises the actual
+cancel/defer commands and host result delivery, rather than only seeded states.
 Run the focused WAMR tests with `cargo test --locked -j4 -p coglet-runtime
 --features native-engine --test factory_database factory_goals -- --test-threads=1`.
 The owned `coglets/factory/check.sh` remains the final full check.
