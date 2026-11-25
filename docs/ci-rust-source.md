@@ -37,7 +37,7 @@ main runs qualify their own actual source identities, not the old PR head.
 ## Regression
 
 ```
-uv run --no-project --with pyyaml==6.0.3 python scripts/ci/test_rust_source.py -v
+python3 scripts/ci/test_rust_source.py -v
 python3 crates/coglet-transform/tests/check_runner.py
 ```
 

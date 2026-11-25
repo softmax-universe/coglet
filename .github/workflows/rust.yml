@@ -26,11 +26,8 @@ jobs:
           # Immutable event merge supplies workflow tooling even for legacy PRs.
           ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: false
       - name: Workflow/source compatibility regression
-        run: uv run --no-project --with pyyaml==6.0.3 python scripts/ci/test_rust_source.py -v
+        run: python3 scripts/ci/test_rust_source.py -v
       - name: Select and report immutable qualification source
         id: select
         env:

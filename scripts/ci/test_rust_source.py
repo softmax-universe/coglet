@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import unittest
 
-import yaml
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("rust_source", Path(__file__).with_name("rust_source.py"))
@@ -93,29 +93,29 @@ class SourceSelection(unittest.TestCase):
 
 class WorkflowBinding(unittest.TestCase):
     def test_all_producers_and_aggregate_share_selection_and_native_is_required(self):
-        workflow = yaml.safe_load((ROOT / ".github/workflows/rust.yml").read_text())
-        jobs = workflow["jobs"]
+        # Deliberately strict layout pins, not a general YAML parser. Keep these
+        # stdlib-only: dependency-restore discovers every test_*.py before setup.
+        workflow = (ROOT / ".github/workflows/rust.yml").read_text()
+        jobs = dict(re.findall(r"^  ([\w-]+):\n((?:^ {4}.*\n|^\n)*)", workflow, re.M))
         selection = jobs["source"]
-        self.assertEqual(selection["steps"][0]["with"]["ref"], "${{ github.sha }}")
-        self.assertEqual(selection["steps"][0]["with"]["fetch-depth"], 0)
-        self.assertIn("python3 scripts/ci/rust_source.py", selection["steps"][-1]["run"])
+        self.assertIn("          ref: ${{ github.sha }}\n          fetch-depth: 0", selection)
+        self.assertIn("run: python3 scripts/ci/rust_source.py", selection)
         for name in ("transform-native", "rust"):
             job = jobs[name]
-            self.assertIn("source", job["needs"])
-            checkout = next(s for s in job["steps"] if s.get("uses") == "actions/checkout@v4")
-            self.assertEqual(checkout["with"]["ref"], "${{ needs.source.outputs.sha }}")
+            self.assertRegex(job, r"^    needs: \[source(?:, transform-native)?\]", )
+            self.assertEqual(job.count("uses: actions/checkout@v4"), 1)
+            self.assertIn("          ref: ${{ needs.source.outputs.sha }}", job)
         native = jobs["transform-native"]
-        self.assertNotIn("if", native)
-        self.assertEqual({leg["arch"] for leg in native["strategy"]["matrix"]["include"]}, {"x86_64", "aarch64"})
-        native_run = next(s["run"] for s in native["steps"] if "run" in s)
-        self.assertIn("check.py --native-leg", native_run)
+        self.assertNotRegex(native, r"(?m)^\s+if:")
+        self.assertEqual(re.findall(r"^            arch: (\w+)$", native, re.M), ["x86_64", "aarch64"])
+        self.assertIn("check.py --native-leg", native)
         aggregate = jobs["rust"]
-        self.assertEqual(aggregate["if"], "always()")
-        self.assertIn("needs.source.result", aggregate["steps"][0]["run"])
-        self.assertIn("needs.transform-native.result", aggregate["steps"][0]["run"])
-        self.assertIn("--aggregate-test", "\n".join(s.get("run", "") for s in aggregate["steps"]))
-        # PyYAML's YAML1.1 parser treats the workflow key 'on' as True.
-        self.assertIn("merge_group", workflow.get("on", workflow.get(True)))
+        self.assertIn("    if: always()", aggregate)
+        self.assertIn("test '${{ needs.source.result }}' = 'success'", aggregate)
+        self.assertIn("test '${{ needs.transform-native.result }}' = 'success'", aggregate)
+        self.assertLess(aggregate.index("needs.source.result"), aggregate.index("uses: actions/checkout"))
+        self.assertIn("--aggregate-test", aggregate)
+        self.assertIn("  merge_group:", workflow)
 
 
 if __name__ == "__main__":
