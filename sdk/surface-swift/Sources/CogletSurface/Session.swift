@@ -67,6 +67,14 @@ public struct NativeObservationToken: Equatable, Sendable {
     fileprivate let session: UUID
 }
 
+/// Operation-scoped product event custody, independent of speech capture.
+public struct ExtensionObservationToken: Equatable, Sendable {
+    fileprivate let owner: String
+    fileprivate let operation: String
+    fileprivate let epoch: UInt64
+    fileprivate let session: UUID
+}
+
 /// Native callbacks are explicit. preflight MUST be side-effect-free; begin runs
 /// only after durable admission. Returning nil leaves the action pending until
 /// complete() with the captured epoch. Stop MUST synchronously fence native I/O.
@@ -88,6 +96,15 @@ public final class SurfaceSession {
     private let backend: any SurfaceNativeBackend
     private let boundCoglets: Set<String>
     private let operations: [String: SurfaceOperation]
+    private let contractProfile: SurfaceContractProfile
+    private let trustedCatalog: TrustedExtensionCatalog?
+    private var wireProfile: SurfaceContractProfile = .surface01
+    private var sessionOperations: [String: SurfaceOperation] {
+        if contractProfile == .surface02 && wireProfile == .surface01 {
+            return operations.filter { name, _ in SurfaceOperation.builtins.contains { $0.name == name } }
+        }
+        return operations
+    }
     private let clock: () -> UInt64
     private let correlation: () -> String
     private var lastClock: UInt64
@@ -101,28 +118,38 @@ public final class SurfaceSession {
     private var helloCorrelation: String?
     private var revision: UInt64 = 1
     private var grants: [EffectiveSurfaceGrant] = []
-    private var output: [(bytes: [UInt8], observationOwner: String?)] = []
+    private var output: [(bytes: [UInt8], observationOwner: String?, extensionOperation: String?)] = []
     private var observationTokens: [String: NativeObservationToken] = [:]
+    private var extensionTokens: [String: ExtensionObservationToken] = [:]
     private var normalizers: [String: SpeechObservations] = [:]
     public var grantEpoch: UInt64 { ledger.epoch }
     public var isKilled: Bool { ledger.killed }
 
     public init(identity: String, boundCoglets: Set<String>, operations: [SurfaceOperation],
-                store: any SurfaceLedgerStore, backend: any SurfaceNativeBackend, initialGrants: [EffectiveSurfaceGrant] = [],
+                store: any SurfaceLedgerStore, backend: any SurfaceNativeBackend,
+                contractProfile: SurfaceContractProfile = .surface01, trustedCatalog: TrustedExtensionCatalog? = nil,
+                initialGrants: [EffectiveSurfaceGrant] = [],
                 clock: @escaping () -> UInt64, correlation: @escaping () -> String = { UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased() }) throws {
         try CBORCodec.validate("common::surface-id", .text(identity))
         for owner in boundCoglets { try CBORCodec.validate("common::coglet-id", .text(owner)) }
         guard Set(operations.map(\.name)).count == operations.count else { throw SurfaceFailure.protocolViolation("duplicate operation") }
+        guard trustedCatalog == nil || trustedCatalog?.contractProfile == contractProfile else {
+            throw SurfaceFailure.protocolViolation("catalog/profile mismatch")
+        }
+        if let catalog = trustedCatalog, operations.contains(where: { operation in catalog.operations.contains { $0.name == operation.name } }), boundCoglets.count != 1 {
+            throw SurfaceFailure.protocolViolation("extension operations require exactly one bound owner")
+        }
         // No product/test/runtime authority can be invented by advertisement.
         for operation in operations {
-            guard let canonical = SurfaceOperation.builtins.first(where: { $0.name == operation.name }),
+            guard let canonical = (SurfaceOperation.builtins + (trustedCatalog?.operations ?? [])).first(where: { $0.name == operation.name }),
                   operation.entry == canonical.entry, operation.direction == canonical.direction,
                   operation.inputRule == canonical.inputRule, operation.outputRule == canonical.outputRule,
                   operation.resources == canonical.resources else { throw SurfaceFailure.protocolViolation("unknown or altered binding") }
         }
         self.operations = Dictionary(uniqueKeysWithValues: operations.map { ($0.name, $0) })
+        self.contractProfile = contractProfile; self.trustedCatalog = trustedCatalog
         self.boundCoglets = boundCoglets; self.backend = backend; self.clock = clock; self.correlation = correlation
-        self.ledger = try SurfaceLedger(store: store, identity: identity)
+        self.ledger = try SurfaceLedger(store: store, identity: identity, contractProfile: contractProfile, catalogPin: trustedCatalog?.pin)
         let now = clock(); self.lastClock = now; self.lastReceived = now; self.lastHealth = now
         backend.stop(owner: nil)
         guard ledger.epoch < UInt64.max else { throw SurfaceFailure.exhausted }
@@ -146,7 +173,7 @@ public final class SurfaceSession {
             let now = try sample()
             let id = correlation(); helloCorrelation = id; helloSent = true
             try emit(.message("hello", .record([("surface", .text(ledger.identity)),
-                ("offer", .record([("versions", .array([.text("0.1")]))])),
+                ("offer", .record([("versions", .array(contractProfile == .surface02 ? [.text("0.2"), .text("0.1")] : [.text("0.1")]))])),
                 ("clock", .unsigned(now)), ("correlation_id", .text(id))])))
         }
     }
@@ -159,7 +186,7 @@ public final class SurfaceSession {
               boundCoglets.contains(owner), let grant = grants.first(where: { $0.coglet == owner }),
               grant.expires > clock() else { throw NativeSurfaceError("permission_denied") }
         backend.stop(owner: owner)
-        output.removeAll { $0.observationOwner == owner }
+        output.removeAll { $0.observationOwner == owner && $0.extensionOperation == nil }
         let token = NativeObservationToken(owner: owner, epoch: epoch, session: UUID())
         observationTokens[owner] = token; normalizers[owner] = SpeechObservations()
         return token
@@ -168,7 +195,52 @@ public final class SurfaceSession {
         guard observationTokens[token.owner] == token else { return }
         backend.stop(owner: token.owner)
         observationTokens[token.owner] = nil; normalizers[token.owner] = nil
-        output.removeAll { $0.observationOwner == token.owner }
+        output.removeAll { $0.observationOwner == token.owner && $0.extensionOperation == nil }
+    }
+
+    public func openExtensionObservationSession(owner: String, operation: String, epoch: UInt64) throws -> ExtensionObservationToken {
+        let now = try sample()
+        guard connected, negotiated, let binding = sessionOperations[operation], binding.direction == .event,
+              trustedCatalog?.operations.contains(where: { $0.name == operation }) == true else { throw NativeSurfaceError("permission_denied") }
+        try authorize(owner: owner, operation: binding, epoch: epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
+        output.removeAll { $0.observationOwner == owner && $0.extensionOperation == operation }
+        let token = ExtensionObservationToken(owner: owner, operation: operation, epoch: epoch, session: UUID())
+        extensionTokens[owner + "/" + operation] = token
+        return token
+    }
+
+    public func closeExtensionObservationSession(_ token: ExtensionObservationToken) {
+        let key = token.owner + "/" + token.operation
+        guard extensionTokens[key] == token else { return }
+        extensionTokens[key] = nil
+        output.removeAll { $0.observationOwner == token.owner && $0.extensionOperation == token.operation }
+    }
+
+    /// Hosts must fence already-drained/partial transport frames on custody
+    /// change. Never acquire a new token inside an old native callback.
+    public func extensionObservationIsCurrent(_ token: ExtensionObservationToken) -> Bool {
+        connected && negotiated && !ledger.killed && token.epoch == ledger.epoch &&
+            extensionTokens[token.owner + "/" + token.operation] == token &&
+            sessionOperations[token.operation] != nil &&
+            grants.contains { $0.coglet == token.owner && $0.expires > clock() && $0.operations.contains(token.operation) }
+    }
+
+    @discardableResult
+    public func publishExtensionObservation(_ token: ExtensionObservationToken, payload: CBORValue) throws -> Bool {
+        guard extensionObservationIsCurrent(token) else { return false }
+        try guarded {
+            let now = try sample()
+            let binding = sessionOperations[token.operation]!
+            try authorize(owner: token.owner, operation: binding, epoch: token.epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
+            try check(binding, output: false, value: payload)
+            if let read = try trustedCatalog?.selectedRead(operation: token.operation, value: payload) {
+                guard let selected = sessionOperations[read], selected.direction == .read else { throw NativeSurfaceError("permission_denied") }
+                try authorize(owner: token.owner, operation: selected, epoch: token.epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
+            }
+            try emitEvent(kind: token.operation, payload: payload, correlationID: correlation(), now: now,
+                observationOwner: token.owner, extensionOperation: token.operation)
+        }
+        return true
     }
 
     /// false = fenced session or stale/late transcript, with no event/sequence.
@@ -180,7 +252,8 @@ public final class SurfaceSession {
         var published = false
         try guarded {
             let now = try sample()
-            guard let operation = operations[kind], operation.direction == .event else { throw NativeSurfaceError("permission_denied") }
+            guard let operation = operations[kind], operation.direction == .event,
+                  SurfaceOperation.builtins.contains(where: { $0.name == kind }) else { throw NativeSurfaceError("permission_denied") }
             try authorize(owner: token.owner, operation: operation, epoch: token.epoch, deadline: now == UInt64.max ? now : now + 1, now: now)
             try CBORCodec.validate(operation.inputRule, payload)
             let normalizer = normalizers[token.owner]!
@@ -199,14 +272,16 @@ public final class SurfaceSession {
     public func receive(_ bytes: [UInt8]) throws {
         try guarded {
             guard connected, helloSent else { throw SurfaceFailure.closed }
-            let message = try SurfaceWire.decode(bytes, from: .runtime)
+            let message = try SurfaceWire.decode(bytes, from: .runtime, contractProfile: wireProfile)
             let type = message["type"]!.textValue!, body = message["body"]!
             let now = try sample()
             if !negotiated {
                 guard type == "hello_reply", body["correlation_id"] == helloCorrelation.map(CBORValue.text),
-                      body["selection"]?["version"] == .text("0.1") else {
+                      let version = body["selection"]?["version"]?.textValue,
+                      version == "0.1" || (version == "0.2" && contractProfile == .surface02) else {
                     throw SurfaceFailure.protocolViolation("invalid negotiation")
                 }
+                wireProfile = version == "0.2" ? .surface02 : .surface01
                 negotiated = true; lastReceived = now
                 try publishCapabilities(now: now)
                 try publishGrants()
@@ -237,7 +312,7 @@ public final class SurfaceSession {
             guard ledger.epoch < UInt64.max else { throw SurfaceFailure.exhausted }
             backend.stop(owner: nil)
             output.removeAll { $0.observationOwner != nil }
-            observationTokens = [:]; normalizers = [:]
+            observationTokens = [:]; extensionTokens = [:]; normalizers = [:]
             try cancelPending(status: "cancelled", code: "cancelled", now: now, deliver: false)
             ledger.epoch += 1; grants = replacement
             try ledger.save()
@@ -255,7 +330,7 @@ public final class SurfaceSession {
                 try installGrants(survivors)
             }
             for (key, record) in ledger.records where record.accept["accepted"] == .boolean(true) && record.outcome == nil {
-                let request = try SurfaceWire.decode(record.envelope, from: .runtime)["body"]!["action"]!
+                let request = try SurfaceWire.decode(record.envelope, from: .runtime, contractProfile: contractProfile)["body"]!["action"]!
                 if request["deadline"]!.uintValue! <= now {
                     backend.stop(owner: request["coglet"]!.textValue!)
                     try terminal(key: key, status: "expired", value: NativeSurfaceError("deadline_exceeded").value, now: now)
@@ -273,7 +348,7 @@ public final class SurfaceSession {
             guard connected, !ledger.killed, epoch == ledger.epoch else { return }
             let key = owner + "/" + id
             guard let record = ledger.records[key], record.accept["accepted"] == .boolean(true), record.outcome == nil else { return }
-            let request = try SurfaceWire.decode(record.envelope, from: .runtime)["body"]!["action"]!
+            let request = try SurfaceWire.decode(record.envelope, from: .runtime, contractProfile: contractProfile)["body"]!["action"]!
             let now = try sample()
             guard let grant = grants.first(where: { $0.coglet == owner }), grant.expires > now else {
                 try installGrants(grants.filter { $0.expires > now })
@@ -287,7 +362,7 @@ public final class SurfaceSession {
             switch result {
             case .succeeded(let value):
                 let operation = operations[request["capability"]!.textValue!]!
-                try CBORCodec.validate(operation.outputRule!, value)
+                try check(operation, output: true, value: value)
                 try terminal(key: key, status: "succeeded", value: value, now: now)
             case .failed(let error): try terminal(key: key, status: "failed", value: error.value, now: now)
             }
@@ -304,7 +379,7 @@ public final class SurfaceSession {
             if ledger.epoch < UInt64.max { ledger.epoch += 1 }
             let now = lastClock
             output.removeAll { $0.observationOwner != nil }
-            observationTokens = [:]; normalizers = [:]
+            observationTokens = [:]; extensionTokens = [:]; normalizers = [:]
             try cancelPending(status: "cancelled", code: "cancelled", now: now, deliver: false)
             try ledger.save()
             if connected && negotiated {
@@ -336,7 +411,7 @@ public final class SurfaceSession {
         backend.stop(owner: nil)
         guard connected else { return }
         connected = false; grants = []; output = []
-        observationTokens = [:]; normalizers = [:]
+        observationTokens = [:]; extensionTokens = [:]; normalizers = [:]
         // Even on storage failure, never resume effects. Reopen must reconcile.
         do {
             try cancelPending(status: "cancelled", code: "cancelled", now: lastClock, deliver: false)
@@ -368,19 +443,22 @@ public final class SurfaceSession {
         guard now >= lastClock else { throw SurfaceFailure.protocolViolation("surface clock rollback") }
         lastClock = now; return now
     }
-    private func emit(_ value: CBORValue, observationOwner: String? = nil) throws {
+    private func emit(_ value: CBORValue, observationOwner: String? = nil, extensionOperation: String? = nil) throws {
         guard output.count < SurfaceWire.maximumQueuedMessages else { throw SurfaceFailure.exhausted }
-        output.append((try SurfaceWire.encode(value, from: .surface), observationOwner))
+        output.append((try SurfaceWire.encode(value, from: .surface, contractProfile: wireProfile), observationOwner, extensionOperation))
     }
     private func publishCapabilities(now: UInt64) throws {
-        let entries = Set(operations.values.map(\.entry)).sorted().map { entry in
-            let selected = operations.values.filter { $0.entry == entry }.sorted { $0.name < $1.name }
+        let entries = Set(sessionOperations.values.map(\.entry)).sorted().map { entry in
+            let selected = sessionOperations.values.filter { $0.entry == entry }.sorted { $0.name < $1.name }
             return CBORValue.record([("name", .text(entry)),
                 ("events", .array(selected.filter { $0.direction == .event }.map { .text($0.name) })),
                 ("reads", .array(selected.filter { $0.direction == .read }.map { .text($0.name) })),
                 ("actions", .array(selected.filter { $0.direction == .action }.map { .text($0.name) })),
                 ("exclusive", .array(Set(selected.flatMap(\.resources)).sorted().map(CBORValue.text))),
                 ("schemas", .map(selected.map { operation in
+                    if trustedCatalog?.operations.contains(where: { $0.name == operation.name }) == true {
+                        return CBORMapEntry(operation.name, .text(trustedCatalog!.schemaURI(operation: operation.name)))
+                    }
                     let rule = operation.direction == .read ? operation.outputRule! : operation.inputRule
                     let parts = rule.components(separatedBy: "::")
                     return CBORMapEntry(operation.name, .text("https://coglet.dev/spec/messages/" + parts[0] + ".schema.json#/$defs/" + parts[1]))
@@ -390,13 +468,19 @@ public final class SurfaceSession {
             ("entries", .array(entries)), ("correlation_id", .text(correlation()))])))
     }
     private func publishGrants() throws {
+        let allowed = sessionOperations
+        let availableResources = Set(allowed.values.flatMap(\.resources))
+        let selected = grants.map { grant in
+            EffectiveSurfaceGrant(coglet: grant.coglet, operations: grant.operations.intersection(Set(allowed.keys)),
+                resources: grant.resources.intersection(availableResources), expires: grant.expires)
+        }
         try emit(.message("grants", .record([("epoch", .unsigned(ledger.epoch)),
-            ("entries", .array(grants.map(\.value))), ("correlation_id", .text(correlation()))])))
+            ("entries", .array(selected.map(\.value))), ("correlation_id", .text(correlation()))])))
     }
     private func validateGrants(_ replacement: [EffectiveSurfaceGrant], now: UInt64) throws {
         var owners = Set<String>(), resources = Set<String>()
         for grant in replacement {
-            try CBORCodec.validate("surface::grant", grant.value)
+            try CBORCodec.validate(contractProfile.rule("surface::grant"), grant.value)
             guard boundCoglets.contains(grant.coglet), grant.expires > now,
                   owners.insert(grant.coglet).inserted,
                   grant.operations.allSatisfy({ operations[$0] != nil }),
@@ -407,7 +491,7 @@ public final class SurfaceSession {
         }
     }
     private func authorize(owner: String, operation: SurfaceOperation, epoch: UInt64, deadline: UInt64, now: UInt64) throws {
-        guard boundCoglets.contains(owner), !ledger.killed, epoch == ledger.epoch,
+        guard sessionOperations[operation.name] != nil, boundCoglets.contains(owner), !ledger.killed, epoch == ledger.epoch,
               let grant = grants.first(where: { $0.coglet == owner }), grant.expires > now,
               grant.operations.contains(operation.name), Set(operation.resources).isSubset(of: grant.resources) else {
             throw NativeSurfaceError("permission_denied")
@@ -420,10 +504,10 @@ public final class SurfaceSession {
         do {
             guard let operation = operations[name], operation.direction == .read else { throw NativeSurfaceError("permission_denied") }
             try authorize(owner: owner, operation: operation, epoch: body["grant_epoch"]!.uintValue!, deadline: body["deadline"]!.uintValue!, now: now)
-            do { try CBORCodec.validate(operation.inputRule, body["args"]!) }
+            do { try check(operation, output: false, value: body["args"]!) }
             catch { throw NativeSurfaceError("invalid_argument") }
             let value = try backend.read(operation: name, args: body["args"]!, owner: owner, now: now)
-            try CBORCodec.validate(operation.outputRule!, value)
+            try check(operation, output: true, value: value)
             if name == "speech.heard", value["item"] != body["args"]?["item"] {
                 throw SurfaceFailure.protocolViolation("heard result item does not match retained query")
             }
@@ -437,7 +521,7 @@ public final class SurfaceSession {
         let body = message["body"]!, action = body["action"]!, owner = action["coglet"]!.textValue!
         let key = owner + "/" + action["id"]!.textValue!
         // Authenticated binding precedes historical lookup, current grants do not.
-        guard boundCoglets.contains(owner) else {
+        guard boundCoglets.contains(owner), sessionOperations[action["capability"]!.textValue!] != nil else {
             try emit(.message("accept", accept(action, error: NativeSurfaceError("permission_denied"))))
             return
         }
@@ -459,7 +543,7 @@ public final class SurfaceSession {
             guard let operation = operations[name], operation.direction == .action else { throw NativeSurfaceError("permission_denied") }
             try authorize(owner: owner, operation: operation, epoch: body["grant_epoch"]!.uintValue!, deadline: action["deadline"]!.uintValue!, now: now)
             do {
-                try CBORCodec.validate(operation.inputRule, action["args"]!)
+                try check(operation, output: false, value: action["args"]!)
                 if name == "speech.speak_chunk", let text = action["args"]?["text"]?.textValue,
                    text.utf8.count > 4096 { throw NativeSurfaceError("invalid_argument") }
             } catch { throw NativeSurfaceError("invalid_argument") }
@@ -472,7 +556,11 @@ public final class SurfaceSession {
         try emit(.message("accept", receipt))
         guard rejection == nil else { return }
         let result: NativeSurfaceResult?
-        do { result = try backend.begin(action: action, epoch: ledger.epoch, now: now) }
+        do {
+            let effectTime = try sample()
+            try authorize(owner: owner, operation: operations[name]!, epoch: body["grant_epoch"]!.uintValue!, deadline: action["deadline"]!.uintValue!, now: effectTime)
+            result = try backend.begin(action: action, epoch: ledger.epoch, now: effectTime)
+        }
         catch {
             backend.stop(owner: owner)
             try terminal(key: key, status: "failed", value: NativeSurfaceError("unavailable").value, now: now)
@@ -483,6 +571,13 @@ public final class SurfaceSession {
         }
     }
     private var pending: Int { ledger.records.values.filter { $0.accept["accepted"] == .boolean(true) && $0.outcome == nil }.count }
+    private func check(_ operation: SurfaceOperation, output: Bool, value: CBORValue) throws {
+        if trustedCatalog?.operations.contains(where: { $0.name == operation.name }) == true {
+            try trustedCatalog!.check(operation: operation.name, output: output, value: value)
+        } else {
+            try CBORCodec.validate(output ? operation.outputRule! : operation.inputRule, value)
+        }
+    }
     private func accept(_ action: CBORValue, error: NativeSurfaceError?) -> CBORValue {
         var entries: [(String, CBORValue)] = [("id", action["id"]!), ("correlation_id", action["correlation_id"]!), ("accepted", .boolean(error == nil))]
         if let error { entries.append(("error", error.value)) }
@@ -503,13 +598,13 @@ public final class SurfaceSession {
     private func emitOutcome(_ outcome: CBORValue, now: UInt64) throws {
         try emitEvent(kind: "action.outcome", payload: outcome, correlationID: outcome["correlation_id"]!.textValue!, now: now)
     }
-    private func emitEvent(kind: String, payload: CBORValue, correlationID: String, now: UInt64, observationOwner: String? = nil) throws {
+    private func emitEvent(kind: String, payload: CBORValue, correlationID: String, now: UInt64, observationOwner: String? = nil, extensionOperation: String? = nil) throws {
         guard ledger.sequence < UInt64.max else { throw SurfaceFailure.exhausted }
         let seq = ledger.sequence; ledger.sequence += 1
         try ledger.save()
         try emit(.message("event", .record([("source", .text(ledger.identity)), ("kind", .text(kind)),
             ("seq", .unsigned(seq)), ("logical_time", .unsigned(now)), ("payload", payload),
-            ("correlation_id", .text(correlationID))])), observationOwner: observationOwner)
+            ("correlation_id", .text(correlationID))])), observationOwner: observationOwner, extensionOperation: extensionOperation)
     }
     private func cancelPending(status: String, code: String, now: UInt64, deliver: Bool = true) throws {
         for (key, record) in ledger.records where record.accept["accepted"] == .boolean(true) && record.outcome == nil {
