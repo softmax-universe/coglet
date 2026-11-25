@@ -224,6 +224,8 @@ private actor RuntimeExecutor {
     // Internal manual-pump mode isolates lifecycle tests from background ticks.
     // Production hosts always keep the default.
     var automaticallyPolls = true
+    // Deterministic cancellation at the submission/actor handoff boundary.
+    var beforeTranscriptHandoff: (() -> Void)?
     private var busy = false
     public init(directory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Softmax/runtime", isDirectory: true)) {
         self.directory = directory
@@ -268,6 +270,7 @@ private actor RuntimeExecutor {
     }
     public func submitTranscript(_ text: String, generation expected: UInt64) async {
         guard state == .running, !busy, generation == expected else { return }
+        beforeTranscriptHandoff?()
         do {
             let received = try await executor.transcript(text, generation: expected)
             if generation == expected { deliver(received) }

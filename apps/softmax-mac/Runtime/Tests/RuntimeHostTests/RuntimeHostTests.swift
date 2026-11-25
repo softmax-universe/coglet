@@ -67,6 +67,15 @@ final class RuntimeHostTests: XCTestCase {
         late(); host.complete(interrupted)
         await host.poll()
         XCTAssertEqual(try outcome(interrupted)?["error"]?["code"], .text("cancelled"))
+        let cancelledActionCount = host.actions.count, cancelledCallbackCount = device.callbacks.count
+        host.beforeTranscriptHandoff = { host.cancelOutput() }
+        await host.submitTranscript("Submitted before local Stop", generation: host.generation)
+        host.beforeTranscriptHandoff = nil
+        await host.poll()
+        XCTAssertEqual(host.actions.count, cancelledActionCount, "older submission must not reopen a newer suspension")
+        XCTAssertEqual(device.callbacks.count, cancelledCallbackCount)
+        host.cancelOutput()
+        await host.poll()
         // A rendered receipt is terminal even if lifecycle teardown beats the
         // polling task. Exercise the real ledger, not only the output mailbox.
         let stopActionCount = host.actions.count, stopCallbackCount = device.callbacks.count

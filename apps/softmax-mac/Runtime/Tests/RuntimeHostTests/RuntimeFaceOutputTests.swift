@@ -30,6 +30,25 @@ import FaceMac
 }
 
 final class RuntimeFaceOutputTests: XCTestCase {
+    @MainActor func testNewCaptureInStreamGapFencesDelayedChunk() throws {
+        let keys = RuntimeNativeKeys()
+        let ptt = PushToTalk(keys: keys, audio: RuntimeNativeCapture())
+        ptt.permissions = .init(microphone: .granted, inputMonitoring: .granted); ptt.start()
+        let device = RuntimeNativePlaybackDevice()
+        let player = RuntimeSpeechPlayback(session: FacePlaybackSession(ptt: ptt, speech: FaceSpeechSink(device: device)), synthesis: RuntimeNativeSynthesis())
+        ptt.stopPlayback = { player.stop() }
+        player.enqueue(text: "first", stream: "gap", chunk: 0, final: false) { _ in }
+        device.renderedFrames = 2; try XCTUnwrap(device.callbacks.last)()
+        XCTAssertEqual(ptt.state, .idle)
+        keys.onEvent?(.press)
+        XCTAssertEqual(ptt.state, .listening)
+        var delayedResult: String?
+        player.enqueue(text: "old continuation", stream: "gap", chunk: 1, final: true) { delayedResult = $0 }
+        XCTAssertEqual(ptt.state, .listening, "old output must not cancel new capture")
+        XCTAssertEqual(device.callbacks.count, 1, "no old stream PCM after new capture")
+        XCTAssertEqual(delayedResult, "conflict")
+        player.stop(); ptt.shutdown()
+    }
     @MainActor func testPlayedBackReceiptSurvivesStopBeforeReconciliation() throws {
         let output = RuntimeFaceOutput {}
         output.resume()

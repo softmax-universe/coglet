@@ -32,6 +32,26 @@ import FaceMac
     func stop() -> [PCMFrame] { [] }
 }
 final class RuntimeSpeechPlaybackTests: XCTestCase {
+    @MainActor func testNewCaptureInStreamGapFencesDelayedChunk() throws {
+        let keys = BridgeKeys(); let ptt = PushToTalk(keys: keys, audio: BridgeCapture())
+        ptt.permissions = .init(microphone: .granted, inputMonitoring: .granted); ptt.start()
+        let synth = BridgeTestSynthesis(); let device = BridgeTestDevice()
+        let player = RuntimeSpeechPlayback(session: FacePlaybackSession(ptt: ptt, speech: FaceSpeechSink(device: device)), synthesis: synth)
+        ptt.stopPlayback = { player.stop() }
+        player.enqueue(text: "first", stream: "gap", chunk: 0, final: false) { _ in }
+        let frame = PCMFrame(samples: [0.1], sampleRate: 16000, timestamp: 0)
+        synth.completions[0](.success([frame]))
+        device.renderedFrames = 1; device.callbacks[0]()
+        XCTAssertEqual(ptt.state, .idle)
+        keys.onEvent?(.press)
+        XCTAssertEqual(ptt.state, .listening)
+        var delayedResult: String?
+        player.enqueue(text: "old continuation", stream: "gap", chunk: 1, final: true) { delayedResult = $0 }
+        XCTAssertEqual(ptt.state, .listening, "old output must not cancel new capture")
+        XCTAssertEqual(synth.completions.count, 1, "old stream must not synthesize after a new press")
+        XCTAssertEqual(delayedResult, "conflict")
+        player.stop(); ptt.shutdown()
+    }
     @MainActor func testExpiredSynthesisCannotStartNativePlayback() throws {
         let ptt = PushToTalk(keys: BridgeKeys(), audio: BridgeCapture())
         let synth = BridgeTestSynthesis(); let device = BridgeTestDevice()
