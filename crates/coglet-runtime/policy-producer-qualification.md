@@ -37,7 +37,12 @@ runtime code. No M3 acceptance or merge-readiness is claimed here.
 ## Publication boundary
 
 The opt-in adapter path constructs the frame outside the output mutex, then does
-exactly one `send(MSG_DONTWAIT | MSG_NOSIGNAL)` under output custody. Backpressure,
+exactly one `send(MSG_DONTWAIT | MSG_NOSIGNAL)` under output custody. The exclusively
+owned transport stream is temporarily set `O_NONBLOCK` and its original flags
+restored under the same custody: Darwin Unix sockets can block despite the
+per-call `MSG_DONTWAIT` flag. `publication_preserves_an_already_nonblocking_stream`
+and the backpressure test verify flag restoration for successful and failed
+publication. The transport has no cloned descriptor or concurrent read. Backpressure,
 errors or a short send terminate that connection; the prepared durable dispatch is
 not relabeled physically successful. Revoke closes the state first, then drains
 that one syscall; it never times out and returns while an in-flight writer can

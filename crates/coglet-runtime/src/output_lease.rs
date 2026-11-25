@@ -110,11 +110,28 @@ impl OutputGate {
     /// Expose one complete framed buffer with exactly one nonblocking syscall.
     /// A short write or backpressure ends the connection; never wait for a peer
     /// while holding publication custody. Buffer construction happens outside.
-    pub(crate) fn send(&self, stream: &std::os::unix::net::UnixStream, frame: &[u8]) -> Result<()> {
+    pub(crate) fn send(
+        &self,
+        stream: &mut std::os::unix::net::UnixStream,
+        frame: &[u8],
+    ) -> Result<()> {
         use std::os::fd::AsRawFd;
+        // This transport owns the stream exclusively, without cloned descriptors
+        // or concurrent readers. Darwin Unix sockets can block despite per-call
+        // MSG_DONTWAIT, so set O_NONBLOCK for the publication and restore the
+        // original descriptor flags before the transport resumes its reads.
         self.publish(|| {
-            // SAFETY: stream owns a live fd; frame is readable for frame.len().
-            // MSG_DONTWAIT is per-call and does not alter concurrent reads.
+            let fd = stream.as_raw_fd();
+            // SAFETY: fd is a live socket; F_GETFL takes no third argument.
+            let flags = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+            if flags < 0 {
+                return Err(std::io::Error::last_os_error().to_string());
+            }
+            // SAFETY: F_SETFL takes the flags returned by F_GETFL plus O_NONBLOCK.
+            if unsafe { libc::fcntl(fd, libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0 {
+                return Err(std::io::Error::last_os_error().to_string());
+            }
+            // SAFETY: stream owns a live nonblocking fd; frame is readable for frame.len().
             let sent = unsafe {
                 libc::send(
                     stream.as_raw_fd(),
@@ -123,13 +140,20 @@ impl OutputGate {
                     libc::MSG_DONTWAIT | libc::MSG_NOSIGNAL,
                 )
             };
-            if sent < 0 {
+            let result = if sent < 0 {
                 Err(std::io::Error::last_os_error().to_string())
             } else if sent as usize != frame.len() {
                 Err("unavailable: partial output frame; closing connection".into())
             } else {
                 Ok(())
+            };
+            // SAFETY: fd remains live and flags are its original F_GETFL result.
+            // A restore failure closes the connection, never resumes reads with
+            // unexpected flags or retries publication.
+            if unsafe { libc::fcntl(fd, libc::F_SETFL, flags) } < 0 {
+                return Err(std::io::Error::last_os_error().to_string());
             }
+            result
         })?
     }
     /// The only production caller is `send`: do not place blocking callbacks,
@@ -214,29 +238,66 @@ mod tests {
     #[test]
     fn nonreading_peer_cannot_hold_revoke_or_expose_after_return() {
         use std::io::Read;
-        let (writer, mut reader) = std::os::unix::net::UnixStream::pair().unwrap();
+        use std::os::fd::AsRawFd;
+        let (mut writer, mut reader) = std::os::unix::net::UnixStream::pair().unwrap();
+        // SAFETY: writer owns the live socket descriptor.
+        let original_flags = unsafe { libc::fcntl(writer.as_raw_fd(), libc::F_GETFL) };
+        assert!(original_flags >= 0);
+        reader
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
         let gate = OutputGate::new_closed();
         gate.enable().unwrap();
         let bytes = [42u8; 4096];
         let started = std::time::Instant::now();
         let mut writes = 0;
-        while gate.send(&writer, &bytes).is_ok() {
+        while gate.send(&mut writer, &bytes).is_ok() {
             writes += 1;
+            // SAFETY: writer still owns this live descriptor.
+            assert_eq!(
+                unsafe { libc::fcntl(writer.as_raw_fd(), libc::F_GETFL) },
+                original_flags
+            );
             assert!(writes < 4096, "socket buffer never reached backpressure");
         }
+        // Failed/backpressured publication also restores flags before reads.
+        // SAFETY: writer still owns this live descriptor.
+        assert_eq!(
+            unsafe { libc::fcntl(writer.as_raw_fd(), libc::F_GETFL) },
+            original_flags
+        );
         assert!(writes > 0, "authorized pre-revoke publication control");
         assert!(
             started.elapsed() < Duration::from_secs(1),
             "send blocked on a nonreading peer"
         );
         gate.revoke().unwrap();
-        assert!(gate.send(&writer, b"post-return").is_err());
+        assert!(gate.send(&mut writer, b"post-return").is_err());
         drop(writer);
         let mut received = Vec::new();
         reader.read_to_end(&mut received).unwrap();
         assert!(received.len() >= writes * bytes.len());
         assert!(received.iter().all(|b| *b == 42));
         assert!(!gate.is_open());
+    }
+
+    #[test]
+    fn publication_preserves_an_already_nonblocking_stream() {
+        use std::os::fd::AsRawFd;
+        let (mut writer, _reader) = std::os::unix::net::UnixStream::pair().unwrap();
+        writer.set_nonblocking(true).unwrap();
+        // SAFETY: writer owns this live socket descriptor.
+        let flags = unsafe { libc::fcntl(writer.as_raw_fd(), libc::F_GETFL) };
+        assert!(flags >= 0);
+        assert_ne!(flags & libc::O_NONBLOCK, 0);
+        let gate = OutputGate::new_closed();
+        gate.enable().unwrap();
+        gate.send(&mut writer, b"authorized").unwrap();
+        // SAFETY: writer still owns this live descriptor.
+        assert_eq!(
+            unsafe { libc::fcntl(writer.as_raw_fd(), libc::F_GETFL) },
+            flags
+        );
     }
 
     #[test]
