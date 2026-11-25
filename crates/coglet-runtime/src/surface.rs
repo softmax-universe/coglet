@@ -68,6 +68,7 @@ pub struct SurfaceSession {
     read_results: VecDeque<(String, Value)>,
     read_result_authority: BTreeMap<String, reads::PendingRead>,
     heard_reads: BTreeSet<String>,
+    read_expiry_diagnostics: VecDeque<Value>,
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
     sent_dispatches: BTreeSet<String>,
 }
@@ -107,6 +108,7 @@ impl SurfaceSession {
             read_results: VecDeque::new(),
             read_result_authority: BTreeMap::new(),
             heard_reads: BTreeSet::new(),
+            read_expiry_diagnostics: VecDeque::new(),
             service: None,
             sent_dispatches: BTreeSet::new(),
         }

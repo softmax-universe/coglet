@@ -11,6 +11,13 @@ pub(super) struct PendingRead {
 }
 
 impl SurfaceSession {
+    /// Bounded local diagnostics for trusted native supervision, not guest or
+    /// wire data. Retains at most SURFACE_QUEUE entries, including after close.
+    /// Adapter FIFO depth is null because it is not observable here.
+    pub fn read_expiry_diagnostics(&self) -> impl Iterator<Item = &Value> {
+        self.read_expiry_diagnostics.iter()
+    }
+
     pub(crate) fn pump_supervisor_reads(&mut self, now: u64) -> Result<()> {
         let Some(service) = self.service.clone() else {
             return Ok(());
@@ -177,14 +184,33 @@ impl SurfaceSession {
             })
             .collect();
         for (id, code) in expired {
-            if self.heard_reads.remove(&id) && code == "deadline_exceeded" {
-                self.disconnect();
-                return;
-            }
+            self.heard_reads.remove(&id);
             let read = self.reads.remove(&id).unwrap();
+            if now >= read.deadline {
+                // The adapter's outgoing FIFO is outside this synchronous
+                // boundary. Unknown is NOT a measured zero. IDs were validated
+                // by enqueue; never include private args/text/frame bytes.
+                let diagnostic = json!({"event":"surface.read_expired",
+                    "read_id":id,"issued_deadline":read.deadline,"expiry_tick":now,
+                    "queued_inbound_frames_ahead":null});
+                // Native C callers must not unwind if their stderr sink closes.
+                use std::io::Write;
+                let _ = writeln!(std::io::stderr().lock(), "{diagnostic}");
+                if self.read_expiry_diagnostics.len() == SURFACE_QUEUE {
+                    self.read_expiry_diagnostics.pop_front();
+                }
+                self.read_expiry_diagnostics.push_back(diagnostic);
+            }
             self.remove_queued_read(&id);
-            self.read_results.push_back((read.coglet, json!({"correlation_id":id,
+            // Keep the durable heard_pending fence: expiry is not a heard
+            // observation and must neither release reasoning nor invent history.
+            // Do not disconnect/purge before the native caller can consume this.
+            self.read_results.push_back((read.coglet.clone(), json!({"correlation_id":id,
                 "ok":false,"error":{"code":code,"message":"Native read expired or revoked","retryable":false}})));
+            if code == "deadline_exceeded" {
+                // Revocation must also fence an unconsumed negative completion.
+                self.read_result_authority.insert(id, read);
+            }
         }
         // A revoked owner must not receive already queued private results.
         let revoked: Vec<_> = self
