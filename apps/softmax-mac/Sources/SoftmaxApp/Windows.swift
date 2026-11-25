@@ -165,7 +165,7 @@ struct SettingsView: View {
                                 registry: model.appControls, window: "settings", route: "hotkey", sensitive: true,
                                 failure: model.appControlFailure) { model.openPrivacy("Privacy_ListenEvent") }
                         case .audio:
-                            MicrophoneControls(model: model)
+                            MicrophoneControls(model: model, window: "settings", route: "audio", idPrefix: "settings.audio")
                             Text("Default system input · voice processing and echo cancellation enabled.")
                             CogletToggle("Play sound cues", id: "settings.audio.sound_cues", registry: model.appControls,
                                 window: "settings", route: "audio", isOn: $model.startSound, failure: model.appControlFailure)
@@ -269,7 +269,7 @@ struct OnboardingView: View {
                     case 1:
                         Text("Let Softmax hear you.").softmaxFont(SoftmaxDesignTokens.fontTitle, weight: .semibold)
                         Text("Microphone access is used when you hold to talk. Release the shortcut to send. No always-on listening in v1.")
-                        MicrophoneControls(model: model)
+                        MicrophoneControls(model: model, window: "onboarding", route: "permissions", idPrefix: "onboarding.permissions")
                         Divider()
                         Text("Input Monitoring lets Right Option activate push-to-talk outside Softmax. Typed text is not retained.")
                         Text("Input Monitoring: \(model.permissions.inputMonitoring.rawValue)")

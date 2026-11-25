@@ -140,7 +140,12 @@ public final class ControlRegistry {
         guard revision < UInt64.max else { throw ControlRegistryFailure.exhausted }
         guard authorized() else { throw ControlRegistryFailure.permissionDenied }
         try entry.invoke(request.args)
-        try controlChanged(entry.mount, force: entry.secure || entry.sensitive)
+        // A shared native command may synchronously dismiss/unmount its own
+        // control. Its applied effect is not a failure, and its successor must
+        // never supply a value/change event for the old mounted request.
+        if entries[entry.mount.id]?.mount == entry.mount {
+            try controlChanged(entry.mount, force: entry.secure || entry.sensitive)
+        }
     }
 
     /// Capture the exact mounted focus target before queuing a UI request.

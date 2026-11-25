@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import SoftmaxCore
+import SoftmaxAppSurface
 
 /// Owns both panels. Hiding the optional orb also hides its attached conversation.
 @MainActor
@@ -140,6 +141,8 @@ private final class OrbButton: NSButton {
 struct ConversationView: View {
     @ObservedObject var model: ShellModel
     @State private var draft = ""
+    @FocusState private var draftFocused: Bool
+    private var route: String { model.voicePanelSelected ? "voice" : "chat" }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -148,21 +151,44 @@ struct ConversationView: View {
                     Text("Chat").tag(false)
                     Text("Voice").tag(true)
                 }.pickerStyle(.segmented)
+                    .coglet(id: "chat.mode", registry: model.appControls, window: "chat", route: route,
+                        role: "picker", label: "Conversation mode", verbs: ["select"], value: {
+                            .map([.init("kind", .text("selection")), .init("value", .text(route))])
+                        }, failure: model.appControlFailure, invoke: { args in
+                            guard case .map(let fields) = args,
+                                  let field = fields.first(where: { $0.key == "value" }), case .text(let choice) = field.value,
+                                  ["chat", "voice"].contains(choice) else { throw ControlRegistryFailure.unsupported }
+                            model.voicePanelSelected = choice == "voice"
+                        })
                 Menu {
-                    Button("Clear draft") { draft = "" }
-                    Button("Hide orb") { model.orbEnabled = false }
+                    CogletButton("Clear draft", id: "chat.clear_draft", registry: model.appControls, window: "chat",
+                        route: route, failure: model.appControlFailure) { draft = "" }
+                    CogletButton("Hide orb", id: "chat.hide_orb", registry: model.appControls, window: "chat",
+                        route: route, failure: model.appControlFailure) { model.orbEnabled = false }
                 } label: { Image(systemName: "ellipsis.circle") }.fixedSize()
             }
             if model.voicePanelSelected {
                 Text("Voice").font(.title2)
-                MicrophoneControls(model: model)
+                MicrophoneControls(model: model, window: "chat", route: "voice", idPrefix: "chat.voice")
                 Text("Use the push-to-talk hotkey to capture audio. Runtime speech delivery is not connected yet.")
                 Text("Push-to-talk: \(model.state.rawValue)")
             } else {
                 Text("Chat").font(.title2)
                 Text("Your local runtime is not connected yet. Draft a message here; sending will be available once connected.")
-                TextEditor(text: $draft).accessibilityLabel("Message draft")
-                Button("Send") {}.disabled(true)
+                TextEditor(text: $draft).accessibilityLabel("Message draft").focused($draftFocused)
+                    .coglet(id: "chat.draft", registry: model.appControls, window: "chat", route: "chat", role: "text_editor",
+                        label: "Message draft", verbs: ["type_text"], value: {
+                            .map([.init("kind", .text("text")), .init("value", .text(draft))])
+                        }, focus: { draftFocused = true; return true }, focused: { draftFocused },
+                        failure: model.appControlFailure, invoke: { args in
+                            guard case .map(let fields) = args,
+                                  let field = fields.first(where: { $0.key == "value" }), case .text(let text) = field.value else {
+                                throw ControlRegistryFailure.unsupported
+                            }
+                            draft = text
+                        })
+                CogletButton("Send", id: "chat.send", registry: model.appControls, window: "chat", route: "chat",
+                    failure: model.appControlFailure) {}.disabled(true)
             }
             Spacer(minLength: 0)
             Text("Hub offline · Runtime not connected").font(.caption).foregroundStyle(.secondary)
@@ -172,6 +198,15 @@ struct ConversationView: View {
 
 struct MicrophoneControls: View {
     @ObservedObject var model: ShellModel
+    let window: String
+    let route: String
+    let idPrefix: String
+    @ViewBuilder private var permissionButtons: some View {
+        CogletButton("Microphone Settings", id: "\(idPrefix).microphone_settings", registry: model.appControls,
+            window: window, route: route, sensitive: true, failure: model.appControlFailure) { model.openPrivacy("Privacy_Microphone") }
+        CogletButton("Refresh Permissions", id: "\(idPrefix).refresh_permissions", registry: model.appControls,
+            window: window, route: route, failure: model.appControlFailure) { model.refreshPermissions() }
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Microphone: \(model.permissions.microphone.rawValue)")
@@ -179,17 +214,13 @@ struct MicrophoneControls: View {
                 Text(guidance).modifier(SoftmaxErrorText()).fixedSize(horizontal: false, vertical: true)
             }
             if model.permissions.microphone == .notDetermined {
-                Button("Allow Microphone") { Task { await model.requestMicrophone() } }
+                CogletButton("Allow Microphone", id: "\(idPrefix).allow_microphone", registry: model.appControls,
+                    window: window, route: route, sensitive: true, adapterSynchronous: false,
+                    failure: model.appControlFailure) { Task { await model.requestMicrophone() } }
             }
             ViewThatFits(in: .horizontal) {
-                HStack {
-                    Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
-                    Button("Refresh Permissions") { model.refreshPermissions() }
-                }
-                VStack(alignment: .leading) {
-                    Button("Microphone Settings") { model.openPrivacy("Privacy_Microphone") }
-                    Button("Refresh Permissions") { model.refreshPermissions() }
-                }
+                HStack { permissionButtons }
+                VStack(alignment: .leading) { permissionButtons }
             }
         }
     }

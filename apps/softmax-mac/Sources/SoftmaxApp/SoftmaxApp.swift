@@ -236,7 +236,9 @@ final class ShellModel: ObservableObject {
         hotkeyName = keySource.keyCode == 61 && keySource.modifiers == 0 ? "Right Option" :
             "Key \(keySource.keyCode) · modifiers \(keySource.modifiers)"
     }
-    @Published var voicePanelSelected = false
+    @Published var voicePanelSelected = false {
+        didSet { if voicePanelSelected != oldValue { synchronizeAppSurface?() } }
+    }
     @Published var orbEnabled: Bool = false {
         didSet { if !testing { orbPreferences.isEnabled = orbEnabled } }
     }
@@ -439,7 +441,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             settings: { [weak self] in self?.showSettings(tab: $0) },
             face: { [weak self] in self?.showFace() },
             chat: { [weak self] in self?.showConversation(voice: $0) },
-            about: { [weak self] in self?.showAbout() }))
+            about: { [weak self] in self?.showAbout() }), model: model)
         invalidateAppControlSnapshots()
     }
 
