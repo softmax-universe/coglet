@@ -5,6 +5,8 @@ import SoftmaxCore
 import FaceMac
 @testable import SoftmaxRuntime
 
+private struct NativeRuntimeBoundaryFailure: Swift.Error {}
+
 final class RuntimeHostTests: XCTestCase {
     @MainActor func testNativeEchoGuestTrapCaughtPanicAndRestart() async throws {
         let env = ProcessInfo.processInfo.environment
@@ -52,13 +54,23 @@ final class RuntimeHostTests: XCTestCase {
             }
             player.enqueue(text: text, stream: stream, chunk: chunk, final: action.final, deadline: action.deadline) { host.complete(action, error: $0) }
         }
+        func requireRunning(_ checked: RuntimeHost, boundary: String, file: StaticString = #filePath, line: UInt = #line) async throws {
+            guard checked.state == .running else {
+                #if COGLET_RUNTIME_TEST_HOOKS
+                let trace = await checked.diagnosticsForTesting()
+                try Data(trace.joined(separator: "\n").utf8).write(to: checked.directory.appendingPathComponent("pump-first-state-failure.log"))
+                #endif
+                XCTFail("First state failure at \(boundary): \(checked.errorMessage ?? "no error"); no further lifecycle actions", file: file, line: line)
+                throw NativeRuntimeBoundaryFailure()
+            }
+        }
         await host.start()
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "initial start")
         XCTAssertEqual(host.coglets.count, 1)
         XCTAssertEqual(host.coglets.first?.version, "0.1")
         let text = "Native Swift SDK → Wasm → speak — 世界"
         await host.submitTranscript(text, generation: host.generation)
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "expected running")
         XCTAssertEqual(host.actions.first?.capability, "speech.speak_chunk")
         XCTAssertEqual(host.actions.first?.text, text)
         let firstAction = try XCTUnwrap(host.actions.first)
@@ -123,7 +135,7 @@ final class RuntimeHostTests: XCTestCase {
         await host.stop() // Deliberately no poll between native callback and stop.
         XCTAssertEqual(try outcome(beforeStop)?["status"], .text("succeeded"))
         await host.start()
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "expected running")
         let restartActionCount = host.actions.count, restartCallbackCount = device.callbacks.count
         await host.submitTranscript("Rendered immediately before restart", generation: host.generation)
         XCTAssertEqual(host.actions.count, restartActionCount + 1)
@@ -135,21 +147,15 @@ final class RuntimeHostTests: XCTestCase {
         try XCTUnwrap(device.callbacks.last)()
         XCTAssertNil(try outcome(beforeRestartReceipt), "native receipt has not been reconciled")
         await host.restart() // Deliberately no poll before restarting either.
-        guard host.state == .running else {
-            #if COGLET_RUNTIME_TEST_HOOKS
-            let trace = await host.diagnosticsForTesting()
-            try Data(trace.joined(separator: "\n").utf8).write(to: good.appendingPathComponent("pump-first-restart-failure.log"))
-            #endif
-            return XCTFail("First restart failed: \(host.errorMessage ?? "no error"); no subsequent panic/restart attempted")
-        }
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+
+        try await requireRunning(host, boundary: "expected running")
         XCTAssertEqual(try outcome(beforeRestartReceipt)?["status"], .text("succeeded"))
         // No synthetic UI-success path: actual C ABI panic returns an error.
         #if COGLET_RUNTIME_TEST_HOOKS
         await host.injectCaughtPanicForTesting()
         XCTAssertEqual(host.state, .error)
         await host.restart()
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "expected running")
         await host.submitTranscript("After caught panic", generation: host.generation)
         XCTAssertEqual(host.actions.last?.text, "After caught panic")
         #else
@@ -158,17 +164,17 @@ final class RuntimeHostTests: XCTestCase {
         await host.stop()
         XCTAssertEqual(host.state, .stopped)
         await host.start()
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "expected running")
         await host.stop()
         let oldGeneration = host.generation
         await host.start()
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "expected running")
         let beforeStale = host.actions.count
         await host.submitTranscript("Old recognition callback", generation: oldGeneration)
         XCTAssertEqual(host.actions.count, beforeStale)
         let beforeRestart = host.generation
         await host.restart()
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "expected running")
         await host.submitTranscript("Pre-restart callback", generation: beforeRestart)
         XCTAssertEqual(host.actions.count, beforeStale)
         await host.stop()
@@ -185,7 +191,7 @@ final class RuntimeHostTests: XCTestCase {
         await host.start()
         XCTAssertEqual(host.state, .error, "Unclean restart must fail closed")
         await host.restart()
-        XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        try await requireRunning(host, boundary: "expected running")
         await host.stop()
         // Loss of the entire ledger directory cannot mean a NEW identity.
         try FileManager.default.removeItem(at: good.appendingPathComponent("surface"))
@@ -198,12 +204,12 @@ final class RuntimeHostTests: XCTestCase {
         try provision(bad, from: trap)
         let faultHost = RuntimeHost(directory: bad)
         await faultHost.start()
-        XCTAssertEqual(faultHost.state, .running, faultHost.errorMessage ?? "")
+        try await requireRunning(faultHost, boundary: "trap host expected running")
         await faultHost.submitTranscript("This executes unreachable in the guest", generation: faultHost.generation)
         XCTAssertEqual(faultHost.state, .error)
         XCTAssertTrue(faultHost.actions.isEmpty)
         await faultHost.restart()
-        XCTAssertEqual(faultHost.state, .running, faultHost.errorMessage ?? "")
+        try await requireRunning(faultHost, boundary: "trap host expected running")
         XCTAssertTrue(faultHost.actions.isEmpty, "Restart must not replay a failed batch")
         await faultHost.stop()
         XCTAssertTrue(FileManager.default.fileExists(atPath: bad.appendingPathComponent("state.wal").path))

@@ -316,18 +316,29 @@ pub unsafe extern "C" fn coglet_surface_recv(
         }
         let link = unsafe { &mut *link };
         if link.fenced() {
+            #[cfg(feature = "ffi-test-hooks")]
+            link.session.diagnose_abi_refusal("recv-fenced", None);
             return -2;
         }
         let Ok(now) = link.session.transport_now(link.clock) else {
+            #[cfg(feature = "ffi-test-hooks")]
+            link.session.diagnose_abi_refusal("recv-clock", None);
             link.session.disconnect();
             return -2;
         };
         link.session.tick(now);
         if link.session.pump_dispatch(now).is_err() {
+            #[cfg(feature = "ffi-test-hooks")]
+            link.session
+                .diagnose_abi_refusal("recv-dispatch", Some(now));
             link.session.disconnect();
             return -2;
         }
         let Some(bytes) = link.session.front() else {
+            #[cfg(feature = "ffi-test-hooks")]
+            if link.session.is_closed() {
+                link.session.diagnose_abi_refusal("recv-closed", Some(now));
+            }
             return if link.session.is_closed() { -2 } else { 1 };
         };
         unsafe {

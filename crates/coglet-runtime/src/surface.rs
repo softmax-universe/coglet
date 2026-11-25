@@ -79,6 +79,21 @@ pub struct SurfaceSession {
     sent_dispatches: BTreeSet<String>,
 }
 impl SurfaceSession {
+    /// Test-build-only, value-free first-refusal evidence. Never includes frame
+    /// bodies, identities, transcripts or retained read values.
+    #[cfg(feature = "ffi-test-hooks")]
+    pub(crate) fn diagnose_abi_refusal(&self, stage: &str, now: Option<u64>) {
+        eprintln!(
+            "embedded-abi-refusal stage={stage} now={now:?} runtime_clock={} last_received={} last_health={} negotiated={} closed={} queued={} reads={}",
+            self.runtime_clock,
+            self.last_received,
+            self.last_health,
+            self.negotiated,
+            self.closed,
+            self.output.len(),
+            self.reads.len()
+        );
+    }
     pub(crate) fn transport_now(&self, probe_clock: std::time::Instant) -> Result<u64> {
         if let Some(service) = &self.service {
             service
@@ -247,6 +262,8 @@ impl SurfaceSession {
             return;
         }
         if now < self.runtime_clock {
+            #[cfg(feature = "ffi-test-hooks")]
+            self.diagnose_abi_refusal("tick-clock-rollback", Some(now));
             self.disconnect();
             return;
         }
@@ -256,6 +273,8 @@ impl SurfaceSession {
             return;
         }
         if now - self.last_received >= 3_000_000 {
+            #[cfg(feature = "ffi-test-hooks")]
+            self.diagnose_abi_refusal("tick-inactivity", Some(now));
             self.disconnect();
             return;
         }
