@@ -55,22 +55,41 @@ format, of the snapshot laid out as a directory tree.
 The ABI already forbids symlinks, hardlinks, device nodes, control characters,
 backslash, and empty, `.` and `..` components. It adds:
 
-- no path component equal to `.git`, compared case-insensitively (git refuses
-  such entries; `GitStore` already rejects them for logs);
+- no path component equal to `.git`, compared case-insensitively (git's index
+  and checkout refuse such entries; `GitStore` already rejects them for logs);
 - no path that is both a file and a directory. Both crates already refuse this
   in code; the ABI now says so.
 
-**Fields whose values change meaning**: every state hash, which is
-`initial_hash`, `final_hash`, `before_hash`, `input_hash`, `output_hash` and
-`state_hash` in the ABI trace, step and boundary records (including the 0.2
-database records in `spec/messages/database.cddl`), and `snapshot_hash` /
-`expected_hash` on the router protocol's snapshot read and write.
+**Fields whose values change meaning**: every filesystem state hash, which is
+`initial_hash`, `final_hash`, `before_hash`, `input_hash` and `output_hash` in
+the ABI trace, step and boundary records (including the 0.2 database records in
+`spec/messages/database.cddl`); the filesystem `state_hash` in conformance
+harness and admission responses; `snapshot_hash` / `expected_hash` on the
+router protocol's snapshot read and write; and the code tree hashes that the
+manage protocol in PR #164 builds on the same algorithm (`manage.patch`
+`base` and `revision`, status `live_tree`, and the build record's
+`source_tree`). The game-world `state_hash` in `spec/messages/sandbox.cddl` is
+not a filesystem hash and does not change.
 
-**Versioning.** The records that carry a state hash move to their next major
-version, and the router protocol's snapshot read and write carry the new
-definition only in the manage protocol that ADR-0031 introduces (`manage.*`
-1.0), so the hub `debug.*` 0.1 methods are not redefined in place. A `spec-v0`
-verifier rejects the new hashes by design; there is no dual-hash window.
+A **code tree hash** is the same function applied to the snapshot restricted to
+`/code`: the root tree holds one `code` entry, and an empty code tree is the
+empty tree id. It is not the id of the `code/` subtree.
+
+**Versioning.** ABI trace, step and boundary records move from `"0.1"` to
+`"1.0"`, and database records from `"0.2"` to `"1.1"`, so the version string
+still tells a database record from a plain ABI one, as
+`spec/capabilities/database.md` relies on today. A `spec-v0` verifier rejects
+the new hashes by design; there is no dual-hash window.
+
+On the router protocol, the hub `debug.*` 0.1 methods are not redefined in
+place. The new definition arrives with the manage protocol of ADR-0031:
+
+- **This ADR is accepted before PR #164 merges, and #164 adopts the git tree id**
+  for `snapshot_hash`, `expected_hash` and its code tree hashes, so manage 1.0
+  is defined once, with this hash.
+- If #164 merges first anyway, its CBOR definition stands for 1.0, and this
+  change ships as the next router-protocol major version instead. A meaning is
+  never changed inside 1.0.
 
 **One Rust implementation**, with no git binary at runtime and no new heavy
 dependency (`sha2` is already used). `coglet-runtime` depends on `coglet-fs`
@@ -84,7 +103,9 @@ regenerate by re-running.
 refuses a tree whose name does not match. On first load after the upgrade it
 accepts a tree whose name matches the old CBOR digest, then rewrites it under
 its git tree id, once. Restart and resume ([ADR-0027](0027-daemon-restart-resume.md))
-keep working across the upgrade.
+keep working across the upgrade. A coglet resumed across the upgrade seals its
+old trace and starts a new one at the upgrade boundary; hashes inside a trace
+are never rewritten, so one trace never mixes the two definitions.
 
 Spec text changes: `spec/abi.md` (Journal and trace, where the definition lives,
 and the path rules), `spec/hub-protocol.md` (the restated definition, pointed
@@ -131,8 +152,8 @@ that a stage-1 state hash equals a later root tree id.
 - Old recordings with CBOR state hashes do not verify under the new definition;
   none are retained as compatibility inputs. Stored trees are upgraded once, as
   above.
-- ADR-0031's manage protocol (PR #164) and this ADR touch the same snapshot read
-  and write; whichever lands second carries the other's definition.
+- PR #164 has to adopt the git tree id before it merges, or this change waits
+  for the router protocol's next major version (see Versioning).
 - Later stages (proof test, centre cold path, router on unforged, one effect
   path) each need their own ADR and start only after the previous stage passes.
 
@@ -148,7 +169,11 @@ that a stage-1 state hash equals a later root tree id.
 - `state_hash_single_implementation`: `coglet-fs`, `coglet-runtime` and the
   Python reference return the same id for the same snapshot.
 - `disk_store_upgrades_cbor_named_trees`: a store written under the old names
-  loads once and is rewritten under git tree ids.
+  loads once and is rewritten under git tree ids, and a resumed coglet starts a
+  new trace rather than extending the old one.
+- `code_tree_hash_is_restricted_snapshot_id`: a code tree hash equals the state
+  hash of the snapshot restricted to `/code`, and the empty code tree is the
+  empty tree id.
 - `cli_build_run_replay_equal_hash_list_and_inspect` and all conformance suites
   pass with regenerated fixtures, on both WAMR and Wasmtime where applicable.
 
