@@ -2,8 +2,13 @@
 //! signing keys, registry or implicit profile/feature widening.
 use std::io::{Read, Write};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if std::env::args().len() != 1 {
-        return Err("usage: coglet-transform <original.wasm >output.wasm".into());
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    if args == ["--source"] {
+        std::io::stdout().write_all(coglet_transform::transform_source_bytes())?;
+        return Ok(());
+    }
+    if !args.is_empty() {
+        return Err("usage: coglet-transform [--source] <original.wasm >output.wasm".into());
     }
     let pins = coglet_transform::Pins::default();
     let mut original = Vec::new();
