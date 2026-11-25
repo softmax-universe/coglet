@@ -82,8 +82,8 @@ also be exercised with executive events before final acceptance.
    Database live/replay hosts reuse the restricted transactional WASI implementation;
    the immutable inbox and its wake binding retain ABI 0.1 semantics. No new import,
    wire method, schema migration or direct reply-injection seam is introduced.
-   The remaining phase-2B gate is outbox dispatch → persisted result → Wasm guest
-   consumption, plus authoritative Hermes public API compatibility.
+   Phase 2B now covers outbox dispatch → persisted result → Wasm guest
+   consumption and the pinned Hermes public API contract (details below).
 2. Guest does not write `work_queue`. It can read one row through
    `work_queue_get`. The host dispatcher remains the scheduler.
 3. No waiver is claimed. The implementation review is not ship approval.

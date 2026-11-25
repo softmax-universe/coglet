@@ -56,6 +56,13 @@ impl<A: HermesAdapter> Dispatcher<A> {
     /// leases, redispatch, claim new intents, and ingest worker results.
     /// Pending deliveries are returned until acknowledged.
     pub fn run_cycle(&mut self, db: &mut Database, now: i64, limit: u32) -> Result<DispatchBatch> {
+        // The previous host may have died after claiming an intent, before
+        // submit or after remote create but before persisting its binding.
+        // Re-enter create with the original key through the ordinary run path;
+        // adapter idempotency reconciles a possibly accepted remote create.
+        for row in db.unbound_dispatching()? {
+            db.record_outbox_state(&row.intent_id, row.version, OutboxState::Uncertain)?;
+        }
         let reconciled = self.reconcile_bound_unleased(db, now)?;
         let mut follow_ups = self.pending_follow_ups(db)?;
         // A durable result may precede local lease expiry. Consume it before
@@ -102,9 +109,7 @@ impl<A: HermesAdapter> Dispatcher<A> {
         now: i64,
         limit: u32,
     ) -> Result<DispatchBatch> {
-        for row in db.unbound_dispatching()? {
-            db.record_outbox_state(&row.intent_id, row.version, OutboxState::Uncertain)?;
-        }
+        // Compatibility entry: recovery is always part of the normal cycle.
         self.run_cycle(db, now, limit)
     }
 

@@ -145,6 +145,59 @@ fn backlog_completes_after_restart() {
 }
 
 #[test]
+fn normal_host_run_recovers_claim_before_submit_after_reopen() {
+    recover_unbound_through_normal_host(false);
+}
+
+#[test]
+fn normal_host_run_reconciles_lost_create_reply_after_reopen() {
+    recover_unbound_through_normal_host(true);
+}
+
+fn recover_unbound_through_normal_host(created_before_crash: bool) {
+    let (root, mut db) = seed();
+    let server = ContractKanbanServer::spawn();
+    let rows = db.claim_pending_outbox(8).unwrap();
+    assert_eq!(rows.len(), 1);
+    if created_before_crash {
+        // The remote accepted create, but its reply and the local binding were
+        // lost with the host. Only the service retains the idempotent result.
+        let row = &rows[0];
+        server
+            .adapter()
+            .create(&coglet_factory_host::TaskSpec {
+                idempotency_key: row.idempotency_key.clone(),
+                kind: row.kind.clone(),
+                payload_cbor_hex: row.payload_cbor_hex.clone(),
+                correlation_id: row.correlation_id.clone(),
+                task_id: TASK.into(),
+            })
+            .unwrap();
+        assert_eq!(server.len(), 1);
+    }
+    assert!(db.get_binding(KEY).unwrap().is_none());
+    drop(db);
+    let mut db = Database::open(root.path(), OWNER).unwrap();
+    let mut host = FactoryHost::from_adapter(server.adapter());
+    let recovered = host.run(&mut db, 20).unwrap();
+    assert_eq!(recovered.claimed, 1);
+    assert_eq!(server.len(), 1);
+    assert_eq!(db.get_outbox(KEY).unwrap().unwrap().idempotency_key, KEY);
+    let queue = db.get_work_queue(TASK).unwrap().unwrap();
+    assert_eq!(queue.state, "leased");
+    for now in [21, 22] {
+        assert_eq!(host.run(&mut db, now).unwrap().claimed, 0);
+        assert_eq!(db.get_work_queue(TASK).unwrap().unwrap(), queue);
+    }
+    server.post_result(&db.get_binding(KEY).unwrap().unwrap(), true, "recovered");
+    let done = host.run(&mut db, 23).unwrap();
+    assert_eq!(done.follow_ups.len(), 1);
+    assert_eq!(done.follow_ups[0].kind, "task.completed");
+    assert_eq!(event_count(&db), 1);
+    assert_eq!(server.len(), 1);
+}
+
+#[test]
 fn lease_expiration_requeues() {
     let (_root, mut db) = seed();
     let mut host = FactoryHost::from_adapter(MockAdapter::default());

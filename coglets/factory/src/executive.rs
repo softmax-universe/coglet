@@ -450,19 +450,6 @@ pub fn handle<H: Host + DbHost>(
             return Err(bad());
         }
         match kind {
-            "task.cancelled" => {
-                task.status = "cancelled".into();
-                task.updated_at = at;
-                release_capacity(&mut repo, &mut task, at)?;
-                repo.update_object(&task).map_err(db)?;
-                if agenda
-                    .pending
-                    .as_ref()
-                    .is_some_and(|p| p.context.subject.id == subject)
-                {
-                    agenda.pending = None;
-                }
-            }
             "task.heartbeat" => {
                 // Lease extension is host-owned on work_queue. A mismatched token
                 // is rejected and never becomes a deliberation trigger.
@@ -483,12 +470,14 @@ pub fn handle<H: Host + DbHost>(
                     }
                 }
             }
-            "task.failed" | "task.completed"
+            "task.failed" | "task.completed" | "task.cancelled"
                 if !matches!(task.status.as_str(), "completed" | "cancelled" | "failed") =>
             {
                 let queue = repo.get_work_queue(subject).map_err(db)?;
                 let accepted = match &queue {
-                    None => true,
+                    // Cancellation is an attempt outcome, not a task-wide
+                    // command. It requires the host's retained lease identity.
+                    None => kind != "task.cancelled",
                     Some(queue) => {
                         let attempt = event
                             .payload
@@ -511,12 +500,20 @@ pub fn handle<H: Host + DbHost>(
                 if !accepted {
                     // Stale attempt: do not finish the task or release the current lease.
                 } else {
-                    task.status = if kind == "task.failed" {
-                        "failed"
-                    } else {
-                        "completed"
+                    task.status = match kind {
+                        "task.failed" => "failed",
+                        "task.cancelled" => "cancelled",
+                        _ => "completed",
                     }
                     .into();
+                    if kind == "task.cancelled"
+                        && agenda
+                            .pending
+                            .as_ref()
+                            .is_some_and(|p| p.context.subject.id == subject)
+                    {
+                        agenda.pending = None;
+                    }
                     let mut data: serde_json::Value = parse(&task.data_json)?;
                     if let Some(trace) = event
                         .payload

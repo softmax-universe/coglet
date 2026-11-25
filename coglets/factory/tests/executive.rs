@@ -664,6 +664,91 @@ fn stale_attempt_does_not_release_current_capacity() {
     assert_eq!(h.get("factory-policy").1["available_workers"], 1);
 }
 #[test]
+fn cancellation_result_fences_attempt_and_releases_capacity_once() {
+    for state in ["leased", "done"] {
+        let mut h = TestHost::new();
+        h.db.execute(
+            "UPDATE objects SET status='dispatched',data_json=?1 WHERE id=?2",
+            params![
+                json!({"capacity_reserved":true,"context_ids":[]}).to_string(),
+                TASK
+            ],
+        )
+        .unwrap();
+        h.db.execute(
+            "INSERT INTO work_queue(task_id,state,priority,lease_owner,lease_until,attempt,version) VALUES (?1,?2,0,'current',100,2,1)",
+            params![TASK, state],
+        ).unwrap();
+        let before = h.get(TASK);
+        let policy = h.get("factory-policy");
+        // Neither a wrong token nor a wrong attempt (nor missing identity) can
+        // cancel the currently reserved worker or mutate its task.
+        for (seq, token, attempt) in [(1, "old", 2), (2, "current", 1)] {
+            h.run(event(
+                "task.cancelled",
+                seq,
+                [
+                    ("task_id", Value::Text(TASK.into())),
+                    ("lease", Value::Text(token.into())),
+                    ("attempt", Value::Integer(attempt.into())),
+                ],
+            ));
+            assert_eq!(h.get(TASK), before);
+            assert_eq!(h.get("factory-policy"), policy);
+        }
+        h.run(task_event("task.cancelled", 3));
+        assert_eq!(h.get(TASK), before);
+        assert_eq!(h.get("factory-policy"), policy);
+        let matching = event(
+            "task.cancelled",
+            4,
+            [
+                ("task_id", Value::Text(TASK.into())),
+                ("lease", Value::Text("current".into())),
+                ("attempt", Value::Integer(2.into())),
+            ],
+        );
+        h.run(matching.clone());
+        assert_eq!(h.get(TASK).0, "cancelled");
+        assert_eq!(h.get(TASK).1["capacity_reserved"], false);
+        assert_eq!(h.get("factory-policy").1["available_workers"], 3);
+        let cancelled = h.get(TASK);
+        let released = h.get("factory-policy");
+        h.run(matching);
+        h.run(event(
+            "task.cancelled",
+            5,
+            [
+                ("task_id", Value::Text(TASK.into())),
+                ("lease", Value::Text("current".into())),
+                ("attempt", Value::Integer(2.into())),
+            ],
+        ));
+        assert_eq!(h.get(TASK), cancelled);
+        assert_eq!(h.get("factory-policy"), released);
+        assert!(h.staged.is_empty());
+    }
+}
+
+#[test]
+fn cancellation_cannot_regress_terminal_tasks() {
+    for terminal in ["completed", "failed", "cancelled"] {
+        let mut h = TestHost::new();
+        h.db.execute(
+            "UPDATE objects SET status=?1 WHERE id=?2",
+            params![terminal, TASK],
+        )
+        .unwrap();
+        let before = h.get(TASK);
+        let policy = h.get("factory-policy");
+        h.run(task_event("task.cancelled", 1));
+        assert_eq!(h.get(TASK), before);
+        assert_eq!(h.get("factory-policy"), policy);
+        assert!(h.staged.is_empty());
+    }
+}
+
+#[test]
 fn host_terminal_done_row_is_consumed_and_stale_attempt_rejected() {
     let mut h = TestHost::new();
     h.db.execute(
