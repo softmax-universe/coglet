@@ -23,7 +23,9 @@ jobs:
           - {platform: linux-x86_64, target: x86_64-unknown-linux-gnu, runner: ubuntu-24.04}
           - {platform: linux-aarch64, target: aarch64-unknown-linux-gnu, runner: ubuntu-24.04-arm}
           - {platform: linux-armv7, target: armv7-unknown-linux-gnueabihf, runner: ubuntu-24.04}
-          - {platform: macos-arm64, target: aarch64-apple-darwin, runner: macos-15}
+          # Keep real tag artifacts on their qualified image; disposable proof
+          # jobs use the hosted image already executing the native Mac lane.
+          - {platform: macos-arm64, target: aarch64-apple-darwin, runner: "${{ github.ref_type == 'tag' && 'macos-15' || 'macos-26' }}"}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     steps:
@@ -141,7 +143,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
   swift-package:
-    runs-on: macos-15
+    runs-on: ${{ github.ref_type == 'tag' && 'macos-15' || 'macos-26' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
