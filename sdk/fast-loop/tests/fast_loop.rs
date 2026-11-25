@@ -859,8 +859,9 @@ fn step_with_inbox(rig: &mut Rig, raw: &[u8], wake_index: u64) -> Result<Out, Ho
     Ok(out)
 }
 fn inbox_line(index: u64, sender: &str, source: &str, payload: Value) -> Vec<u8> {
-    let id = corr(0x1000 + index);
-    let event = ev(source, "llm.reply", index + 1, 1, payload, &id);
+    let id = corr(0x3000 + index); // distinct from the event correlation_id, as the runtime allocates it
+    let corr_id = corr(0x1000 + index);
+    let event = ev(source, "llm.reply", index + 1, 1, payload, &corr_id);
     let row = json!({"event": event, "id": id, "index": index, "sender": sender});
     let mut line = serde_json::to_string(&row).unwrap().into_bytes();
     line.push(b'\n');
@@ -893,7 +894,7 @@ fn damaged_inbox_is_counted_and_never_stops_the_fast_path() {
         ),
         (
             "non-contiguous index",
-            Box::new(|r| (inbox_line(1, ROUTER, ROUTER, plan_reply(r)), 1)),
+            Box::new(|r| (inbox_line(1, ROUTER, ROUTER, plan_reply(r)), 0)),
         ),
         (
             "sender differs from the embedded event source",
@@ -909,7 +910,12 @@ fn damaged_inbox_is_counted_and_never_stops_the_fast_path() {
         ),
         (
             "inbox beyond the size cap",
-            Box::new(|_| (vec![b'x'; coglet_fast_loop::MAX_INBOX_BYTES + 1], 0)),
+            Box::new(|r| {
+                // One otherwise valid reply padded past the cap: only the cap rejects it.
+                let mut p = plan_reply(r);
+                p["output"]["pad"] = json!("x".repeat(coglet_fast_loop::MAX_INBOX_BYTES));
+                (inbox_line(0, ROUTER, ROUTER, p), 0)
+            }),
         ),
     ];
     for (name, make) in cases {
@@ -987,6 +993,91 @@ fn zero_backoff_retries_a_refused_request_on_the_next_tick_and_nonzero_waits() {
         }
         assert_eq!(gap + 1, expect_gap, "backoff {backoff}");
     }
+}
+
+#[test]
+fn valid_reply_with_runtime_allocated_id_is_applied() {
+    // inbox_line gives the message id a value distinct from the event correlation_id.
+    let mut rig = Rig::new(config());
+    let id = request_id(&rig.step(&[], Some(obs())).unwrap());
+    step_with_inbox(&mut rig, &inbox_line(0, ROUTER, ROUTER, plan_reply(&id)), 0).unwrap();
+    let s = rig.state();
+    assert_eq!((s.stats.inbox_faults, s.stats.plans_applied), (0, 1));
+    assert!(s.plan.is_some() && s.pending.is_none());
+}
+
+fn ticks_until_next_request(rig: &mut Rig, from_tick: u64) -> u64 {
+    for _ in 0..40 {
+        if !rig.step(&[], Some(obs())).unwrap().requests.is_empty() {
+            return rig.state().tick - from_tick;
+        }
+    }
+    panic!("no request within 40 ticks");
+}
+
+#[test]
+fn provider_failure_and_timeout_back_off_exactly_backoff_ticks() {
+    // Failure reply consumed in a step that also ticks: next request backoff ticks later.
+    let mut rig = Rig::new(config());
+    let id = request_id(&rig.step(&[], Some(obs())).unwrap());
+    let failed = json!({"request_id": id, "status": "failed",
+        "error": {"code": "unavailable", "message": "x", "retryable": true}});
+    rig.step(&[(ROUTER, "llm.reply", failed)], Some(obs()))
+        .unwrap();
+    let at = rig.state().tick;
+    assert_eq!(ticks_until_next_request(&mut rig, at), 10);
+
+    // Timeout fires inside the tick at issued + timeout + 1; next request backoff later.
+    let mut rig = Rig::new(config());
+    rig.step(&[], Some(obs())).unwrap();
+    while rig.state().stats.plan_timeouts == 0 {
+        rig.step(&[], Some(obs())).unwrap();
+    }
+    let at = rig.state().tick;
+    assert_eq!(at, 1 + 60 + 1);
+    assert_eq!(ticks_until_next_request(&mut rig, at), 10);
+}
+
+#[test]
+fn extreme_counters_and_config_saturate_instead_of_wrapping_or_panicking() {
+    // Backoff of u64::MAX must disable retries, not wrap to an immediate retry.
+    let mut cfg = config();
+    cfg.backoff_ticks = u64::MAX;
+    let mut rig = Rig::new(cfg);
+    rig.host.refuse_llm = true;
+    rig.step(&[], Some(obs())).unwrap();
+    rig.host.refuse_llm = false;
+    for _ in 0..30 {
+        assert!(rig.step(&[], Some(obs())).unwrap().requests.is_empty());
+    }
+    // Maxed tick/cursor/pending state neither panics nor changes behaviour.
+    let mut cfg = config();
+    cfg.plan_ttl_ticks = u64::MAX;
+    cfg.plan_timeout_ticks = u64::MAX;
+    let mut rig = Rig::new(cfg);
+    let mut state: State<Waypoints> = State::default();
+    state.tick = u64::MAX;
+    state.stats.ticks = u64::MAX;
+    state.inbox_cursor = u64::MAX;
+    state.next_plan_tick = u64::MAX;
+    state.plan_tick = u64::MAX;
+    rig.host
+        .files
+        .insert(STATE.into(), state.to_bytes().unwrap());
+    assert_eq!(rig.step(&[], Some(obs())).unwrap().actions.len(), 1);
+    let s = rig.state();
+    assert_eq!((s.tick, s.stats.ticks), (u64::MAX, u64::MAX));
+    // A wake past a maxed cursor saturates the new cursor instead of overflowing.
+    let wake = ev(
+        COGLET,
+        "runtime.inbox",
+        9,
+        1,
+        json!({"index": u64::MAX, "id": corr(5)}),
+        &corr(5),
+    );
+    rig.run(1, 1, 42, vec![wake], vec![], true).unwrap();
+    assert_eq!(rig.state().inbox_cursor, u64::MAX);
 }
 
 #[test]

@@ -445,16 +445,14 @@ impl<C: Controller> FastLoop<C> {
 }
 
 /// Schema-validate one inbox line (ABI inbox section): the message, its embedded event
-/// and, for `llm.reply`, the reply payload. Also binds index, id and sender to the event.
+/// and, for `llm.reply`, the reply payload. Also binds index and sender to the event. `id` is the runtime's own message ID and is
+/// deliberately not tied to the event correlation_id (the ABI does not require equality).
 fn validate_row(row: &Value, index: u64) -> Result<(), HostError> {
     let bad = |_: String| HostError::InvalidArgument;
     let cbor = |v: &Value| coglet_types::Value::serialized(v).map_err(|e| bad(e.to_string()));
     coglet_types::validate("abi::inbox-message", &cbor(row)?).map_err(bad)?;
     let event = &row["event"];
-    if row["index"].as_u64() != Some(index)
-        || row["sender"] != event["source"]
-        || row["id"] != event["correlation_id"]
-    {
+    if row["index"].as_u64() != Some(index) || row["sender"] != event["source"] {
         return Err(HostError::InvalidArgument);
     }
     if event["kind"] == "llm.reply" {
