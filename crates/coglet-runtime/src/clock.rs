@@ -110,6 +110,29 @@ fn sample() -> Result<(String, u64)> {
     Err("supervisor clock continuity is not implemented on this platform".into())
 }
 impl RuntimeService {
+    /// One kernel sample mapped through the already durable native epoch.
+    /// Observation must not create a mapping or guess one for legacy WALs.
+    pub(crate) fn policy_clock_mapping(&self) -> Result<serde_json::Value> {
+        let anchor = self
+            .state
+            .clock_anchor
+            .as_ref()
+            .ok_or("unavailable: policy supervisor clock mapping missing")?;
+        let (boot, micros) = self.clock_sample()?;
+        let logical = anchor.at(&boot, micros)?;
+        if logical < self.state.runtime.time {
+            return Err("unavailable: policy clock behind runtime boundary".into());
+        }
+        let identity = crate::digest(&serde_json::to_vec(anchor).map_err(|e| e.to_string())?);
+        Ok(serde_json::json!({
+            "supervisor_boot":boot,"continuous_millis":micros / 1000,
+            "runtime_anchor":identity,"logical_millis":logical / 1000,
+            "runtime_boundary_millis":self.state.runtime.time / 1000,
+            "anchor_continuous_millis":anchor.boot_micros / 1000,
+            "anchor_logical_millis":anchor.runtime_micros / 1000
+        }))
+    }
+
     /// Resample an established native epoch after persistence. Logical callers
     /// own their clock; never create an anchor or write the WAL at publication.
     pub(crate) fn read_publication_now(&self, entry: u64) -> Result<u64> {

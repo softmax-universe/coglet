@@ -4,7 +4,13 @@ use super::*;
 
 #[path = "code_update.rs"]
 mod code_update;
+#[path = "policy_emergency.rs"]
+mod policy_emergency;
 pub(crate) use code_update::CodeRevision;
+use policy_emergency::EmergencyRecord;
+
+#[path = "policy_state.rs"]
+mod policy_state;
 
 /// Retained start/stop receipts. Entries are never evicted.
 const OPERATION_LEDGER: usize = 4096;
@@ -12,6 +18,10 @@ const OPERATION_LEDGER: usize = 4096;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct ManagedState {
+    #[serde(default)]
+    emergency: Option<EmergencyRecord>,
+    #[serde(default)]
+    policy: Option<policy_state::PolicyState>,
     identity: Value,
     install_receipt: Value,
     live_commit: Value,
@@ -123,6 +133,7 @@ impl ManagedState {
     }
 
     pub(super) fn validate(&self) -> Result<()> {
+        self.validate_emergency()?;
         if !self.identity.is_object() || (self.running && self.cancellation_pending) {
             return Err("invalid recovered managed lifecycle".into());
         }
@@ -213,6 +224,7 @@ impl RuntimeService {
     ) -> bool {
         self.state.managed.as_ref().is_some_and(|m| {
             m.install_receipt["operation_id"] == id
+                || m.emergency_id_conflicts(id, intent, scope)
                 || m.operations
                     .get(id)
                     .is_some_and(|r| r.intent != intent || r.scope.as_ref() != Some(scope))
@@ -315,6 +327,8 @@ impl RuntimeService {
         validate("hub-mutation-receipt", &receipt)?;
         let mut next = self.state.clone();
         next.managed = Some(ManagedState {
+            emergency: None,
+            policy: None,
             identity: identity.clone(),
             install_receipt: receipt.clone(),
             live_commit,
@@ -327,6 +341,10 @@ impl RuntimeService {
             operations: BTreeMap::new(),
             install_scope: scope.cloned(),
         });
+        next.managed
+            .as_mut()
+            .unwrap()
+            .policy_install(&next.runtime)?;
         self.commit_managed(next)?;
         Ok(receipt)
     }
@@ -445,6 +463,9 @@ impl RuntimeService {
         if managed.operations.len() >= OPERATION_LEDGER {
             return Err("resource_exhausted: lifecycle receipt ledger full".into());
         }
+        if managed.emergency_reserved(id) && managed.operations.len() >= OPERATION_LEDGER - 1 {
+            return Err("resource_exhausted: emergency stop receipt slot reserved".into());
+        }
         Ok(None)
     }
 
@@ -457,6 +478,14 @@ impl RuntimeService {
         now: u64,
         scope: &ReceiptScope,
     ) -> Result<Value> {
+        if self
+            .state
+            .managed
+            .as_ref()
+            .is_some_and(|m| m.emergency_id_conflicts(id, intent, scope))
+        {
+            return Err("conflict: emergency operation scope differs".into());
+        }
         if let Some(receipt) = self.managed_operation_receipt(id, intent)? {
             return Ok(receipt);
         }

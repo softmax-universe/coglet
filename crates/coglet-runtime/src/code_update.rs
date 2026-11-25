@@ -219,6 +219,12 @@ impl RuntimeService {
                 scope: Some(revision.scope.clone()),
             },
         );
+        managed.policy_revision(
+            revision,
+            &next.runtime,
+            &receipt,
+            self.store.records().len() + usize::from(boundary.is_some()),
+        )?;
         #[cfg(feature = "native-engine")]
         let replacement = self
             .native

@@ -305,6 +305,7 @@ impl Env {
             kill_switch: Some(root.join("kill.json")),
             targets,
             adapter: None,
+            profile: None,
         };
         let handler = DeviceHandler::new(
             config.clone(),
@@ -1678,6 +1679,9 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
     subprocess_lifecycle(false, false).await;
 }
 
+#[cfg(feature = "native-engine")]
+#[path = "support/policy_producers.rs"]
+mod policy_producers;
 #[path = "support/restart_adapter.rs"]
 mod restart_adapter;
 #[cfg(feature = "native-engine")]

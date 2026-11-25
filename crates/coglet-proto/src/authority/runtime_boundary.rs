@@ -61,6 +61,41 @@ impl Authority {
             &dyn Fn() -> std::result::Result<u64, String>,
         ) -> std::result::Result<T, String>,
     ) -> std::result::Result<T, String> {
+        self.runtime_boundary_obligation(
+            hub,
+            device,
+            coglet,
+            scope,
+            grant,
+            delegation_generation,
+            expected_ref,
+            operation_id,
+            None,
+            clock,
+            apply,
+        )
+    }
+
+    /// As the ordinary runtime guard, with an additional exact stop obligation
+    /// checked in the SAME SQL snapshot and immediate-before-effect time gate.
+    #[allow(clippy::too_many_arguments)]
+    pub fn runtime_boundary_obligation<T>(
+        &self,
+        hub: EndpointId,
+        device: EndpointId,
+        coglet: &str,
+        scope: &Scope,
+        grant: &Grant,
+        delegation_generation: u64,
+        expected_ref: Option<&Value>,
+        operation_id: Option<&str>,
+        obligation: Option<(&Scope, &Grant, &str)>,
+        clock: impl Fn() -> Option<u64>,
+        apply: impl FnOnce(
+            &Value,
+            &dyn Fn() -> std::result::Result<u64, String>,
+        ) -> std::result::Result<T, String>,
+    ) -> std::result::Result<T, String> {
         let denied = || "permission_denied".to_owned();
         if grant.target.as_deref() != Some(coglet)
             || !scope.valid()
@@ -126,12 +161,49 @@ impl Authority {
                 return Err("conflict".into());
             }
         }
+        let mut obligation_expiry = u64::MAX;
+        if let Some((stop_scope, stop_grant, id)) = obligation {
+            if stop_grant.method != "hub.stop"
+                || stop_grant.target.as_deref() != Some(coglet)
+                || !stop_scope.valid()
+                || !valid("correlation-id", &serde_json::json!(id))
+                || !signed["statement"]["methods"]
+                    .as_array()
+                    .is_some_and(|m| m.iter().any(|v| v == "hub.stop"))
+            {
+                return Err(denied());
+            }
+            let row: Option<(String,String,String,String)> = tx.query_row(
+                "SELECT g.expires,g.generation,s.expires,s.generation FROM proto_scopes s JOIN proto_grants g ON g.peer=s.peer AND g.method=s.method AND g.target=s.target JOIN proto_peers p ON p.peer=s.peer WHERE s.peer=?1 AND s.actor=?2 AND s.ticket=?3 AND s.method='hub.stop' AND s.target=?4 AND NOT EXISTS(SELECT 1 FROM proto_ended_tickets e WHERE e.actor=s.actor AND e.ticket=s.ticket)",
+                params![hub.to_string(),stop_scope.actor,stop_scope.ticket.as_deref().unwrap_or_default(),coglet],
+                |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?)),
+            ).optional().map_err(|_| "authority storage unavailable")?;
+            let (ge, gg, se, sg) = row.ok_or_else(denied)?;
+            let ge = ge.parse::<u64>().map_err(|_| denied())?;
+            let se = se.parse::<u64>().map_err(|_| denied())?;
+            if now >= ge
+                || now >= se
+                || gg.parse::<u64>() != Ok(stop_grant.generation)
+                || sg.parse::<u64>() != Ok(stop_grant.generation)
+            {
+                return Err(denied());
+            }
+            obligation_expiry = ge.min(se);
+            let collision: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM proto_git_operations WHERE peer=?1 AND operation_id=?2 AND target=?3)",
+                params![hub.to_string(), id, coglet], |r| r.get(0),
+            ).map_err(|_| "authority storage unavailable")?;
+            if collision {
+                return Err("conflict".into());
+            }
+        }
         let delegation_expiry = signed["statement"]["expires"].as_u64();
         let recheck = || -> std::result::Result<u64, String> {
             let fresh = clock().ok_or_else(denied)?;
             if fresh < now
                 || fresh >= grant_expiry
                 || fresh >= scope_expiry
+                || fresh >= obligation_expiry
                 || !delegation_expiry.is_some_and(|e| fresh < e)
             {
                 return Err(denied());
