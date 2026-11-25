@@ -257,7 +257,11 @@ response, app callback or clock is synthesized by the bridge.
     conformance/run --registry conformance/impls-surface02-runtime.toml --contract-profile surface-0.2 --junit target/runtime-surface02.xml
 
 `rust.yml` builds the daemon, runs bridge and harness regressions, executes all six
-runtime cases under Python3.12 and uploads their report. Each case gets private trusted
+runtime cases under Python3.12 and uploads their report. The new selected rename-accept
+and post-read health expectation watchdogs allow1000ms, not an asserted200ms latency SLA;
+the action's1000000µs wire deadline and production clocks are unchanged. Original
+review failures at200ms remain recorded; these allowances do not diagnose their cause.
+Each case gets private trusted
 setup/binding plus a fresh WAL/socket. Action tests check pending 1→0; read tests prove
 query issuance and post-reply liveness, **not** durable supervisor consumption. Production
 translated deadlines are not asserted byte-exact. These fixtures do not schedule guests

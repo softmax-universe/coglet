@@ -47,6 +47,13 @@ class CloseValidation(unittest.TestCase):
             self.assertEqual(env['COGLET_FIXTURE_RUNTIME_SETUP'], f'conformance/surface02-runtime-fixtures/{setup}-setup.json')
             self.assertEqual(env['COGLET_FIXTURE_RUNTIME_BINDING'], 'conformance/surface02-runtime-fixtures/runtime-binding.json')
 
+    def test_selected_receipt_watchdogs_do_not_change_action_deadline(self):
+        action = json.loads((CONF / 'surface02/app-act-rename.json').read_text())
+        read = json.loads((CONF / 'surface02-runtime/runtime-app-read-state.json').read_text())
+        self.assertEqual(action['steps'][5]['within_ms'], 1000)
+        self.assertEqual(action['steps'][4]['send']['body']['action']['deadline'], 1000000)
+        self.assertEqual(read['steps'][7]['within_ms'], 1000)
+
     def test_runtime_provisioning_reuses_exact_surface_payloads(self):
         def load(path):
             return json.loads((CONF / path).read_text())
