@@ -1,4 +1,9 @@
-# Router protocol — 1.0
+# Router protocol — 1.0, with the additive presence 1.1 extension
+
+[Presence 1.1](presence.md) specifies the ADR-0036 `presence.*` family,
+version gates, hold routing and authority/lifecycle invariants. Its shapes are
+included in the generated hub schema; the 1.0 method set below remains frozen.
+Implementations MUST apply the negotiated-version gate, not just the shape union.
 
 > **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 

@@ -62,7 +62,7 @@ class HubFixtures(unittest.TestCase):
 
     def test_standard_occurrence_and_absolute_end_regressions(self):
         self.assertNotRegex(self.cddl, r'\*\s+\d')
-        for bound in ['*0 tstr', '*17 hub-method', '*64 event', '*256 hub-health-item']:
+        for bound in ['*0 tstr', '*23 hub-method', '*64 event', '*256 hub-health-item']:
             self.assertIn(bound, self.cddl)
         for rule, schema in self.root['$defs'].items():
             if 'pattern' in schema:

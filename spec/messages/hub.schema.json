@@ -190,7 +190,13 @@
         "hub.inbox",
         "hub.health",
         "hub.receipt",
-        "hub.cancel"
+        "hub.cancel",
+        "presence.get",
+        "presence.set",
+        "presence.request",
+        "presence.changed",
+        "presence.check_in",
+        "presence.attention"
       ]
     },
     "hub-methods": {
@@ -198,7 +204,7 @@
       "items": {
         "$ref": "#/$defs/hub-method"
       },
-      "maxItems": 17
+      "maxItems": 23
     },
     "hub-purpose-delegation": {
       "enum": [
@@ -1381,6 +1387,492 @@
       ],
       "additionalProperties": false
     },
+    "hub-v1-request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/hub-enroll-request"
+        },
+        {
+          "$ref": "#/$defs/hub-install-request"
+        },
+        {
+          "$ref": "#/$defs/hub-start-request"
+        },
+        {
+          "$ref": "#/$defs/hub-stop-request"
+        },
+        {
+          "$ref": "#/$defs/hub-status-request"
+        },
+        {
+          "$ref": "#/$defs/manage-patch-request"
+        },
+        {
+          "$ref": "#/$defs/manage-tail_log-request"
+        },
+        {
+          "$ref": "#/$defs/hub-events-request"
+        },
+        {
+          "$ref": "#/$defs/hub-actions-request"
+        },
+        {
+          "$ref": "#/$defs/manage-read-request"
+        },
+        {
+          "$ref": "#/$defs/manage-write-request"
+        },
+        {
+          "$ref": "#/$defs/manage-pause-request"
+        },
+        {
+          "$ref": "#/$defs/manage-step-request"
+        },
+        {
+          "$ref": "#/$defs/hub-inbox-request"
+        },
+        {
+          "$ref": "#/$defs/hub-health-request"
+        },
+        {
+          "$ref": "#/$defs/hub-receipt-request"
+        },
+        {
+          "$ref": "#/$defs/hub-cancel-request"
+        }
+      ]
+    },
+    "presence-cogent-id": {
+      "type": "string",
+      "pattern": "^[c]ogent:[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "presence-limit": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "presence-cadence-ms": {
+      "type": "integer",
+      "minimum": 10000,
+      "maximum": 86400000
+    },
+    "presence-coglets": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/coglet-id"
+      },
+      "maxItems": 255
+    },
+    "presence-reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "presence": {
+      "type": "object",
+      "properties": {
+        "cogent": {
+          "$ref": "#/$defs/presence-cogent-id"
+        },
+        "attention": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "present": {
+          "$ref": "#/$defs/presence-coglets"
+        },
+        "limit": {
+          "$ref": "#/$defs/presence-limit"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "cogent",
+        "attention",
+        "present",
+        "limit",
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "presence-change": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "add": {
+          "$ref": "#/$defs/presence-coglets"
+        },
+        "remove": {
+          "$ref": "#/$defs/presence-coglets"
+        },
+        "attention": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "limit": {
+          "$ref": "#/$defs/presence-limit"
+        },
+        "reason": {
+          "$ref": "#/$defs/presence-reason"
+        }
+      },
+      "required": [
+        "base",
+        "add",
+        "remove"
+      ],
+      "additionalProperties": false
+    },
+    "presence-urgency": {
+      "enum": [
+        "low",
+        "high"
+      ]
+    },
+    "presence-request": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "urgency": {
+          "$ref": "#/$defs/presence-urgency"
+        },
+        "reason": {
+          "$ref": "#/$defs/presence-reason"
+        }
+      },
+      "required": [
+        "coglet",
+        "urgency",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "presence-cadence": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "interval_ms": {
+          "$ref": "#/$defs/presence-cadence-ms"
+        },
+        "idle_interval_ms": {
+          "$ref": "#/$defs/presence-cadence-ms"
+        }
+      },
+      "required": [
+        "coglet",
+        "interval_ms",
+        "idle_interval_ms"
+      ],
+      "additionalProperties": false
+    },
+    "presence-cadences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/presence-cadence"
+      },
+      "maxItems": 255
+    },
+    "presence-get-params": {
+      "type": "object",
+      "properties": {
+        "cogent": {
+          "$ref": "#/$defs/presence-cogent-id"
+        }
+      },
+      "required": [
+        "cogent"
+      ],
+      "additionalProperties": false
+    },
+    "presence-set-params": {
+      "type": "object",
+      "properties": {
+        "cogent": {
+          "$ref": "#/$defs/presence-cogent-id"
+        },
+        "change": {
+          "$ref": "#/$defs/presence-change"
+        },
+        "cadences": {
+          "$ref": "#/$defs/presence-cadences"
+        }
+      },
+      "required": [
+        "cogent",
+        "change"
+      ],
+      "additionalProperties": false
+    },
+    "presence-request-params": {
+      "type": "object",
+      "properties": {
+        "cogent": {
+          "$ref": "#/$defs/presence-cogent-id"
+        },
+        "request": {
+          "$ref": "#/$defs/presence-request"
+        }
+      },
+      "required": [
+        "cogent",
+        "request"
+      ],
+      "additionalProperties": false
+    },
+    "presence-held": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hub-inbox-delivery"
+      },
+      "maxItems": 64
+    },
+    "presence-check-in": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "status": {
+          "$ref": "#/$defs/hub-status"
+        },
+        "held": {
+          "$ref": "#/$defs/presence-held"
+        },
+        "dropped": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "coglet",
+        "status",
+        "held",
+        "dropped"
+      ],
+      "additionalProperties": false
+    },
+    "presence-changed-params": {
+      "type": "object",
+      "properties": {
+        "presence": {
+          "$ref": "#/$defs/presence"
+        }
+      },
+      "required": [
+        "presence"
+      ],
+      "additionalProperties": false
+    },
+    "presence-check-in-params": {
+      "type": "object",
+      "properties": {
+        "cogent": {
+          "$ref": "#/$defs/presence-cogent-id"
+        },
+        "revision": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "check_in": {
+          "$ref": "#/$defs/presence-check-in"
+        }
+      },
+      "required": [
+        "cogent",
+        "revision",
+        "check_in"
+      ],
+      "additionalProperties": false
+    },
+    "presence-get-request-method": {
+      "enum": [
+        "presence.get"
+      ]
+    },
+    "presence-get-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/presence-get-request-method"
+        },
+        "target": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/presence-get-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "presence-set-request-method": {
+      "enum": [
+        "presence.set"
+      ]
+    },
+    "presence-set-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/presence-set-request-method"
+        },
+        "target": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/presence-set-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "presence-request-request-method": {
+      "enum": [
+        "presence.request"
+      ]
+    },
+    "presence-request-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/presence-request-request-method"
+        },
+        "target": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/presence-request-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "presence-changed-request-method": {
+      "enum": [
+        "presence.changed"
+      ]
+    },
+    "presence-changed-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/presence-changed-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/presence-changed-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "presence-check-in-request-method": {
+      "enum": [
+        "presence.check_in"
+      ]
+    },
+    "presence-check-in-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/presence-check-in-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/presence-check-in-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
     "hub-request": {
       "anyOf": [
         {
@@ -1433,6 +1925,21 @@
         },
         {
           "$ref": "#/$defs/hub-cancel-request"
+        },
+        {
+          "$ref": "#/$defs/presence-get-request"
+        },
+        {
+          "$ref": "#/$defs/presence-set-request"
+        },
+        {
+          "$ref": "#/$defs/presence-request-request"
+        },
+        {
+          "$ref": "#/$defs/presence-changed-request"
+        },
+        {
+          "$ref": "#/$defs/presence-check-in-request"
         }
       ]
     },
@@ -1537,6 +2044,9 @@
         },
         {
           "$ref": "#/$defs/hub-empty"
+        },
+        {
+          "$ref": "#/$defs/presence"
         }
       ]
     },
