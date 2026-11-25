@@ -15,6 +15,9 @@ pub struct Wamr {
 #[derive(Clone)]
 pub struct Module {
     bytes: Arc<[u8]>,
+    memory_pages: u32,
+    runtime_bytes: u32,
+    allow_db: bool,
 }
 pub struct WamrInstance {
     module: Module,
@@ -38,11 +41,19 @@ impl Engine for Wamr {
         admit_with(wasm, limits, self.admission())?;
         Ok(Module {
             bytes: Arc::from(wasm),
+            memory_pages: limits.memory_pages,
+            runtime_bytes: limits.runtime_bytes,
+            allow_db: self.allow_db,
         })
     }
     fn instantiate(&self, module: &Module, limits: Limits) -> Result<WamrInstance> {
         self.check_limits(&limits)?;
-        admit_with(&module.bytes, &limits, self.admission())?;
+        if module.memory_pages != limits.memory_pages
+            || module.runtime_bytes != limits.runtime_bytes
+            || module.allow_db != self.allow_db
+        {
+            admit_with(&module.bytes, &limits, self.admission())?;
+        }
         Ok(WamrInstance {
             module: module.clone(),
             limits,

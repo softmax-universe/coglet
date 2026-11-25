@@ -299,6 +299,7 @@ pub(super) fn execute(
     if Instant::now() >= limits.deadline {
         return failure(Error::DeadlineExceeded);
     }
+    let probe_started = Instant::now();
     let mut bytes = bytes.to_vec();
     let ctx = unsafe {
         ce_create(
@@ -313,6 +314,7 @@ pub(super) fn execute(
     if ctx.is_null() {
         return failure(Error::MemoryExhausted);
     }
+    eprintln!("PROFILE native create {:?}", probe_started.elapsed());
     let mut native = Native { ctx, _bytes: bytes };
     unsafe { ce_set_budget(ctx, limits.compute as i32) };
     let budget = match StepBudget::new(limits.compute, limits.host_bytes, limits.deadline) {
@@ -364,6 +366,10 @@ pub(super) fn execute(
         }
         Ok(())
     })();
+    eprintln!(
+        "PROFILE native through handle {:?}",
+        probe_started.elapsed()
+    );
     let remaining = unsafe { ce_remaining(ctx) }.max(0) as u64;
     let compute_used =
         imports.budget.compute_used() + imports.last_remaining.saturating_sub(remaining);

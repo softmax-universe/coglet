@@ -952,17 +952,32 @@ impl Runtime {
         for event in events {
             validate("event", event)?;
         }
+        let probe = std::time::Instant::now();
         let before_hash = self.files.tree_hash()?;
-        let mut boundary_state = self.clone();
-        boundary_state
-            .apply_boundary_changes(inputs["boundary"].as_array().ok_or("missing boundary")?)?;
-        let input = boundary_state.files;
-        let mut inbox_wakes = boundary_state.inbox_wakes;
-        let mut pending_llm = boundary_state.pending_llm;
-        let mut pending_actions = boundary_state.pending_actions;
+        eprintln!("PROFILE before hash {:?}", probe.elapsed());
+        let changes = inputs["boundary"].as_array().ok_or("missing boundary")?;
+        let (input, mut inbox_wakes, mut pending_llm, mut pending_actions, mut next_source_seq) =
+            if changes.is_empty() {
+                (
+                    self.files.clone(),
+                    self.inbox_wakes.clone(),
+                    self.pending_llm.clone(),
+                    self.pending_actions.clone(),
+                    self.next_source_seq,
+                )
+            } else {
+                let mut boundary_state = self.clone();
+                boundary_state.apply_boundary_changes(changes)?;
+                (
+                    boundary_state.files,
+                    boundary_state.inbox_wakes,
+                    boundary_state.pending_llm,
+                    boundary_state.pending_actions,
+                    boundary_state.next_source_seq,
+                )
+            };
         let inbox = crate::boundary::inbox(&input)?;
         let mut pending_timers = self.pending_timers.clone();
-        let mut next_source_seq = boundary_state.next_source_seq;
         for event in events {
             if event["source"] == inputs["coglet"] {
                 next_source_seq = next_source_seq.max(
@@ -1040,6 +1055,7 @@ impl Runtime {
         let code_hash = digest(
             &hex::decode(&self.files.files()["/code/bin/step.wasm"]).map_err(|e| e.to_string())?,
         );
+        let probe = std::time::Instant::now();
         let mut record = json!({
             "version":if observation.is_some() { "0.2" } else { "0.1" },
             "trace_id":inputs["trace_id"], "coglet":inputs["coglet"],
@@ -1058,6 +1074,8 @@ impl Runtime {
         if let Some(failure) = report.failure {
             record["failure"] = failure;
         }
+        eprintln!("PROFILE record construct {:?}", probe.elapsed());
+        let probe = std::time::Instant::now();
         let mut raw_record = None;
         if let Some(observation) = observation {
             // Native 0.2 record: calls stay native values; the JSON record is
@@ -1135,7 +1153,10 @@ impl Runtime {
             record = recorded.clone();
         } else {
             record["record_hash"] = Value::String(digest(&cbor(&record)?));
+            eprintln!("PROFILE record hash {:?}", probe.elapsed());
+            let probe = std::time::Instant::now();
             validate("step-record", &record)?;
+            eprintln!("PROFILE record validate {:?}", probe.elapsed());
         }
         let mut result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});
         if let Some(raw) = raw_record {

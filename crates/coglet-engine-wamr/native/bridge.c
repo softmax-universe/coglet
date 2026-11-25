@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+static double probe_time(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec / 1e9; }
 
 typedef struct {
     void *pool;
@@ -71,6 +73,7 @@ void ce_destroy(Context *c) {
 }
 Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
                    uint32_t stack_size, uint32_t pages, int allow_db) {
+    double probe = probe_time();
     Context *c = calloc(1, sizeof(*c));
     if (!c) return NULL;
     c->pool = malloc(pool_size);
@@ -81,12 +84,16 @@ Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
     init.mem_alloc_option.pool.heap_size = pool_size;
     if (!wasm_runtime_full_init(&init)) { ce_destroy(c); return NULL; }
     c->initialized = 1;
+    fprintf(stderr, "PROFILE C init %.3fms\n", (probe_time()-probe)*1000);
+    probe = probe_time();
     if (!wasm_runtime_register_natives_raw("coglet_v0", coglet_symbols, sizeof(coglet_symbols)/sizeof(coglet_symbols[0]))) { ce_destroy(c); return NULL; }
     if (allow_db && !wasm_runtime_register_natives_raw("coglet_v0", coglet_db_symbols, sizeof(coglet_db_symbols)/sizeof(coglet_db_symbols[0]))) { ce_destroy(c); return NULL; }
     if (!wasm_runtime_register_natives_raw("wasi_snapshot_preview1", wasi_symbols, sizeof(wasi_symbols)/sizeof(wasi_symbols[0]))) { ce_destroy(c); return NULL; }
     wasm_runtime_set_log_level(0);
     char error[256] = {0};
     c->module = wasm_runtime_load(bytes, len, error, sizeof(error));
+    fprintf(stderr, "PROFILE C load %.3fms\n", (probe_time()-probe)*1000);
+    probe = probe_time();
     if (!c->module) { fprintf(stderr, "WAMR load: %s\n", error); ce_destroy(c); return NULL; }
     struct InstantiationArgs2 *args = NULL;
     if (!wasm_runtime_instantiation_args_create(&args)) { ce_destroy(c); return NULL; }
@@ -94,6 +101,7 @@ Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
     wasm_runtime_instantiation_args_set_max_memory_pages(args, pages);
     wasm_runtime_instantiation_args_set_host_managed_heap_size(args, 0);
     c->instance = wasm_runtime_instantiate_ex2(c->module, args, error, sizeof(error));
+    fprintf(stderr, "PROFILE C instantiate %.3fms\n", (probe_time()-probe)*1000);
     wasm_runtime_instantiation_args_destroy(args);
     if (!c->instance) { fprintf(stderr, "WAMR instantiate: %s\n", error); ce_destroy(c); return NULL; }
     c->env = wasm_runtime_create_exec_env(c->instance, stack_size);

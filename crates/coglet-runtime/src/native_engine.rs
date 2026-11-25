@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 pub struct NativeEngine {
     code: Vec<u8>,
+    admitted: Option<(coglet_engine_wamr::Module, u32, u32)>,
     runtime_bytes: u32,
     stack_bytes: u32,
     prepared: Option<(coglet_engine_wamr::WamrInstance, StepInput, Instant, u32)>,
@@ -22,15 +23,18 @@ impl NativeEngine {
         runtime_bytes: u32,
         stack_bytes: u32,
     ) -> Result<Self> {
-        let engine = Self {
+        let mut engine = Self {
             code,
+            admitted: None,
             runtime_bytes,
             stack_bytes,
             prepared: None,
         };
-        Wamr::interpreter()
-            .load(&engine.code, &engine.limits(budgets, Instant::now())?)
+        let limits = engine.limits(budgets, Instant::now())?;
+        let module = Wamr::interpreter()
+            .load(&engine.code, &limits)
             .map_err(|e| e.to_string())?;
+        engine.admitted = Some((module, limits.memory_pages, limits.runtime_bytes));
         Ok(engine)
     }
     fn limits(&self, budgets: &Value, started: Instant) -> Result<Limits> {
@@ -117,9 +121,16 @@ impl Engine for NativeEngine {
         let memory_pages = limits.memory_pages;
         let engine = Wamr::interpreter();
         // Admission failures return before any guest attempt/batch consumption.
-        let module = engine
-            .load(&self.code, &limits)
-            .map_err(|e| e.to_string())?;
+        let module = match &self.admitted {
+            Some((module, pages, bytes))
+                if *pages == limits.memory_pages && *bytes == limits.runtime_bytes =>
+            {
+                module.clone()
+            }
+            _ => engine
+                .load(&self.code, &limits)
+                .map_err(|e| e.to_string())?,
+        };
         let instance = engine
             .instantiate(&module, limits)
             .map_err(|e| e.to_string())?;
@@ -137,11 +148,15 @@ impl Engine for NativeEngine {
             .prepared
             .take()
             .ok_or("native execution requires successful admission")?;
+        let probe = Instant::now();
         let mut tx = TransactionHost::new(host)?;
+        eprintln!("PROFILE wasi new {:?}", probe.elapsed());
         let outcome = instance.handle(input, &mut tx);
         let failure = outcome.result.err().map(engine_failure);
         if failure.is_none() {
+            let probe = Instant::now();
             tx.commit()?;
+            eprintln!("PROFILE wasi commit {:?}", probe.elapsed());
         }
         Ok(EngineReport {
             // Engine API exposes copied bytes/compute, not peak linear pages.

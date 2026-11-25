@@ -250,8 +250,39 @@ pub fn decode_profile(raw: &[u8]) -> Result<Value, String> {
 
 // ---------------------------------------------------------------- IR
 
-struct Schema {
-    rules: BTreeMap<String, Json>,
+enum Schema {
+    Eager(BTreeMap<String, Json>),
+    Embedded(Vec<OnceLock<Result<Json, String>>>),
+}
+
+impl Schema {
+    fn embedded() -> Self {
+        Self::Embedded(
+            (0..generated::SCHEMA_RULES.len())
+                .map(|_| OnceLock::new())
+                .collect(),
+        )
+    }
+
+    fn rule(&self, name: &str) -> Result<&Json, String> {
+        match self {
+            Self::Eager(rules) => rules
+                .get(name)
+                .ok_or_else(|| format!("unknown rule `{name}`")),
+            Self::Embedded(cache) => {
+                let index = generated::SCHEMA_RULES
+                    .binary_search_by_key(&name, |(key, _)| *key)
+                    .map_err(|_| format!("unknown rule `{name}`"))?;
+                cache[index]
+                    .get_or_init(|| {
+                        serde_json::from_str(generated::SCHEMA_RULES[index].1)
+                            .map_err(|e| format!("bad schema IR: {e}"))
+                    })
+                    .as_ref()
+                    .map_err(Clone::clone)
+            }
+        }
+    }
 }
 
 fn parse_schema(src: &str) -> Result<Schema, String> {
@@ -259,16 +290,12 @@ fn parse_schema(src: &str) -> Result<Schema, String> {
     let Json::Object(m) = j else {
         return Err("schema IR must be an object of rule -> expr".into());
     };
-    Ok(Schema {
-        rules: m.into_iter().collect(),
-    })
+    Ok(Schema::Eager(m.into_iter().collect()))
 }
 
 fn embedded() -> Result<&'static Schema, String> {
-    static S: OnceLock<Result<Schema, String>> = OnceLock::new();
-    S.get_or_init(|| parse_schema(SCHEMA_JSON))
-        .as_ref()
-        .map_err(|e| e.clone())
+    static S: OnceLock<Schema> = OnceLock::new();
+    Ok(S.get_or_init(Schema::embedded))
 }
 
 fn regex_for(pattern: &str) -> Result<Regex, String> {
@@ -361,10 +388,7 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
         "ref" => {
             only_keys(e, &["op", "name"])?;
             let n = field(e, "name")?.as_str().ok_or("ref name")?;
-            let t = s
-                .rules
-                .get(n)
-                .ok_or_else(|| format!("unknown rule `{n}`"))?;
+            let t = s.rule(n)?;
             eval(s, t, v, depth + 1).map_err(|m| format!("{n}: {m}"))
         }
         "range" => {
@@ -564,6 +588,19 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
                     _ => Err("regexp bounded text mismatch".into()),
                 };
             }
+            if pattern == "^([0-9a-f]{2})*$" {
+                return match v {
+                    Value::Text(t)
+                        if t.len() % 2 == 0
+                            && t.bytes()
+                                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) =>
+                    {
+                        Ok(())
+                    }
+                    Value::Text(_) => Err("regexp mismatch".into()),
+                    _ => Err("expected text".into()),
+                };
+            }
             let re = regex_for(pattern)?;
             match v {
                 Value::Text(t) if re.is_match(t) => Ok(()),
@@ -586,10 +623,7 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
 
 fn validate_in(s: &Schema, rule: &str, value: &Value) -> Result<(), String> {
     check_profile(value, 0)?;
-    let e = s
-        .rules
-        .get(rule)
-        .ok_or_else(|| format!("unknown rule `{rule}`"))?;
+    let e = s.rule(rule)?;
     eval(s, e, value, 0)
 }
 
@@ -625,4 +659,39 @@ pub fn encode_typed<T: Serialize>(rule: &str, value: &T) -> Result<Vec<u8>, Stri
 
 pub fn decode_typed<T: DeserializeOwned>(rule: &str, raw: &[u8]) -> Result<T, String> {
     decode(rule, raw)?.deserialized().map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod lazy_schema_tests {
+    use super::*;
+
+    #[test]
+    fn fresh_schema_parses_only_reached_rules_and_rejects_unknown() {
+        let schema = Schema::embedded();
+        // The runtime is also compiled against generated, non-Coglet schemas.
+        // Parsing one rule must not eagerly parse the rest of that schema.
+        let rule = generated::SCHEMA_RULES.first().unwrap().0;
+        schema.rule(rule).unwrap();
+        let Schema::Embedded(cache) = &schema else {
+            unreachable!()
+        };
+        let parsed = cache.iter().filter(|slot| slot.get().is_some()).count();
+        assert!(parsed == 1, "parsed {parsed} of {} rules", cache.len());
+        assert_eq!(
+            schema.rule("not-a-rule"),
+            Err("unknown rule `not-a-rule`".into())
+        );
+    }
+
+    #[test]
+    fn generated_rule_table_is_exact_sorted_and_unique() {
+        let all: BTreeMap<String, Json> = serde_json::from_str(SCHEMA_JSON).unwrap();
+        assert_eq!(generated::SCHEMA_RULES.len(), all.len());
+        let mut previous = None;
+        for &(name, raw) in generated::SCHEMA_RULES {
+            assert!(previous.is_none_or(|p| p < name));
+            assert_eq!(serde_json::from_str::<Json>(raw).unwrap(), all[name]);
+            previous = Some(name);
+        }
+    }
 }
