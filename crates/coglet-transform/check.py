@@ -35,7 +35,7 @@ EXPECTED = {
         "qualification::test_fixtures::tests::ci_qualification_rejects_wrong_artifact_digest_or_mode",
     },
 }
-REQUIRED_FILES = {"rustc.txt", "Cargo.lock", "build.jsonl", "tool-build.jsonl", "coglet-transform", "fuzz.corpus", "fuzz.results"} | set(EXPECTED) | {f"{name}.log" for name in EXPECTED}
+REQUIRED_FILES = {"rustc.txt", "Cargo.lock", "build.jsonl", "tool-build.jsonl", "coglet-transform", "transform.source", "fuzz.corpus", "fuzz.results"} | set(EXPECTED) | {f"{name}.log" for name in EXPECTED}
 
 
 def run(args, **kw):
@@ -106,6 +106,9 @@ def native_leg():
     (out / "tool-build.jsonl").write_text(tool_build.stdout)
     tool = production_tool(out / "tool-build.jsonl")
     shutil.copy2(tool, out / "coglet-transform")
+    source = subprocess.run([str(out / "coglet-transform"), "--source"], cwd=ROOT, check=True, capture_output=True).stdout
+    assert source
+    (out / "transform.source").write_bytes(source)
     env["COGLET_TRANSFORM_EXE"] = str(out / "coglet-transform")
     built = run(["cargo", "test", "--locked", "-p", "coglet-transform", "--lib", "--test", "admission_regressions", "--test", "qualification", "--no-run", "--message-format=json"], capture_output=True)
     (out / "build.jsonl").write_text(built.stdout)

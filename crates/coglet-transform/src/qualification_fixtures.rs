@@ -5,6 +5,19 @@ use serde_json::json;
 use std::io::Write;
 
 fn fixture() -> (RawCiEvidence, TrustRoot) {
+    fixture_with_executable(None)
+}
+
+/// Synthetic CI envelope with real selected-host executable bytes, for tests
+/// that execute that exact tool. The other architecture remains a stub: this
+/// never claims real CI custody or cross-architecture execution.
+pub fn evidence_with_executable(bytes: Vec<u8>) -> (RawCiEvidence, TrustRoot) {
+    let (raw, trust) = fixture_with_executable(Some(bytes));
+    verify_ci_qualification(&raw, &trust).unwrap();
+    (raw, trust)
+}
+
+fn fixture_with_executable(executable: Option<Vec<u8>>) -> (RawCiEvidence, TrustRoot) {
     let head = "a".repeat(40);
     let repo = json!({"id": REPO_ID, "full_name": REPO, "fork":false});
     let run = json!({"repository":repo,"head_repository":repo,"head_sha":head,"path":WORKFLOW,"workflow_id":WORKFLOW_ID,"id":7,"run_attempt":2,"status":"completed","conclusion":"success","event":"push"});
@@ -24,7 +37,13 @@ fn fixture() -> (RawCiEvidence, TrustRoot) {
         } else {
             &[183, 0]
         });
+        if arch == std::env::consts::ARCH {
+            if let Some(bytes) = &executable {
+                exe = bytes.clone();
+            }
+        }
         let mut files = BTreeMap::from([
+            ("transform.source", crate::transform_source_bytes().to_vec()),
             ("coglet-transform", exe),
             ("Cargo.lock", b"fixture lock".to_vec()),
             ("rustc.txt", b"fixture compiler".to_vec()),
@@ -66,7 +85,7 @@ fn fixture() -> (RawCiEvidence, TrustRoot) {
             .map(|j| j["name"].as_str().unwrap().to_owned())
             .collect(),
         artifacts: pins,
-        target_artifact: "transform-native-x86_64-normal".into(),
+        target_artifact: format!("transform-native-{}-normal", std::env::consts::ARCH),
     };
     (
         RawCiEvidence {

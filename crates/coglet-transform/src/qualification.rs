@@ -457,6 +457,9 @@ fn verify_archive(
             return Err(QualificationError::Artifact);
         }
     }
+    if !manifest_files.contains_key("transform.source") {
+        return Err(QualificationError::Artifact);
+    }
     for (name, digest) in [
         ("coglet-transform", &pin.transform_exe_sha256),
         ("fuzz.corpus", &pin.corpus_sha256),
