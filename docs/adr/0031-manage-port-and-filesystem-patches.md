@@ -93,8 +93,12 @@ FileChange
 What carries over unchanged from the Git control plane, minus Git:
 
 - the runtime verifies signer, `base`, `generation` and the resulting
-  `revision` in one durable compare-and-swap, and applies the patch only at
-  the step boundary of [ADR-0026](0026-router-push-applied-boundary.md);
+  `revision` in one durable compare-and-swap. For an installed target it applies
+  the patch only at the serialized runtime step boundary. For an uninstalled
+  target, [ADR-0026](0026-router-push-applied-boundary.md)'s pre-install boundary
+  carries over as durable verified staging consumed by install: no guest code,
+  no private namespace and no live revision until install. Admission is not
+  completion; retain the original operation's scope and durable receipt;
 - path rules: no symlinks, absolute paths, traversal, or anything outside
   `/code`; size limits stay (64 MiB per patch);
 - a code patch must leave a valid `bin/step.wasm`;
@@ -155,8 +159,10 @@ part of 0.1 and needs its own ADR.
   rejection, oversize, missing `bin/step.wasm`, and a tail across a restart.
 - Conformance: the router suite passes against both the reference router and
   `coglet-mock`, and old `debug.*` names are accepted only during the window.
-- `git grep -n -i "debug\.\(read\|write\|pause\|step\)\|hub\.git\|back.channel"`
-  finds nothing outside ADR history once the rename completes.
+- Audit `git grep -n -i "debug\.\(read\|write\|pause\|step\)\|hub\.git\|back.channel"`
+  after the rename: no management-interface uses remain outside ADR history.
+  `speech.backchannel` is an unrelated conversational acknowledgement and stays
+  unchanged; its matches are not management-interface rename failures.
 
 ## Approval
 

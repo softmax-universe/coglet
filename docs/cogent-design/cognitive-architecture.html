@@ -621,9 +621,9 @@ through a factory adapter, so it can be replaced.</p>
   <span class="na">ticket_id</span>  <span class="ty">Id</span>
   <span class="na">after_seq</span>  <span class="ty">u64</span>  <span class="sd">Zero replays from the start.</span></pre></div>
 <h3 id="ticket-reports">Ticket reports<a class="headerlink" href="#ticket-reports" title="Permanent link">#</a></h3>
-<p>The <code>Candidate</code> in a finished ticket is what gets applied: its commit becomes
-the <code>revision</code> of the <a href="coglets-and-runtime.html#manage-port"><code>Patch</code></a> sent on
-the target coglet's manage port.</p>
+<p>The <code>Candidate</code> in a finished ticket is what gets applied: its built policy tree
+becomes the <code>revision</code> of the <a href="coglets-and-runtime.html#manage-port"><code>Patch</code></a> sent
+on the target coglet's manage port. It is a filesystem tree hash, not a Git commit.</p>
 <p>Factory to the submitter.</p>
 <div class="codehilite idl"><pre><span class="nc">TicketReceipt</span>
   <span class="sd">The answer to submit, answer, amend or cancel. It carries the same `correlation_id` as the</span>
@@ -670,7 +670,7 @@ the target coglet's manage port.</p>
 
 <span class="nc">Candidate</span>
   <span class="sd">The patch: what is applied to the target coglet through its manage port.</span>
-  <span class="na">commit</span>         <span class="ty">str</span>  <span class="sd">A signed, built commit. Never a branch name.</span>
+  <span class="na">revision</span>       <span class="ty">TreeHash</span>  <span class="sd">The signed, built policy tree. Never a branch name or Git commit.</span>
   <span class="na">signature_ref</span>  <span class="ty">str</span></pre></div>
 <h3 id="factory-adapter-workercontrol">Factory adapter: <code>worker.control</code><a class="headerlink" href="#factory-adapter-workercontrol" title="Permanent link">#</a></h3>
 <p>The adapter wraps a real scheduler (Hermes Kanban first). One <code>job</code> is one

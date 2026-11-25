@@ -248,9 +248,9 @@ TicketReplay
 
 ### Ticket reports
 
-The `Candidate` in a finished ticket is what gets applied: its commit becomes
-the `revision` of the [`Patch`](coglets-and-runtime.md#manage-port) sent on
-the target coglet's manage port.
+The `Candidate` in a finished ticket is what gets applied: its built policy tree
+becomes the `revision` of the [`Patch`](coglets-and-runtime.md#manage-port) sent
+on the target coglet's manage port. It is a filesystem tree hash, not a Git commit.
 
 Factory to the submitter.
 
@@ -300,7 +300,7 @@ TicketResult
 
 Candidate
   # The patch: what is applied to the target coglet through its manage port.
-  commit         str  A signed, built commit. Never a branch name.
+  revision       TreeHash  The signed, built policy tree. Never a branch name or Git commit.
   signature_ref  str
 ```
 
