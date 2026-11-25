@@ -135,6 +135,7 @@ let pumpEntries = control.map { entries($0) } ?? 0
 let stopObserved = backend.stops > stopsBefore
 if let control { release(control) }
 require(joined.wait(timeout: .now() + 9) == .success, "ABI worker watchdog")
+let automaticCloses = closeRequests
 // Snapshot, close and runtime stop ONLY after join, even on the RED path.
 var n = 0
 require(timings(rawLink, nil, 0, &n) == 2 && n < 32768, "timing query")
@@ -150,7 +151,10 @@ require(closeRequests == 1, "SDK close callback exactly once")
 realClose(rawLink); rawLink = nil
 try session.close(); require(stop() == 0, "runtime stop after exclusive close")
 if injectReceiveError {
-    require(loopError != nil && receipt == nil && backend.effects == 0,
+    guard case SurfaceFailure.protocolViolation("invalid ABI size query")? = loopError else {
+        fatalError("receive-error control missed SDK error path")
+    }
+    require(automaticCloses == 1 && receipt == nil && backend.effects == 0,
         "receive-error control did not exercise SDK automatic close")
     print("SDK_RECEIVE_ERROR_CLOSE_EXECUTED")
     exit(0)

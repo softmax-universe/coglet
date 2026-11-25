@@ -462,7 +462,7 @@ mod tests {
             0
         );
         assert!(unsafe { &*link }.session.front().is_some());
-        unsafe { &mut *link }.clock = Instant::now() - std::time::Duration::from_secs(3);
+        unsafe { &mut *link }.clock = Instant::now() - std::time::Duration::from_secs(4);
         let mut expired_n = 123;
         assert_eq!(
             unsafe { coglet_surface_recv(link, ptr::null_mut(), 0, &mut expired_n) },
