@@ -361,7 +361,7 @@ fn observation(op: &str, args: Value, value: Value) -> Value {
 }
 fn decode(raw: &[u8]) -> Value {
     // 0.2 is the superset inspection rule; wire validity is asserted elsewhere.
-    coglet_types::decode(
+    coglet_profile_types::decode(
         coglet_runtime::ContractProfile::Surface02.rule("surface-message"),
         raw,
     )

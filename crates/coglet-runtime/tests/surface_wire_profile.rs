@@ -1311,7 +1311,8 @@ fn native_guest_selected_02_app_event_emits_action_persisted_and_replayed() {
     );
     let rec_bytes = cbor(rec).unwrap();
     assert!(
-        coglet_types::decode(ContractProfile::Surface02.rule("step-record"), &rec_bytes).is_ok()
+        coglet_profile_types::decode(ContractProfile::Surface02.rule("step-record"), &rec_bytes)
+            .is_ok()
     );
     assert!(coglet_types::decode("step-record", &rec_bytes).is_err());
 }

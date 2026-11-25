@@ -17,8 +17,10 @@ lipo -create \
   "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/softmax-hub-link" \
   "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/softmax-hub-link" \
   -output "$staging"
-# -verify_arch consumes the following architecture list; put its single input
-# after that list so Apple lipo does not parse the input as another architecture.
-lipo -verify_arch arm64 x86_64 "$staging"
+# Verify each required slice separately: the installed Apple lipo rejects a
+# multi-architecture verification list even for a valid universal artifact.
+# Each check remains mandatory before replacing the bundled helper.
+lipo "$staging" -verify_arch arm64
+lipo "$staging" -verify_arch x86_64
 chmod 755 "$staging"
 mv -f "$staging" "$destination"
