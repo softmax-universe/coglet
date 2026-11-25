@@ -160,6 +160,16 @@ async fn installed_push_applies_at_step_boundary() {
         assert_eq!(state(&env.simple("hub.status").await).1, bundle.tip);
         assert_eq!(service.lock().unwrap().records(), &[journal]);
         drop(service);
+        // ADR-0027 recovery must revalidate the live revision, not install-time
+        // bytes, while retaining the original authenticated start authority.
+        if NATIVE {
+            env.restart_handler().await;
+            assert_eq!(
+                state(&env.simple("hub.status").await),
+                ("running".into(), json!(bundle.tip))
+            );
+            assert_eq!(result_of(&receipt_of(&mut env, &id).await), terminal);
+        }
         applied(&env.simple("hub.stop").await);
         env.restart_handler().await;
         let started = env.simple("hub.start").await;

@@ -560,6 +560,7 @@ impl Env {
             clock_fn(&self.clock, &self.reads, &self.trap),
         )
         .unwrap();
+        handler.recover_running().await.unwrap();
         self.serve = tokio::spawn(serve(self.device_session.clone(), handler.clone()));
         self.handler = Some(handler);
     }
@@ -1145,7 +1146,7 @@ async fn install_without_accepted_push_is_refused() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn start_refuses_when_accepted_ref_advances_past_installed_commit() {
+async fn start_and_restart_revalidate_installed_artifact_not_newer_staged_ref() {
     timed!(async {
         let mut env = Env::new(0x2e, Options::default()).await.unwrap();
         let (bundle, _) = pushed_and_installed(&mut env).await;
@@ -1155,12 +1156,16 @@ async fn start_refuses_when_accepted_ref_advances_past_installed_commit() {
             applied(&env.simple("hub.start").await);
             assert_eq!(state(&env.simple("hub.status").await).0, "running");
         }
-        // The router later pushes a newer accepted commit; start must not
-        // resurrect either the old or the new commit. Status is independent of the
-        // newest pushed bytes and still reports the original installed identity.
+        // An invalid replacement fails without changing the live installed code.
         let next = env.bundle(2, Some(&bundle.tip), &[("next.txt", b"n")]);
         assert_eq!(env.push(&next).await["result"]["state"], "failed");
-        denied(&env.simple("hub.start").await);
+        let started = env.simple("hub.start").await;
+        if NATIVE {
+            applied(&started);
+            env.restart_handler().await;
+        } else {
+            assert_eq!(error_code(&started), "unavailable");
+        }
         assert_eq!(
             state(&env.simple("hub.status").await),
             (
@@ -1227,17 +1232,17 @@ async fn start_refuses_tampered_retained_bundle_bytes() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn start_refuses_after_authority_loses_the_accepted_ref() {
+async fn start_refuses_after_authority_loses_the_installed_artifact() {
     timed!(async {
         let mut env = Env::new(0x30, Options::default()).await.unwrap();
         let (bundle, _) = pushed_and_installed(&mut env).await;
         applied(&env.simple("hub.stop").await);
-        // The WAL says installed, but the Authority DB no longer has an accepted
-        // ref (e.g. replaced/restored): start must not trust the WAL alone.
+        // Neither the current ref nor the retained signed artifact remains.
+        // ADR-0027 still forbids trusting WAL bytes without artifact validation.
         let out = Command::new("sqlite3")
             .arg(env.root.join("authority.sqlite"))
             .arg(".timeout 5000")
-            .arg("DELETE FROM proto_accepted_refs;")
+            .arg("DELETE FROM proto_accepted_refs; DELETE FROM proto_ref_audit;")
             .output()
             .expect("sqlite3 CLI is required");
         assert!(
@@ -1647,7 +1652,8 @@ async fn child_session(
     child: &mut ChildGuard,
     log: &Path,
 ) -> Session {
-    for _ in 0..400 {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    while tokio::time::Instant::now() < deadline {
         if let Some(status) = child.0.try_wait().unwrap() {
             panic!(
                 "cogletd exited {status}: {}",
@@ -1659,7 +1665,7 @@ async fn child_session(
             // starts its handler. A completed lifecycle request proves readiness.
             return session;
         }
-        tokio::time::sleep(Duration::from_millis(25)).await;
+        tokio::task::yield_now().await;
     }
     panic!(
         "cogletd never connected: {}",
@@ -1669,6 +1675,28 @@ async fn child_session(
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigkill() {
+    subprocess_lifecycle(false, false).await;
+}
+
+#[path = "support/restart_adapter.rs"]
+mod restart_adapter;
+#[cfg(feature = "native-engine")]
+#[path = "support/restart_admission.rs"]
+mod restart_admission;
+
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn running_coglet_resumes_execution_after_daemon_restart() {
+    subprocess_lifecycle(true, false).await;
+}
+
+#[cfg(feature = "native-engine")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn restart_revalidation_refuses_tampered_artifact() {
+    subprocess_lifecycle(true, true).await;
+}
+
+async fn subprocess_lifecycle(resume: bool, tamper: bool) {
     timed!(async {
         use std::os::unix::fs::PermissionsExt;
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -1762,6 +1790,20 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
                 "grant_generation":GRANT_GEN,"delegation_generation":DELEGATION_GEN,
                 "native_schedule":if NATIVE { json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8_388_608,"stack_bytes":65_536}) } else { Value::Null }}},
             "kill_switch":env.root.join("kill.json"),"hub_addr":addr,"invite":invite});
+        let surface = format!("surface:{}", key(0x33, 5).public());
+        let socket = env._dir.path().join("adapter/control");
+        if resume {
+            let binding = root.join("binding.json");
+            std::fs::write(
+                &binding,
+                serde_json::to_vec(&json!({"surface":surface,"permitted_coglets":[env.coglet]}))
+                    .unwrap(),
+            )
+            .unwrap();
+            config["adapter"] = json!({"socket":socket,"binding":binding,"uid":unsafe { libc::geteuid() },"coglet":env.coglet});
+            config["catalog"] = restart_adapter::catalog();
+            config["grants"] = json!({"coglet":env.coglet,"operations":["speech.start"],"resources":["audio.mic","audio.speaker"]});
+        }
         std::fs::write(&config_path, serde_json::to_vec(&config).unwrap()).unwrap();
         let log = root.join("child.log");
         let mut child = ChildGuard::spawn(&config_path, &log);
@@ -1770,7 +1812,13 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
             state(&env.simple("hub.status").await),
             ("stopped".into(), Value::Null)
         );
-        let bundle = env.bundle(1, None, &[]);
+        let manifest = serde_json::to_vec(&json!({"version":"0.1","id":env.coglet,"subscriptions":["speech.start"],"required_capabilities":["speech.start"],"exclusive_outputs":["audio.mic","audio.speaker"],"budgets":{"compute":10000,"compute_mode":native_compute_mode(),"memory_pages":2,"wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}})).unwrap();
+        let extra = if resume {
+            vec![("manifest.json", manifest.as_slice())]
+        } else {
+            vec![]
+        };
+        let bundle = env.bundle(1, None, &extra);
         assert_eq!(env.push(&bundle).await["result"]["state"], "queued");
         let receipt = env.install(&bundle.signed, &delegation).await;
         applied(&receipt);
@@ -1785,9 +1833,21 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
             assert_eq!(error_code(&start), "unavailable");
             assert_eq!(state(&env.simple("hub.status").await).0, "stopped");
         }
-        applied(&env.simple("hub.stop").await);
+        let adapter = if resume {
+            Some(restart_adapter::events(&socket, &surface, &env.coglet, 1, 1).await)
+        } else {
+            None
+        };
+        let before_step = if resume {
+            restart_adapter::step_at_least(&mut env, 1).await
+        } else {
+            0
+        };
+        if !resume {
+            applied(&env.simple("hub.stop").await);
+        }
         let stopped = env.simple("hub.status").await["result"].clone();
-        assert_eq!(stopped["state"], "stopped");
+        assert_eq!(stopped["state"], if resume { "running" } else { "stopped" });
         let wal = root
             .join("wal")
             .join(coglet_runtime::digest(env.coglet.as_bytes()))
@@ -1795,15 +1855,29 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
         assert!(wal.is_file(), "child must create its own real WAL");
         let before = std::fs::read(&wal).unwrap();
         child.kill_and_wait();
+        drop(adapter);
+        if resume {
+            // Supervisor owns this exact reaped child and its stale socket.
+            std::fs::remove_file(&socket).unwrap();
+        }
+        if tamper {
+            let out = Command::new("sqlite3")
+                .arg(&authority_path)
+                .arg("UPDATE proto_ref_audit SET bundle=X'00';")
+                .output()
+                .unwrap();
+            assert!(out.status.success());
+        }
         // Wait for the old authenticated transport to disappear before observing
         // a replacement session, rather than accidentally reusing the stale one.
         // QUIC cannot send a graceful close after SIGKILL; allow its bounded
         // idle timeout to retire the old connection (not just process exit).
-        for _ in 0..2000 {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(50);
+        while tokio::time::Instant::now() < deadline {
             if env.hub.session(device).await.is_none() {
                 break;
             }
-            tokio::time::sleep(Duration::from_millis(25)).await;
+            tokio::task::yield_now().await;
         }
         assert!(env.hub.session(device).await.is_none());
         config["invite"] = Value::Null; // recover already committed enrollment
@@ -1811,26 +1885,76 @@ async fn cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigk
         let mut restarted = ChildGuard::spawn(&config_path, &root.join("restart.log"));
         env.session =
             child_session(&env.hub, device, &mut restarted, &root.join("restart.log")).await;
-        assert_eq!(env.simple("hub.status").await["result"], stopped);
-        assert_eq!(
-            std::fs::read(&wal).unwrap(),
-            before,
-            "recovery must not replace/reinitialize WAL"
-        );
+        if resume {
+            let status = env.simple("hub.status").await;
+            assert_eq!(
+                status["result"]["state"],
+                if tamper { "faulted" } else { "running" },
+                "{status}"
+            );
+            if tamper {
+                assert_eq!(status["result"]["step"], before_step);
+                assert_eq!(env.simple("hub.start").await["type"], "error");
+            } else {
+                let _adapter = restart_adapter::events(&socket, &surface, &env.coglet, 2, 3).await;
+                assert!(
+                    restart_adapter::step_at_least(&mut env, before_step + 1).await > before_step
+                );
+            }
+        } else {
+            assert_eq!(env.simple("hub.status").await["result"], stopped);
+            assert_eq!(
+                std::fs::read(&wal).unwrap(),
+                before,
+                "recovery must not replace/reinitialize WAL"
+            );
+        }
         // Exact same correlation and a new correlation both recover the original
         // install receipt from the original child's persisted state.
-        let replay = env.request_with(
-            "hub.install",
-            receipt["correlation_id"].as_str().unwrap().into(),
-            json!({"initial":bundle.signed,"delegation":delegation}),
-            &env.actor,
-            Some(env.ticket.clone()),
-        );
-        assert_eq!(env.call(replay).await, receipt);
-        let replay = env.install(&bundle.signed, &delegation).await;
-        assert_eq!(replay["result"], receipt["result"]);
+        if !tamper {
+            let replay = env.request_with(
+                "hub.install",
+                receipt["correlation_id"].as_str().unwrap().into(),
+                json!({"initial":bundle.signed,"delegation":delegation}),
+                &env.actor,
+                Some(env.ticket.clone()),
+            );
+            assert_eq!(env.call(replay).await, receipt);
+            let replay = env.install(&bundle.signed, &delegation).await;
+            assert_eq!(replay["result"], receipt["result"]);
+        }
         applied(&env.simple("hub.stop").await);
         restarted.kill_and_wait();
+        if resume {
+            let store = coglet_runtime::DurableStore::open(&wal).unwrap();
+            let after: Vec<_> = store
+                .records()
+                .iter()
+                .filter(|record| {
+                    record["step"]
+                        .as_u64()
+                        .is_some_and(|step| step > before_step)
+                })
+                .collect();
+            if tamper {
+                assert!(after.is_empty(), "refused recovery must not invoke a guest");
+            } else {
+                assert!(!after.is_empty());
+                for record in after {
+                    assert_eq!(record["status"], "committed", "{record}");
+                    assert_eq!(record["engine"]["policy"], native_compute_mode());
+                    assert!(record["usage"]["compute"].as_u64().unwrap() > 0);
+                    assert!(
+                        record["events"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .any(|event| event["kind"] == "speech.start"
+                                && event["seq"].as_u64().is_some_and(|seq| seq >= 3))
+                    );
+                }
+            }
+        }
     });
 }
 

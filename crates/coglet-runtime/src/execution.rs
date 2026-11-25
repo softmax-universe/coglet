@@ -27,6 +27,8 @@ mod live_heard;
 mod managed;
 pub(crate) use managed::CodeRevision;
 pub(crate) use managed::ReceiptScope;
+#[cfg(feature = "device")]
+pub(crate) use managed::StartRecovery;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;

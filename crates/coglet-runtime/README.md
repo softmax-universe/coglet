@@ -45,6 +45,10 @@ still fail admission; no ambient host filesystem is exposed.
 
 ## Verification
 
+See [daemon-restart.md](daemon-restart.md) for ADR-0027 boot revalidation,
+real guest-after-SIGKILL proof, the named requirement matrix, CPU-loaded stress
+method and the explicit supervisor socket-cleanup / queued-pause boundaries.
+
 See [native-engine.md](native-engine.md) for the opt-in real-Wasm scheduler,
 trusted supervisor configuration and its remaining qualification limits.
 Apple evidence is [run 45286035005](https://github.com/softmax-universe/coglet/actions/runs/45286035005),

@@ -78,6 +78,7 @@ async fn run_async(path: &Path) -> Result<(), String> {
                 .map(|d| d.as_secs())
         }),
     )?;
+    handler.recover_running().await?;
     let endpoint = Endpoint::builder(presets::Minimal)
         .secret_key(key)
         .alpns(vec![ALPN.to_vec()])

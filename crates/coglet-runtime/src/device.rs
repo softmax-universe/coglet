@@ -1,5 +1,5 @@
 //! Authenticated router→device lifecycle. Authority and accepted refs are never
-//! inferred from a remote proof; native execution is not implied by start.
+//! inferred from a remote proof. Boot admission precedes daemon readiness.
 use crate::{DurableStore, Result, RuntimeService, admit_manifest, digest, validate};
 #[path = "initial_push.rs"]
 mod initial_push;
@@ -128,6 +128,107 @@ impl DeviceHandler {
 
     pub fn config(&self) -> &DeviceConfig {
         &self.inner.config
+    }
+
+    /// Complete restart admission before binding any device endpoint. Integrity
+    /// or persistence errors abort startup; ordinary admission refusals durably
+    /// fault only their installed coglet. No receipt or guest step is created.
+    pub async fn recover_running(&self) -> Result<()> {
+        for coglet in self.inner.config.targets.keys() {
+            let handler = self.clone();
+            let target = coglet.clone();
+            let opened = tokio::task::spawn_blocking(move || -> Result<_> {
+                let Some(setup) = handler.original_setup(&target)? else {
+                    return Ok(None);
+                };
+                let service = handler.open_service(&target, &setup)?;
+                let locked = service.lock().map_err(|_| "unavailable")?;
+                let identity = locked
+                    .managed_identity()
+                    .ok_or("missing installed identity")?;
+                VerifiedRef::verify(
+                    &identity["initial"],
+                    RefKind::Hub,
+                    &handler.inner.config.hub.to_string(),
+                    &target,
+                )
+                .map_err(|_| "invalid installed identity")?;
+                let running = locked.managed_status()["state"] == "running";
+                drop(locked);
+                Ok(Some((service, running)))
+            })
+            .await
+            .map_err(|_| "recovery task failed")??;
+            let Some((service, running)) = opened else {
+                continue;
+            };
+            if running {
+                let verified = self.recover_setup(coglet).await;
+                let handler = self.clone();
+                let target = coglet.clone();
+                tokio::task::spawn_blocking(move || -> Result<()> {
+                    let admission = (|| -> Result<()> {
+                        let (_, setup, _) = verified?.ok_or("missing installed artifact")?;
+                        let recovery = service
+                            .lock()
+                            .map_err(|_| "unavailable")?
+                            .managed_recovery()?;
+                        let pin = handler.pin(&target)?;
+                        if recovery.grant_generation != pin.grant_generation
+                            || recovery.delegation_generation != pin.delegation_generation
+                        {
+                            return Err("changed start authority generations".into());
+                        }
+                        admit_manifest(
+                            &setup["manifest"],
+                            &handler.inner.config.catalog,
+                            &handler.inner.config.grants,
+                        )?;
+                        let scope = Scope {
+                            actor: recovery.scope.actor.clone(),
+                            ticket: recovery.scope.ticket.clone(),
+                        };
+                        let grant = Self::grant("hub.start", &target, recovery.grant_generation);
+                        handler.inner.authority.runtime_boundary_operation(
+                            handler.inner.config.hub,
+                            handler.inner.config.device,
+                            &target,
+                            &scope,
+                            &grant,
+                            recovery.delegation_generation,
+                            None,
+                            Some(&recovery.operation_id),
+                            handler.clock_fn(),
+                            |proof, recheck| {
+                                if recovery.delegation != *proof {
+                                    return Err("permission_denied".into());
+                                }
+                                let mut locked = service.lock().map_err(|_| "unavailable")?;
+                                locked.managed_verify_code(&setup)?;
+                                locked.managed_recovery()?;
+                                handler.require_kill_clear()?;
+                                recheck()?;
+                                handler.enable_native(&target, &mut locked)?;
+                                handler.require_kill_clear()?;
+                                recheck()?;
+                                Ok(())
+                            },
+                        )
+                    })();
+                    if admission.is_err() {
+                        service
+                            .lock()
+                            .map_err(|_| "unavailable")?
+                            .managed_recovery_fault()?;
+                    }
+                    Ok(())
+                })
+                .await
+                .map_err(|_| "recovery task failed")??;
+            }
+            self.start_adapter(coglet);
+        }
+        Ok(())
     }
 
     /// Installed coordinator, if this process already opened it. Tests may share
@@ -287,7 +388,7 @@ impl DeviceHandler {
         })
         .await
         .map_err(|_| "unavailable".to_owned())??;
-        let Some((identity, root, active)) = recovered else {
+        let Some((identity, _root, active)) = recovered else {
             return Ok(None);
         };
         let initial = active.clone();
@@ -301,21 +402,27 @@ impl DeviceHandler {
                 &coglet_owned,
             )
             .map_err(|_| "permission_denied".to_owned())?;
-            handler.load_accepted(&coglet_owned, metadata.signed())
+            let bytes = handler
+                .inner
+                .store
+                .installed_bundle(&metadata)
+                .map_err(store_text)?;
+            Ok::<_, String>((metadata, bytes))
         })
         .await
         .map_err(|_| "unavailable".to_owned())??;
         let verified = self.setup_from_bundle(&loaded.1, &loaded.0, coglet).await?;
         let service = self.share_service(coglet).ok_or("unavailable")?;
+        let checked = verified.clone();
         tokio::task::spawn_blocking(move || {
             service
                 .lock()
                 .map_err(|_| "unavailable".to_owned())?
-                .managed_verify_code(&verified)
+                .managed_verify_code(&checked)
         })
         .await
         .map_err(|_| "unavailable".to_owned())??;
-        Ok(Some((identity, root, active)))
+        Ok(Some((identity, verified, active)))
     }
 
     fn apply_install(
@@ -403,6 +510,7 @@ impl DeviceHandler {
         coglet: &str,
         request: &Value,
         setup: &Value,
+        proof: &Value,
         gate: Gate<'_>,
     ) -> Result<Value> {
         admit_manifest(
@@ -425,12 +533,21 @@ impl DeviceHandler {
         if let Some(receipt) = locked.managed_operation_receipt(id, &intent)? {
             return Ok(receipt);
         }
+        locked.managed_verify_code(setup)?;
         self.enable_native(coglet, &mut locked)?;
         // enable_native can be expensive and the kill switch may latch while
         // waiting: re-read both immediately before the effect.
         self.require_kill_clear()?;
         gate()?;
-        let receipt = locked.managed_operation(id, &intent, true, 0, &receipt_scope(request))?;
+        let pin = self.pin(coglet)?;
+        let receipt = locked.managed_start_authorized(&crate::execution::StartRecovery {
+            operation_id: id.into(),
+            intent,
+            scope: receipt_scope(request),
+            grant_generation: pin.grant_generation,
+            delegation_generation: pin.delegation_generation,
+            delegation: proof.clone(),
+        })?;
         validate("hub-mutation-receipt", &receipt)?;
         Ok(receipt)
     }
@@ -728,7 +845,7 @@ impl DeviceHandler {
             .ok_or_else(|| "permission_denied".to_owned())?;
         let handler = self.clone();
         tokio::task::spawn_blocking(move || {
-            let (identity, setup, active) = recovered;
+            let (_, setup, _) = recovered;
             let scope = Self::scope(&request);
             let grant = Self::grant("hub.start", &coglet, pin.grant_generation);
             handler.inner.authority.runtime_boundary_operation(
@@ -738,16 +855,13 @@ impl DeviceHandler {
                 &scope,
                 &grant,
                 pin.delegation_generation,
-                Some(&active),
+                None, // live installed archive was revalidated, not the newest staged ref
                 request["correlation_id"].as_str(),
                 handler.clock_fn(),
                 |proof, recheck| {
                     let gate = || deadline_gate(&context, recheck);
                     gate()?;
-                    if identity.get("delegation") != Some(proof) {
-                        return Err("permission_denied".into());
-                    }
-                    handler.apply_start(&coglet, &request, &setup, &gate)
+                    handler.apply_start(&coglet, &request, &setup, proof, &gate)
                 },
             )
         })

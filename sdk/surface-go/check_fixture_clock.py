@@ -27,7 +27,18 @@ async def check(binary, logical):
     resume = None
     try:
         await asyncio.wait_for(peer.start(), 3)
-        await timeline(peer, dict(steps=case['steps'][:6]))
+        # This prefix establishes the killed state; it is not the latency
+        # assertion under test. A wall-clock adapter may be descheduled between
+        # grants and its local kill timer. Use ADR-0021's 3s infrastructure
+        # watchdog here, as for start/fixture-clock I/O, not the fixture's 200ms
+        # protocol budget. check_live_clock.py separately proves idle real-time
+        # kill and clock progress. Never relax the unchanged suffix below: its
+        # 200ms receive must still reject our later 450ms scheduling stall.
+        setup = copy.deepcopy(case['steps'][:6])
+        for step in setup:
+            if 'within_ms' in step:
+                step['within_ms'] = 3000
+        await timeline(peer, dict(steps=setup))
         # Stop only our own exact subprocess. This deterministically models an
         # adapter scheduling gap, without mocking messages or durable storage.
         os.kill(peer.process.pid, signal.SIGSTOP)
@@ -41,7 +52,7 @@ async def check(binary, logical):
         if logical:
             assert error is None, error
         else:
-            assert error is not None and 'TimeoutError' in error, error
+            assert error is not None and error.startswith('step 1: TimeoutError:'), error
     finally:
         if resume:
             resume.cancel()
