@@ -30,6 +30,7 @@ and the other ADR status decisions remain separate.
 | 0033 | [Runtime policy attestations and emergency output custody](0033-runtime-policy-producers.md) | Proposed; docs-first producer contract, implementation qualification separate |
 | 0036 | [A cogent has no centre; it is present on a few coglets](0036-distributed-cogent-and-presence.md) | Proposed; direction decided by David 2026-11-25, presence messages not yet in the spec |
 | 0034 | [Ready-output retrieval before optional embedded runtime pumping](0034-ready-output-service.md) | Proposed; implementation qualification separate |
+| 0035 | [State hash is the git SHA-256 tree id](0035-state-hash-git-tree-id.md) | Proposed; direction decided by David 2026-11-24 (unforged staging), implementation separate |
 
 0002 belongs to common conventions; the platform findings retain their evidence
 unchanged under 0008. After `spec-v0`, changes to frozen contracts require an ADR,
