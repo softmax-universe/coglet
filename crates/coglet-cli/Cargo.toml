@@ -13,7 +13,8 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 coglet-runtime = { path = "../coglet-runtime", features = ["native-engine"] }
 coglet-proto = { path = "../coglet-proto" }
-coglet-types = { path = "../coglet-types" }
+# ADR-0031: existing implementation remains hub/0 until its separate migration.
+coglet-types = { package = "coglet-types-hub0", path = "../coglet-types-hub0" }
 libc = "0.2"
 hex = "0.4"
 iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"] }

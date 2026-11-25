@@ -164,6 +164,11 @@ part of 0.1 and needs its own ADR.
   `spec/fixtures/abi/*-timeline.fixture`. Legacy 0.1 implementation harness
   inputs under `conformance/` remain unchanged for the separately owned runtime
   conversion. Passing new specification oracles does not qualify those runtimes.
+  Existing Rust proto/runtime/hub/CLI consumers pin the implementation-only
+  `coglet-types-hub0` snapshot and signature vectors from pre-revision commit
+  `1e972a7c2f4071af346ba5dc45da1ec6cb7f2f01`. This preserves strict hub/0
+  validation without restoring Git rules to the hub/1 schema. Remove the pin
+  during implementation conversion; it is not an additional hub/1 wire alias.
 - Work in flight (the ADR-0018 deploy pipeline, applying router pushes, the
   runtime receiver, H-transform publication) lands as it is and is converted
   afterwards, so no reviewed work is thrown away.
