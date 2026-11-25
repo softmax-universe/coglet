@@ -26,6 +26,7 @@ final class RuntimeHostTests: XCTestCase {
         let good = root.appendingPathComponent("good")
         try provision(good, from: source)
         let host = RuntimeHost(directory: good)
+        host.automaticallyPolls = false
         let device = RuntimeNativePlaybackDevice()
         let speech = FaceSpeechSink(device: device)
         let ptt = PushToTalk(keys: RuntimeNativeKeys(), audio: RuntimeNativeCapture())
@@ -68,18 +69,30 @@ final class RuntimeHostTests: XCTestCase {
         XCTAssertEqual(try outcome(interrupted)?["error"]?["code"], .text("cancelled"))
         // A rendered receipt is terminal even if lifecycle teardown beats the
         // polling task. Exercise the real ledger, not only the output mailbox.
+        let stopActionCount = host.actions.count, stopCallbackCount = device.callbacks.count
         await host.submitTranscript("Rendered immediately before stop", generation: host.generation)
+        XCTAssertEqual(host.actions.count, stopActionCount + 1)
+        XCTAssertEqual(device.callbacks.count, stopCallbackCount + 1)
         let beforeStop = try XCTUnwrap(host.actions.last)
+        XCTAssertEqual(beforeStop.text, "Rendered immediately before stop")
+        XCTAssertNil(try outcome(beforeStop))
         device.renderedFrames = 2
         try XCTUnwrap(device.callbacks.last)()
+        XCTAssertNil(try outcome(beforeStop), "native receipt has not been reconciled")
         await host.stop() // Deliberately no poll between native callback and stop.
         XCTAssertEqual(try outcome(beforeStop)?["status"], .text("succeeded"))
         await host.start()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
+        let restartActionCount = host.actions.count, restartCallbackCount = device.callbacks.count
         await host.submitTranscript("Rendered immediately before restart", generation: host.generation)
+        XCTAssertEqual(host.actions.count, restartActionCount + 1)
+        XCTAssertEqual(device.callbacks.count, restartCallbackCount + 1)
         let beforeRestartReceipt = try XCTUnwrap(host.actions.last)
+        XCTAssertEqual(beforeRestartReceipt.text, "Rendered immediately before restart")
+        XCTAssertNil(try outcome(beforeRestartReceipt))
         device.renderedFrames = 2
         try XCTUnwrap(device.callbacks.last)()
+        XCTAssertNil(try outcome(beforeRestartReceipt), "native receipt has not been reconciled")
         await host.restart() // Deliberately no poll before restarting either.
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         XCTAssertEqual(try outcome(beforeRestartReceipt)?["status"], .text("succeeded"))

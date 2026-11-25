@@ -214,6 +214,9 @@ private actor RuntimeExecutor {
     private let output: RuntimeFaceOutput
     private let executor: RuntimeExecutor
     private var polling: Task<Void, Never>?
+    // Internal manual-pump mode isolates lifecycle tests from background ticks.
+    // Production hosts always keep the default.
+    var automaticallyPolls = true
     private var busy = false
     public init(directory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Softmax/runtime", isDirectory: true)) {
         self.directory = directory
@@ -237,11 +240,13 @@ private actor RuntimeExecutor {
         do {
             coglets = try await executor.start(localReset: localReset, generation: generation)
             state = .running; errorMessage = nil
-            polling = Task { [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .milliseconds(100))
-                    guard !Task.isCancelled, let self else { return }
-                    await self.poll()
+            if automaticallyPolls {
+                polling = Task { [weak self] in
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .milliseconds(100))
+                        guard !Task.isCancelled, let self else { return }
+                        await self.poll()
+                    }
                 }
             }
         } catch { fail(error) }
