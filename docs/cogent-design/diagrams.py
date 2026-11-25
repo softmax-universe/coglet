@@ -897,12 +897,145 @@ def unforged_replay() -> Svg:
     return svg
 
 
+def secrets_lease() -> Svg:
+    svg = Svg("secrets-lease", 960, 450, "The vault is two things: a policy repository in unforged that says which adapters may use which secret, and a key store that holds the bytes. An adapter leases a value for minutes; a coglet only ever names the secret's id.")
+    # policy repo
+    svg.rect(24, 24, 300, 250, "dg-group", 12)
+    svg.text(40, 48, "POLICY, IN UNFORGED", "dg-cap", "start")
+    svg.rect(40, 62, 268, 196, "dg-hub")
+    svg.text(54, 84, "refs/vault/policy", "dg-code", "start")
+    for i, (code, what) in enumerate([("github-main", "owner, kind, store path"), ("may lease", "mcp.github, ci"), ("state", "active | rotating | revoked")]):
+        y = 96 + i * 42
+        svg.rect(54, y, 240, 36, "dg-runtime", 6)
+        svg.text(66, y + 15, code, "dg-code", "start")
+        svg.text(66, y + 29, what, "dg-m", "start")
+    svg.text(174, 246, "signed commits, no secret bytes", "dg-m")
+    # key store
+    svg.rect(24, 296, 300, 100, "dg-group", 12)
+    svg.text(40, 320, "BYTES, IN A KEY STORE", "dg-cap", "start")
+    svg.box(40, 332, 268, 50, "cloud KMS, Vault, OS keychain", "dg-e-wasm")
+    # lease service
+    svg.box(380, 150, 200, 80, "lease service", "dg-runtime", "checks policy tip, issues lease")
+    svg.arrow(310, 160, 378, 176, "ink")
+    svg.text(344, 154, "reads", "dg-m")
+    svg.arrow(310, 356, 378, 216, "ink")
+    svg.text(330, 300, "fetches", "dg-m", "start")
+    # adapter
+    svg.box(640, 150, 140, 80, "MCP adapter", "dg-adapter", "value in memory")
+    svg.arrow(582, 190, 638, 190, "warm")
+    svg.text(610, 182, "lease", "dg-m")
+    svg.box(820, 150, 120, 80, "GitHub", "dg-bg", "the real API")
+    svg.arrow(782, 190, 818, 190, "warm", both=True)
+    # coglet
+    svg.box(640, 300, 140, 64, "Coglet", "dg-coglet", "names github-main")
+    svg.arrow(710, 298, 710, 234, "teal", dashed=True)
+    svg.text(720, 270, "action with a secret id", "dg-m", "start")
+    # audit
+    svg.text(480, 270, "each lease appends to", "dg-m")
+    svg.text(480, 288, "refs/vault/audit", "dg-code")
+    svg.text(480, 306, "(who, which secret, until when)", "dg-m")
+    svg.text(480, 428, "Rotate: put a new value in the store; new leases get it. Revoke: commit state revoked; the next lease fails.", "dg-m")
+    return svg
+
+
+def adapter_call() -> Svg:
+    lifelines = [
+        ("Coglet", "dg-coglet"),
+        ("Runtime", "dg-runtime"),
+        ("Dispatcher", "dg-runtime"),
+        ("MCP adapter", "dg-adapter"),
+    ]
+    messages = [
+        (0, 1, "write /net/github/create_issue/call", "ink", False),
+        (1, 1, "stage out/actions/42, commit step", "ink", False),
+        (1, 2, "state ref moved", "teal", True),
+        (2, 2, "check grant, note 42 as sent", "ink", False),
+        (2, 3, "mcp.github.create_issue", "warm", False),
+        ("note", "the adapter uses its leased token; the coglet never sees it"),
+        (3, 2, "outcome: issue #7 (scrubbed)", "warm", False),
+        (2, 1, "append to next input commit", "teal", True),
+        (1, 0, "next handle() reads the outcome", "blue", False),
+    ]
+    return sequence(
+        "adapter-call",
+        "Calling an adapter from a coglet. The step only stages a file; after the step commits, the dispatcher sends it, and the outcome comes back through the next input commit, so replays read it instead of calling again.",
+        lifelines,
+        messages,
+        spacing=230,
+        legend_items=[("ink", False, "local work"), ("teal", True, "through git"), ("warm", False, "live call"), ("blue", False, "event")],
+    )
+
+
+def llm_loop() -> Svg:
+    lifelines = [
+        ("Coglet", "dg-coglet"),
+        ("Dispatcher", "dg-runtime"),
+        ("LLM adapter", "dg-adapter"),
+        ("Tool adapter", "dg-adapter"),
+    ]
+    messages = [
+        (0, 0, "step 1: read data/chat, stage llm call", "ink", False),
+        (0, 1, "out/actions/a1", "teal", True),
+        (1, 2, "llm.claude.complete", "warm", False),
+        (2, 0, "partial tokens, then final reply", "blue", False),
+        (0, 0, "step 2: reply asks for a tool, stage it", "ink", False),
+        (0, 1, "out/actions/a2", "teal", True),
+        (1, 3, "mcp.github.search", "warm", False),
+        (3, 0, "outcome", "blue", False),
+        (0, 0, "step 3: append result, stage next llm call", "ink", False),
+    ]
+    return sequence(
+        "llm-loop",
+        "An agent loop unrolled into steps. Each step reads the conversation from its own files, stages one call and stops; each reply wakes the next step. Every turn is a commit, so a run can be replayed or forked at any turn.",
+        lifelines,
+        messages,
+        spacing=230,
+        legend_items=[("ink", False, "inside a step"), ("teal", True, "staged, sent after commit"), ("warm", False, "live call"), ("blue", False, "event into next input")],
+    )
+
+
+def runtime_split() -> Svg:
+    svg = Svg("runtime-split", 960, 430, "What stays in cogletd and what moves to unforged. The runtime keeps what must be fast, local or metered; everything durable moves into git.")
+    svg.rect(24, 24, 440, 380, "dg-group", 12)
+    svg.text(40, 48, "STAYS IN COGLETD", "dg-cap", "start")
+    stays = [
+        ("Wasm engine", "WAMR, compute and deadline metering"),
+        ("Step loop", "event batching, budgets, all-or-nothing"),
+        ("Grant checks", "on every staged action"),
+        ("Dispatcher", "live adapter connections, sends out/"),
+        ("Timers", "firing needs a clock"),
+        ("Speech and barge-in", "anything with a latency budget"),
+    ]
+    for i, (name, what) in enumerate(stays):
+        y = 62 + i * 54
+        svg.rect(40, y, 408, 44, "dg-runtime", 8)
+        svg.text(56, y + 19, name, "dg-b", "start")
+        svg.text(56, y + 36, what, "dg-m", "start")
+    svg.rect(496, 24, 440, 380, "dg-group", 12)
+    svg.text(512, 48, "MOVES TO UNFORGED", "dg-cap", "start")
+    moves = [
+        ("Snapshot, journal, WAL", "commits on the state ref"),
+        ("Crash recovery", "read the ref: it is the last committed step"),
+        ("Code updates, install, deploy", "merges and ref moves"),
+        ("Inbox, logs, effect ledger", "input commits, files, a git note"),
+        ("Debug reads and writes", "git reads, boundary commits"),
+        ("Replays, forks, gates", "river exec jobs, cached"),
+    ]
+    for i, (name, what) in enumerate(moves):
+        y = 62 + i * 54
+        svg.rect(512, y, 408, 44, "dg-hub", 8)
+        svg.text(528, y + 19, name, "dg-b", "start")
+        svg.text(528, y + 36, what, "dg-m", "start")
+    return svg
+
+
 def main() -> None:
     OUT.mkdir(exist_ok=True)
     for stale in OUT.glob("*.svg"):
         stale.unlink()
     for svg in (adapters(), coglet(), runtime(), softmax_app(), speech(), step(), service_call(), cogent(), deployment(), calls(), turn(),
-                unforged_stack(), unforged_tree(), unforged_step(), unforged_patch(), unforged_replay()):
+                unforged_stack(), unforged_tree(), unforged_step(), unforged_patch(), unforged_replay(),
+                runtime_split(), secrets_lease(), adapter_call(), llm_loop()):
         path = OUT / f"{svg.name}.svg"
         path.write_text(svg.render(), encoding="utf-8")
         print(f"wrote {path}")

@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLMs on unforged</title>
+<style>
+:root {
+  --paper: #f6f3ec; --panel: #fffdf8; --ink: #1d1b16; --muted: #6b6558;
+  --rule: #e2dccd; --accent: #0b6e69; --accent-soft: #d9ece9;
+  --code-bg: #fbf9f3; --code-ink: #2a2721;
+  --kw: #8a3b12; --cls: #0b6e69; --fn: #1f4e8c; --str: #5d6b1e; --doc: #6b6558;
+  --num: #8c2f5a; --deco: #7a4fa3; --cmt: #9a9384;
+  --frozen-bg: #dfe9f5; --frozen-ink: #1f4e8c;
+  --adr-bg: #f3e6c8; --adr-ink: #7a5200;
+  --draft-bg: #e9e4f3; --draft-ink: #5b3f8f;
+  --proposed-bg: #d9ece9; --proposed-ink: #0b5a56;
+  --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14161a; --panel: #1b1e24; --ink: #e9e6df; --muted: #9a968c;
+    --rule: #2c3038; --accent: #5cc8bf; --accent-soft: #17302f;
+    --code-bg: #171a1f; --code-ink: #dcd8cf;
+    --kw: #e8a06a; --cls: #5cc8bf; --fn: #8fb8f0; --str: #b9c97a; --doc: #9a968c;
+    --num: #e58fb6; --deco: #c3a2e8; --cmt: #6f6b62;
+    --frozen-bg: #1c2b40; --frozen-ink: #9cc2f2;
+    --adr-bg: #3a2f14; --adr-ink: #ecc56b;
+    --draft-bg: #2b2440; --draft-ink: #c3a2e8;
+    --proposed-bg: #17302f; --proposed-ink: #7fdcd3;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 1.5rem; }
+body { margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.layout { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr); min-height: 100vh; }
+nav { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+  padding: 1.5rem 1rem 3rem 1.5rem; border-right: 1px solid var(--rule); background: var(--panel); }
+nav .brand { font: 600 1.15rem/1.2 var(--serif); letter-spacing: .01em; margin-bottom: .2rem; }
+nav .sub { color: var(--muted); font-size: .8rem; margin-bottom: 1rem; }
+nav input { width: 100%; padding: .45rem .6rem; margin-bottom: 1rem; font: inherit; font-size: .85rem;
+  color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; }
+nav input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+nav ul { list-style: none; margin: 0; padding: 0; }
+nav li.h2 > a { display: block; margin-top: .9rem; padding: .15rem .5rem; font-weight: 600;
+  font-size: .78rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); }
+nav li.h3 > a { display: block; padding: .12rem .5rem .12rem .9rem; font-size: .84rem;
+  color: var(--muted); border-left: 2px solid transparent; }
+nav li.h3 > a code { font: inherit; font-family: var(--mono); font-size: .78rem; }
+nav a:hover { text-decoration: none; color: var(--accent); }
+nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+main { padding: 3rem clamp(1rem, 4vw, 4rem) 6rem; max-width: 62rem; }
+h1 { font: 600 2.6rem/1.1 var(--serif); margin: 0 0 1rem; letter-spacing: -.01em; }
+h2 { font: 600 1.75rem/1.2 var(--serif); margin: 4rem 0 .8rem; padding-top: 1.2rem;
+  border-top: 2px solid var(--ink); }
+h3 { font: 600 1.05rem/1.3 var(--sans); margin: 2.4rem 0 .6rem; display: flex;
+  flex-wrap: wrap; align-items: center; gap: .5rem; }
+h3 code { font-family: var(--mono); font-size: 1rem; background: none; padding: 0; color: var(--cls); }
+p, li { max-width: 46rem; }
+p code, li code, td code { font-family: var(--mono); font-size: .86em; background: var(--accent-soft);
+  color: var(--ink); padding: .08em .35em; border-radius: 4px; white-space: nowrap; }
+.badge { font: 600 .68rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
+  padding: .3em .6em; border-radius: 99px; white-space: nowrap; }
+.badge.frozen { background: var(--frozen-bg); color: var(--frozen-ink); }
+.badge.adr { background: var(--adr-bg); color: var(--adr-ink); }
+.badge.draft { background: var(--draft-bg); color: var(--draft-ink); }
+.badge.proposed { background: var(--proposed-bg); color: var(--proposed-ink); }
+.headerlink { opacity: 0; margin-left: .2rem; color: var(--muted); font-weight: 400; }
+h2:hover .headerlink, h3:hover .headerlink { opacity: 1; }
+.codehilite { background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+  border-radius: 8px; margin: .8rem 0 1.2rem; overflow-x: auto; }
+.codehilite pre { margin: 0; padding: 1rem 1.2rem; font: 13.5px/1.6 var(--mono); color: var(--code-ink); }
+.codehilite .k, .codehilite .kn, .codehilite .kc, .codehilite .kd, .codehilite .kt, .codehilite .ow { color: var(--kw); }
+.codehilite .nc, .codehilite .nn { color: var(--cls); font-weight: 600; }
+.codehilite .nf, .codehilite .fm { color: var(--fn); font-weight: 600; }
+.codehilite .nd { color: var(--deco); }
+.codehilite .s, .codehilite .s1, .codehilite .s2, .codehilite .sa, .codehilite .sr { color: var(--str); }
+.codehilite .sd { color: var(--doc); font-family: var(--sans); font-size: 13.5px; }
+.codehilite .mi, .codehilite .mf, .codehilite .mh { color: var(--num); }
+.codehilite .c, .codehilite .c1, .codehilite .cm { color: var(--cmt); font-style: italic; }
+.codehilite .nb, .codehilite .bp { color: var(--fn); }
+.tablewrap { overflow-x: auto; margin: 1rem 0 1.4rem; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th { text-align: left; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); border-bottom: 2px solid var(--ink); padding: .5rem .8rem .5rem 0; white-space: nowrap; }
+td { border-bottom: 1px solid var(--rule); padding: .55rem .8rem .55rem 0; vertical-align: top; }
+blockquote { margin: 1rem 0; padding: .2rem 1rem; border-left: 3px solid var(--accent); color: var(--muted); }
+ol, ul { padding-left: 1.3rem; }
+li { margin: .25rem 0; }
+.idl .nc { color: var(--cls); font-weight: 600; }
+.idl .nf { color: var(--fn); font-weight: 600; }
+.idl .na { color: var(--code-ink); }
+.idl .ty { color: var(--kw); }
+.idl .op { color: var(--str); }
+.idl .kw, .idl .rt { color: var(--deco); }
+.idl .sd { color: var(--doc); font-family: var(--sans); }
+.idl .c { color: var(--cmt); font-style: italic; }
+main p > img { display: block; max-width: min(100%, 34rem); height: auto; margin: 1rem 0; border-radius: 14px; }
+figure.diagram { margin: 1.4rem 0 .4rem; }
+figure.diagram svg { display: block; width: 100%; height: auto; }
+figure.diagram + p { color: var(--muted); font-size: .88rem; margin-top: .3rem; }
+nav .pages { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
+nav .pages a { padding: .35rem .6rem; font-size: .8rem; font-weight: 600;
+  border: 1px solid var(--rule); border-radius: 6px; color: var(--muted); }
+nav .pages a.here { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; }
+  nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--rule); max-height: 45vh; }
+  h1 { font-size: 2rem; }
+}
+@media print { nav { display: none; } .layout { display: block; } }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <div class="brand">LLMs on unforged</div>
+  <div class="sub">Generated from llms.md. Do not edit.</div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html">Coglets on unforged</a><a href="unforged-staging.html">Staged integration</a><a href="secrets.html">Secrets and adapters</a><a href="llms.html" class="here">LLMs on unforged</a></div>
+  <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
+  <ul>
+  <li class="h2"><a href="#a-model-is-just-another-adapter">A model is just another adapter</a></li><li class="h2"><a href="#an-agent-loop-is-a-chain-of-steps">An agent loop is a chain of steps</a></li><li class="h2"><a href="#a-prompt-runner-so-most-coglets-are-words">A prompt runner, so most coglets are words</a></li><li class="h2"><a href="#what-coglet-code-is-written-in">What coglet code is written in</a></li><li class="h2"><a href="#harnesses-run-beside-the-cogent">Harnesses run beside the cogent</a></li><li class="h2"><a href="#open-questions">Open questions</a></li>
+  </ul>
+</nav>
+<main>
+<h1 id="llms-on-unforged">LLMs on unforged<a class="headerlink" href="#llms-on-unforged" title="Permanent link">#</a></h1>
+<p>How coglets use language models when they run on unforged
+(<a href="unforged.html">Coglets on unforged</a>): a model is just another adapter, an agent
+loop is a chain of steps, and long-running harnesses run beside the cogent, not
+inside a step. Part of the <a href="index.html">cogent design</a>.</p>
+<p>Status: <code>proposed</code>. This changes the ABI, so it is a later stage in
+<a href="unforged-staging.html">Staged integration</a>, not a change to make now.</p>
+<h2 id="a-model-is-just-another-adapter">A model is just another adapter<a class="headerlink" href="#a-model-is-just-another-adapter" title="Permanent link">#</a></h2>
+<p>Today the runtime treats model calls specially. The ABI has a built-in
+<code>llm.complete</code> capability: a step stages an <code>llm-request</code>, the runtime sends it
+after the step commits, the reply arrives as an <code>llm.reply</code> event, replies are
+recorded verbatim, and a replay never calls a live model.</p>
+<p>Every one of those properties is one we want for every outside call, not just
+models. A replay should never call Stripe or GitHub again either. So this
+design makes the generic action path do all of it, and the model becomes one
+adapter among many:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Today, for models only</th>
+<th>Proposed, for every adapter</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>llm.complete</code> host capability</td>
+<td>Actions named <code>llm.&lt;provider&gt;.complete</code>, under <code>/net/llm/&lt;provider&gt;/</code></td>
+</tr>
+<tr>
+<td><code>llm-request</code> effect kind</td>
+<td>An ordinary staged action in <code>out/actions/</code></td>
+</tr>
+<tr>
+<td><code>llm.reply</code> event</td>
+<td>An ordinary outcome event</td>
+</tr>
+<tr>
+<td>Replies recorded for replay</td>
+<td>Every outcome recorded in input commits (<a href="secrets.html#one-call-end-to-end">Secrets and adapters</a>)</td>
+</tr>
+<tr>
+<td>Model routing in the runtime</td>
+<td>Models listed in the LLM adapter's catalog</td>
+</tr>
+<tr>
+<td>Spend tracked by the runtime</td>
+<td>Budgets in the coglet's grant, enforced by the adapter</td>
+</tr>
+</tbody>
+</table></div>
+<p>The runtime gets smaller: one effect path, no special host functions for
+models, and adding or swapping a provider is a catalog commit. The LLM adapter
+holds the provider keys through the vault, like any other adapter.</p>
+<p>Two things the generic path must handle well:</p>
+<ul>
+<li><strong>Streaming.</strong> Voice needs tokens as they arrive. An outcome can therefore be
+  a series of events: partial events carrying a sequence number, then one final
+  event. Speech events (<code>speech.start</code>, <code>speech.partial</code>, <code>speech.end</code> in
+  <a href="softmax-app.html">the Softmax app</a>) already work this way, so the pattern
+  generalises. Replays read the same recorded series.</li>
+<li><strong>Budgets.</strong> A grant on <code>llm.*</code> carries limits: tokens or spend per period,
+  and which models. The adapter refuses a call that would go over, and reports
+  usage with each outcome so the coglet can see what it spent.</li>
+</ul>
+<h2 id="an-agent-loop-is-a-chain-of-steps">An agent loop is a chain of steps<a class="headerlink" href="#an-agent-loop-is-a-chain-of-steps" title="Permanent link">#</a></h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="564" viewBox="0 0 960 564" role="img" aria-label="An agent loop unrolled into steps. Each step reads the conversation from its own files, stages one call and stops; each reply wakes the next step. Every turn is a commit, so a run can be replayed or forked at any turn.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="llm-loop-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="llm-loop-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="llm-loop-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="llm-loop-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="llm-loop-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="llm-loop-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="llm-loop-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="llm-loop-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="563" rx="12" class="dg-bg"/>
+<line x1="100" y1="64" x2="100" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="32.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
+<text x="100.0" y="48.0" text-anchor="middle" class="dg-b">Coglet</text>
+<line x1="330" y1="64" x2="330" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="262.0" y="24" width="136" height="40" rx="8" class="dg-runtime"/>
+<text x="330.0" y="48.0" text-anchor="middle" class="dg-b">Dispatcher</text>
+<line x1="560" y1="64" x2="560" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="492.0" y="24" width="136" height="40" rx="8" class="dg-adapter"/>
+<text x="560.0" y="48.0" text-anchor="middle" class="dg-b">LLM adapter</text>
+<line x1="790" y1="64" x2="790" y2="492" class="dg-life" stroke-width="1.4"/>
+<rect x="722.0" y="24" width="136" height="40" rx="8" class="dg-adapter"/>
+<text x="790.0" y="48.0" text-anchor="middle" class="dg-b">Tool adapter</text>
+<path d="M100 96h34v18h-27" class="dg-ink" stroke-width="1.6" marker-end="url(#llm-loop-ink)"/>
+<circle cx="86" cy="105" r="8" class="dg-num"/>
+<text x="86" y="108.5" text-anchor="middle" class="dg-numt">1</text>
+<text x="144" y="109" text-anchor="start" class="dg-code dg-halo">step 1: read data/chat, stage llm call</text>
+<line x1="104" y1="154" x2="326" y2="154" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#llm-loop-teal)"/>
+<circle cx="118" cy="154" r="8" class="dg-num"/>
+<text x="118" y="157.5" text-anchor="middle" class="dg-numt">2</text>
+<text x="224.0" y="146" text-anchor="middle" class="dg-code dg-halo">out/actions/a1</text>
+<line x1="334" y1="200" x2="556" y2="200" class="dg-warm" stroke-width="1.6" marker-end="url(#llm-loop-warm)"/>
+<circle cx="348" cy="200" r="8" class="dg-num"/>
+<text x="348" y="203.5" text-anchor="middle" class="dg-numt">3</text>
+<text x="454.0" y="192" text-anchor="middle" class="dg-code dg-halo">llm.claude.complete</text>
+<line x1="556" y1="246" x2="104" y2="246" class="dg-blue" stroke-width="1.6" marker-end="url(#llm-loop-blue)"/>
+<circle cx="542" cy="246" r="8" class="dg-num"/>
+<text x="542" y="249.5" text-anchor="middle" class="dg-numt">4</text>
+<text x="321.0" y="238" text-anchor="middle" class="dg-code dg-halo">partial tokens, then final reply</text>
+<path d="M100 280h34v18h-27" class="dg-ink" stroke-width="1.6" marker-end="url(#llm-loop-ink)"/>
+<circle cx="86" cy="289" r="8" class="dg-num"/>
+<text x="86" y="292.5" text-anchor="middle" class="dg-numt">5</text>
+<text x="144" y="293" text-anchor="start" class="dg-code dg-halo">step 2: reply asks for a tool, stage it</text>
+<line x1="104" y1="338" x2="326" y2="338" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#llm-loop-teal)"/>
+<circle cx="118" cy="338" r="8" class="dg-num"/>
+<text x="118" y="341.5" text-anchor="middle" class="dg-numt">6</text>
+<text x="224.0" y="330" text-anchor="middle" class="dg-code dg-halo">out/actions/a2</text>
+<line x1="334" y1="384" x2="786" y2="384" class="dg-warm" stroke-width="1.6" marker-end="url(#llm-loop-warm)"/>
+<circle cx="348" cy="384" r="8" class="dg-num"/>
+<text x="348" y="387.5" text-anchor="middle" class="dg-numt">7</text>
+<text x="569.0" y="376" text-anchor="middle" class="dg-code dg-halo">mcp.github.search</text>
+<line x1="786" y1="430" x2="104" y2="430" class="dg-blue" stroke-width="1.6" marker-end="url(#llm-loop-blue)"/>
+<circle cx="772" cy="430" r="8" class="dg-num"/>
+<text x="772" y="433.5" text-anchor="middle" class="dg-numt">8</text>
+<text x="436.0" y="422" text-anchor="middle" class="dg-code dg-halo">outcome</text>
+<path d="M100 464h34v18h-27" class="dg-ink" stroke-width="1.6" marker-end="url(#llm-loop-ink)"/>
+<circle cx="86" cy="473" r="8" class="dg-num"/>
+<text x="86" y="476.5" text-anchor="middle" class="dg-numt">9</text>
+<text x="144" y="477" text-anchor="start" class="dg-code dg-halo">step 3: append result, stage next llm call</text>
+<line x1="40" y1="538" x2="74" y2="538" class="dg-ink" stroke-width="1.6" marker-end="url(#llm-loop-ink)"/>
+<text x="82" y="542" text-anchor="start" class="dg-m">inside a step</text>
+<line x1="178" y1="538" x2="212" y2="538" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#llm-loop-teal)"/>
+<text x="220" y="542" text-anchor="start" class="dg-m">staged, sent after commit</text>
+<line x1="388" y1="538" x2="422" y2="538" class="dg-warm" stroke-width="1.6" marker-end="url(#llm-loop-warm)"/>
+<text x="430" y="542" text-anchor="start" class="dg-m">live call</text>
+<line x1="502" y1="538" x2="536" y2="538" class="dg-blue" stroke-width="1.6" marker-end="url(#llm-loop-blue)"/>
+<text x="544" y="542" text-anchor="start" class="dg-m">event into next input</text>
+</svg>
+</figure>
+<p><em>An agent loop as steps. Each step stages one call and stops.</em></p>
+<p>A step must be short, metered and finished before anything goes out, so a
+coglet cannot wait for a model inside a step. Instead the loop is unrolled:</p>
+<ol>
+<li>The conversation lives in the coglet's own files, for example
+   <code>data/chat/turns.jsonl</code>.</li>
+<li>A step reads it, decides what to do, stages one model call, and stops.</li>
+<li>The reply wakes the next step. If the reply asks for a tool, that step
+   stages the tool call and stops; the tool's outcome wakes the step after.</li>
+<li>Each step appends what it learned to the conversation.</li>
+</ol>
+<p>What this buys:</p>
+<ul>
+<li><strong>Every turn is a commit.</strong> A conversation can be replayed exactly, or
+  forked at any turn to try a different prompt, model or tool result.</li>
+<li><strong>Forks reuse work.</strong> A fork shares every step before the point where it
+  changes, through unforged's cache. After that point it needs new model
+  replies; those are live calls made by the LLM adapter at the centre and
+  recorded into the fork's own inputs.</li>
+<li><strong>Tools and models are the same thing.</strong> A model call and an MCP tool call
+  are both staged actions with recorded outcomes.</li>
+</ul>
+<h2 id="a-prompt-runner-so-most-coglets-are-words">A prompt runner, so most coglets are words<a class="headerlink" href="#a-prompt-runner-so-most-coglets-are-words" title="Permanent link">#</a></h2>
+<p>Most coglets the cogent writes are mostly prompts and skills. So there is one
+standard program, the <strong>prompt runner</strong>: a Wasm module that reads
+<code>code/prompts/</code> and <code>code/skills/</code>, runs the loop above, and turns the model's
+answers into actions. A coglet built on it is a manifest plus some markdown:</p>
+<div class="codehilite idl"><pre><span class="nc">PromptCoglet</span>
+  <span class="sd">The tree of a coglet that uses the prompt runner.</span>
+  manifest.cbor          Manifest     Names the prompt runner as its resolver.
+  code/prompts/system.md bytes        Who it is and what it does.
+  code/skills/*.md       bytes        What it knows how to do.
+  data/chat/turns.jsonl  bytes        Its conversation, written by the runner.</pre></div>
+<p>No compiler is involved in writing or patching one, which is what lets the
+factory and the optimizer change coglets by editing text.</p>
+<h2 id="what-coglet-code-is-written-in">What coglet code is written in<a class="headerlink" href="#what-coglet-code-is-written-in" title="Permanent link">#</a></h2>
+<p>Whatever the resolver names. The resolver pins the engine that runs a coglet's
+step, so:</p>
+<ul>
+<li><strong>Wasm, today.</strong> <code>code/bin/step.wasm</code>, built with the Rust guest SDK. Anything
+  that compiles to Wasm works in principle: C, Zig, Go via TinyGo,
+  AssemblyScript.</li>
+<li><strong>Words, through the prompt runner.</strong> The runner is Wasm; the coglet is text.</li>
+<li><strong>Other languages, through engines built as Wasm.</strong> A coglet can be a
+  JavaScript file whose resolver names a JavaScript engine compiled to Wasm.
+  The engine stays metered and deterministic.</li>
+</ul>
+<p>The hard rule is the same in every case: no ambient clock, randomness or
+network. That rules out running ordinary Python libraries as they are.</p>
+<h2 id="harnesses-run-beside-the-cogent">Harnesses run beside the cogent<a class="headerlink" href="#harnesses-run-beside-the-cogent" title="Permanent link">#</a></h2>
+<p>A full harness such as Claude Code runs for minutes, makes dozens of calls and
+edits a working tree. That does not fit in steps, and unrolling it would mean
+rewriting the harness. So a harness runs as an adapter:</p>
+<ul>
+<li>It runs on a worker outside unforged, like the factory's existing
+  <code>worker.control</code> adapter.</li>
+<li>A coglet starts a job, steers it and receives results as events. Results land
+  in input commits like any outcome.</li>
+<li>Its own model and tool calls happen inside the worker. A replay of the coglet
+  sees only the recorded events, not the harness's internal turns.</li>
+</ul>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Use</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unrolled loop with the prompt runner</td>
+<td>Coglets whose policy is mostly prompts: the fast loop, Face, app coglets</td>
+</tr>
+<tr>
+<td>Harness as an adapter</td>
+<td>Heavy coding and long jobs: the factory</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="open-questions">Open questions<a class="headerlink" href="#open-questions" title="Permanent link">#</a></h2>
+<ul>
+<li><strong>Streaming into a step.</strong> Should a coglet step on every partial event, or
+  only on the final one with partials going straight to speech? Stepping on
+  every partial is simple but makes many commits per reply.</li>
+<li><strong>Prompt caching across forks.</strong> Forks that share a long prefix could share
+  the provider's prompt cache. That needs the adapter to keep cache keys stable
+  across forks.</li>
+<li><strong>Recording size.</strong> Recorded model replies make input commits large. They
+  are blobs and are shared when identical, but long transcripts still need
+  compaction.</li>
+</ul>
+</main>
+</div>
+<script>
+const links = [...document.querySelectorAll('nav a[href^="#"]')];
+const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+const seen = new IntersectionObserver(entries => {
+  for (const e of entries) if (e.isIntersecting) {
+    links.forEach(a => a.classList.remove('active'));
+    const a = byId.get(e.target.id);
+    if (a) { a.classList.add('active'); a.scrollIntoView({block: 'nearest'}); }
+  }
+}, {rootMargin: '0px 0px -75% 0px'});
+document.querySelectorAll('main h2[id], main h3[id]').forEach(h => seen.observe(h));
+document.getElementById('filter').addEventListener('input', ev => {
+  const q = ev.target.value.trim().toLowerCase();
+  document.querySelectorAll('nav li').forEach(li => {
+    li.hidden = q !== '' && !li.textContent.toLowerCase().includes(q);
+  });
+});
+</script>
+</body>
+</html>

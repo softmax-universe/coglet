@@ -121,7 +121,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 <nav>
   <div class="brand">Coglets and unforged: staged integration</div>
   <div class="sub">Generated from unforged-staging.md. Do not edit.</div>
-  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html">Coglets on unforged</a><a href="unforged-staging.html" class="here">Staged integration</a></div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html">Coglets on unforged</a><a href="unforged-staging.html" class="here">Staged integration</a><a href="secrets.html">Secrets and adapters</a><a href="llms.html">LLMs on unforged</a></div>
   <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
   <ul>
   <li class="h2"><a href="#decision">Decision</a></li><li class="h2"><a href="#why-now-and-why-only-this">Why now, and why only this</a></li><li class="h2"><a href="#the-change">The change</a></li><li class="h2"><a href="#what-does-not-change">What does not change</a></li><li class="h2"><a href="#later-stages-not-part-of-this-change">Later stages (not part of this change)</a></li><li class="h2"><a href="#instructions-for-the-coglet-swarm">Instructions for the coglet swarm</a></li>
@@ -192,8 +192,16 @@ exactly one tree.</p>
 <li><strong>Router on unforged.</strong> Make the router's store an unforged repository, move
    code and state as SHA-256 refs, and use ref moves to implement install,
    start and deploy. Decide then whether steps become commits on devices.</li>
+<li><strong>One effect path.</strong> Replace the built-in <code>llm</code> capability with ordinary
+   actions to an LLM adapter, record every adapter's outcomes for replay, and
+   expose adapters as <code>/net</code> mounts. See <a href="llms.html">LLMs on unforged</a> and
+   <a href="secrets.html">Secrets and adapters</a>.</li>
 </ol>
 <p>Each stage starts only after the previous one passes.</p>
+<p>The secrets design in <a href="secrets.html">Secrets and adapters</a> does not depend on
+unforged: credentials live in adapters, coglets name them by id, and the bytes
+stay out of every trace. Its rules can be adopted for today's adapters
+whenever a spec for them is written, ahead of these stages.</p>
 <h2 id="instructions-for-the-coglet-swarm">Instructions for the coglet swarm<a class="headerlink" href="#instructions-for-the-coglet-swarm" title="Permanent link">#</a></h2>
 <p>Forward this section as-is.</p>
 <p><strong>Goal.</strong> Change the definition of the coglet filesystem state hash to the git

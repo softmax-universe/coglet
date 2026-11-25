@@ -73,8 +73,17 @@ exactly one tree.
 3. **Router on unforged.** Make the router's store an unforged repository, move
    code and state as SHA-256 refs, and use ref moves to implement install,
    start and deploy. Decide then whether steps become commits on devices.
+4. **One effect path.** Replace the built-in `llm` capability with ordinary
+   actions to an LLM adapter, record every adapter's outcomes for replay, and
+   expose adapters as `/net` mounts. See [LLMs on unforged](llms.md) and
+   [Secrets and adapters](secrets.md).
 
 Each stage starts only after the previous one passes.
+
+The secrets design in [Secrets and adapters](secrets.md) does not depend on
+unforged: credentials live in adapters, coglets name them by id, and the bytes
+stay out of every trace. Its rules can be adopted for today's adapters
+whenever a spec for them is written, ahead of these stages.
 
 ## Instructions for the coglet swarm
 

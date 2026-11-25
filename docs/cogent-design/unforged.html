@@ -121,10 +121,10 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 <nav>
   <div class="brand">Coglets on unforged</div>
   <div class="sub">Generated from unforged.md. Do not edit.</div>
-  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html" class="here">Coglets on unforged</a><a href="unforged-staging.html">Staged integration</a></div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html" class="here">Coglets on unforged</a><a href="unforged-staging.html">Staged integration</a><a href="secrets.html">Secrets and adapters</a><a href="llms.html">LLMs on unforged</a></div>
   <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
   <ul>
-  <li class="h2"><a href="#the-idea">The idea</a></li><li class="h2"><a href="#a-coglet-is-a-ref">A coglet is a ref</a></li><li class="h2"><a href="#a-step-is-a-merge">A step is a merge</a></li><li class="h2"><a href="#two-runners">Two runners</a></li><li class="h2"><a href="#replays-forks-and-gates">Replays, forks and gates</a></li><li class="h2"><a href="#patches-are-merges">Patches are merges</a></li><li class="h2"><a href="#the-router-is-an-unforged-repository">The router is an unforged repository</a></li><li class="h2"><a href="#signatures">Signatures</a></li><li class="h2"><a href="#what-it-costs">What it costs</a></li><li class="h2"><a href="#spec-changes">Spec changes</a></li><li class="h2"><a href="#open-questions">Open questions</a></li><li class="h2"><a href="#first-test">First test</a></li>
+  <li class="h2"><a href="#the-idea">The idea</a></li><li class="h2"><a href="#a-coglet-is-a-ref">A coglet is a ref</a></li><li class="h2"><a href="#a-step-is-a-merge">A step is a merge</a></li><li class="h2"><a href="#two-runners">Two runners</a></li><li class="h2"><a href="#what-stays-in-the-runtime">What stays in the runtime</a></li><li class="h2"><a href="#replays-forks-and-gates">Replays, forks and gates</a></li><li class="h2"><a href="#patches-are-merges">Patches are merges</a></li><li class="h2"><a href="#adapters-secrets-and-models">Adapters, secrets and models</a></li><li class="h2"><a href="#the-router-is-an-unforged-repository">The router is an unforged repository</a></li><li class="h2"><a href="#signatures">Signatures</a></li><li class="h2"><a href="#what-it-costs">What it costs</a></li><li class="h2"><a href="#spec-changes">Spec changes</a></li><li class="h2"><a href="#open-questions">Open questions</a></li><li class="h2"><a href="#first-test">First test</a></li>
   </ul>
 </nav>
 <main>
@@ -682,6 +682,161 @@ engine and a small driver, <code>coglet-step</code>, that runs exactly one step 
 writes the output tree; the input is the coglet's state merged with one input
 commit. unforged takes care of sandboxing, caching, provenance trailers and,
 with a <code>caos://</code> ticket, running the job on a CAOS worker.</p>
+<p><strong>Commit always, flush in groups, push rarely.</strong> A voice turn can step a
+coglet many times a second, so the three clocks are kept apart:</p>
+<ul>
+<li><strong>Commit</strong> every step, in memory: hashing a few small objects and swapping
+  a ref. The step rate is bounded by batching, since the runtime folds every
+  event that arrived during a step into the next one; raw audio frames are
+  never events, only partials and end of utterance.</li>
+<li><strong>Flush</strong> to disk in groups, every 100 ms or so, and always before an action
+  that matters leaves the device. Speech output may leave after the in-memory
+  commit; a crash then loses at most the last fraction of a second.</li>
+<li><strong>Push</strong> the <code>state</code> tip to the router every few seconds or at the end of a
+  turn. Intermediate commits stay local and are later compacted into
+  checkpoints.</li>
+</ul>
+<h2 id="what-stays-in-the-runtime">What stays in the runtime<a class="headerlink" href="#what-stays-in-the-runtime" title="Permanent link">#</a></h2>
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="What stays in cogletd and what moves to unforged. The runtime keeps what must be fast, local or metered; everything durable moves into git.">
+<style>
+.dg-bg{fill:#fffdf8;stroke:#e2dccd}
+.dg-group{fill:#f3efe4}
+.dg-t{font:12px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-b{font:600 13px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#1d1b16}
+.dg-m{font:11px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558}
+.dg-cap{font:600 10px 'Avenir Next','Segoe UI',system-ui,sans-serif;fill:#6b6558;letter-spacing:.08em}
+.dg-code{font:11px 'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;fill:#1d1b16}
+.dg-halo{paint-order:stroke;stroke:#fffdf8;stroke-width:5px;stroke-linejoin:round}
+.dg-coglet{fill:#d9ece9;stroke:#0b6e69}
+.dg-adapter{fill:#f8e6d6;stroke:#a4531c}
+.dg-runtime{fill:#fffdf8;stroke:#8a8474}
+.dg-hub{fill:#dfe9f5;stroke:#1f4e8c}
+.dg-world{fill:none;stroke:#8a8474;stroke-dasharray:4 4}
+.dg-life{stroke:#c9c2b0;stroke-dasharray:3 4}
+.dg-ink{stroke:#3a372f;fill:none}.dg-ink-h{fill:#3a372f}
+.dg-teal{stroke:#0b6e69;fill:none}.dg-teal-h{fill:#0b6e69}
+.dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
+.dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
+.dg-dash{stroke-dasharray:6 4}
+.dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
+.dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
+.dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
+@media (prefers-color-scheme: dark){
+.dg-bg{fill:#1b1e24;stroke:#2c3038}
+.dg-group{fill:#22262d}
+.dg-t,.dg-b,.dg-code{fill:#e9e6df}
+.dg-m,.dg-cap{fill:#9a968c}
+.dg-halo{stroke:#1b1e24}
+.dg-coglet{fill:#17302f;stroke:#5cc8bf}
+.dg-adapter{fill:#3a2616;stroke:#e8a06a}
+.dg-runtime{fill:#1b1e24;stroke:#7d796f}
+.dg-hub{fill:#1c2b40;stroke:#8fb8f0}
+.dg-world{stroke:#7d796f}
+.dg-life{stroke:#3a3f48}
+.dg-ink{stroke:#c9c5bb}.dg-ink-h{fill:#c9c5bb}
+.dg-teal{stroke:#5cc8bf}.dg-teal-h{fill:#5cc8bf}
+.dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
+.dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
+.dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
+.dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
+}
+</style>
+<defs><marker id="runtime-split-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="runtime-split-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="runtime-split-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="runtime-split-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="runtime-split-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="runtime-split-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="runtime-split-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="runtime-split-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="429" rx="12" class="dg-bg"/>
+<rect x="24" y="24" width="440" height="380" rx="12" class="dg-group"/>
+<text x="40" y="48" text-anchor="start" class="dg-cap">STAYS IN COGLETD</text>
+<rect x="40" y="62" width="408" height="44" rx="8" class="dg-runtime"/>
+<text x="56" y="81" text-anchor="start" class="dg-b">Wasm engine</text>
+<text x="56" y="98" text-anchor="start" class="dg-m">WAMR, compute and deadline metering</text>
+<rect x="40" y="116" width="408" height="44" rx="8" class="dg-runtime"/>
+<text x="56" y="135" text-anchor="start" class="dg-b">Step loop</text>
+<text x="56" y="152" text-anchor="start" class="dg-m">event batching, budgets, all-or-nothing</text>
+<rect x="40" y="170" width="408" height="44" rx="8" class="dg-runtime"/>
+<text x="56" y="189" text-anchor="start" class="dg-b">Grant checks</text>
+<text x="56" y="206" text-anchor="start" class="dg-m">on every staged action</text>
+<rect x="40" y="224" width="408" height="44" rx="8" class="dg-runtime"/>
+<text x="56" y="243" text-anchor="start" class="dg-b">Dispatcher</text>
+<text x="56" y="260" text-anchor="start" class="dg-m">live adapter connections, sends out/</text>
+<rect x="40" y="278" width="408" height="44" rx="8" class="dg-runtime"/>
+<text x="56" y="297" text-anchor="start" class="dg-b">Timers</text>
+<text x="56" y="314" text-anchor="start" class="dg-m">firing needs a clock</text>
+<rect x="40" y="332" width="408" height="44" rx="8" class="dg-runtime"/>
+<text x="56" y="351" text-anchor="start" class="dg-b">Speech and barge-in</text>
+<text x="56" y="368" text-anchor="start" class="dg-m">anything with a latency budget</text>
+<rect x="496" y="24" width="440" height="380" rx="12" class="dg-group"/>
+<text x="512" y="48" text-anchor="start" class="dg-cap">MOVES TO UNFORGED</text>
+<rect x="512" y="62" width="408" height="44" rx="8" class="dg-hub"/>
+<text x="528" y="81" text-anchor="start" class="dg-b">Snapshot, journal, WAL</text>
+<text x="528" y="98" text-anchor="start" class="dg-m">commits on the state ref</text>
+<rect x="512" y="116" width="408" height="44" rx="8" class="dg-hub"/>
+<text x="528" y="135" text-anchor="start" class="dg-b">Crash recovery</text>
+<text x="528" y="152" text-anchor="start" class="dg-m">read the ref: it is the last committed step</text>
+<rect x="512" y="170" width="408" height="44" rx="8" class="dg-hub"/>
+<text x="528" y="189" text-anchor="start" class="dg-b">Code updates, install, deploy</text>
+<text x="528" y="206" text-anchor="start" class="dg-m">merges and ref moves</text>
+<rect x="512" y="224" width="408" height="44" rx="8" class="dg-hub"/>
+<text x="528" y="243" text-anchor="start" class="dg-b">Inbox, logs, effect ledger</text>
+<text x="528" y="260" text-anchor="start" class="dg-m">input commits, files, a git note</text>
+<rect x="512" y="278" width="408" height="44" rx="8" class="dg-hub"/>
+<text x="528" y="297" text-anchor="start" class="dg-b">Debug reads and writes</text>
+<text x="528" y="314" text-anchor="start" class="dg-m">git reads, boundary commits</text>
+<rect x="512" y="332" width="408" height="44" rx="8" class="dg-hub"/>
+<text x="528" y="351" text-anchor="start" class="dg-b">Replays, forks, gates</text>
+<text x="528" y="368" text-anchor="start" class="dg-m">river exec jobs, cached</text>
+</svg>
+</figure>
+<p><em>The runtime becomes an engine, a scheduler and a dispatcher on top of an
+object store.</em></p>
+<p>Most of what <code>cogletd</code> does today is storing and moving state. All of that
+can become git:</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>Today in the runtime</th>
+<th>On unforged</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Snapshot, journal, write-ahead log</td>
+<td>Commits on the <code>state</code> ref</td>
+</tr>
+<tr>
+<td>Crash recovery</td>
+<td>Read the <code>state</code> ref: it is the last committed step</td>
+</tr>
+<tr>
+<td>Code updates and update fencing</td>
+<td>A merge of <code>policy</code> at the next boundary</td>
+</tr>
+<tr>
+<td>Install, push, deploy</td>
+<td>Ref moves the device fetches</td>
+</tr>
+<tr>
+<td>Inbox, logs, effect ledger</td>
+<td>Input commits, files in the tree, <code>refs/notes/dispatched</code></td>
+</tr>
+<tr>
+<td>Debug reads and writes</td>
+<td>Git reads of a commit; boundary commits</td>
+</tr>
+<tr>
+<td>Replays, forks, gates</td>
+<td><code>river exec</code> jobs, cached</td>
+</tr>
+<tr>
+<td>The <code>llm.complete</code> capability</td>
+<td>An adapter like any other (<a href="llms.html">LLMs on unforged</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>What stays is what must be fast, local or metered: the Wasm engine and its
+metering, the step loop with batching and budgets, grant checks on each staged
+action, the dispatcher and its live adapter connections, timers (firing one
+needs a clock), and anything with a latency budget, such as speech playback and
+barge-in.</p>
 <h2 id="replays-forks-and-gates">Replays, forks and gates<a class="headerlink" href="#replays-forks-and-gates" title="Permanent link">#</a></h2>
 <figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="380" viewBox="0 0 960 380" role="img" aria-label="One journal, two runners. A device produces step commits in process; the centre re-runs any of them as unforged jobs to replay, fork or test a candidate policy.">
 <style>
@@ -978,6 +1133,25 @@ coglet's resolver:</p>
 </tr>
 </tbody>
 </table></div>
+<h2 id="adapters-secrets-and-models">Adapters, secrets and models<a class="headerlink" href="#adapters-secrets-and-models" title="Permanent link">#</a></h2>
+<p>A step on unforged is a pure merge, so it can never call anything outside.
+Everything outside is an adapter, reached the same way:</p>
+<ul>
+<li><strong>Adapters are mounts.</strong> Each adapter a coglet is granted appears under
+  <code>/net/&lt;adapter&gt;/</code>, a new kind of unforged's lazy <code>/net</code> mount. Listing a
+  directory reads the adapter's catalog; writing a call stages an action in
+  <code>out/</code>; the outcome comes back in the next input commit. See
+  <a href="secrets.html">Secrets and adapters</a>.</li>
+<li><strong>Secrets never enter git.</strong> Policy about secrets is a signed ref,
+  <code>refs/vault/policy</code>; the bytes live in a key store and reach adapters as
+  short leases. Coglets name secrets by id only. See
+  <a href="secrets.html#the-vault">Secrets and adapters</a>.</li>
+<li><strong>A model is an adapter.</strong> Model calls stop being a special runtime
+  capability; agent loops are chains of steps, and long harnesses run as
+  adapters beside the cogent. See <a href="llms.html">LLMs on unforged</a>.</li>
+<li><strong>Coglet code is whatever the resolver names.</strong> Wasm today; text through a
+  standard prompt runner; other languages through engines built as Wasm.</li>
+</ul>
 <h2 id="the-router-is-an-unforged-repository">The router is an unforged repository<a class="headerlink" href="#the-router-is-an-unforged-repository" title="Permanent link">#</a></h2>
 <p>The router stays what <a href="index.html">the cogent design</a> says it is: a
 coglet that finds devices and carries messages and patches. unforged is its
@@ -1062,7 +1236,7 @@ storage and its git transport.</p>
 </tr>
 <tr>
 <td><code>spec/abi.md</code></td>
-<td>State hash is the git tree id. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under <code>out/</code>.</td>
+<td>State hash is the git tree id. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under <code>out/</code>. The <code>llm</code> host capability and <code>llm-request</code> effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events.</td>
 </tr>
 <tr>
 <td><code>spec/manifest.schema.json</code></td>
@@ -1082,7 +1256,11 @@ storage and its git transport.</p>
 </tr>
 <tr>
 <td><code>spec/surface-protocol.md</code></td>
-<td>No change.</td>
+<td>Adapters publish their tools as a catalog ref; tools carry an effect class (<code>read</code> or <code>write</code>) and an approval rule. Outcomes are scrubbed of leased values.</td>
+</tr>
+<tr>
+<td>New: <code>spec/secrets.md</code></td>
+<td>The vault: <code>SecretRecord</code>, leases, rotation, revocation, audit. See <a href="secrets.html">Secrets and adapters</a>.</td>
 </tr>
 </tbody>
 </table></div>
@@ -1096,9 +1274,12 @@ storage and its git transport.</p>
 </ul>
 <h2 id="open-questions">Open questions<a class="headerlink" href="#open-questions" title="Permanent link">#</a></h2>
 <ul>
-<li><strong>Commit rate on voice.</strong> A fast conversation can step a coglet many times
-  a second. Every step still gets a commit, but the hot path may need group
-  commit to disk; measuring this on the EO1 comes first.</li>
+<li><strong>Commit rate on voice.</strong> The commit, flush and push clocks above are the
+  plan; the numbers need measuring on the EO1, the weakest device, first.</li>
+<li><strong>The database capability.</strong> Small structured memory can be files, but
+  real queries over a lot of data do not map well onto git trees. Whether it
+  stays a runtime capability, becomes an adapter, or lives in a store beside
+  unforged is open.</li>
 <li><strong>Where the inbox lives.</strong> <code>data/inbox.jsonl</code> in the tree keeps replay
   simple but makes the inbox part of every state hash. An alternative is to
   keep the inbox only in input commits.</li>

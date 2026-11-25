@@ -187,6 +187,47 @@ writes the output tree; the input is the coglet's state merged with one input
 commit. unforged takes care of sandboxing, caching, provenance trailers and,
 with a `caos://` ticket, running the job on a CAOS worker.
 
+**Commit always, flush in groups, push rarely.** A voice turn can step a
+coglet many times a second, so the three clocks are kept apart:
+
+- **Commit** every step, in memory: hashing a few small objects and swapping
+  a ref. The step rate is bounded by batching, since the runtime folds every
+  event that arrived during a step into the next one; raw audio frames are
+  never events, only partials and end of utterance.
+- **Flush** to disk in groups, every 100 ms or so, and always before an action
+  that matters leaves the device. Speech output may leave after the in-memory
+  commit; a crash then loses at most the last fraction of a second.
+- **Push** the `state` tip to the router every few seconds or at the end of a
+  turn. Intermediate commits stay local and are later compacted into
+  checkpoints.
+
+## What stays in the runtime
+
+![What stays in cogletd and what moves to unforged. The runtime keeps what must be fast, local or metered; everything durable moves into git.](diagrams/runtime-split.svg)
+
+*The runtime becomes an engine, a scheduler and a dispatcher on top of an
+object store.*
+
+Most of what `cogletd` does today is storing and moving state. All of that
+can become git:
+
+| Today in the runtime | On unforged |
+|---|---|
+| Snapshot, journal, write-ahead log | Commits on the `state` ref |
+| Crash recovery | Read the `state` ref: it is the last committed step |
+| Code updates and update fencing | A merge of `policy` at the next boundary |
+| Install, push, deploy | Ref moves the device fetches |
+| Inbox, logs, effect ledger | Input commits, files in the tree, `refs/notes/dispatched` |
+| Debug reads and writes | Git reads of a commit; boundary commits |
+| Replays, forks, gates | `river exec` jobs, cached |
+| The `llm.complete` capability | An adapter like any other ([LLMs on unforged](llms.md)) |
+
+What stays is what must be fast, local or metered: the Wasm engine and its
+metering, the step loop with batching and budgets, grant checks on each staged
+action, the dispatcher and its live adapter connections, timers (firing one
+needs a clock), and anything with a latency budget, such as speech playback and
+barge-in.
+
 ## Replays, forks and gates
 
 ![One journal, two runners. A device produces step commits in process; the centre re-runs any of them as unforged jobs to replay, fork or test a candidate policy.](diagrams/unforged-replay.svg)
@@ -269,6 +310,26 @@ The back channel maps onto git operations:
 | `status` | The `state` ref, its last trailer, and health |
 | `pause`, `step` | Unchanged messages; a paused coglet's ref simply stops moving |
 
+## Adapters, secrets and models
+
+A step on unforged is a pure merge, so it can never call anything outside.
+Everything outside is an adapter, reached the same way:
+
+- **Adapters are mounts.** Each adapter a coglet is granted appears under
+  `/net/<adapter>/`, a new kind of unforged's lazy `/net` mount. Listing a
+  directory reads the adapter's catalog; writing a call stages an action in
+  `out/`; the outcome comes back in the next input commit. See
+  [Secrets and adapters](secrets.md).
+- **Secrets never enter git.** Policy about secrets is a signed ref,
+  `refs/vault/policy`; the bytes live in a key store and reach adapters as
+  short leases. Coglets name secrets by id only. See
+  [Secrets and adapters](secrets.md#the-vault).
+- **A model is an adapter.** Model calls stop being a special runtime
+  capability; agent loops are chains of steps, and long harnesses run as
+  adapters beside the cogent. See [LLMs on unforged](llms.md).
+- **Coglet code is whatever the resolver names.** Wasm today; text through a
+  standard prompt runner; other languages through engines built as Wasm.
+
 ## The router is an unforged repository
 
 The router stays what [the cogent design](README.md) says it is: a
@@ -323,12 +384,13 @@ storage and its git transport.
 | Spec | Change |
 |---|---|
 | `spec/conventions.md` | Object ids are git SHA-256. CBOR stays for message and file contents. |
-| `spec/abi.md` | State hash is the git tree id. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under `out/`. |
+| `spec/abi.md` | State hash is the git tree id. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under `out/`. The `llm` host capability and `llm-request` effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events. |
 | `spec/manifest.schema.json` | The manifest lives in the tree as `manifest.cbor` and names its resolver (engine) by id. |
 | `spec/hub-protocol.md` | Git transfer moves from SHA-1 bundles to fetch and push of SHA-256 refs over a git ALPN, with partial push for `data/`. `hub.git.push`, `install` and `start` become ref moves. Per-coglet repositories become one repository per cogent, namespaced by runtime. |
 | `spec/promotion.md`, `spec/policy.md` | Promotion is a signed compare-and-swap of `refs/published/<id>`. Gates are replays on the cold path. |
 | `spec/tickets.md` | A ticket's result names a `policy` commit and the receipts of the gate that tested it. |
-| `spec/surface-protocol.md` | No change. |
+| `spec/surface-protocol.md` | Adapters publish their tools as a catalog ref; tools carry an effect class (`read` or `write`) and an approval rule. Outcomes are scrubbed of leased values. |
+| New: `spec/secrets.md` | The vault: `SecretRecord`, leases, rotation, revocation, audit. See [Secrets and adapters](secrets.md). |
 
 unforged would need:
 
@@ -340,9 +402,12 @@ unforged would need:
 
 ## Open questions
 
-- **Commit rate on voice.** A fast conversation can step a coglet many times
-  a second. Every step still gets a commit, but the hot path may need group
-  commit to disk; measuring this on the EO1 comes first.
+- **Commit rate on voice.** The commit, flush and push clocks above are the
+  plan; the numbers need measuring on the EO1, the weakest device, first.
+- **The database capability.** Small structured memory can be files, but
+  real queries over a lot of data do not map well onto git trees. Whether it
+  stays a runtime capability, becomes an adapter, or lives in a store beside
+  unforged is open.
 - **Where the inbox lives.** `data/inbox.jsonl` in the tree keeps replay
   simple but makes the inbox part of every state hash. An alternative is to
   keep the inbox only in input commits.
