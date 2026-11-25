@@ -14,7 +14,7 @@ BASE = 'https://coglet.dev/spec/'
 COMMON = BASE + 'messages/common.schema.json#/$defs/'
 ABI = BASE + 'messages/abi.schema.json'
 DEFS = {}
-CDDL = []
+CDDL = ['; Filesystem state hashes: Git SHA-256 tree ids, 100644 blobs, 40000 trees, Git ordering (ADR-0035).', '; Snapshot CBOR is the wire representation, not the filesystem hash input.']
 
 
 def ref(name):
@@ -90,7 +90,7 @@ rule('hex', HEX, 'tstr .regexp "^([0-9a-f]{2})*$"')
 rule('path', PATH, 'tstr .regexp ' + json.dumps(PATH_PATTERN.replace(r'\u00', r'\x') + '$'))
 # Path-key grammar and blob digest keys are cross-field semantic checks. pycddl
 # 0.6.4 incorrectly applies a regex key control to the entire enclosing map.
-rule('snapshot', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')
+rule('snapshot', {'type': 'object', 'additionalProperties': local('hex'), 'description': 'Absolute paths to hex bytes. Filesystem state identity is the Git SHA-256 tree object id (100644 blobs, 40000 directories, Git ordering), not a hash of this CBOR map; see ABI and ADR-0035.'}, '{* tstr => hex}')
 positive = {'type': 'integer', 'minimum': 1, 'maximum': 2**64-1}
 record('budgets', [('compute', positive, '1..18446744073709551615'),
                    ('compute_mode', S, 'tstr .size (1..18446744073709551615)'),

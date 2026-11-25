@@ -87,3 +87,44 @@ fn invalid_snapshot_is_not_hashed() {
         assert!(snapshot_tree_hash(&files).is_err());
     }
 }
+
+#[test]
+fn git_component_is_an_ordinary_abi_name() {
+    // Git's index/fsck prohibit this name, but the ABI does not. Hash raw tree
+    // objects with Git rather than changing path admission to fit checkout.
+    use std::io::Write;
+    use std::process::Stdio;
+    let repo = tempfile::tempdir().unwrap();
+    git(repo.path(), &["init", "--object-format=sha256"]);
+    let hash = |kind: &str, body: &[u8]| {
+        let mut child = Command::new("git")
+            .arg("-C")
+            .arg(repo.path())
+            .args(["hash-object", "--literally", "-t", kind, "--stdin"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.take().unwrap().write_all(body).unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert!(out.status.success());
+        String::from_utf8(out.stdout).unwrap().trim().to_owned()
+    };
+    let tree = |name: &str, mode: &str, id: &str| {
+        let mut body = format!("{mode} {name}\0").into_bytes();
+        for i in (0..id.len()).step_by(2) {
+            body.push(u8::from_str_radix(&id[i..i + 2], 16).unwrap());
+        }
+        hash("tree", &body)
+    };
+    let blob = hash("blob", b"content");
+    let dotgit = tree("x", "100644", &blob);
+    let data = tree(".git", "40000", &dotgit);
+    let expected = tree("data", "40000", &data);
+    let snapshot = Snapshot::from_files(BTreeMap::from([(
+        "/data/.git/x".into(),
+        b"content".to_vec(),
+    )]))
+    .unwrap();
+    assert_eq!(snapshot.tree_hash(), expected);
+}

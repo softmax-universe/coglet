@@ -1,4 +1,6 @@
 import json
+import hashlib
+import re
 import os
 from pathlib import Path
 import subprocess
@@ -187,8 +189,9 @@ def test_native_cli_wamr_trace_events_state_hash_and_history():
     state is test_native_m2_gridbot_data_state_and_history.
     """
     provenance = json.loads(NATIVE_PROVENANCE.read_text())
-    assert provenance["producer_sha"] == "866ede9b1ee7a1c20cc6e4afed723bfcb093ee4d"
-    assert provenance["producer_pr"] == "https://github.com/softmax-universe/coglet/pull/82"
+    assert re.fullmatch('[0-9a-f]{40}', provenance['producer_sha'])
+    assert provenance['state_hash_definition'] == 'git-sha256-tree-id (ADR-0035)'
+    assert hashlib.sha256(NATIVE_TRACE.read_bytes()).hexdigest() == provenance['records_only_sha256']
     assert provenance["engine"] == "wamr"
     trace = json.loads(NATIVE_TRACE.read_text())
     assert "initial_files" not in trace and "blobs" not in trace
@@ -228,10 +231,11 @@ def test_native_cli_wamr_trace_events_state_hash_and_history():
 
 
 def test_native_m2_gridbot_data_state_and_history():
-    """Actual PR83 Gridbot/WAMR /data, not the empty CLI inbox and not hub debug."""
+    """Recaptured Gridbot/WAMR /data, not the empty CLI inbox or hub debug."""
     provenance = json.loads(M2_PROVENANCE.read_text())
-    assert provenance["producer_sha"] == "dd98c4239d505401c9403213b9efd931d392234f"
-    assert provenance["producer_pr"] == "https://github.com/softmax-universe/coglet/pull/83"
+    assert re.fullmatch('[0-9a-f]{40}', provenance['producer_sha'])
+    assert provenance['state_hash_definition'] == 'git-sha256-tree-id (ADR-0035)'
+    assert hashlib.sha256(M2_TRACE.read_bytes()).hexdigest() == provenance['records_only_sha256']
     assert provenance["engine"] == "wamr"
     assert provenance["independent_guest_reexecution"] is True
     trace = json.loads(M2_TRACE.read_text())
