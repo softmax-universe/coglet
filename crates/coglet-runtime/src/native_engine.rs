@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 
 pub struct NativeEngine {
     code: Vec<u8>,
+    /// Immutable admission proof for `code`; every step still gets a fresh native instance.
+    module: coglet_engine_wamr::Module,
     runtime_bytes: u32,
     stack_bytes: u32,
     prepared: Option<(coglet_engine_wamr::WamrInstance, StepInput, Instant, u32)>,
@@ -21,18 +23,27 @@ impl NativeEngine {
         runtime_bytes: u32,
         stack_bytes: u32,
     ) -> Result<Self> {
-        let engine = Self {
+        let limits = Self::limits_for(budgets, runtime_bytes, stack_bytes, Instant::now())?;
+        let module = Wamr::interpreter()
+            .load(&code, &limits)
+            .map_err(|e| e.to_string())?;
+        Ok(Self {
             code,
+            module,
             runtime_bytes,
             stack_bytes,
             prepared: None,
-        };
-        Wamr::interpreter()
-            .load(&engine.code, &engine.limits(budgets, Instant::now())?)
-            .map_err(|e| e.to_string())?;
-        Ok(engine)
+        })
     }
     fn limits(&self, budgets: &Value, started: Instant) -> Result<Limits> {
+        Self::limits_for(budgets, self.runtime_bytes, self.stack_bytes, started)
+    }
+    fn limits_for(
+        budgets: &Value,
+        runtime_bytes: u32,
+        stack_bytes: u32,
+        started: Instant,
+    ) -> Result<Limits> {
         validate("budgets", budgets)?;
         Ok(Limits {
             compute_mode: budgets["compute_mode"]
@@ -43,8 +54,8 @@ impl NativeEngine {
             memory_pages: u32::try_from(budgets["memory_pages"].as_u64().ok_or("memory pages")?)
                 .map_err(|_| "memory pages overflow")?,
             host_bytes: budgets["host_bytes"].as_u64().ok_or("host bytes")?,
-            runtime_bytes: self.runtime_bytes,
-            stack_bytes: self.stack_bytes,
+            runtime_bytes,
+            stack_bytes,
             deadline: started
                 .checked_add(Duration::from_micros(
                     budgets["wall_time_us"].as_u64().ok_or("wall time")?,
@@ -116,11 +127,10 @@ impl Engine for NativeEngine {
         let memory_pages = limits.memory_pages;
         let engine = Wamr::interpreter();
         // Admission failures return before any guest attempt/batch consumption.
-        let module = engine
-            .load(&self.code, &limits)
-            .map_err(|e| e.to_string())?;
+        // The engine rechecks static policy if it differs from the cached proof and
+        // always checks mode/compute/deadline; the instance is fresh every step.
         let instance = engine
-            .instantiate(&module, limits)
+            .instantiate(&self.module, limits)
             .map_err(|e| e.to_string())?;
         let input = StepInput {
             events: cbor(&inputs["events"])?,
