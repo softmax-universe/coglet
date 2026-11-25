@@ -61,6 +61,11 @@ private final class WorkerSendStep: @unchecked Sendable {
     init(_ result: Int32 = 0, elapsedUS: UInt64 = 0) {
         self.result = result; self.elapsedUS = elapsedUS
     }
+    func awaitEntry() async -> Bool {
+        await Task.detached { [self] in
+            entered.wait(timeout: .now() + 2) == .success
+        }.value
+    }
 }
 private func sendWorker(_ p: OpaquePointer?, _ raw: UnsafePointer<UInt8>?, _ n: Int) -> Int32 {
     let f = fixture(); f.record("send")
@@ -169,7 +174,7 @@ final class FaceRuntimeWorkerTests: XCTestCase {
             defer { first.release.signal(); second.release.signal(); link.close() }
             do {
                 XCTAssertTrue(try link.send(events[0]))
-                guard first.entered.wait(timeout: .now() + 2) == .success else {
+                guard await first.awaitEntry() else {
                     XCTFail("first send did not enter"); throw FaceRuntimeFailure.runtime
                 }
                 // Publish only AFTER first send enters: startup's timer cannot
@@ -177,7 +182,7 @@ final class FaceRuntimeWorkerTests: XCTestCase {
                 f.lock.withLock { f.inbound = frames }
                 XCTAssertTrue(try link.send(events[1]))
                 first.release.signal()
-                guard second.entered.wait(timeout: .now() + 2) == .success else {
+                guard await second.awaitEntry() else {
                     XCTFail("second send did not enter"); throw FaceRuntimeFailure.runtime
                 }
                 // Second-send entry is the publication barrier, not an arbitrary
@@ -233,7 +238,7 @@ final class FaceRuntimeWorkerTests: XCTestCase {
         defer { first.release.signal(); second.release.signal(); link.close() }
         do {
             XCTAssertTrue(try link.send(events[0]))
-            guard first.entered.wait(timeout: .now() + 2) == .success else {
+            guard await first.awaitEntry() else {
                 XCTFail("first send did not enter"); throw FaceRuntimeFailure.runtime
             }
             // Publish behind the entered send, so startup polling cannot consume
@@ -241,7 +246,7 @@ final class FaceRuntimeWorkerTests: XCTestCase {
             f.lock.withLock { f.inbound = frames }
             XCTAssertTrue(try link.send(events[1]))
             first.release.signal()
-            guard second.entered.wait(timeout: .now() + 2) == .success else {
+            guard await second.awaitEntry() else {
                 XCTFail("inbound burst starved the queued second send"); throw FaceRuntimeFailure.runtime
             }
             // The held second ABI call is a serial-worker publication barrier.
@@ -298,13 +303,13 @@ final class FaceRuntimeWorkerTests: XCTestCase {
             f.lock.withLock { f.sendSteps = [first, retry] }
             let head = try workerEvent(0), tail = try workerEvent(1), reply = try workerReply(2)
             XCTAssertTrue(try link.send(head))
-            guard first.entered.wait(timeout: .now() + 2) == .success else {
+            guard await first.awaitEntry() else {
                 XCTFail("full inbound mailbox blocked outbound send"); throw FaceRuntimeFailure.runtime
             }
             for frame in [tail, reply] { XCTAssertTrue(try link.send(frame)) }
             let callsAtFirstSend = f.lock.withLock { f.calls.count }
             first.release.signal()
-            guard retry.entered.wait(timeout: .now() + 2) == .success else {
+            guard await retry.awaitEntry() else {
                 XCTFail("full inbound mailbox blocked pinned-head retry"); throw FaceRuntimeFailure.runtime
             }
             // No capacity was reclaimed between the would-block and retry. The
