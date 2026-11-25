@@ -24,7 +24,24 @@ fn fixture() -> Value {
 // Write real historical frames with the original CBOR state hash, not renamed
 // current records. The private reader is never accessible to API callers.
 fn old_wal(path: &Path, extra: Option<(&str, &str)>, attempted: bool) -> (Value, Value) {
-    let setup = fixture();
+    old_wal_for(fixture(), path, extra, attempted)
+}
+
+// Selected surface-0.2 profile with a dotted name the frozen hub grammar rejects.
+fn surface02_fixture() -> Value {
+    let mut setup = fixture();
+    setup["contract_profile"] = json!("surface-0.2");
+    setup["manifest"]["subscriptions"] = json!(["softmax.app.view_changed"]);
+    setup["inputs"]["events"][0]["kind"] = json!("softmax.app.view_changed");
+    setup
+}
+
+fn old_wal_for(
+    setup: Value,
+    path: &Path,
+    extra: Option<(&str, &str)>,
+    attempted: bool,
+) -> (Value, Value) {
     let mut service = RuntimeService::open(path, &setup, 8).unwrap();
     let mut old = setup.clone();
     old["manifest"]["version"] = json!("0.1");
@@ -648,4 +665,167 @@ fn hash_upgrade_empty_predecessor_has_internal_cut_without_abi_boundary() {
     let before = std::fs::read(&path).unwrap();
     drop(RuntimeService::open(&path, &setup, 8).unwrap());
     assert_eq!(std::fs::read(&path).unwrap(), before);
+}
+
+#[test]
+fn surface02_historical_wal_resumes_with_exact_bytes_and_public_negatives() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let setup = surface02_fixture();
+    let (_, record) = old_wal_for(setup.clone(), &path, None, false);
+    assert_eq!(record["version"], "0.1");
+    assert_eq!(record["events"][0]["kind"], "softmax.app.view_changed");
+    let before = std::fs::read(&path).unwrap();
+    let service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(
+        service.contract_profile(),
+        crate::ContractProfile::Surface02
+    );
+    assert_eq!(service.store.records(), std::slice::from_ref(&record));
+    assert_eq!(service.state.runtime.manifest["version"], "1.0");
+    assert!(service.state.completed_segments[0].hash_upgrade);
+    let old = service.export_segment(&record["trace_id"]).unwrap();
+    assert_eq!(old["version"], "0.1");
+    // Original record and hash are retained verbatim, never rehashed.
+    assert_eq!(old["records"][0], record);
+    assert_eq!(old["records"][0]["record_hash"], record["record_hash"]);
+    assert!(std::fs::read(&path).unwrap().starts_with(&before));
+    let live_id = service.state.runtime.trace_id.clone().unwrap();
+    let live = service.state.runtime.export_trace(&live_id).unwrap();
+    assert_eq!(live["version"], "1.0");
+    crate::Runtime::import_trace_with_profile(&live, crate::ContractProfile::Surface02).unwrap();
+    drop(service);
+    let upgraded = std::fs::read(&path).unwrap();
+    let service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(service.store.records(), std::slice::from_ref(&record));
+    assert_eq!(std::fs::read(&path).unwrap(), upgraded);
+    // Public negative controls: the private projection is not reachable.
+    let surface02 = crate::ContractProfile::Surface02;
+    let mut old_setup = setup.clone();
+    old_setup["manifest"]["version"] = json!("0.1");
+    assert!(Runtime::from_fixture(&old_setup).is_err());
+    assert!(surface02.validate_manifest(&old_setup["manifest"]).is_err());
+    assert!(surface02.validate("step-record", &record).is_err());
+    assert!(
+        Runtime::import_trace_with_profile(&old, surface02).is_err(),
+        "historical archive is not a public replay input"
+    );
+    assert!(
+        Runtime::from_fixture(&setup)
+            .unwrap()
+            .replay(std::slice::from_ref(&record), &mut NeverEnterGuest)
+            .is_err()
+    );
+    // Mixed or forged versions are not mapped even inside the private scope.
+    historical_scope(true, || {
+        surface02.validate_manifest(&old_setup["manifest"]).unwrap();
+        surface02.validate("step-record", &record).unwrap();
+        let mut forged = record.clone();
+        forged["version"] = json!("0.2");
+        assert!(surface02.validate("step-record", &forged).is_err());
+        let mut name = record.clone();
+        name["events"][0]["kind"] = json!("Bad.Name");
+        assert!(surface02.validate("step-record", &name).is_err());
+        let mut trace = old.clone();
+        surface02.validate("trace", &trace).unwrap();
+        trace["records"][0]["version"] = json!("1.0");
+        assert!(surface02.validate("trace", &trace).is_err());
+    });
+    assert!(!hash_upgrade::historical());
+}
+
+#[test]
+fn surface02_historical_unresolved_attempt_reconciles_through_resumed_boundary() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let setup = surface02_fixture();
+    let (_, _) = old_wal_for(setup.clone(), &path, None, true);
+    let before = std::fs::read(&path).unwrap();
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert!(service.state.runtime.unresolved_attempt.is_some());
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    let inputs = service.state.runtime.unresolved_attempt.clone().unwrap();
+    let record = historical_scope(true, || {
+        let mut original = service.state.runtime.clone();
+        original.unresolved_attempt = None;
+        original
+            .step(&inputs, &mut MockEngine::new(setup["guest_script"].clone()))
+            .unwrap()["journal"]
+            .clone()
+    });
+    assert_eq!(record["version"], "0.1");
+    service.recover_attempt(&record).unwrap();
+    assert_eq!(service.state.runtime.manifest["version"], "1.0");
+    assert_eq!(service.state.completed_segments.len(), 1);
+    assert_eq!(service.store.records().len(), 2);
+    assert_eq!(service.store.records()[1], record);
+    drop(service);
+    let service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(service.store.records()[1], record);
+}
+
+#[test]
+fn surface02_historical_database_record_keeps_exact_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("database.wal");
+    let mut setup = surface02_fixture();
+    setup["manifest"]["version"] = json!("1.1");
+    setup["manifest"]["database"] =
+        json!({"schema_min":1,"schema_max":1,"catalog_hash":"a".repeat(64)});
+    setup["initial_db_revision"] = json!(3);
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let mut old = setup.clone();
+    old["manifest"]["version"] = json!("0.2");
+    let (record, raw) = historical_scope(true, || {
+        service.state.runtime = Runtime::from_fixture(&old).unwrap();
+        let mut record = service
+            .state
+            .runtime
+            .step(
+                &old["inputs"],
+                &mut MockEngine::new(old["guest_script"].clone()),
+            )
+            .unwrap()["journal"]
+            .clone();
+        record["version"] = json!("0.2");
+        record["db_before"] = json!(3);
+        record["db_after"] = json!(3);
+        record["db_schema_version"] = json!(1);
+        record["db_catalog_hash"] = json!("a".repeat(64));
+        record.as_object_mut().unwrap().remove("record_hash");
+        record["record_hash"] = json!(digest(&cbor(&record).unwrap()));
+        service.state.runtime.previous = record["record_hash"].clone();
+        service.state.runtime.records = vec![record.clone()];
+        let raw = cbor(&record).unwrap();
+        service
+            .store
+            .commit_database(&serde_json::to_value(&service.state).unwrap(), &raw)
+            .unwrap();
+        (record, raw)
+    });
+    drop(service);
+    let service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(service.state.runtime.manifest["version"], "1.1");
+    assert_eq!(service.store.database_record_bytes(0), Some(raw.as_slice()));
+    assert_eq!(service.store.records(), std::slice::from_ref(&record));
+    let archive = service.export_segment(&record["trace_id"]).unwrap();
+    assert_eq!(archive["version"], "0.2");
+    assert_eq!(archive["blobs"][digest(&raw)], hex::encode(&raw));
+    let surface02 = crate::ContractProfile::Surface02;
+    assert!(Runtime::import_trace_with_profile(&archive, surface02).is_err());
+    assert!(
+        crate::journal::database_projection_with_profile(&raw, surface02).is_err(),
+        "public database projection rejects 0.2 bytes"
+    );
+    historical_scope(true, || {
+        assert_eq!(
+            crate::journal::database_projection_with_profile(&raw, surface02).unwrap()["record_hash"],
+            record["record_hash"]
+        );
+    });
+    drop(service);
+    let before = std::fs::read(&path).unwrap();
+    let service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), before);
+    assert_eq!(service.store.database_record_bytes(0), Some(raw.as_slice()));
 }

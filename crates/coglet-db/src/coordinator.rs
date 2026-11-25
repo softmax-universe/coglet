@@ -136,13 +136,43 @@ pub(super) fn validate_stored_committed_with_profile(
     if let Ok(record) = validate_committed(raw, profile) {
         return Ok(record);
     }
-    let value = coglet_types_hub0::decode("database::db-step-record", raw)?;
+    let value = historical_decode(raw, profile)?;
     let record: coglet_types::DatabaseDbStepRecord1 =
         value.deserialized().map_err(|e| e.to_string())?;
     if record.version != "0.2" {
         return Err("not a historical database 0.2 record".into());
     }
     validate_record_hash(raw, record)
+}
+
+/// Private historical decode. Surface-0.1 keeps the frozen hub0 pins. For the
+/// selected surface-0.2 profile the closed current schema is applied to a
+/// validation-only projection whose root ABI literal 0.2 is mapped to 1.1; the
+/// returned value and every hash input remain the exact stored original.
+fn historical_decode(raw: &[u8], profile: ContractProfile) -> Result<V> {
+    if profile == ContractProfile::Surface01 {
+        return coglet_types_hub0::decode("database::db-step-record", raw);
+    }
+    let original = coglet_types::decode_profile(raw)?;
+    let V::Map(entries) = &original else {
+        return Err("database record is not a map".into());
+    };
+    let mut projected = entries.clone();
+    let mut seen = 0;
+    for (k, v) in &mut projected {
+        if matches!(k, V::Text(t) if t == "version") {
+            if *v != V::Text("0.2".into()) {
+                return Err("not a historical database 0.2 record".into());
+            }
+            *v = V::Text("1.1".into());
+            seen += 1;
+        }
+    }
+    if seen != 1 {
+        return Err("historical record needs exactly one version".into());
+    }
+    coglet_types::validate(profile.rule("database::db-step-record"), &V::Map(projected))?;
+    Ok(original)
 }
 
 #[cfg(test)]
@@ -177,7 +207,10 @@ pub fn recovery_abort_record_with_profile(
     abort_overlay(validate_committed(prepared, profile)?, profile)
 }
 
-fn stored_recovery_abort_record(prepared: &[u8], profile: ContractProfile) -> Result<Vec<u8>> {
+pub(super) fn stored_recovery_abort_record(
+    prepared: &[u8],
+    profile: ContractProfile,
+) -> Result<Vec<u8>> {
     abort_overlay(
         validate_stored_committed_with_profile(prepared, profile)?,
         profile,
@@ -234,8 +267,23 @@ fn abort_overlay(
     // generically only within this private path, then validate the frozen shape.
     let encode = |a: &coglet_types::DatabaseDbStepRecord2| {
         let value = V::serialized(a).map_err(|e| e.to_string())?;
-        if historical {
+        if historical && profile == ContractProfile::Surface01 {
             coglet_types_hub0::encode("database::db-step-record", &value)
+        } else if historical {
+            // Same exact-version overlay: validate the closed current shape on a
+            // version-mapped projection only; encode the original value.
+            let V::Map(entries) = &value else {
+                return Err("database record is not a map".into());
+            };
+            let projected = entries
+                .iter()
+                .map(|(k, v)| match k {
+                    V::Text(t) if t == "version" => (k.clone(), V::Text("1.1".into())),
+                    _ => (k.clone(), v.clone()),
+                })
+                .collect();
+            coglet_types::validate(profile.rule("database::db-step-record"), &V::Map(projected))?;
+            coglet_types::encode_profile(&value)
         } else {
             coglet_types::encode(profile.rule("database::db-step-record"), &value)
         }

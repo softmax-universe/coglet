@@ -804,3 +804,60 @@ fn recovery_journal_failure_is_held_and_preserves_the_decision() {
         }
     }
 }
+
+#[test]
+fn stored_historical_surface02_record_keeps_bytes_and_public_paths_reject_it() {
+    use super::ContractProfile::{Surface01, Surface02};
+    // Real historical golden bytes whose only change is a dotted event kind (valid
+    // for surface-0.2, refused by the frozen hub grammar), rehashed as the old writer would.
+    let golden = legacy_decision(&catalog().digest().unwrap());
+    let V::Map(mut fields) = coglet_types::decode_profile(&golden.record).unwrap() else {
+        panic!("record")
+    };
+    for (k, v) in &mut fields {
+        if matches!(k, V::Text(t) if t == "events") {
+            let V::Array(events) = v else {
+                panic!("events")
+            };
+            let V::Map(event) = &mut events[0] else {
+                panic!("event")
+            };
+            for (ek, ev) in event {
+                if matches!(ek, V::Text(t) if t == "kind") {
+                    *ev = V::Text("softmax.app.view_changed".into());
+                }
+            }
+        }
+    }
+    let old = decision_from(fields, &catalog().digest().unwrap(), 1, 0, 1, ARTIFACTS);
+    let stored =
+        coordinator::validate_stored_committed_with_profile(&old.record, Surface02).unwrap();
+    assert_eq!(stored.version, "0.2");
+    assert_eq!(
+        coordinator::record_hash_of(&old.record).unwrap(),
+        stored.record_hash
+    );
+    assert!(coordinator::validate_stored_committed_with_profile(&old.record, Surface01).is_err());
+    assert!(coordinator::validate_committed(&old.record, Surface02).is_err());
+    assert!(recovery_abort_record_with_profile(&old.record, Surface02).is_err());
+    let abort = coordinator::stored_recovery_abort_record(&old.record, Surface02).unwrap();
+    let a: coglet_types::DatabaseDbStepRecord2 = coglet_types::decode_profile(&abort)
+        .unwrap()
+        .deserialized()
+        .unwrap();
+    assert_eq!(a.version, "0.2");
+    assert_eq!(a.record_hash, coordinator::record_hash_of(&abort).unwrap());
+    // A forged version is not mapped to the historical schema.
+    let V::Map(mut fields) = coglet_types::decode_profile(&old.record).unwrap() else {
+        panic!("record")
+    };
+    for (k, v) in &mut fields {
+        if matches!(k, V::Text(t) if t == "version") {
+            *v = V::Text("0.1".into());
+        }
+    }
+    let forged = decision_from(fields, &catalog().digest().unwrap(), 1, 0, 1, ARTIFACTS);
+    assert!(
+        coordinator::validate_stored_committed_with_profile(&forged.record, Surface02).is_err()
+    );
+}
