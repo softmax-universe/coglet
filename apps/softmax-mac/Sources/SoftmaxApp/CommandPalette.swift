@@ -85,6 +85,7 @@ struct CommandPaletteView: View {
 }
 
 @MainActor final class CommandPaletteController: NSObject, NSWindowDelegate {
+    var onChange: (() -> Void)?
     private var panel: NSPanel?
     private weak var previous: NSWindow?
     func show(commands: [SoftmaxCommand]) {
@@ -93,16 +94,25 @@ struct CommandPaletteView: View {
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 460, height: 480),
                             styleMask: [.titled, .closable], backing: .buffered, defer: false)
         panel.title = "Softmax Commands"; panel.isReleasedWhenClosed = false
+        panel.identifier = NSUserInterfaceItemIdentifier("softmax.command_palette")
         panel.delegate = self
         panel.contentView = NSHostingView(rootView: SoftmaxWindowRoot {
             CommandPaletteView(commands: commands, dismiss: { [weak self] in self?.close() })
         })
         self.panel = panel
         panel.center(); NSApp.activate(ignoringOtherApps: true); panel.makeKeyAndOrderFront(nil)
+        onChange?()
     }
-    func close() { panel?.close() }
+    func close() { panel?.close(); onChange?() }
     func windowWillClose(_ notification: Notification) {
         previous?.makeKeyAndOrderFront(nil)
         previous = nil
+        // willClose precedes committed visibility. Capture the ending instance,
+        // never let a deferred callback close or mutate a successor panel.
+        let closing = panel
+        Task { @MainActor [weak self, weak closing] in
+            guard let self, self.panel === closing else { return }
+            self.onChange?()
+        }
     }
 }

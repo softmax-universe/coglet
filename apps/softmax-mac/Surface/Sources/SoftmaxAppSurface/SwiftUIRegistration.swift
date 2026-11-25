@@ -83,19 +83,26 @@ public struct CogletButton: View {
     private let window: String
     private let route: String
     private let sensitive: Bool
+    private let adapterSynchronous: Bool
     private let action: () -> Void
     private let failure: (ControlRegistryFailure) -> Void
     public init(_ title: String, id: String, registry: ControlRegistry, window: String, route: String,
-                sensitive: Bool = false, failure: @escaping (ControlRegistryFailure) -> Void,
+                sensitive: Bool = false, adapterSynchronous: Bool = true, failure: @escaping (ControlRegistryFailure) -> Void,
                 action: @escaping () -> Void) {
         self.title = title; self.id = id; self.registry = registry; self.window = window; self.route = route
-        self.sensitive = sensitive; self.failure = failure; self.action = action
+        self.sensitive = sensitive; self.adapterSynchronous = adapterSynchronous
+        self.failure = failure; self.action = action
     }
     public var body: some View {
         Button(title, action: action).coglet(id: id, registry: registry, window: window, route: route,
             role: "button", label: title, sensitive: sensitive, verbs: ["press"],
             value: { .map([.init("kind", .text("none"))]) }, failure: failure,
-            invoke: { _ in action() })
+            invoke: { _ in
+                // Pending native completion is not synchronous success. User
+                // commands remain usable while their async adapter path is gated.
+                guard adapterSynchronous else { throw ControlRegistryFailure.unsupported }
+                action()
+            })
     }
 }
 

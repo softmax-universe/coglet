@@ -88,6 +88,7 @@ final class FaceHost: ObservableObject {
 
 @MainActor
 final class FacePanelController: NSObject, NSWindowDelegate {
+    var onChange: (() -> Void)?
     let host: FaceHost
     private let panel: NSPanel
     private var localEscape: Any?
@@ -99,6 +100,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init()
         panel.title = "Softmax Face"; panel.level = .floating
+        panel.identifier = NSUserInterfaceItemIdentifier("softmax.face")
         panel.isReleasedWhenClosed = false; panel.isMovableByWindowBackground = true
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -114,6 +116,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
     }
     func show() {
         clampToScreen(); host.setVisible(true); panel.orderFrontRegardless()
+        onChange?()
         guard localEscape == nil else { return }
         localEscape = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { self?.hide(); return nil }; return event
@@ -129,6 +132,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
         if let localEscape { NSEvent.removeMonitor(localEscape) }
         if let globalEscape { NSEvent.removeMonitor(globalEscape) }
         localEscape = nil; globalEscape = nil
+        onChange?()
     }
     func windowDidMove(_ notification: Notification) { if persist { panel.saveFrame(usingName: "SoftmaxFace") } }
     private func resize() {

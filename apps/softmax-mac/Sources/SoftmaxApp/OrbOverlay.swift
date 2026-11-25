@@ -29,6 +29,7 @@ final class OrbOverlay {
             let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 68, height: 68),
                                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             panel.title = "Softmax Orb"
+            panel.identifier = NSUserInterfaceItemIdentifier("softmax.orb")
             panel.level = .floating
             panel.hidesOnDeactivate = false
             panel.isReleasedWhenClosed = false
@@ -82,6 +83,7 @@ final class OrbOverlay {
             let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 408, height: 548),
                                 styleMask: [.titled, .closable], backing: .buffered, defer: false)
             panel.title = "Softmax Conversation"
+            panel.identifier = NSUserInterfaceItemIdentifier("softmax.chat")
             panel.level = .floating
             panel.hidesOnDeactivate = false
             panel.isReleasedWhenClosed = false

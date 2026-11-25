@@ -42,16 +42,22 @@ public final class ControlRegistry {
     private var incarnation: UInt64 = 0
     private var entries: [String: Entry] = [:]
     private var lastValues: [String: CBORValue] = [:]
+    /// Previous safe observations, never authority or a second navigation model.
+    private var observedWindows: [String: String] = [:]
+    private var observedFocus: (window: String, control: String)?
     private var cursors: [String: Cursor] = [:]
     /// Seed from the host's durable source incarnation; exhaustion fences changes.
     public private(set) var revision: UInt64
     public var onChange: ((String, CBORValue) -> Void)?
     /// Returns the ACTUAL open route, not adapter-owned shadow navigation.
     private let currentRoute: (String) -> String?
+    private let interactionAllowed: (String) -> Bool
 
-    public init(revision: UInt64, currentRoute: @escaping (String) -> String?) {
+    public init(revision: UInt64, interactionAllowed: @escaping (String) -> Bool = { _ in true },
+                currentRoute: @escaping (String) -> String?) {
         self.revision = revision
         self.currentRoute = currentRoute
+        self.interactionAllowed = interactionAllowed
     }
 
     @discardableResult
@@ -126,7 +132,7 @@ public final class ControlRegistry {
         guard let entry = entries[request.mount.id], entry.mount == request.mount,
               entry.mount.registry == identity else { throw ControlRegistryFailure.conflict }
         guard entry.sensitive == request.sensitive else { throw ControlRegistryFailure.permissionDenied }
-        guard currentRoute(entry.window) == entry.route, entry.visible(), entry.enabled() else {
+        guard currentRoute(entry.window) == entry.route, interactionAllowed(entry.window), entry.visible(), entry.enabled() else {
             throw ControlRegistryFailure.unavailable
         }
         let verb = try text(try request.args.requireMap(), "verb")
@@ -148,7 +154,7 @@ public final class ControlRegistry {
 
     public func setFocus(_ mount: Mount, authorized: () -> Bool) throws {
         guard let entry = entries[mount.id], entry.mount == mount,
-              currentRoute(entry.window) == entry.route, entry.visible(), entry.enabled() else {
+              currentRoute(entry.window) == entry.route, interactionAllowed(entry.window), entry.visible(), entry.enabled() else {
             throw ControlRegistryFailure.unavailable
         }
         guard let focus = entry.focus, let focused = entry.focused else { throw ControlRegistryFailure.unsupported }
@@ -199,7 +205,7 @@ public final class ControlRegistry {
         for entry in items[start..<end] {
             controls.append(object(["id": .text(entry.mount.id), "parent": entry.parent.map(CBORValue.text) ?? .null,
                 "window": .text(window), "role": .text(entry.role), "label": .text(entry.label),
-                "value": try projectedValue(entry), "enabled": .boolean(entry.enabled()),
+                "value": try projectedValue(entry), "enabled": .boolean(entry.enabled() && interactionAllowed(window)),
                 "visible": .boolean(entry.visible() && currentRoute(window) == entry.route), "sensitive": .boolean(entry.sensitive)]))
         }
         var next: CBORValue = .null
@@ -215,6 +221,64 @@ public final class ControlRegistry {
         try CBORCodec.validate("app-controls-result", result)
         guard try CBORCodec.encodeProfile(result).count <= 250_000 else { throw ControlRegistryFailure.exhausted }
         return result
+    }
+
+    /// Observe committed native mutations, including user-driven responder changes.
+    /// `windows` is a finite host inventory; actual routes are queried live. Only
+    /// safe, generated-rule-validated payloads reach onChange. Initial open windows
+    /// are reported as opens, never inferred as grants or SDK activation.
+    public func synchronizeNativeState(windows: [String]) throws {
+        guard windows.count <= 64, Set(windows).count == windows.count else {
+            throw ControlRegistryFailure.invalidRegistration
+        }
+        var current: [String: String] = [:]
+        for window in windows {
+            try CBORCodec.validate("app-window", .text(window))
+            if let route = currentRoute(window) {
+                try CBORCodec.validate("app-location", object(["window": .text(window), "route": .text(route)]))
+                current[window] = route
+            }
+        }
+        for window in Set(observedWindows.keys).union(current.keys).sorted() {
+            let old = observedWindows[window], new = current[window]
+            guard old != new else { continue }
+            try changed()
+            observedWindows[window] = new
+            let kind: String, payload: CBORValue
+            if old == nil || new == nil {
+                kind = "softmax.app.window_changed"
+                payload = object(["revision": .unsigned(revision), "window": .text(window),
+                    "open": .boolean(new != nil), "route": new.map(CBORValue.text) ?? .null])
+                try CBORCodec.validate("app-window-changed", payload)
+            } else {
+                kind = "softmax.app.view_changed"
+                payload = object(["revision": .unsigned(revision), "window": .text(window), "route": .text(new!)])
+                try CBORCodec.validate("app-view-changed", payload)
+            }
+            onChange?(kind, payload)
+        }
+        // This also catches binding changes made by native keyboard/user commands.
+        // Copy mounts first: a callback may synchronously unmount another control.
+        for mount in entries.values.map(\.mount).sorted(by: { $0.id < $1.id }) {
+            guard entries[mount.id]?.mount == mount else { continue }
+            try controlChanged(mount)
+        }
+        let focus = try focusedControl()
+        let next: (window: String, control: String)?
+        if case .map(let fields) = focus {
+            next = (try text(fields, "window"), try text(fields, "control"))
+        } else { next = nil }
+        if observedFocus?.window != next?.window || observedFocus?.control != next?.control {
+            let previous = observedFocus
+            try changed()
+            observedFocus = next
+            if let window = next?.window ?? previous?.window {
+                let payload = object(["revision": .unsigned(revision), "window": .text(window),
+                    "control": next.map { .text($0.control) } ?? .null])
+                try CBORCodec.validate("app-focus-changed", payload)
+                onChange?("softmax.app.focus_changed", payload)
+            }
+        }
     }
 
     private func projectedValue(_ entry: Entry) throws -> CBORValue {

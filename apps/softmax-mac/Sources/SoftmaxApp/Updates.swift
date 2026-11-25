@@ -1,5 +1,6 @@
 import SwiftUI
 import Sparkle
+import SoftmaxAppSurface
 
 @MainActor private final class UpdateAvailability: NSObject, SPUUpdaterDelegate {
     var changed: ((Bool) -> Void)?
@@ -36,12 +37,19 @@ final class UpdateController: ObservableObject {
 
 struct UpdatesView: View {
     @ObservedObject var updates: UpdateController
+    let registry: ControlRegistry
+    let failure: (ControlRegistryFailure) -> Void
+    var window = "settings"
+    var route = "updates"
+    var idPrefix = "settings.updates"
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")")
-            Toggle("Automatically check for updates", isOn: $updates.automaticallyChecks)
+            CogletToggle("Automatically check for updates", id: "\(idPrefix).automatic_checks", registry: registry,
+                window: window, route: route, isOn: $updates.automaticallyChecks, failure: failure)
                 .disabled(!updates.enabled)
-            Button("Check for Updates…") { updates.checkForUpdates() }.disabled(!updates.enabled)
+            CogletButton("Check for Updates…", id: "\(idPrefix).check", registry: registry, window: window, route: route,
+                sensitive: true, adapterSynchronous: false, failure: failure) { updates.checkForUpdates() }.disabled(!updates.enabled)
             if !updates.enabled {
                 Text("Updates are disabled in development and ad-hoc builds. Install a notarized Developer ID release to enable them.")
             }
