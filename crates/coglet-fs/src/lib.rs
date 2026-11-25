@@ -37,12 +37,12 @@ pub(crate) fn digest(bytes: &[u8]) -> String {
 }
 pub(crate) fn hex(bytes: &[u8]) -> String {
     const DIGITS: &[u8] = b"0123456789abcdef";
-    let mut out = String::with_capacity(bytes.len() * 2);
+    let mut out = Vec::with_capacity(bytes.len() * 2);
     for &b in bytes {
-        out.push(DIGITS[(b >> 4) as usize] as char);
-        out.push(DIGITS[(b & 15) as usize] as char);
+        out.push(DIGITS[(b >> 4) as usize]);
+        out.push(DIGITS[(b & 15) as usize]);
     }
-    out
+    String::from_utf8(out).expect("hex digits are ASCII")
 }
 pub(crate) fn unhex(s: &str) -> Option<Vec<u8>> {
     if !s.len().is_multiple_of(2)

@@ -1052,9 +1052,9 @@ impl Runtime {
         } else {
             engine.database_observation(committed)?
         };
-        let code_hash = digest(
-            &hex::decode(&self.files.files()["/code/bin/step.wasm"]).map_err(|e| e.to_string())?,
-        );
+        let code_hash = digest(&crate::filesystem::decode_hex(
+            &self.files.files()["/code/bin/step.wasm"],
+        )?);
         let probe = std::time::Instant::now();
         let mut record = json!({
             "version":if observation.is_some() { "0.2" } else { "0.1" },

@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 pub struct NativeEngine {
     code: Vec<u8>,
+    code_hex: String,
     admitted: Option<(coglet_engine_wamr::Module, u32, u32)>,
     runtime_bytes: u32,
     stack_bytes: u32,
@@ -24,6 +25,7 @@ impl NativeEngine {
         stack_bytes: u32,
     ) -> Result<Self> {
         let mut engine = Self {
+            code_hex: hex::encode(&code),
             code,
             admitted: None,
             runtime_bytes,
@@ -114,7 +116,7 @@ impl Engine for NativeEngine {
     fn admit(&mut self, inputs: &Value, host: &StepHost) -> Result<()> {
         self.prepared = None;
         let started = Instant::now();
-        if host.files.files().get("/code/bin/step.wasm") != Some(&hex::encode(&self.code)) {
+        if host.files.files().get("/code/bin/step.wasm") != Some(&self.code_hex) {
             return Err("native engine code pin mismatch".into());
         }
         let limits = self.limits(&inputs["budgets"], started)?;

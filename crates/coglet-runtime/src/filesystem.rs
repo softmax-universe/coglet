@@ -5,9 +5,28 @@ use std::collections::BTreeMap;
 
 /// A filesystem seam independent of the eventual coglet-fs storage backend.
 /// Snapshots use the ABI's exact path -> lowercase hex representation.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(transparent)]
-pub struct Snapshot(BTreeMap<String, String>);
+#[derive(Clone, Debug)]
+pub struct Snapshot(
+    std::sync::Arc<BTreeMap<String, String>>,
+    std::sync::OnceLock<String>,
+    #[cfg(feature = "native-engine")] std::sync::OnceLock<coglet_fs::Snapshot>,
+);
+
+impl Serialize for Snapshot {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        self.0.as_ref().serialize(serializer)
+    }
+}
+
+impl PartialEq for Snapshot {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+impl Eq for Snapshot {}
 
 impl<'de> Deserialize<'de> for Snapshot {
     fn deserialize<D: serde::Deserializer<'de>>(
@@ -36,6 +55,40 @@ pub fn valid_path(path: &str) -> bool {
 
 pub fn digest(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
+}
+
+// Diagnostic: single-pass, strict lowercase hex conversion. No intermediate
+// string parsing or redundant validation pass over immutable snapshot content.
+pub(crate) fn decode_hex(encoded: &str) -> Result<Vec<u8>> {
+    const fn table() -> [u8; 256] {
+        let mut table = [255; 256];
+        let mut i = 0;
+        while i < 10 {
+            table[b'0' as usize + i] = i as u8;
+            i += 1;
+        }
+        i = 0;
+        while i < 6 {
+            table[b'a' as usize + i] = i as u8 + 10;
+            i += 1;
+        }
+        table
+    }
+    const NIBBLE: [u8; 256] = table();
+    let (pairs, remainder) = encoded.as_bytes().as_chunks::<2>();
+    if !remainder.is_empty() {
+        return Err("snapshot requires lowercase even-length hex".into());
+    }
+    let mut out = Vec::with_capacity(pairs.len());
+    for &[hi, lo] in pairs {
+        let hi = NIBBLE[hi as usize];
+        let lo = NIBBLE[lo as usize];
+        if hi == 255 || lo == 255 {
+            return Err("snapshot requires lowercase even-length hex".into());
+        }
+        out.push((hi << 4) | lo);
+    }
+    Ok(out)
 }
 
 pub(crate) fn reserved_collision(path: &str) -> bool {
@@ -83,22 +136,58 @@ impl Snapshot {
             }
         }
         crate::heard::decode(files.get(crate::heard::PATH).map(String::as_str))?;
-        Ok(Self(files))
+        Ok(Self(
+            std::sync::Arc::new(files),
+            std::sync::OnceLock::new(),
+            #[cfg(feature = "native-engine")]
+            std::sync::OnceLock::new(),
+        ))
+    }
+
+    #[cfg(feature = "native-engine")]
+    pub(crate) fn from_fs(decoded: coglet_fs::Snapshot) -> Result<Self> {
+        let snapshot = Self::new(decoded.export())?;
+        let _ = snapshot.2.set(decoded);
+        Ok(snapshot)
+    }
+
+    #[cfg(feature = "native-engine")]
+    pub(crate) fn decoded_fs(&self) -> Result<&coglet_fs::Snapshot> {
+        if let Some(decoded) = self.2.get() {
+            return Ok(decoded);
+        }
+        let map = self
+            .files()
+            .iter()
+            .map(|(path, encoded)| Ok((path.clone(), decode_hex(encoded)?)))
+            .collect::<Result<BTreeMap<_, _>>>()?;
+        let decoded = coglet_fs::Snapshot::from_files(map).map_err(|e| e.to_string())?;
+        let _ = self.2.set(decoded);
+        Ok(self.2.get().expect("immutable decoded cache initialized"))
     }
 
     pub fn files(&self) -> &BTreeMap<String, String> {
         &self.0
     }
     pub(crate) fn append_host_log(&mut self, line: &[u8]) {
-        self.0
+        self.1.take();
+        #[cfg(feature = "native-engine")]
+        self.2.take();
+        std::sync::Arc::make_mut(&mut self.0)
             .entry("/logs/events.jsonl".into())
             .or_default()
             .push_str(&hex::encode(line));
     }
     pub fn tree_hash(&self) -> Result<String> {
-        Ok(digest(&cbor(
-            &serde_json::to_value(&self.0).map_err(|e| e.to_string())?,
-        )?))
+        if let Some(hash) = self.1.get() {
+            return Ok(hash.clone());
+        }
+        let hash = digest(&cbor(
+            &serde_json::to_value(self.0.as_ref()).map_err(|e| e.to_string())?,
+        )?);
+        // Another reader can only compute the same hash from immutable bytes.
+        let _ = self.1.set(hash.clone());
+        Ok(hash)
     }
 
     /// Replace a file from the guest's copy-on-write view. Append-only mounts
@@ -119,9 +208,79 @@ impl Snapshot {
         {
             return Err("permission_denied: append-only logs".into());
         }
-        let mut next = self.0.clone();
+        let mut next = self.0.as_ref().clone();
         next.insert(path.into(), encoded);
         *self = Self::new(next)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strict_hex_matches_reference_and_rejects_every_non_lowercase_byte() {
+        let bytes: Vec<u8> = (0..=255).collect();
+        assert_eq!(decode_hex(&hex::encode(&bytes)).unwrap(), bytes);
+        assert_eq!(decode_hex("").unwrap(), Vec::<u8>::new());
+        for hi in 0..=255u8 {
+            for lo in 0..=255u8 {
+                let pair = [hi, lo];
+                let Ok(encoded) = std::str::from_utf8(&pair) else {
+                    continue;
+                };
+                let allowed = pair
+                    .iter()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(b));
+                let actual = decode_hex(encoded);
+                assert_eq!(actual.is_ok(), allowed);
+                if allowed {
+                    assert_eq!(actual.unwrap(), hex::decode(encoded).unwrap());
+                }
+            }
+        }
+        assert!(decode_hex("a").is_err());
+        assert!(decode_hex("é").is_err());
+    }
+
+    #[test]
+    fn snapshot_hash_cache_preserves_wire_equality_and_invalidates_mutations() {
+        let mut original = Snapshot::new(BTreeMap::from([
+            ("/code/bin/step.wasm".into(), "0061736d".into()),
+            ("/data/state".into(), "01".into()),
+        ]))
+        .unwrap();
+        let expected = digest(&cbor(&serde_json::to_value(original.files()).unwrap()).unwrap());
+        let mut copy = original.clone();
+        #[cfg(feature = "native-engine")]
+        assert_eq!(original.decoded_fs().unwrap().export(), *original.files());
+        assert_eq!(original.tree_hash().unwrap(), expected);
+        assert_eq!(original, copy); // cache state is not semantic equality
+        assert!(std::sync::Arc::ptr_eq(&original.0, &copy.0));
+        assert_eq!(copy.tree_hash().unwrap(), expected);
+        let wire = serde_json::to_value(&copy).unwrap();
+        assert_eq!(wire, serde_json::to_value(copy.files()).unwrap());
+        assert_eq!(serde_json::from_value::<Snapshot>(wire).unwrap(), original);
+        copy.guest_write("/data/state", &[2]).unwrap();
+        assert_ne!(copy.tree_hash().unwrap(), expected);
+        assert_eq!(original.tree_hash().unwrap(), expected);
+        let before_log = copy.tree_hash().unwrap();
+        copy.append_host_log(b"event\n");
+        assert_ne!(copy.tree_hash().unwrap(), before_log);
+        assert_eq!(
+            copy.tree_hash().unwrap(),
+            digest(&cbor(&serde_json::to_value(copy.files()).unwrap()).unwrap())
+        );
+        original.append_host_log(b"another\n");
+        assert_ne!(original.tree_hash().unwrap(), expected);
+        assert_ne!(original, copy);
+        #[cfg(feature = "native-engine")]
+        {
+            assert_eq!(original.decoded_fs().unwrap().export(), *original.files());
+            assert_eq!(copy.decoded_fs().unwrap().export(), *copy.files());
+            let roundtrip = Snapshot::from_fs(copy.decoded_fs().unwrap().clone()).unwrap();
+            assert_eq!(roundtrip, copy);
+        }
     }
 }
