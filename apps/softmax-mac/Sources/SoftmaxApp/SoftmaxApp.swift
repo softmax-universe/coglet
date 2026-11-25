@@ -409,7 +409,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowDidMiniaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
     func windowDidDeminiaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
     private func synchronizeNativeWindowControls() throws {
-        for id in ["settings", "onboarding", "about"] {
+        orbOverlay.synchronizeControls()
+        for id in ["settings", "onboarding", "about", "command_palette"] {
             let owner = nativeWindowControls[id] ?? NativeWindowControlRegistration(registry: model.appControls)
             nativeWindowControls[id] = owner
             try owner.synchronize(window: appWindow(id), id: id, route: appRoute(id))
@@ -482,6 +483,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // Product native dispatch; the runtime actor owns transport, SDK admission
     // and durable sequencing. These closures neither grant authority nor run a guest.
     private func installAppSurface() {
+        orbOverlay.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         commands.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         talkHUD.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         face.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }

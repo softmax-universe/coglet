@@ -12,6 +12,42 @@ final class NativeButtonRegistrationTests: XCTestCase {
     private func args(_ id: String, window: String = "settings") -> CBORValue {
         .map([.init("window", .text(window)), .init("control", .text(id)), .init("verb", .text("press"))])
     }
+    func testOrbUserAccessibilityAndAdapterShareActualButtonCommand() throws {
+        _ = NSApplication.shared
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 68, height: 68),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isReleasedWhenClosed = false
+        let button = OrbButton(frame: NSRect(x: 0, y: 0, width: 68, height: 68))
+        var calls = 0
+        button.onClick = { calls += 1 }
+        button.setAccessibilityLabel("Open Softmax chat")
+        panel.contentView = button
+        panel.orderFrontRegardless()
+        defer { panel.close() }
+        let registry = ControlRegistry(revision: 0, currentRoute: { _ in "orb" })
+        let registration = try NativeButtonRegistration(button: button, registry: registry,
+            id: "orb.open_chat", window: "orb", route: "orb")
+        let old = try registry.prepare(args("orb.open_chat", window: "orb"), sensitive: false)
+        button.performClick(nil)
+        XCTAssertTrue(button.accessibilityPerformPress())
+        try registry.perform(old, authorized: { true })
+        XCTAssertEqual(calls, 3)
+        button.isEnabled = false
+        XCTAssertFalse(button.accessibilityPerformPress())
+        XCTAssertThrowsError(try registry.perform(old, authorized: { true }))
+        button.isEnabled = true
+        try registration.invalidate()
+        panel.orderOut(nil)
+        panel.orderFrontRegardless()
+        let successor = try NativeButtonRegistration(button: button, registry: registry,
+            id: "orb.open_chat", window: "orb", route: "orb")
+        defer { try? successor.invalidate() }
+        XCTAssertThrowsError(try registry.perform(old, authorized: { true }))
+        XCTAssertEqual(calls, 3)
+        try registry.perform(registry.prepare(args("orb.open_chat", window: "orb"), sensitive: false), authorized: { true })
+        XCTAssertEqual(calls, 4)
+    }
+
     func testNativePressUsesExistingTargetActionAndRefusesHiddenDisabledControls() throws {
         _ = NSApplication.shared
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 240, height: 160),

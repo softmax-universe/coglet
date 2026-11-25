@@ -10,6 +10,17 @@ final class OrbOverlay {
     private var orb: NSPanel?
     private var chat: NSPanel?
     private var screenObserver: NSObjectProtocol?
+    var onChange: (() -> Void)?
+    private var orbControl: NativeButtonRegistration?
+    private lazy var chatControls = NativeWindowControlRegistration(registry: model.appControls)
+
+    private func retireControls() {
+        do {
+            try orbControl?.invalidate()
+            orbControl = nil
+            try chatControls.invalidate()
+        } catch { model.appControlFailure(.exhausted) }
+    }
 
     init(model: ShellModel) {
         self.model = model
@@ -22,8 +33,12 @@ final class OrbOverlay {
 
     func setVisible(_ visible: Bool) {
         guard visible else {
+            // Retire the presentation before native hide; queued requests must
+            // not acquire the same NSPanel's next presentation.
+            retireControls()
             orb?.orderOut(nil)
             chat?.orderOut(nil)
+            onChange?()
             return
         }
         if orb == nil {
@@ -55,6 +70,13 @@ final class OrbOverlay {
         }
         snap()
         orb?.orderFrontRegardless()
+        if orbControl?.isActive != true, let button = orb?.contentView as? NSButton {
+            do {
+                orbControl = try NativeButtonRegistration(button: button, registry: model.appControls,
+                    id: "orb.open_chat", window: "orb", route: "orb")
+            } catch { model.appControlFailure(.invalidRegistration) }
+        }
+        onChange?()
     }
 
     private func snap() {
@@ -74,11 +96,21 @@ final class OrbOverlay {
     }
 
     private func toggleChat() {
-        if chat?.isVisible == true { chat?.orderOut(nil) }
-        else { showChat(voice: false) }
+        if chat?.isVisible == true {
+            do { try chatControls.invalidate() }
+            catch { model.appControlFailure(.exhausted) }
+            chat?.orderOut(nil)
+            onChange?()
+        } else { showChat(voice: false) }
     }
 
     func showChat(voice: Bool) {
+        // Same native panel may change route without closing. Retire its old
+        // titlebar incarnation before changing that route.
+        if model.voicePanelSelected != voice {
+            do { try chatControls.invalidate() }
+            catch { model.appControlFailure(.exhausted) }
+        }
         model.voicePanelSelected = voice
         if chat == nil {
             let panel = NSPanel(contentRect: CGRect(x: 0, y: 0, width: 408, height: 548),
@@ -96,46 +128,17 @@ final class OrbOverlay {
         positionChat()
         NSApp.activate(ignoringOtherApps: true)
         chat?.makeKeyAndOrderFront(nil)
+        synchronizeControls()
         if voice { model.refreshPermissions() }
-    }
-}
-
-@MainActor
-private final class OrbButton: NSButton {
-    var onClick: (() -> Void)?
-    var onVoice: (() -> Void)?
-    var onDrop: (() -> Void)?
-
-    private var dragStart: CGPoint?
-    private var windowStart: CGPoint?
-    private var moved = false
-
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-
-    override func mouseDown(with event: NSEvent) {
-        guard let window else { return }
-        dragStart = window.convertPoint(toScreen: event.locationInWindow)
-        windowStart = window.frame.origin
-        moved = false
+        onChange?()
     }
 
-    override func mouseDragged(with event: NSEvent) {
-        guard let window, let dragStart, let windowStart else { return }
-        let pointer = window.convertPoint(toScreen: event.locationInWindow)
-        let delta = CGPoint(x: pointer.x - dragStart.x, y: pointer.y - dragStart.y)
-        if hypot(delta.x, delta.y) > 4 { moved = true }
-        if moved { window.setFrameOrigin(CGPoint(x: windowStart.x + delta.x, y: windowStart.y + delta.y)) }
+    func synchronizeControls() {
+        do {
+            try chatControls.synchronize(window: chat, id: "chat",
+                route: model.voicePanelSelected ? "voice" : "chat")
+        } catch { model.appControlFailure(.invalidRegistration) }
     }
-
-    override func mouseUp(with event: NSEvent) {
-        guard dragStart != nil else { return }
-        dragStart = nil
-        windowStart = nil
-        if moved { onDrop?() } else { onClick?() }
-    }
-
-    override func rightMouseDown(with event: NSEvent) { onVoice?() }
-    override func accessibilityPerformPress() -> Bool { onClick?(); return true }
 }
 
 struct ConversationView: View {
