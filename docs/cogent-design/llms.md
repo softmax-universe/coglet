@@ -66,7 +66,7 @@ What this buys:
   forked at any turn to try a different prompt, model or tool result.
 - **Forks reuse work.** A fork shares every step before the point where it
   changes, through unforged's cache. After that point it needs new model
-  replies; those are live calls made by the LLM adapter at the centre and
+  replies; those are live calls made by the LLM adapter on a hosted runtime and
   recorded into the fork's own inputs.
 - **Tools and models are the same thing.** A model call and an MCP tool call
   are both staged actions with recorded outcomes.

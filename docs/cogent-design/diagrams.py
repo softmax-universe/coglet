@@ -32,6 +32,7 @@ STYLE = """
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -52,6 +53,7 @@ STYLE = """
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -165,7 +167,7 @@ def stacks(name: str, label: str, columns, hub_title: str = "Hub kernel") -> Svg
 def deployment() -> Svg:
     return stacks(
         "deployment",
-        "The Softmax app on the user's machine runs Face and the coglets for its connected apps; the cogent's centre runs the fast loop, factory, optimizer and memory.",
+        "The Softmax app on the user's machine runs Face and the coglets for its connected apps; a Softmax-hosted runtime runs the fast loop, factory, optimizer and memory; the router joins them.",
         [
             (
                 40,
@@ -174,14 +176,14 @@ def deployment() -> Svg:
                 [("Orb, mic, speaker", "Softmax app", None), ("Blender", "Blender adapter", None), ("Chrome", "Chrome adapter", None)],
                 ["FaceCoglet", "BlenderCoglet", "BrowserCoglet"],
             ),
-            (540, 380, "THE COGENT'S CENTRE", [("Workers", "Factory adapter", "runs the jobs")], ["FastLoop", "Factory", "Optimizer", "Memory"]),
+            (540, 380, "SOFTMAX-HOSTED RUNTIME", [("Workers", "Factory adapter", "runs the jobs")], ["FastLoop", "Factory", "Optimizer", "Memory"]),
         ],
         hub_title="Router",
     )
 
 
 def cogent() -> Svg:
-    svg = Svg("cogent", 1040, 580, "A cogent sits at the centre: a set of coglets plus a router. Around it are devices and hosted apps, and for each one it runs coglets that talk to the apps through their adapters.")
+    svg = Svg("cogent", 1040, 730, "A cogent has no centre: its coglets run on many runtimes, on a laptop, a robot, a phone, in the Softmax Universe and on a Softmax-hosted runtime, and one router carries messages and patches between all of them. The cogent is present on Face and Blender on the laptop; the rest run on their own.")
     stroke = 'class="dg-ink" stroke-width="1.5"'
     svg.add('<g transform="translate(0,190)">')
 
@@ -207,14 +209,9 @@ def cogent() -> Svg:
                 f'<path d="M{x + 3} {t + 15}V{t + 20}M{x + 19} {t + 15}V{t + 20}" {stroke}/>'
             )
 
-    # the cogent, in the centre
-    svg.rect(330, 30, 380, 280, "dg-group", 14)
-    icon("cogent", 348, 43)
-    svg.text(380, 55, "THE COGENT", "dg-cap", "start")
-    centre = [("FastLoop", "responds, or forwards"), ("Factory", "tickets in, patches out"), ("Optimizer", "watches, improves"), ("Memory", "what the cogent knows")]
-    for i, (name, what) in enumerate(centre):
-        svg.box(345 + (i % 2) * 180, 146 + (i // 2) * 72, 170, 60, name, "dg-coglet", what)
-    svg.box(345, 70, 350, 62, "Router", "dg-coglet", "finds devices, carries messages and patches")
+    # the router, linking every runtime; no coglet is special
+    svg.box(385, 135, 270, 62, "Router", "dg-hub", "a coglet: messages, patches, presence")
+    icon("cogent", 398, 147)
 
     def side_device(x, kind, caption, apps, coglets, coglet_on_right, shared=None):
         """Rows of app and coglet, with the coglets on the side facing the cogent."""
@@ -246,8 +243,11 @@ def cogent() -> Svg:
     side_device(20, "laptop", "LAPTOP", ["Softmax app", "Blender", "Chrome", "Minecraft", "Mindustry"], ["Face", "Blender", "Browser", "Minecraft", "Mindustry"], True)
     side_device(750, "robot", "ROBOT", ["Microphone", "Display", "Camera", "Wheels", "Hand"], [("Face", 3), ("Controller", 2)], False, shared=2)
 
-    svg.arrow(343, 101, 292, 101, "blue", both=True)
-    svg.arrow(697, 101, 748, 101, "blue", both=True)
+    svg.arrow(383, 166, 292, 166, "blue", both=True)
+    svg.arrow(657, 166, 748, 166, "blue", both=True)
+    # presence: the cogent is paying attention to Face and Blender on the laptop
+    for row in (0, 1):
+        svg.rect(174, 68 + row * 46, 106, 46, "dg-present", 9)
     svg.add("</g>")
 
     def top_box(bx, bw, caption, pairs):
@@ -273,21 +273,34 @@ def cogent() -> Svg:
     # the phone, above right
     top_box(587, 240, "PHONE", [("Softmax app", "Face"), ("A phone app", "App coglet")])
     icon("phone", 601, 33)
-    svg.arrow(500, 190, 500, 258, "blue", both=True)
-    svg.arrow(650, 190, 650, 258, "blue", both=True)
-    svg.text(488, 209, "installs, patches, messages", "dg-m", "end")
+    svg.arrow(450, 190, 450, 323, "blue", both=True)
+    svg.arrow(600, 190, 600, 323, "blue", both=True)
+    svg.text(462, 262, "installs, patches, messages", "dg-m", "start")
 
-    legend(svg, 40, 545, [("blue", False, "the cogent reaches a device"), ("warm", False, "a coglet uses an app through its adapter")])
-    lx = 680
+    # a Softmax-hosted runtime: just another runtime, its coglets run on their own
+    hx, hy, hw = 250, 520, 540
+    svg.rect(hx, hy, hw, 136, "dg-bg", 12)
+    svg.text(hx + 14, hy + 25, "SOFTMAX-HOSTED RUNTIME", "dg-cap", "start")
+    hosted = [("FastLoop", "attention"), ("Factory", "builds patches"), ("Optimizer", "improves"), ("Memory", "what it knows"), ("Database", "structured data")]
+    cw = (hw - 28 - 8 * 4) / 5
+    for i, (name, what) in enumerate(hosted):
+        svg.box(hx + 14 + i * (cw + 8), hy + 40, cw, 60, name, "dg-coglet", what)
+    svg.text(hx + hw / 2, hy + 122, "running on their own; the cogent checks in", "dg-m")
+    svg.arrow(520, 389, 520, 518, "blue", both=True)
+
+    legend(svg, 40, 695, [("blue", False, "the router carries it"), ("warm", False, "a coglet uses an app through its adapter")])
+    svg.rect(500, 685, 22, 20, "dg-present", 5)
+    svg.text(530, 699, "present", "dg-m", "start")
+    lx = 610
     for cls, label in [("dg-coglet", "coglet"), ("dg-adapter", "adapter"), ("dg-world", "app or hardware")]:
-        svg.rect(lx, 535, 20, 20, cls, 4)
-        svg.text(lx + 28, 549, label, "dg-m", "start")
+        svg.rect(lx, 685, 20, 20, cls, 4)
+        svg.text(lx + 28, 699, label, "dg-m", "start")
         lx += 60 + len(label) * 6
     return svg
 
 
 def coglet() -> Svg:
-    svg = Svg("coglet", 960, 430, "A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.")
+    svg = Svg("coglet", 960, 430, "A coglet in the middle, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.")
     svg.text(280, 40, "FRONT END: EVENTS AND CAPABILITIES", "dg-cap")
     svg.text(685, 40, "MANAGE PORT: PATCHES AND LOGS", "dg-cap")
 
@@ -405,7 +418,7 @@ def turn() -> Svg:
         ("App UI adapter", "dg-adapter"),
         ("FaceCoglet", "dg-coglet"),
         ("BlenderCoglet", "dg-coglet"),
-        ("Cogent centre", "dg-group"),
+        ("FastLoop", "dg-coglet"),
         ("Factory", "dg-coglet"),
     ]
     messages = [
@@ -434,16 +447,16 @@ def turn() -> Svg:
 
 
 def calls() -> Svg:
-    svg = Svg("calls", 770, 344, "Face exchanges intents with app coglets on the device and feature requests with the fast loop; in the cogent's centre the fast loop and the optimizer use memory and file tickets with the factory.")
+    svg = Svg("calls", 770, 344, "Face exchanges intents with app coglets on the device and feature requests with the fast loop; the fast loop and the optimizer use memory and file tickets with the factory, wherever those coglets run.")
     # on a device, stacked
     svg.rect(20, 30, 190, 294, "dg-group", 14)
     svg.text(38, 54, "ON A DEVICE", "dg-cap", "start")
     svg.box(40, 70, 150, 56, "FaceCoglet", "dg-coglet", "talks with the user")
     svg.box(40, 250, 150, 56, "App coglets", "dg-coglet", "drive the apps")
-    # the cogent's centre, two by two
+    # the learning coglets, two by two, wherever they run
     svg.rect(310, 30, 440, 294, "dg-group", 14)
-    svg.text(328, 54, "THE COGENT'S CENTRE", "dg-cap", "start")
-    svg.box(330, 70, 150, 56, "FastLoop", "dg-coglet", "responds, or forwards")
+    svg.text(328, 54, "LEARNING AND MEMORY", "dg-cap", "start")
+    svg.box(330, 70, 150, 56, "FastLoop", "dg-coglet", "attention: responds, forwards")
     svg.box(580, 70, 150, 56, "Memory", "dg-coglet", "what the cogent knows")
     svg.box(330, 250, 150, 56, "Factory", "dg-coglet", "tickets in, patches out")
     svg.box(580, 250, 150, 56, "Optimizer", "dg-coglet", "watches, improves")
@@ -717,7 +730,7 @@ def speech() -> Svg:
 
 
 def unforged_stack() -> Svg:
-    svg = Svg("unforged-stack", 960, 470, "Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent's refs; the centre runs steps the same way, and can hand any step to unforged workers on CAOS.")
+    svg = Svg("unforged-stack", 960, 470, "Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent's refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.")
     # device
     svg.rect(24, 24, 300, 300, "dg-group", 12)
     svg.text(40, 48, "DEVICE", "dg-cap", "start")
@@ -744,9 +757,9 @@ def unforged_stack() -> Svg:
         svg.text(392, y + 15, code, "dg-code", "start")
         svg.text(392, y + 29, what, "dg-m", "start")
     svg.box(380, 274, 200, 30, "Router coglet", "dg-coglet")
-    # centre
+    # a Softmax-hosted runtime
     svg.rect(636, 24, 300, 300, "dg-group", 12)
-    svg.text(652, 48, "THE COGENT'S CENTRE", "dg-cap", "start")
+    svg.text(652, 48, "SOFTMAX-HOSTED RUNTIME", "dg-cap", "start")
     svg.rect(652, 62, 268, 142, "dg-runtime")
     svg.text(666, 83, "cogletd", "dg-code", "start")
     for i, name in enumerate(["FastLoop", "Factory", "Optimizer", "Memory"]):
@@ -866,7 +879,7 @@ def unforged_patch() -> Svg:
 
 
 def unforged_replay() -> Svg:
-    svg = Svg("unforged-replay", 960, 380, "One journal, two runners. A device produces step commits in process; the centre re-runs any of them as unforged jobs to replay, fork or test a candidate policy.")
+    svg = Svg("unforged-replay", 960, 380, "One journal, two runners. A device produces step commits in process; a Softmax-hosted runtime re-runs any of them as unforged jobs to replay, fork or test a candidate policy.")
     svg.text(30, 40, "ONE JOURNAL, TWO RUNNERS", "dg-cap", "start")
     svg.box(30, 70, 230, 70, "cogletd on a device", "dg-runtime", "in process, no fork, no git binary")
     svg.text(145, 160, "writes step commits", "dg-m")

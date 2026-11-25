@@ -124,16 +124,19 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
   <div class="pages"><a href="index.html" class="here">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html">Coglets on unforged</a><a href="unforged-staging.html">Staged integration</a><a href="secrets.html">Secrets and adapters</a><a href="llms.html">LLMs on unforged</a></div>
   <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
   <ul>
-  <li class="h2"><a href="#adapter">Adapter</a></li><li class="h2"><a href="#coglet">Coglet</a></li><li class="h2"><a href="#runtime">Runtime</a></li><li class="h2"><a href="#cogent_1">Cogent</a></li><li class="h2"><a href="#a-request-end-to-end">A request, end to end</a></li>
+  <li class="h2"><a href="#adapter">Adapter</a></li><li class="h2"><a href="#coglet">Coglet</a></li><li class="h2"><a href="#runtime">Runtime</a></li><li class="h2"><a href="#cogent_1">Cogent</a></li><li class="h3"><a href="#presence">Presence</a></li><li class="h2"><a href="#a-request-end-to-end">A request, end to end</a></li>
   </ul>
 </nav>
 <main>
 <h1 id="cogent">Cogent<a class="headerlink" href="#cogent" title="Permanent link">#</a></h1>
-<p><img alt="The Softmax logo as the router at the centre, with pipes to a robot dog, a monitor, a laptop, a phone, two factories with gears inside and a database; the pipes to the dog, the factories and the database are lit." src="images/cogent.png" /></p>
+<p><img alt="The Softmax logo as the router in the middle, with pipes to a robot dog, a monitor, a laptop, a phone, two factories with gears inside and a database; the pipes to the dog, the factories and the database are lit." src="images/cogent.png" /></p>
 <p>A <strong>cogent</strong> is one logical agent. It has an <strong>identity</strong>, a <strong>name</strong> and an
-<strong>owner</strong>, and it runs as a <strong>collection of coglets</strong>: a few always running at
-its centre, and more on the devices it reaches. This is the design, split into
-pieces so they can be built in parallel.</p>
+<strong>owner</strong>, and it runs as a <strong>collection of coglets</strong> spread over many runtimes,
+held together by a <strong>router</strong>. There is no centre: memory, the factory and a
+database are coglets just like Face or the Blender coglet. The cogent is
+<strong>present</strong> on a few of them at a time, the ones it is paying attention to, and
+the rest run on their own. This is the design, split into pieces so they can be
+built in parallel.</p>
 <p>Pages: <a href="coglets-and-runtime.html">Coglets and runtime</a> ·
 <a href="app-integration.html">App integration</a> ·
 <a href="softmax-app.html">The Softmax app</a> ·
@@ -142,7 +145,7 @@ pieces so they can be built in parallel.</p>
 <a href="unforged-staging.html">Staged integration</a> ·
 <a href="secrets.html">Secrets and adapters</a> ·
 <a href="llms.html">LLMs on unforged</a></p>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1040" height="580" viewBox="0 0 1040 580" role="img" aria-label="A cogent sits at the centre: a set of coglets plus a router. Around it are devices and hosted apps, and for each one it runs coglets that talk to the apps through their adapters.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="1040" height="730" viewBox="0 0 1040 730" role="img" aria-label="A cogent has no centre: its coglets run on many runtimes, on a laptop, a robot, a phone, in the Softmax Universe and on a Softmax-hosted runtime, and one router carries messages and patches between all of them. The cogent is present on Face and Blender on the laptop; the rest run on their own.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -163,6 +166,7 @@ pieces so they can be built in parallel.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -183,31 +187,18 @@ pieces so they can be built in parallel.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
 </style>
 <defs><marker id="cogent-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="cogent-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="cogent-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="cogent-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="cogent-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="cogent-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="cogent-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="cogent-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
-<rect x="0.5" y="0.5" width="1039" height="579" rx="12" class="dg-bg"/>
+<rect x="0.5" y="0.5" width="1039" height="729" rx="12" class="dg-bg"/>
 <g transform="translate(0,190)">
-<rect x="330" y="30" width="380" height="280" rx="14" class="dg-group"/>
-<rect x="350" y="44" width="18" height="13" rx="3" class="dg-ink" stroke-width="1.5"/><path d="M359 44V39" class="dg-ink" stroke-width="1.5"/><circle cx="359" cy="37.5" r="1.6" class="dg-ink" stroke-width="1.5"/><circle cx="355" cy="50" r="1.4" class="dg-ink-h"/><circle cx="363" cy="50" r="1.4" class="dg-ink-h"/><path d="M347 48V53M371 48V53" class="dg-ink" stroke-width="1.5"/>
-<text x="380" y="55" text-anchor="start" class="dg-cap">THE COGENT</text>
-<rect x="345" y="146" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="430.0" y="173.0" text-anchor="middle" class="dg-b">FastLoop</text>
-<text x="430.0" y="189.0" text-anchor="middle" class="dg-m">responds, or forwards</text>
-<rect x="525" y="146" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="610.0" y="173.0" text-anchor="middle" class="dg-b">Factory</text>
-<text x="610.0" y="189.0" text-anchor="middle" class="dg-m">tickets in, patches out</text>
-<rect x="345" y="218" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="430.0" y="245.0" text-anchor="middle" class="dg-b">Optimizer</text>
-<text x="430.0" y="261.0" text-anchor="middle" class="dg-m">watches, improves</text>
-<rect x="525" y="218" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="610.0" y="245.0" text-anchor="middle" class="dg-b">Memory</text>
-<text x="610.0" y="261.0" text-anchor="middle" class="dg-m">what the cogent knows</text>
-<rect x="345" y="70" width="350" height="62" rx="8" class="dg-coglet"/>
-<text x="520.0" y="98.0" text-anchor="middle" class="dg-b">Router</text>
-<text x="520.0" y="114.0" text-anchor="middle" class="dg-m">finds devices, carries messages and patches</text>
+<rect x="385" y="135" width="270" height="62" rx="8" class="dg-hub"/>
+<text x="520.0" y="163.0" text-anchor="middle" class="dg-b">Router</text>
+<text x="520.0" y="179.0" text-anchor="middle" class="dg-m">a coglet: messages, patches, presence</text>
+<rect x="400" y="148" width="18" height="13" rx="3" class="dg-ink" stroke-width="1.5"/><path d="M409 148V143" class="dg-ink" stroke-width="1.5"/><circle cx="409" cy="141.5" r="1.6" class="dg-ink" stroke-width="1.5"/><circle cx="405" cy="154" r="1.4" class="dg-ink-h"/><circle cx="413" cy="154" r="1.4" class="dg-ink-h"/><path d="M397 152V157M421 152V157" class="dg-ink" stroke-width="1.5"/>
 <rect x="20" y="30" width="270" height="280" rx="12" class="dg-bg"/>
 <rect x="37" y="43" width="16" height="11" rx="1.5" class="dg-ink" stroke-width="1.5"/><path d="M34 57H56" class="dg-ink" stroke-width="1.5"/>
 <text x="64" y="55" text-anchor="start" class="dg-cap">LAPTOP</text>
@@ -269,8 +260,10 @@ pieces so they can be built in parallel.</p>
 <text x="813.0" y="141.0" text-anchor="middle" class="dg-b">Face</text>
 <rect x="764" y="210" width="98" height="84" rx="8" class="dg-coglet"/>
 <text x="813.0" y="256.0" text-anchor="middle" class="dg-b">Controller</text>
-<line x1="343" y1="101" x2="292" y2="101" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
-<line x1="697" y1="101" x2="748" y2="101" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="383" y1="166" x2="292" y2="166" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="657" y1="166" x2="748" y2="166" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<rect x="174" y="68" width="106" height="46" rx="9" class="dg-present"/>
+<rect x="174" y="114" width="106" height="46" rx="9" class="dg-present"/>
 </g>
 <rect x="213" y="20" width="344" height="168" rx="12" class="dg-bg"/>
 <text x="259" y="45" text-anchor="start" class="dg-cap">SOFTMAX UNIVERSE</text>
@@ -308,24 +301,47 @@ pieces so they can be built in parallel.</p>
 <rect x="711.0" y="134" width="102.0" height="42" rx="8" class="dg-coglet"/>
 <text x="762.0" y="159.0" text-anchor="middle" class="dg-b">App coglet</text>
 <rect x="607" y="31" width="10" height="17" rx="2.5" class="dg-ink" stroke-width="1.5"/><path d="M610.5 45H613.5" class="dg-ink" stroke-width="1.5"/>
-<line x1="500" y1="190" x2="500" y2="258" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
-<line x1="650" y1="190" x2="650" y2="258" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
-<text x="488" y="209" text-anchor="end" class="dg-m">installs, patches, messages</text>
-<line x1="40" y1="545" x2="74" y2="545" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)"/>
-<text x="82" y="549" text-anchor="start" class="dg-m">the cogent reaches a device</text>
-<line x1="262" y1="545" x2="296" y2="545" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)"/>
-<text x="304" y="549" text-anchor="start" class="dg-m">a coglet uses an app through its adapter</text>
-<rect x="680" y="535" width="20" height="20" rx="4" class="dg-coglet"/>
-<text x="708" y="549" text-anchor="start" class="dg-m">coglet</text>
-<rect x="776" y="535" width="20" height="20" rx="4" class="dg-adapter"/>
-<text x="804" y="549" text-anchor="start" class="dg-m">adapter</text>
-<rect x="878" y="535" width="20" height="20" rx="4" class="dg-world"/>
-<text x="906" y="549" text-anchor="start" class="dg-m">app or hardware</text>
+<line x1="450" y1="190" x2="450" y2="323" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="600" y1="190" x2="600" y2="323" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<text x="462" y="262" text-anchor="start" class="dg-m">installs, patches, messages</text>
+<rect x="250" y="520" width="540" height="136" rx="12" class="dg-bg"/>
+<text x="264" y="545" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
+<rect x="264.0" y="560" width="96.0" height="60" rx="8" class="dg-coglet"/>
+<text x="312.0" y="587.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<text x="312.0" y="603.0" text-anchor="middle" class="dg-m">attention</text>
+<rect x="368.0" y="560" width="96.0" height="60" rx="8" class="dg-coglet"/>
+<text x="416.0" y="587.0" text-anchor="middle" class="dg-b">Factory</text>
+<text x="416.0" y="603.0" text-anchor="middle" class="dg-m">builds patches</text>
+<rect x="472.0" y="560" width="96.0" height="60" rx="8" class="dg-coglet"/>
+<text x="520.0" y="587.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<text x="520.0" y="603.0" text-anchor="middle" class="dg-m">improves</text>
+<rect x="576.0" y="560" width="96.0" height="60" rx="8" class="dg-coglet"/>
+<text x="624.0" y="587.0" text-anchor="middle" class="dg-b">Memory</text>
+<text x="624.0" y="603.0" text-anchor="middle" class="dg-m">what it knows</text>
+<rect x="680.0" y="560" width="96.0" height="60" rx="8" class="dg-coglet"/>
+<text x="728.0" y="587.0" text-anchor="middle" class="dg-b">Database</text>
+<text x="728.0" y="603.0" text-anchor="middle" class="dg-m">structured data</text>
+<text x="520.0" y="642" text-anchor="middle" class="dg-m">running on their own; the cogent checks in</text>
+<line x1="520" y1="389" x2="520" y2="518" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="40" y1="695" x2="74" y2="695" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)"/>
+<text x="82" y="699" text-anchor="start" class="dg-m">the router carries it</text>
+<line x1="226" y1="695" x2="260" y2="695" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)"/>
+<text x="268" y="699" text-anchor="start" class="dg-m">a coglet uses an app through its adapter</text>
+<rect x="500" y="685" width="22" height="20" rx="5" class="dg-present"/>
+<text x="530" y="699" text-anchor="start" class="dg-m">present</text>
+<rect x="610" y="685" width="20" height="20" rx="4" class="dg-coglet"/>
+<text x="638" y="699" text-anchor="start" class="dg-m">coglet</text>
+<rect x="706" y="685" width="20" height="20" rx="4" class="dg-adapter"/>
+<text x="734" y="699" text-anchor="start" class="dg-m">adapter</text>
+<rect x="808" y="685" width="20" height="20" rx="4" class="dg-world"/>
+<text x="836" y="699" text-anchor="start" class="dg-m">app or hardware</text>
 </svg>
 </figure>
-<p><em>A cogent: a handful of coglets and a router at the centre, with devices around
-it. On each device there are apps, each app has an adapter, and the cogent runs coglets
-that talk to the apps through those adapters.</em></p>
+<p><em>A cogent: coglets on many runtimes, and one router between them. Apps have
+adapters, and coglets use the apps through them. The fast loop, factory,
+optimizer, memory and database happen to run on a Softmax-hosted runtime, which
+is a runtime like the others. The outlined coglets are where the cogent is
+present right now.</em></p>
 <h2 id="adapter">Adapter<a class="headerlink" href="#adapter" title="Permanent link">#</a></h2>
 <p>An adapter is an interface that an app exposes: whatever <strong>observations</strong>,
 <strong>events</strong> and <strong>actions</strong> the app's developer chooses to offer.</p>
@@ -383,6 +399,7 @@ control. Minecraft might have three:</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -403,6 +420,7 @@ control. Minecraft might have three:</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -503,7 +521,7 @@ prompts</strong> and <strong>skills</strong>, or any mix of them. A patch can ch
 in any language its runtime supports.</p>
 <p>A coglet can use several adapters at once, and several coglets can use the same
 one. On a robot, both the face and the controller use the camera.</p>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="A coglet in the middle, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -524,6 +542,7 @@ one. On a robot, both the face and the controller use the camera.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -544,6 +563,7 @@ one. On a robot, both the face and the controller use the camera.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -604,7 +624,7 @@ one. On a robot, both the face and the controller use the camera.</p>
 <text x="685" y="244" text-anchor="middle" class="dg-m">each needs its own grant</text>
 </svg>
 </figure>
-<p><em>The coglet in the centre. Apps and hardware, reached through adapters, on the
+<p><em>The coglet in the middle. Apps and hardware, reached through adapters, on the
 left. What the runtime provides below. Its manager on the right, with patches
 coming in and logs going out.</em></p>
 <p><strong>Capabilities.</strong> A capability is anything a coglet is allowed to use. Some come
@@ -683,6 +703,7 @@ be connected to several adapters at once.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -703,6 +724,7 @@ be connected to several adapters at once.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -860,18 +882,19 @@ messages to the right place, in order.</p>
 <h2 id="cogent_1">Cogent<a class="headerlink" href="#cogent_1" title="Permanent link">#</a></h2>
 <p>A cogent is one logical agent. It has an <strong>identity</strong>, a <strong>name</strong> and an
 <strong>owner</strong>. It runs as a <strong>collection of coglets</strong>.</p>
-<p>At its centre are a few coglets that are always running:</p>
+<p>It has no centre. Every part of it is a coglet on some runtime, and the
+<strong>router</strong> joins them. Some coglets do the cogent's own thinking and learning:</p>
 <div class="tablewrap"><table>
 <thead>
 <tr>
-<th>Component</th>
+<th>Coglet</th>
 <th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><a href="cognitive-architecture.html#fastloopcoglet">FastLoop</a></td>
-<td>Handles events from other coglets: responds, or forwards them on.</td>
+<td>The cogent's <strong>attention</strong>. Handles what present coglets send: responds, or forwards it on. Sets presence.</td>
 </tr>
 <tr>
 <td><a href="cognitive-architecture.html#factorycoglet">Factory</a></td>
@@ -886,12 +909,16 @@ messages to the right place, in order.</p>
 <td>Holds what the cogent knows, for the other coglets to read and add to.</td>
 </tr>
 <tr>
+<td>Database</td>
+<td>Structured data the cogent's coglets share, such as tickets and records.</td>
+</tr>
+<tr>
 <td><a href="cognitive-architecture.html#routercoglet">Router</a></td>
-<td>A coglet like the others. Finds the devices the cogent may use and carries messages and patches to the coglets on them.</td>
+<td>A coglet like the others. Finds the runtimes the cogent may use, carries messages and patches between its coglets, and holds its presence.</td>
 </tr>
 </tbody>
 </table></div>
-<p>Around that centre are <strong>devices</strong>, and the cogent runs coglets on each one:</p>
+<p>Others work in the world, on the devices and apps the cogent reaches:</p>
 <ul>
 <li>a <strong>Face</strong>, wherever it needs to talk with the user;</li>
 <li><strong>app coglets</strong> for the apps on that device it has been connected to. One
@@ -902,10 +929,35 @@ messages to the right place, in order.</p>
 <p>Not everything it connects to is a device the user owns. Games hosted in the
 Softmax Universe, such as Paintbot, GOTA and PudgeWars, have adapters too, and
 the cogent runs coglets for them in the same way.</p>
-<p>Those coglets are part of the cogent too. They run out on the device because
-that is where the microphone or the app is, and where latency matters. The
-centre usually runs on Softmax infrastructure, but its coglets can run on any
-runtime, including the user's own machine.</p>
+<p>All of these are equally part of the cogent. A coglet runs where it makes
+sense: on the device, where the microphone or the app is and latency matters,
+or on a Softmax-hosted runtime, where there is compute and storage. Any of them
+can move to another runtime, including the user's own machine.</p>
+<h3 id="presence">Presence<a class="headerlink" href="#presence" title="Permanent link">#</a></h3>
+<p>The cogent is <strong>present</strong> on a few coglets at a time. Presence is attention:
+what a present coglet sends to the cogent reaches the fast loop as it happens,
+and the cogent answers within that coglet's latency budget. Usually that is
+Face on the device the user is using and the app coglet for the app they are
+working in.</p>
+<p>Every other coglet runs <strong>autonomously</strong>, on its own policy and memory. What it
+sends the cogent on its own initiative is held and delivered in a <strong>check-in</strong>
+every few minutes; answers to the cogent's own calls are never held. The cogent
+manages it now and then through its manage port: reading its status and logs,
+and patching it. A coglet that needs the cogent sooner asks for attention, and
+the fast loop decides.</p>
+<p>Presence changes no grant and starts or stops nothing. It only says where the
+cogent is looking.</p>
+<div class="codehilite idl"><pre><span class="nc">Router</span>
+  presence.get() -&gt; Presence
+  presence.set(PresenceChange) -&gt; Presence
+      <span class="sd">Granted by default to the fast loop and to the owner.</span>
+  presence.request(PresenceRequest)
+      <span class="sd">Any coglet, usually an absent one, asks for attention.</span>
+  presence.changed(Presence)
+      <span class="sd">Tells subscribers, and every coglet that entered or left presence.</span>
+  presence.check_in(CheckIn)
+      <span class="sd">Delivers what an absent coglet held for the cogent, at the cadence the fast loop set.</span></pre></div>
+<p>Detail and rules: <a href="../adr/0036-distributed-cogent-and-presence.md">ADR-0036</a>.</p>
 <h2 id="a-request-end-to-end">A request, end to end<a class="headerlink" href="#a-request-end-to-end" title="Permanent link">#</a></h2>
 <p>"Make me a torus", said by a user who has only Blender installed, when the
 Blender coglet does not yet know how.</p>
@@ -930,6 +982,7 @@ Blender coglet does not yet know how.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -950,6 +1003,7 @@ Blender coglet does not yet know how.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -966,8 +1020,8 @@ Blender coglet does not yet know how.</p>
 <rect x="442.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
 <text x="510.0" y="48.0" text-anchor="middle" class="dg-b">BlenderCoglet</text>
 <line x1="715" y1="64" x2="715" y2="722" class="dg-life" stroke-width="1.4"/>
-<rect x="647.0" y="24" width="136" height="40" rx="8" class="dg-group"/>
-<text x="715.0" y="48.0" text-anchor="middle" class="dg-b">Cogent centre</text>
+<rect x="647.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
+<text x="715.0" y="48.0" text-anchor="middle" class="dg-b">FastLoop</text>
 <line x1="920" y1="64" x2="920" y2="722" class="dg-life" stroke-width="1.4"/>
 <rect x="852.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
 <text x="920.0" y="48.0" text-anchor="middle" class="dg-b">Factory</text>
@@ -1030,8 +1084,9 @@ Blender coglet does not yet know how.</p>
 </svg>
 </figure>
 <p><em>The first two steps are the whole flow when the app coglet already knows
-what to do. The rest is how it learns. "Cogent centre" stands for whichever
-coglet there handles the request; see the note below.</em></p>
+what to do. The rest is how it learns. Face and the Blender coglet are present;
+the fast loop, memory and factory are wherever they run. Who files the ticket
+is not settled; see the note below.</em></p>
 <ol>
 <li>The user holds push-to-talk and speaks. Face gets the voice event and the
    transcript, decides the request is for Blender (or asks), sends the Blender
@@ -1040,9 +1095,10 @@ coglet there handles the request; see the note below.</em></p>
    through the Blender adapter and reports <code>done</code>.</li>
 <li>If it does not, it reports <code>needs_help</code>. Face tells the user, asks for an
    explanation or a demonstration, and captures the answer and its context.</li>
-<li>Face sends a <code>FeatureRequest</code> to the cogent's centre.</li>
-<li>The centre checks memory for whether the cogent already knows how, finds
-   nothing, and a ticket is filed with the factory.</li>
+<li>Face sends a <code>FeatureRequest</code>, through the router, to the fast loop.</li>
+<li>The fast loop checks memory for whether the cogent already knows how, finds
+   nothing, and a ticket is filed with the factory, which works on it on its
+   own and reports back.</li>
 <li>The factory writes the new skill, tests it against a local Blender
    simulator, and returns the patch in its ticket result.</li>
 <li>The patch is applied to the Blender coglet through its manage port, and
