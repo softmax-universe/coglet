@@ -29,8 +29,8 @@ release and worker join must precede snapshot, close and runtime stop.
 | Constant-work non-private kind labels | `ffi::timing::tests::output_kind_matches_real_encoded_frames_without_private_payloads` | Labels only internally generated closed body/type CBOR. Not a general CBOR recognizer, schema validator or authority decision. |
 | Test C capture and independent hold-control custody | `native_engine_cases::ready::ready_output_not_obstructed_by_pump` | Size/query JSON copy only after joining worker; bounded ring, Health kind/depth and unknown adapter FIFO. |
 | Exact-deadline/revoked read, inactivity, panic/generation and empty progress | Existing surface/read-expiry/restart suites plus targeted ready-front controls | Must run and map exact test names before acceptance. |
-| Actual Swift SDK health timeout + independent native stop; no-obstruction/control | Pending crate-owned SDK harness | Must use unchanged `SurfaceSession.tick/receive`, not a duplicate timeout implementation. |
-| macOS Swift SDK suite | Pending macOS execution | Linux C-pointer proof does not qualify Apple platform execution or iOS suspension. |
+| Actual Swift SDK health timeout + local stop callback; no-obstruction/control | `native_engine_cases::ready_swift::swift_sdk_ready_health_obstruction_and_control` | macOS-only crate harness compiles unchanged SDK modules and an isolated real WAMR C library; Mac mini execution at `22b96bd` passed 1 test/0 failures/0 ignored with control and hold armed, health received, zero pump entries, zero effects and original WAL reopen/nonzero compute. Separate old-ordering SDK RED qualification remains pending. Backend stop callback is not physical/acoustic proof. |
+| macOS Swift SDK suite | Mac mini `swift test` | Execution in progress; Linux C-pointer proof does not qualify Apple platform execution or iOS suspension. |
 
 ## Instrumentation deployment boundary
 
