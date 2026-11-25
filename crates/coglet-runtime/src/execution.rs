@@ -126,6 +126,8 @@ struct ServiceState {
     #[serde(default)]
     catalog_pin: Option<String>,
     #[serde(default)]
+    contract_profile: crate::ContractProfile,
+    #[serde(default)]
     supervisor_reads: BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
     runtime: Runtime,
     router: Router,
@@ -188,6 +190,9 @@ impl RuntimeService {
             serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
         if state.catalog_pin.as_deref() != catalog.pin() {
             return Err("recovery extension catalog pin differs from configuration".into());
+        }
+        if state.contract_profile != catalog.contract_profile() {
+            return Err("recovery contract profile differs from configuration".into());
         }
         if state.supervisor_reads.len() != configured_reads.len()
             || state.supervisor_reads.iter().any(|(id, r)| {
@@ -256,7 +261,9 @@ impl RuntimeService {
             path,
             setup,
             queue_capacity,
-            crate::TrustedExtensionCatalog::default(),
+            crate::TrustedExtensionCatalog::without_artifact(crate::ContractProfile::from_setup(
+                setup,
+            )?),
         )
     }
     pub fn open_with_catalog(
@@ -300,6 +307,9 @@ impl RuntimeService {
         gate: &dyn Fn() -> Result<u64>,
     ) -> Result<Self> {
         let catalog = std::sync::Arc::new(catalog);
+        if crate::ContractProfile::from_setup(setup)? != catalog.contract_profile() {
+            return Err("setup and catalog contract profiles differ".into());
+        }
         let mut store = DurableStore::open(path)?;
         let fresh = store.state().is_none();
         let configured = Runtime::from_fixture(setup)?;
@@ -320,6 +330,7 @@ impl RuntimeService {
             let mut state = ServiceState {
                 managed: None,
                 catalog_pin: catalog.pin().map(str::to_owned),
+                contract_profile: catalog.contract_profile(),
                 supervisor_reads: configured_reads,
                 runtime: configured.clone(),
                 router: Router::new(queue_capacity)?,
