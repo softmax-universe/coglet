@@ -49,10 +49,16 @@ pub(crate) use managed::ReceiptScope;
 #[cfg(feature = "device")]
 pub(crate) use managed::StartRecovery;
 #[cfg(feature = "native-engine")]
+#[path = "detached.rs"]
+mod detached;
+#[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
 #[path = "playback.rs"]
 mod playback;
+#[cfg(feature = "device")]
+#[path = "receiver.rs"]
+pub(crate) mod receiver;
 #[path = "recovery.rs"]
 mod recovery;
 #[path = "speech_temporal.rs"]
@@ -140,6 +146,9 @@ pub struct EngineReport {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ServiceState {
+    #[cfg(feature = "device")]
+    #[serde(default)]
+    receiver: receiver::ReceiverState,
     #[serde(default)]
     managed: Option<managed::ManagedState>,
     #[serde(default)]
@@ -182,6 +191,10 @@ struct StagedBoundary {
 /// Serial durable coordinator. Admission and consumption commit host metadata
 /// together with files/journal; dispatchers may observe only committed state.
 pub struct RuntimeService {
+    #[cfg(feature = "native-engine")]
+    detached_execution: bool,
+    #[cfg(feature = "device")]
+    debug_executing: bool,
     #[cfg(test)]
     test_clock_sample: Option<clock::TestClockSample>,
     pub(crate) catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
@@ -231,6 +244,8 @@ impl RuntimeService {
             return Err("recovery supervisor read plan differs from configuration".into());
         }
         state.router.validate_recovered()?;
+        #[cfg(feature = "device")]
+        state.receiver.validate()?;
         // Only the manifest version may differ from the configured root. All
         // other root bytes, code pins and pending-state inputs remain exact.
         let mut root = configured.initial_setup.clone();
@@ -368,6 +383,8 @@ impl RuntimeService {
             Self::restore(&store, &configured, saved, &catalog, &configured_reads)?
         } else {
             let mut state = ServiceState {
+                #[cfg(feature = "device")]
+                receiver: receiver::ReceiverState::default(),
                 managed: None,
                 catalog_pin: catalog.pin().map(str::to_owned),
                 supervisor_reads: configured_reads,
@@ -450,6 +467,10 @@ impl RuntimeService {
             normalized = true;
         }
         let mut service = Self {
+            #[cfg(feature = "native-engine")]
+            detached_execution: false,
+            #[cfg(feature = "device")]
+            debug_executing: false,
             #[cfg(test)]
             test_clock_sample: None,
             state,
@@ -513,7 +534,34 @@ impl RuntimeService {
 
     /// Gate shared by every live delivery path (ordinary and database).
     fn require_deliverable(&self) -> Result<()> {
-        self.require_managed_running()?;
+        #[cfg(feature = "native-engine")]
+        if self.detached_execution {
+            return Err("runtime execution already reserved".into());
+        }
+        self.require_deliverable_inner()
+    }
+    fn require_deliverable_inner(&self) -> Result<()> {
+        if self.code_pending() {
+            return Err("installed code application pending".into());
+        }
+        #[cfg(feature = "device")]
+        let stepping = self.receiver_step_active();
+        #[cfg(not(feature = "device"))]
+        let stepping = false;
+        if stepping {
+            if !self.managed_paused() {
+                return Err("conflict".into());
+            }
+        } else {
+            self.require_managed_running()?;
+            if self.managed_paused() {
+                return Err("runtime is paused".into());
+            }
+            #[cfg(feature = "device")]
+            if self.receiver_pending_len() != 0 {
+                return Err("back-channel boundary pending".into());
+            }
+        }
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err(
                 "unresolved engine attempt; authoritative outcome recovery required".into(),
@@ -586,6 +634,8 @@ impl RuntimeService {
         next.router.consume(events.len())?;
         next.private_events
             .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
+        #[cfg(feature = "device")]
+        Self::receiver_finish_step(next, result)?;
         Ok(())
     }
 
@@ -628,7 +678,13 @@ impl RuntimeService {
     /// Atomically retain timer wake and shared source sequence before execution.
     /// A full router defers firing without discarding or reordering admitted input.
     pub fn queue_due_timers(&mut self, now: u64) -> Result<()> {
-        self.require_managed_running()?;
+        #[cfg(feature = "device")]
+        let stepping = self.receiver_step_active();
+        #[cfg(not(feature = "device"))]
+        let stepping = false;
+        if !stepping {
+            self.require_managed_running()?;
+        }
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("timers deferred until attempt reconciliation".into());
         }
