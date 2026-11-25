@@ -14,6 +14,27 @@ typedef struct {
     int initialized;
 } Context;
 
+/* NON-DELIVERY ownership diagnostic. All calls are under Rust RUNTIME mutex.
+ * One retained module, NEVER a retained mutable instance. Buffer accounting
+ * is subtracted from pool capacity so retention stays within runtime_bytes. */
+typedef struct {
+    void *pool;
+    uint8_t *original;
+    uint8_t *backing;
+    uint32_t len, runtime_bytes;
+    int allow_db, initialized;
+    wasm_module_t module;
+} ModuleOwner;
+static ModuleOwner owner;
+static void owner_destroy(void) {
+    if (owner.module) wasm_runtime_unload(owner.module);
+    if (owner.initialized) wasm_runtime_destroy();
+    free(owner.pool);
+    free(owner.original);
+    free(owner.backing);
+    memset(&owner, 0, sizeof(owner));
+}
+
 extern uint32_t ce_host_call(void *state, const char *module, const char *name,
                              uint64_t *args, uint32_t argc);
 static void coglet_call(wasm_exec_env_t env, uint64_t *args) {
@@ -64,30 +85,41 @@ void ce_destroy(Context *c) {
     if (!c) return;
     if (c->env) wasm_runtime_destroy_exec_env(c->env);
     if (c->instance) wasm_runtime_deinstantiate(c->instance);
-    if (c->module) wasm_runtime_unload(c->module);
-    if (c->initialized) wasm_runtime_destroy();
-    free(c->pool);
+    /* The owner, not this fresh instance, owns module/runtime/backing. */
     free(c);
 }
 Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
                    uint32_t stack_size, uint32_t pages, int allow_db) {
     Context *c = calloc(1, sizeof(*c));
     if (!c) return NULL;
-    c->pool = malloc(pool_size);
-    if (!c->pool) { ce_destroy(c); return NULL; }
-    RuntimeInitArgs init = {0};
-    init.mem_alloc_type = Alloc_With_Pool;
-    init.mem_alloc_option.pool.heap_buf = c->pool;
-    init.mem_alloc_option.pool.heap_size = pool_size;
-    if (!wasm_runtime_full_init(&init)) { ce_destroy(c); return NULL; }
-    c->initialized = 1;
-    if (!wasm_runtime_register_natives_raw("coglet_v0", coglet_symbols, sizeof(coglet_symbols)/sizeof(coglet_symbols[0]))) { ce_destroy(c); return NULL; }
-    if (allow_db && !wasm_runtime_register_natives_raw("coglet_v0", coglet_db_symbols, sizeof(coglet_db_symbols)/sizeof(coglet_db_symbols[0]))) { ce_destroy(c); return NULL; }
-    if (!wasm_runtime_register_natives_raw("wasi_snapshot_preview1", wasi_symbols, sizeof(wasi_symbols)/sizeof(wasi_symbols[0]))) { ce_destroy(c); return NULL; }
-    wasm_runtime_set_log_level(0);
     char error[256] = {0};
-    c->module = wasm_runtime_load(bytes, len, error, sizeof(error));
-    if (!c->module) { fprintf(stderr, "WAMR load: %s\n", error); ce_destroy(c); return NULL; }
+    if (!(owner.module && owner.len == len && owner.runtime_bytes == pool_size
+          && owner.allow_db == allow_db && !memcmp(owner.original, bytes, len))) {
+        owner_destroy();
+        if ((uint64_t)len * 2 + 1024 * 1024 > pool_size) { free(c); return NULL; }
+        owner.len = len;
+        owner.runtime_bytes = pool_size;
+        owner.allow_db = allow_db;
+        owner.pool = malloc(pool_size - 2 * len);
+        owner.original = malloc(len);
+        owner.backing = malloc(len);
+        if (!owner.pool || !owner.original || !owner.backing) goto owner_failed;
+        memcpy(owner.original, bytes, len);
+        memcpy(owner.backing, bytes, len);
+        RuntimeInitArgs init = {0};
+        init.mem_alloc_type = Alloc_With_Pool;
+        init.mem_alloc_option.pool.heap_buf = owner.pool;
+        init.mem_alloc_option.pool.heap_size = pool_size - 2 * len;
+        if (!wasm_runtime_full_init(&init)) goto owner_failed;
+        owner.initialized = 1;
+        if (!wasm_runtime_register_natives_raw("coglet_v0", coglet_symbols, sizeof(coglet_symbols)/sizeof(coglet_symbols[0]))) goto owner_failed;
+        if (allow_db && !wasm_runtime_register_natives_raw("coglet_v0", coglet_db_symbols, sizeof(coglet_db_symbols)/sizeof(coglet_db_symbols[0]))) goto owner_failed;
+        if (!wasm_runtime_register_natives_raw("wasi_snapshot_preview1", wasi_symbols, sizeof(wasi_symbols)/sizeof(wasi_symbols[0]))) goto owner_failed;
+        wasm_runtime_set_log_level(0);
+        owner.module = wasm_runtime_load(owner.backing, len, error, sizeof(error));
+        if (!owner.module) { fprintf(stderr, "WAMR owner load: %s\n", error); goto owner_failed; }
+    }
+    c->module = owner.module;
     struct InstantiationArgs2 *args = NULL;
     if (!wasm_runtime_instantiation_args_create(&args)) { ce_destroy(c); return NULL; }
     wasm_runtime_instantiation_args_set_default_stack_size(args, stack_size);
@@ -99,6 +131,10 @@ Context *ce_create(uint8_t *bytes, uint32_t len, uint32_t pool_size,
     c->env = wasm_runtime_create_exec_env(c->instance, stack_size);
     if (!c->env) { ce_destroy(c); return NULL; }
     return c;
+owner_failed:
+    owner_destroy();
+    free(c);
+    return NULL;
 }
 void ce_set_budget(Context *c, int budget) {
     wasm_runtime_set_instruction_count_limit(c->env, budget);

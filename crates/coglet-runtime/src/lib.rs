@@ -72,9 +72,10 @@ fn profile_value(value: &Value, depth: usize) -> Result<coglet_types::Value> {
     })
 }
 
-/// Convert a JSON fixture/debug view without losing the profile's uint64 range.
-pub fn cbor(value: &Value) -> Result<Vec<u8>> {
-    fn head(out: &mut Vec<u8>, major: u8, value: u64) {
+// Shared borrowed primitives: snapshot hashing uses exactly the JSON encoder's
+// minimal headers and UTF-8 text representation without constructing JSON.
+mod cbor_encoding {
+    pub(super) fn head(out: &mut Vec<u8>, major: u8, value: u64) {
         let major = major << 5;
         match value {
             0..=23 => out.push(major | value as u8),
@@ -94,13 +95,18 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
         }
     }
 
-    fn text(out: &mut Vec<u8>, value: &str) {
+    pub(super) fn text(out: &mut Vec<u8>, value: &str) {
         // Reserve payload and the largest possible header together, so a large
         // borrowed string needs only one output allocation, not a temporary.
         out.reserve(value.len() + 9);
         head(out, 3, value.len() as u64);
         out.extend_from_slice(value.as_bytes());
     }
+}
+
+/// Convert a JSON fixture/debug view without losing the profile's uint64 range.
+pub fn cbor(value: &Value) -> Result<Vec<u8>> {
+    use cbor_encoding::{head, text};
 
     fn put(out: &mut Vec<u8>, value: &Value, depth: usize) -> Result<()> {
         if depth > coglet_types::MAX_DEPTH {

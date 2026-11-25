@@ -299,6 +299,7 @@ pub(super) fn execute(
     if Instant::now() >= limits.deadline {
         return failure(Error::DeadlineExceeded);
     }
+    let probe = Instant::now();
     let mut bytes = bytes.to_vec();
     let ctx = unsafe {
         ce_create(
@@ -310,6 +311,8 @@ pub(super) fn execute(
             i32::from(allow_db),
         )
     };
+    eprintln!("DIAG create {:?}", probe.elapsed());
+    let probe = Instant::now();
     if ctx.is_null() {
         return failure(Error::MemoryExhausted);
     }
@@ -364,6 +367,7 @@ pub(super) fn execute(
         }
         Ok(())
     })();
+    eprintln!("DIAG guest {:?}", probe.elapsed());
     let remaining = unsafe { ce_remaining(ctx) }.max(0) as u64;
     let compute_used =
         imports.budget.compute_used() + imports.last_remaining.saturating_sub(remaining);

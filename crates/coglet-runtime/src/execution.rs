@@ -971,6 +971,7 @@ impl Runtime {
         for event in events {
             validate("event", event)?;
         }
+        let probe = std::time::Instant::now();
         let before_hash = self.files.tree_hash()?;
         let (input, mut inbox_wakes, mut pending_llm, mut pending_actions, mut next_source_seq) =
             self.stage_boundary(inputs["boundary"].as_array().ok_or("missing boundary")?)?;
@@ -1017,9 +1018,15 @@ impl Runtime {
             }
         }
         let mut host = StepHost::new(input.clone(), self.ledger.clone(), inputs);
+        eprintln!("DIAG stage {:?}", probe.elapsed());
+        let probe = std::time::Instant::now();
         engine.admit(inputs, &host)?;
+        eprintln!("DIAG admit {:?}", probe.elapsed());
+        let probe = std::time::Instant::now();
         self.unresolved_attempt = Some(inputs.clone());
         let mut report = engine.execute(inputs, &mut host)?;
+        eprintln!("DIAG execute {:?}", probe.elapsed());
+        let probe = std::time::Instant::now();
         validate("usage", &report.usage)?;
         if report.failure.is_none() {
             for (field, kind) in [
@@ -1079,6 +1086,7 @@ impl Runtime {
             "input_files":input.files(),"output_files":output.files(),"usage":report.usage,
             "status":if report.failure.is_some() { "aborted" } else { "committed" }
         });
+        eprintln!("DIAG construct {:?}", probe.elapsed());
         if let Some(failure) = report.failure {
             record["failure"] = failure;
         }
@@ -1158,8 +1166,12 @@ impl Runtime {
             }
             record = recorded.clone();
         } else {
+            let probe = std::time::Instant::now();
             record["record_hash"] = Value::String(digest(&cbor(&record)?));
+            eprintln!("DIAG hash {:?}", probe.elapsed());
+            let probe = std::time::Instant::now();
             validate("step-record", &record)?;
+            eprintln!("DIAG validate {:?}", probe.elapsed());
         }
         let mut result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});
         if let Some(raw) = raw_record {

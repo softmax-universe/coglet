@@ -120,7 +120,12 @@ impl Engine for NativeEngine {
     fn admit(&mut self, inputs: &Value, host: &StepHost) -> Result<()> {
         self.prepared = None;
         let started = Instant::now();
-        if host.files.files().get("/code/bin/step.wasm") != Some(&hex::encode(&self.code)) {
+        if !host
+            .files
+            .decoded_fs()?
+            .read("/code/bin/step.wasm")
+            .is_ok_and(|bytes| bytes == self.code.as_slice())
+        {
             return Err("native engine code pin mismatch".into());
         }
         let limits = self.limits(&inputs["budgets"], started)?;
@@ -146,11 +151,15 @@ impl Engine for NativeEngine {
             .prepared
             .take()
             .ok_or("native execution requires successful admission")?;
+        let probe = Instant::now();
         let mut tx = TransactionHost::new(host)?;
+        eprintln!("DIAG wasi new {:?}", probe.elapsed());
         let outcome = instance.handle(input, &mut tx);
         let failure = outcome.result.err().map(engine_failure);
         if failure.is_none() {
+            let probe = Instant::now();
             tx.commit()?;
+            eprintln!("DIAG wasi commit {:?}", probe.elapsed());
         }
         Ok(EngineReport {
             // Engine API exposes copied bytes/compute, not peak linear pages.
