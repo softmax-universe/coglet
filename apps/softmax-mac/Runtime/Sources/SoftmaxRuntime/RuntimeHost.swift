@@ -69,6 +69,20 @@ private actor RuntimeExecutor {
     private var lockFD: Int32 = -1
     private var active = false
     private var generation: UInt64?
+    #if COGLET_RUNTIME_TEST_HOOKS
+    private var pumpDiagnostics: [String] = []
+    private func tracePump(_ value: String) {
+        if pumpDiagnostics.count < 4096 { pumpDiagnostics.append(value) }
+    }
+    private func traceFrame(_ prefix: String, _ bytes: [UInt8]) {
+        guard let value = try? CBORCodec.decodeProfile(bytes) else { tracePump(prefix + " invalid"); return }
+        let body = value["body"]
+        let id = body?["action"]?["id"]?.hostText ?? body?["id"]?.hostText ?? "-"
+        let accepted = body?["accepted"].map { String(describing: $0) } ?? "-"
+        tracePump(prefix + " " + (value["type"]?.hostText ?? "?") + " id=" + id + " accepted=" + accepted)
+    }
+    func diagnosticsForTesting() -> [String] { pumpDiagnostics }
+    #endif
     init(root: URL, output: RuntimeFaceOutput) { self.root = root; sink = PendingFaceSink(output: output) }
     private func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds / 1_000 }
     private func log(_ message: String) {
@@ -167,7 +181,7 @@ private actor RuntimeExecutor {
         try appConnection?.validate(surface)
         try backend?.reconcile(surface)
         try appConnection?.publishEvents(surface)
-        for _ in 0..<128 {
+        for iteration in 0..<128 {
             try appConnection?.validate(surface)
             let generated = surface.drain()
             guard queued.count + generated.count <= 128 else { throw HostFailure("Surface control queue exhausted") }
@@ -179,15 +193,29 @@ private actor RuntimeExecutor {
                 if let appConnection { sent = try appConnection.emit(session: surface) { try link.send(first) } }
                 else { sent = try link.send(first) }
                 guard sent else { break }
+                #if COGLET_RUNTIME_TEST_HOOKS
+                traceFrame("sent", first)
+                #endif
                 queued.removeFirst()
             }
             try appConnection?.validate(surface)
             if let raw = try link.receive() {
+                #if COGLET_RUNTIME_TEST_HOOKS
+                traceFrame("received", raw)
+                #endif
                 try appConnection?.validate(surface)
                 try surface.receive(raw)
                 try appConnection?.validate(surface)
             }
-            else { break }
+            else {
+                #if COGLET_RUNTIME_TEST_HOOKS
+                tracePump("pump nil iteration=\(iteration) queued=\(queued.count) actions=\(sink.actions.map(\.id))")
+                #endif
+                break
+            }
+            #if COGLET_RUNTIME_TEST_HOOKS
+            if iteration == 127 { tracePump("pump capped queued=\(queued.count) actions=\(sink.actions.map(\.id))") }
+            #endif
         }
         try check(coglet_runtime_status(), "runtime/guest")
     }
@@ -216,7 +244,11 @@ private actor RuntimeExecutor {
         do {
             // Drain old guest output while reflex cancellation is still fenced.
             try pump()
-            guard sink.output.resume(ifCurrent: outputEpoch) else { return [] }
+            let resumed = sink.output.resume(ifCurrent: outputEpoch)
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("transcript resume=\(resumed) requested=\(outputEpoch) actual=\(sink.output.epoch)")
+            #endif
+            guard resumed else { return [] }
             let utterance = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
             guard try session.publishObservation(token, kind: "speech.start", payload: .record([("utterance", .text(utterance)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
             guard try session.publishObservation(token, kind: "speech.end", payload: .record([("utterance", .text(utterance)), ("revision", .unsigned(1)), ("text", .text(text)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
@@ -402,6 +434,7 @@ private actor RuntimeExecutor {
         polling?.cancel(); polling = nil
     }
     #if COGLET_RUNTIME_TEST_HOOKS
+    public func diagnosticsForTesting() async -> [String] { await executor.diagnosticsForTesting() }
     public func injectCaughtPanicForTesting() async {
         do { try await executor.injectPanic() } catch { fail(error) }
     }

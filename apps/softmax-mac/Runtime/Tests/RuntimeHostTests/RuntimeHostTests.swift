@@ -11,7 +11,14 @@ final class RuntimeHostTests: XCTestCase {
         let source = try XCTUnwrap(env["SOFTMAX_ECHO_INSTALL"])
         let trap = try XCTUnwrap(env["SOFTMAX_TRAP_INSTALL"])
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("runtime-host-" + UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: root) }
+        defer {
+            if let path = env["SOFTMAX_RUNTIME_DIAGNOSTICS_DIR"] {
+                let target = URL(fileURLWithPath: path).appendingPathComponent(root.lastPathComponent)
+                try? FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? FileManager.default.copyItem(at: root, to: target)
+            }
+            try? FileManager.default.removeItem(at: root)
+        }
         func provision(_ directory: URL, from source: String) throws {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             try FileManager.default.createDirectory(at: directory.appendingPathComponent("surface"), withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
@@ -80,6 +87,24 @@ final class RuntimeHostTests: XCTestCase {
         // polling task. Exercise the real ledger, not only the output mailbox.
         let stopActionCount = host.actions.count, stopCallbackCount = device.callbacks.count
         await host.submitTranscript("Rendered immediately before stop", generation: host.generation)
+        if host.actions.count != stopActionCount + 1 {
+            // Preserve the FIRST broken boundary rather than exercise an old
+            // cancelled action and manufacture a cascade of receipt failures.
+            #if COGLET_RUNTIME_TEST_HOOKS
+            let before = await host.diagnosticsForTesting()
+            try Data(before.joined(separator: "\n").utf8).write(to: good.appendingPathComponent("pump-before-missing.log"))
+            #endif
+            try FileManager.default.copyItem(at: good.appendingPathComponent("surface/ledger.cbor"), to: good.appendingPathComponent("ledger-before-missing.cbor"))
+            await host.poll() // ONE diagnostic progress step; not a passing retry.
+            #if COGLET_RUNTIME_TEST_HOOKS
+            let after = await host.diagnosticsForTesting()
+            try Data(after.joined(separator: "\n").utf8).write(to: good.appendingPathComponent("pump-after-missing.log"))
+            #endif
+            try FileManager.default.copyItem(at: good.appendingPathComponent("surface/ledger.cbor"), to: good.appendingPathComponent("ledger-after-missing.cbor"))
+            let countAfterPoll = host.actions.count
+            await host.stop()
+            return XCTFail("Missing third speech action at submission boundary; one diagnostic poll changed count from \(stopActionCount) to \(countAfterPoll). Retained ledger/WAL diagnostics when SOFTMAX_RUNTIME_DIAGNOSTICS_DIR is set.")
+        }
         XCTAssertEqual(host.actions.count, stopActionCount + 1)
         XCTAssertEqual(device.callbacks.count, stopCallbackCount + 1)
         let beforeStop = try XCTUnwrap(host.actions.last)
