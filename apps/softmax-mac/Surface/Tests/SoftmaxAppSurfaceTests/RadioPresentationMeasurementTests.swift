@@ -13,7 +13,14 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         case pickerOriginal = "picker-original", pickerMarked = "picker-marked"
         case ownedOriginal = "owned-original", ownedControl = "owned-control"
         case ownedStructural = "owned-structural"
-        var owned: Bool { self == .ownedOriginal || self == .ownedControl || self == .ownedStructural }
+        case ownedBaselineGap5 = "owned-baseline-gap5"
+        case ownedCenteredDefaultGap = "owned-centered-default-gap", ownedCentered = "owned-centered"
+        var structural: Bool {
+            self == .ownedStructural || self == .ownedBaselineGap5 || self == .ownedCenteredDefaultGap || self == .ownedCentered
+        }
+        var centered: Bool { self == .ownedCenteredDefaultGap || self == .ownedCentered }
+        var gap5: Bool { self == .ownedBaselineGap5 || self == .ownedCentered }
+        var owned: Bool { self == .ownedOriginal || self == .ownedControl || structural }
     }
     private static let appearanceChoices: [CogletRadioGroup.Choice] = [
         .init(value: "System", label: "System", id: "settings.general.appearance.system"),
@@ -156,6 +163,13 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     "title_host": rect(b.convert(title, to: host)), "image_host": rect(b.convert(image, to: host))]
             }
         }
+        // alignment_local above is legacy metadata, retained for compatibility.
+        // The native alignment rect takes a parent-coordinate frame, not local bounds.
+        let alignmentParent = v.alignmentRect(forFrame: v.frame)
+        d["alignment_parent"] = rect(alignmentParent)
+        if let superview = v.superview {
+            d["alignment_host"] = rect(host.convert(alignmentParent, from: superview))
+        }
         d["children"] = v.subviews.enumerated().map { metadata($0.element, host: host, path: path + "." + String($0.offset)) }
         return d
     }
@@ -191,14 +205,28 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         let buttons: [NSButton]
         let choices: [CogletRadioGroup.Choice]
         let baselines: [CGFloat]
+        let treatment: Treatment
         let pointSize: CGFloat, ink: Color
+        @ViewBuilder private func radio(_ index: Int, choiceID: String) -> some View {
+            if treatment.centered {
+                // Center is independent of the sampled native baseline: no alignmentGuide.
+                ExistingRadio(button: buttons[index]).frame(width: 16, height: 16)
+                    .background(Marker(name: "button." + choiceID))
+            } else {
+                let baseline = baselines[index]
+                ExistingRadio(button: buttons[index]).frame(width: 16, height: 16)
+                    .alignmentGuide(.firstTextBaseline) { _ in baseline }
+                    .background(Marker(name: "button." + choiceID))
+            }
+        }
         var body: some View {
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
-                    let baseline = baselines[index]
-                    HStack(alignment: .firstTextBaseline, spacing: nil) {
-                        ExistingRadio(button: buttons[index]).frame(width: 16, height: 16)
-                            .alignmentGuide(.firstTextBaseline) { _ in baseline }
+                    // Factorial hypotheses: native baseline vs center, default gap vs
+                    // the Picker's measured 5-point gap (not a fitted pixel shift).
+                    HStack(alignment: treatment.centered ? .center : .firstTextBaseline,
+                           spacing: treatment.gap5 ? 5 : nil) {
+                        radio(index, choiceID: choice.id)
                         Text(choice.label).font(.system(size: pointSize)).foregroundStyle(ink)
                             .fixedSize().accessibilityHidden(true)
                             .background(Marker(name: "label." + choice.id))
@@ -208,7 +236,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         }
     }
     private func install(_ group: CogletRadioGroup.NativeView, choices: [CogletRadioGroup.Choice],
-                         pointSize: CGFloat, ink: Color) throws -> NSHostingView<StructuralRows> {
+                         treatment: Treatment, pointSize: CGFloat, ink: Color) throws -> NSHostingView<StructuralRows> {
         XCTAssertEqual(group.buttons.map { $0.accessibilityIdentifier() }, choices.map { Optional($0.id) })
         for button in group.buttons {
             button.title = ""; button.imagePosition = .imageOnly; button.font = .systemFont(ofSize: 13)
@@ -219,7 +247,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         // Native baseline measured AFTER fixed font AND frame, never fitted to reference pixels.
         let baselines = group.buttons.map { $0.firstBaselineOffsetFromTop }
         let hosting = NSHostingView(rootView: StructuralRows(buttons: group.buttons, choices: choices,
-            baselines: baselines, pointSize: pointSize, ink: ink))
+            baselines: baselines, treatment: treatment, pointSize: pointSize, ink: ink))
         group.addArrangedSubview(hosting)
         group.setAccessibilityChildren(group.buttons)
         return hosting
@@ -292,7 +320,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         try JSONSerialization.data(withJSONObject: metadata(host, host: host, path: "root"), options: [.prettyPrinted, .sortedKeys])
                             .write(to: root.appendingPathComponent(key + "-noop.json"))
                         XCTAssertEqual(before.0, noop.0, "Unchanged setter checkpoint: " + key)
-                        if treatment == .ownedStructural {
+                        if treatment.structural {
                             for group in groups {
                                 let id = try XCTUnwrap(group.accessibilityIdentifier())
                                 let choices: [CogletRadioGroup.Choice]
@@ -301,7 +329,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                                 case "settings.general.text_size": choices = Self.sizeChoices
                                 default: XCTFail("Unexpected group: " + id); continue
                                 }
-                                retainedHosts.append(try install(group, choices: choices, pointSize: pointSize, ink: fixture.ink))
+                                retainedHosts.append(try install(group, choices: choices, treatment: treatment, pointSize: pointSize, ink: fixture.ink))
                             }
                         }
                     }
@@ -314,11 +342,29 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     try png.write(to: root.appendingPathComponent(key + ".png"))
                     let all = views(host)
                     let labelMarkers = all.filter { $0.identifier?.rawValue.hasPrefix("label.") == true }
-                    XCTAssertEqual(labelMarkers.count, treatment == .pickerMarked || treatment == .ownedStructural ? 6 : 0)
+                    let wrapperMarkers = all.filter { $0.identifier?.rawValue.hasPrefix("button.") == true }
+                    XCTAssertEqual(labelMarkers.count, treatment == .pickerMarked || treatment.structural ? 6 : 0)
+                    XCTAssertEqual(wrapperMarkers.count, treatment.structural ? 6 : 0)
+                    // Correlate structural row geometry by choice identity, never tree order.
+                    // All rectangles are host coordinates; rows-local values derive offline
+                    // from the existing appearance.rows / text_size.rows markers.
+                    var rowGeometry: [[String: Any]] = []
+                    if treatment.structural {
+                        for choice in Self.appearanceChoices + Self.sizeChoices {
+                            let button = try XCTUnwrap(nativeButtons.first { $0.accessibilityIdentifier() == choice.id })
+                            let label = try XCTUnwrap(labelMarkers.first { $0.identifier?.rawValue == "label." + choice.id })
+                            let wrapper = try XCTUnwrap(wrapperMarkers.first { $0.identifier?.rawValue == "button." + choice.id })
+                            rowGeometry.append(["choiceID": choice.id,
+                                "buttonBounds_host": rect(button.convert(button.bounds, to: host)),
+                                "labelBounds_host": rect(label.convert(label.bounds, to: host)),
+                                "wrapperBounds_host": rect(wrapper.convert(wrapper.bounds, to: host))])
+                        }
+                    }
+                    XCTAssertEqual(rowGeometry.count, treatment.structural ? 6 : 0)
                     if owned {
                         let buttons = all.compactMap { $0 as? NSButton }
                         XCTAssertEqual(buttons.count, 6)
-                        if treatment == .ownedStructural {
+                        if treatment.structural {
                             for button in buttons {
                                 XCTAssertEqual(button.title, ""); XCTAssertEqual(button.imagePosition, .imageOnly)
                                 XCTAssertEqual(button.font, NSFont.systemFont(ofSize: 13))
@@ -355,10 +401,13 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         "treatment": treatment.rawValue,
                         "offlineGates": ["full-raster picker-original == picker-marked EXACT before marker geometry is trusted",
                             "full-raster owned-original == owned-control EXACT; all owned before/noop checkpoints EXACT",
+                            "full-raster owned-structural == retained run30 owned-structural EXACT after passive wrapper markers; mismatch is marker-confound negative",
                             "compare untranslated label/disc pixels and full scene; mismatch is a valid negative, never fit offsets"],
                         "scaleCoverage": window.backingScaleFactor == 1 ? "1x observed; 2x UNTESTED" : "only actual backingScale observed",
                         "nativeBefore": nativeBefore,
                         "labelFrames": labelMarkers.map { metadata($0, host: host, path: $0.identifier!.rawValue) },
+                        "buttonWrapperFrames": wrapperMarkers.map { metadata($0, host: host, path: $0.identifier!.rawValue) },
+                        "rowGeometry": rowGeometry,
                         "nativeAfter": nativeButtons.map { metadata($0, host: host, path: $0.accessibilityIdentifier() ?? "") },
                         "mountIDs": mountIDs, "mountsBefore": initialMounts.map { String(describing: $0) },
                         "mountsAfter": try mounts().map { String(describing: $0) },
@@ -382,7 +431,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         XCTAssertEqual(nativeButtons.map { $0.target.map(ObjectIdentifier.init) }, initialTargets)
                         XCTAssertEqual(nativeButtons.map { $0.action }, initialActions)
                         XCTAssertEqual(nativeButtons.map { $0.state }, initialStates)
-                        if treatment != .ownedStructural { XCTAssertEqual(nativeButtons.map { $0.frame }, initialFrames) }
+                        if !treatment.structural { XCTAssertEqual(nativeButtons.map { $0.frame }, initialFrames) }
                         XCTAssertEqual(nativeButtons.map { $0.accessibilityLabel() }, initialLabels)
                         for group in groups {
                             let children = try XCTUnwrap(group.accessibilityChildren() as? [NSButton])
@@ -397,7 +446,8 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                 }
             }
         }
-        XCTAssertEqual(cases.count, 60); XCTAssertEqual(Set(cases).count, 60)
+        // Eight variants × two themes × six sizes; measurement, NOT visual acceptance.
+        XCTAssertEqual(cases.count, 96); XCTAssertEqual(Set(cases).count, 96)
         try JSONSerialization.data(withJSONObject: ["cases": cases, "meaning": "measurement complete, NOT visual acceptance"], options: [.prettyPrinted])
             .write(to: root.appendingPathComponent("cases.json"))
     }
