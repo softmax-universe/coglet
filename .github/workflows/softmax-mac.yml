@@ -91,6 +91,8 @@ jobs:
         run: |
           cargo build --locked --manifest-path apps/softmax-mac/HubTransport/Cargo.toml -j 2
           cargo build --locked -p coglet-mock --example hub -j 2
+          cargo test --locked -p coglet-mock --example app_surface_peer -j 2
+          cargo build --locked -p coglet-mock --example app_surface_peer -j 2
       - name: HubConnectionTests against real coglet-mock
         env:
           SOFTMAX_HUB_HELPER: ${{ github.workspace }}/apps/softmax-mac/HubTransport/target/debug/softmax-hub-link
@@ -144,6 +146,18 @@ jobs:
           xcodebuild test -project Softmax.xcodeproj -scheme Softmax
           -destination 'platform=macOS' -derivedDataPath build
           -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Release excludes private app wire proof
+        working-directory: apps/softmax-mac
+        run: |
+          xcodebuild build -project Softmax.xcodeproj -scheme Softmax -configuration Release \
+            -destination 'platform=macOS' -derivedDataPath build-release CODE_SIGNING_ALLOWED=NO
+          binary=build-release/Build/Products/Release/Softmax.app/Contents/MacOS/Softmax
+          nm "$binary" > build-release/wire-proof-symbols.txt
+          test -s build-release/wire-proof-symbols.txt
+          if grep -E 'AppSurfaceWireProof|WireProofExecutor|wireProofShortcutPresses' build-release/wire-proof-symbols.txt; then exit 1; fi
+          strings "$binary" > build-release/wire-proof-strings.txt
+          test -s build-release/wire-proof-strings.txt
+          if grep -F -- '--sdk-wire-proof-directory' build-release/wire-proof-strings.txt; then exit 1; fi
       - name: Export live accessibility screenshots and audit evidence
         if: ${{ !cancelled() }}
         working-directory: apps/softmax-mac

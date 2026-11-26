@@ -61,6 +61,9 @@ final class ShellModel: ObservableObject {
     var appSurfaceRoute: ((String) -> String?)?
     var appInteractionAllowed: ((String) -> Bool)?
     var appSurface: AppSurfaceAdapter?
+    #if DEBUG
+    var wireProofShortcutPresses = 0
+    #endif
     var synchronizeAppSurface: (() -> Void)?
     var hubPairingRoute: String? {
         didSet { if hubPairingRoute != oldValue { synchronizeAppSurface?() } }
@@ -340,6 +343,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var commandMonitor: Any?
     #if DEBUG
     private var catalogProbeTask: Task<Void, Never>?
+    private var wireProof: AppSurfaceWireProof?
     #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -394,6 +398,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if model.state == .onboarding { showOnboarding() }
         else { model.configureTalk() }
         if ProcessInfo.processInfo.arguments.contains("--show-face") { showFace() }
+        #if DEBUG
+        startWireProof()
+        #endif
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -403,6 +410,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
     func applicationWillTerminate(_ notification: Notification) {
+        #if DEBUG
+        wireProof?.stop()
+        #endif
         if let commandMonitor { NSEvent.removeMonitor(commandMonitor) }
         model.hubConnection?.stop()
         face.hide(); model.ptt.shutdown()
@@ -588,6 +598,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 default: throw AppSurfaceFailure.unsupported
                 }
             })
+        #if DEBUG
+        // This isolated seam is the only event/mailbox owner for this launch.
+        // It never configures or opens the production runtime's directory.
+        if model.testing && ProcessInfo.processInfo.arguments.contains("--sdk-wire-proof-directory") { return }
+        #endif
         if let adapter = model.appSurface {
             model.runtime.installAppSurface(adapter, refresh: { [weak self] in
                 guard let self else { throw AppSurfaceFailure.unavailable }
@@ -603,6 +618,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     #if DEBUG
+    private func startWireProof() {
+        let args = ProcessInfo.processInfo.arguments
+        guard model.testing, let i = args.firstIndex(of: "--sdk-wire-proof-directory"),
+              args.indices.contains(i + 1) else { return }
+        do {
+            let proof = try AppSurfaceWireProof(model: model,
+                directory: URL(fileURLWithPath: args[i + 1]).standardizedFileURL,
+                refresh: { [weak self] in
+                    guard let self else { throw AppSurfaceFailure.unavailable }
+                    try self.synchronizeNativeWindowControls()
+                    try self.model.appControls.nativeStateChanged()
+                    try self.model.appControls.synchronizeNativeState(windows: Self.appWindows)
+                })
+            wireProof = proof; proof.start()
+        } catch { model.appControlFailure(.unavailable) }
+    }
+
     /// Test-only membership evidence, never an adapter or guest observation.
     /// Requires BOTH the isolated UI-test mode and an existing private temp dir.
     /// Each request is a fresh UUID; no control values/labels are serialized.

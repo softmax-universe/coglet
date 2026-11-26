@@ -85,7 +85,12 @@ struct SettingsView: View {
                 Spacer()
                 CogletButton("Keyboard shortcuts  ?", id: "settings.shortcuts.open", registry: model.appControls,
                     window: "settings", route: model.selectedTab.rawValue.lowercased(),
-                    failure: model.appControlFailure) { model.keyboardShortcutsOpen = true }
+                    failure: model.appControlFailure) {
+                        #if DEBUG
+                        model.wireProofShortcutPresses += 1
+                        #endif
+                        model.keyboardShortcutsOpen = true
+                    }
                     .keyboardShortcut("?", modifiers: [])
             }.padding(16).frame(width: 180)
             Divider()
@@ -158,6 +163,10 @@ struct SettingsView: View {
                             HubSettings(model: model)
                         case .coglets:
                             RuntimeSettings(host: model.runtime, openLogs: model.openRuntimeLogs, restart: {
+                                #if DEBUG
+                                // Isolated UI proofs never start the installed runtime.
+                                guard !model.testing else { return }
+                                #endif
                                 model.ptt.cancel(); model.recognizer.cancel()
                                 Task { await model.runtime.restart() }
                             }, registry: model.appControls, failure: model.appControlFailure)

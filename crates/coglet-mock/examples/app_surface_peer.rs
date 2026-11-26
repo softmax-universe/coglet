@@ -11,6 +11,7 @@
 //! `operation` is the FULL catalog name, e.g. `softmax.app.navigate`; `id` is 32 lowercase hex):
 //!   {"kind":"act","operation":..,"args":{..},"id":..}   {"kind":"read",..same..}
 //!   {"kind":"retry","id":..} (re-sends the EXACT stored act bytes)   {"kind":"close"}
+//!   {"kind":"wrong_epoch","id":..} fixed ordinary shortcuts press, epoch+1; MUST be refused
 //! `close` waits until every retained command is answered (accept+outcome / read_reply);
 //! a command unanswered after 6 s local time fails the peer. stdout is drained by a bounded
 //! writer thread: a stalled consumer fails the peer closed instead of stalling the socket loop.
@@ -198,6 +199,7 @@ enum Cmd {
     Act { op: String, args: Json, id: String },
     Read { op: String, args: Json, id: String },
     Retry { id: String },
+    WrongEpoch { id: String },
     Close,
 }
 
@@ -249,7 +251,7 @@ fn parse_cmd(line: &[u8]) -> Result<Cmd, String> {
     let obj = j.as_object().ok_or("command must be an object")?;
     let allowed: &[&str] = match text(&j, "kind")? {
         "act" | "read" => &["kind", "operation", "args", "id"],
-        "retry" => &["kind", "id"],
+        "retry" | "wrong_epoch" => &["kind", "id"],
         "close" => &["kind"],
         k => return Err(format!("unknown command kind `{k}`")),
     };
@@ -269,6 +271,9 @@ fn parse_cmd(line: &[u8]) -> Result<Cmd, String> {
     }
     if kind == "retry" {
         return Ok(Cmd::Retry { id });
+    }
+    if kind == "wrong_epoch" {
+        return Ok(Cmd::WrongEpoch { id });
     }
     let (op, args) = (text(&j, "operation")?.to_owned(), get(&j, "args")?.clone());
     if !args.is_object() {
@@ -290,7 +295,7 @@ fn read_commands(mut input: impl BufRead, tx: SyncSender<Result<Cmd, String>>) {
             }
             Ok(_) => parse_cmd(&line[..line.len() - 1]),
         };
-        let stop = !matches!(res, Ok(Cmd::Act { .. } | Cmd::Read { .. } | Cmd::Retry { .. }));
+        let stop = !matches!(res, Ok(Cmd::Act { .. } | Cmd::Read { .. } | Cmd::Retry { .. } | Cmd::WrongEpoch { .. }));
         if tx.send(res).is_err() || stop {
             return;
         }
@@ -514,7 +519,7 @@ impl Peer {
         }
         if status == "succeeded" {
             if r.negative {
-                return Err("sensitive operation succeeded without a grant".into());
+                return Err("negative authority control unexpectedly succeeded".into());
             }
             let uri = self.cat.ops[&r.op].output.as_deref().ok_or("no output schema")?;
             self.cat.check(uri, get(p, "result")?)?;
@@ -533,7 +538,7 @@ impl Peer {
         }
         let accepted = get(b, "accepted")?.as_bool().ok_or("`accepted` is not a bool")?;
         if r.negative && accepted {
-            return Err("sensitive operation accepted without a grant".into());
+            return Err("negative authority control unexpectedly accepted".into());
         }
         if r.accept_body.as_ref().is_some_and(|prev| prev != b) {
             return Err("repeated accept differs from the first accept".into());
@@ -564,6 +569,7 @@ impl Peer {
         if !self.ready() {
             return Err("commands are refused before capabilities and grants are verified".into());
         }
+        let wrong_epoch = matches!(&cmd, Cmd::WrongEpoch { .. });
         let (op, args, id, is_read) = match cmd {
             Cmd::Retry { id } => {
                 let r = self.retained.get_mut(&id).filter(|r| !r.is_read).ok_or("retry of an unknown act")?;
@@ -575,6 +581,8 @@ impl Peer {
             Cmd::Close => return Err("close is handled by the loop".into()),
             Cmd::Act { op, args, id } => (op, args, id, false),
             Cmd::Read { op, args, id } => (op, args, id, true),
+            Cmd::WrongEpoch { id } => ("softmax.app.invoke".to_owned(),
+                json!({"window":"settings", "control":"settings.shortcuts.open", "verb":"press"}), id, false),
         };
         if self.retained.len() >= MAX_RETAINED {
             return Err("retained command limit reached".into());
@@ -587,17 +595,18 @@ impl Peer {
         if self.cat.ops[&op].direction != want {
             return Err(format!("{op} is not a {want}"));
         }
-        let negative = !is_read && op == SENSITIVE;
-        if !negative && (!self.granted.contains(&op) || self.clock >= self.expires) {
+        let negative = wrong_epoch || (!is_read && op == SENSITIVE);
+        if op != SENSITIVE && (!self.granted.contains(&op) || self.clock >= self.expires) {
             return Err(format!("{op} is not granted (or the grant expired); refusing locally"));
         }
         self.cat.check(&self.cat.ops[&op].input, &args)?;
         let deadline = self.clock.checked_add(DEADLINE_AHEAD_US).ok_or("deadline overflows u64")?;
+        let epoch = if wrong_epoch { self.epoch.checked_add(1).ok_or("epoch overflows u64")? } else { self.epoch };
         let body = if is_read {
             json!({"coglet": owner(), "capability": op, "args": args, "grant_epoch": self.epoch,
                    "deadline": deadline, "correlation_id": id})
         } else {
-            json!({"grant_epoch": self.epoch, "action": {"id": id, "coglet": owner(), "capability": op,
+            json!({"grant_epoch": epoch, "action": {"id": id, "coglet": owner(), "capability": op,
                    "args": args, "deadline": deadline, "correlation_id": id}})
         };
         let raw = encode_msg(S02, &json!({"type": if is_read { "read" } else { "act" }, "body": body}))?;
@@ -960,6 +969,24 @@ mod tests {
             let mut p = peer_at(HELLO_CLOCK);
             assert!(p.on_frame(&grants_frame(entries.clone())).is_err(), "{entries}");
         }
+    }
+
+    #[test]
+    fn wrong_epoch_negative_keeps_real_ordinary_handler_and_requires_refusal() {
+        let command = || parse_cmd(format!(r#"{{"kind":"wrong_epoch","id":"{ID1}"}}"#).as_bytes()).unwrap();
+        let mut p = ready_peer();
+        let raw = p.command(command()).unwrap();
+        let sent = decode_s02(&raw);
+        assert_eq!(sent["body"]["grant_epoch"], json!(EPOCH + 1));
+        assert_eq!(sent["body"]["action"]["capability"], "softmax.app.invoke");
+        assert_eq!(sent["body"]["action"]["args"], json!({"window":"settings", "control":"settings.shortcuts.open", "verb":"press"}));
+        p.on_frame(&accept_frame(ID1, false)).unwrap();
+        assert!(p.unanswered().is_empty());
+        assert_eq!(p.command(Cmd::Retry { id: ID1.into() }).unwrap(), raw);
+        let mut bad = ready_peer();
+        bad.command(command()).unwrap();
+        assert!(bad.on_frame(&accept_frame(ID1, true)).is_err(), "wrong epoch accepted by surface must fail the proof");
+        assert!(parse_cmd(format!(r#"{{"kind":"wrong_epoch","id":"{ID1}","epoch":999}}"#).as_bytes()).is_err());
     }
 
     #[test]

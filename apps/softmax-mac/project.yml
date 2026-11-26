@@ -19,6 +19,8 @@ packages:
     path: Runtime
   SoftmaxAppSurface:
     path: Surface
+  CogletSurfaceSDK:
+    path: ../../sdk/surface-swift
 targets:
   SoftmaxCore:
     type: framework
@@ -36,12 +38,16 @@ targets:
     sources:
       - path: Sources/SoftmaxApp
       - path: Design/DesignTokens.swift
+      - path: Surface/catalog.v1.json
+        buildPhase: resources
     dependencies:
       - target: SoftmaxCore
       - package: FaceMac
       - package: Sparkle
       - package: SoftmaxRuntime
       - package: SoftmaxAppSurface
+      - package: CogletSurfaceSDK
+        product: CogletSurface
     postBuildScripts:
       - name: Bundle universal hub transport
         script: bash "$SRCROOT/scripts/build-hub-helper.sh" "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/softmax-hub-link"
@@ -73,6 +79,8 @@ targets:
     sources: [Tests/SoftmaxUITests]
     dependencies:
       - target: SoftmaxApp
+      - package: CogletSurfaceSDK
+        product: CogletTypes
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.softmax.app.ui-tests
@@ -90,3 +98,5 @@ schemes:
         - SoftmaxCoreTests
         - SoftmaxUITests
       gatherCoverageData: true
+      environmentVariables:
+        SOFTMAX_APP_MOCK_PEER: $(SRCROOT)/../../target/debug/examples/app_surface_peer
