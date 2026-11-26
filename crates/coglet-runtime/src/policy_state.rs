@@ -1,6 +1,7 @@
 //! ADR-0033 producer state. This is part of ManagedState's existing WAL frame,
 //! never a separate producer database. Local authentication belongs to DeviceHandler.
 use super::*;
+use crate::hash_upgrade::{historical_scope, legacy_version};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -145,6 +146,13 @@ fn verify_ref(signed: &Value, router: &str, target: &str) -> Result<()> {
         Err("policy signature verification unavailable".into())
     }
 }
+/// Original bytes are never rewritten: only the retained historical setup itself
+/// is read under the private scope selected by its own manifest version.
+fn setup_runtime(setup: &Value) -> Result<Runtime> {
+    historical_scope(legacy_version(&setup["manifest"]["version"]), || {
+        Runtime::from_fixture(setup)
+    })
+}
 fn executable(runtime: &Runtime) -> Result<String> {
     Ok(digest(
         &hex::decode(
@@ -275,15 +283,22 @@ impl ManagedState {
             .first()
             .map(|s| &s.initial_setup)
             .unwrap_or(&state.runtime.initial_setup);
-        expected.policy_install(&Runtime::from_fixture(initial_setup)?)?;
+        // Each retained setup is reconstructed under its OWN narrowly selected
+        // historical scope (ABI 0.1/0.2 only); current/unknown versions stay strict.
+        expected.policy_install(&setup_runtime(initial_setup)?)?;
         for segment in &state.completed_segments {
             if let Some(revision) = &segment.code_revision {
-                let successor = revision.successor(
-                    &Runtime::from_fixture(&segment.initial_setup)?,
-                    segment
-                        .successor_trace
-                        .as_ref()
-                        .ok_or("missing policy successor trace")?,
+                let successor = historical_scope(
+                    legacy_version(&segment.initial_setup["manifest"]["version"]),
+                    || {
+                        revision.successor(
+                            &Runtime::from_fixture(&segment.initial_setup)?,
+                            segment
+                                .successor_trace
+                                .as_ref()
+                                .ok_or("missing policy successor trace")?,
+                        )
+                    },
                 )?;
                 let receipt = &self
                     .operations
