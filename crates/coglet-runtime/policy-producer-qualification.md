@@ -3,7 +3,30 @@
 This branch is work in progress. ADR-0033 landed docs-only in PR #167 before
 runtime code. No M3 acceptance or merge-readiness is claimed here.
 
-## Executed locally
+## Revised-head integration qualification
+
+Historical counts below describe earlier producer heads, not the current main
+integration. The receiver/detached integration adds these real-daemon controls:
+
+- `receiver_cannot_consume_prearmed_emergency_stop_id`: valid distinct-ID inbox,
+  real guest consumption, collision refusal, original stop and unchanged receipt
+  after SIGKILL/WAL reopen.
+- `emergency_arming_refuses_operation_id_already_owned_by_receiver`: valid inbox
+  ownership consumed at a real guest boundary; after stop and WAL reopen, a fresh
+  lease cannot replace that ID and the original receipt remains unchanged.
+- `start_cannot_consume_prearmed_emergency_stop_id`: authorized start cannot steal
+  the armed stop ID; original stop and applied provenance survive WAL reopen.
+- `pause_health_is_unavailable_after_restart`: successful pre-pause health,
+  durable pause and unavailable health before/after actual SIGKILL/WAL reopen.
+
+The output race keeps actual guest-action and unchanged kernel receive-queue
+oracles. It does not require another guest commit after revoke: publication
+refusal may legally disconnect the adapter and discard queued events. The race
+remains load-based, not deterministic in-flight native-guest proof.
+
+Full revised-head regression and independent exact-head approval remain required.
+
+## Executed locally (historical heads)
 
 - Parent executed `cargo test --locked -p coglet-runtime --lib --features native-engine`:
   78 passed, including reply schema/vector and nonreading-peer gate controls.
@@ -56,7 +79,7 @@ profile and cannot claim ADR-0033 safety qualification.
 Run full installed-push/device-restart/native operational regression suites and
 workspace tests; preserve frozen inputs. Required Linux CI already invokes
 `scripts/ci/cargo-test --locked -p coglet-runtime --features native-engine --test device_lifecycle`
-with `RUST_TEST_THREADS=1`, which includes all thirteen producer tests; no workflow edit
+with `RUST_TEST_THREADS=1`, which includes all seventeen producer tests; no workflow edit
 or new shared CI surface is needed. Verify actual executed counts at exact head.
 
 Then obtain independent separate-session exact-head review, publish the code PR,

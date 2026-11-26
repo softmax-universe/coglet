@@ -577,6 +577,11 @@ impl RuntimeService {
 
     #[cfg(feature = "device")]
     pub(crate) fn managed_start_authorized(&mut self, recovery: &StartRecovery) -> Result<Value> {
+        if self.state.managed.as_ref().is_some_and(|m| {
+            m.emergency_id_conflicts(&recovery.operation_id, &recovery.intent, &recovery.scope)
+        }) {
+            return Err("conflict: emergency operation scope differs".into());
+        }
         if let Some(receipt) =
             self.managed_operation_receipt(&recovery.operation_id, &recovery.intent)?
         {

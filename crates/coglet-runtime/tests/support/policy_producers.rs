@@ -46,7 +46,7 @@ struct Opts {
     barrier: bool,
     /// LD_PRELOAD WAL-write/BOOTTIME fault shim (inert until armed).
     shim: bool,
-    /// Valid receiver authority (hub.inbox grant, delegation and back-channel pin).
+    /// Valid receiver authority (hub.inbox/debug.pause grants, delegation and back-channel pin).
     receiver: bool,
 }
 impl Daemon {
@@ -58,7 +58,9 @@ impl Daemon {
         options.delegation_methods.push("hub.git.push");
         if opts.receiver {
             options.back_channel = true;
-            options.delegation_methods.push("hub.inbox");
+            options
+                .delegation_methods
+                .extend(["hub.inbox", "debug.pause"]);
         }
         let mut env = Env::new(seed, options.clone()).await.unwrap();
         let device_key = key(seed, 4);
@@ -86,6 +88,7 @@ impl Daemon {
             let grants: Vec<_> = METHODS
                 .into_iter()
                 .chain(opts.receiver.then_some("hub.inbox"))
+                .chain(opts.receiver.then_some("debug.pause"))
                 .map(|method| Grant {
                     method: method.into(),
                     // Receiver authority is valid, so only the ID can collide.
@@ -587,6 +590,41 @@ async fn health_counters_bound_to_generation_and_reject_stale() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn pause_health_is_unavailable_after_restart() {
+    let mut d = Daemon::with(
+        0x97,
+        Opts {
+            receiver: true,
+            ..Opts::default()
+        },
+    )
+    .await;
+    let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await;
+    let before = d.local("observe_health", d.pins(&a)).await;
+    assert_eq!(before["ok"], true, "{before}");
+    assert!(before["result"]["counters"]["committed"].as_u64().unwrap() > 0);
+    applied(&d.env.simple("debug.pause").await);
+    assert_eq!(
+        d.env.simple("hub.status").await["result"]["state"],
+        "paused"
+    );
+    let paused = d.local("observe_health", d.pins(&a)).await;
+    assert_eq!(paused["ok"], false, "{paused}");
+    assert_eq!(paused["error"]["code"], "unavailable", "{paused}");
+    drop(link);
+    // SIGKILL/reopen also verifies that the WAL contains real WAMR work.
+    d.restart().await;
+    assert_eq!(
+        d.env.simple("hub.status").await["result"]["state"],
+        "paused"
+    );
+    let reopened = d.local("observe_health", d.pins(&a)).await;
+    assert_eq!(reopened["ok"], false, "{reopened}");
+    assert_eq!(reopened["error"]["code"], "unavailable", "{reopened}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn emergency_output_revoke_is_synchronous_without_router() {
     let mut d = Daemon::with(
         0x93,
@@ -720,6 +758,59 @@ async fn emergency_stop_reconciles_original_context_after_restart() {
         records.len(),
         "reconciliation must not execute guest steps"
     );
+}
+
+/// The authorized lifecycle start path must honor the same armed-ID fence as
+/// receiver admission, even though it carries its own start-recovery context.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn start_cannot_consume_prearmed_emergency_stop_id() {
+    let mut d = Daemon::new(0x98).await;
+    let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await; // authorized start + real guest step + armed E
+    let stop_id = correlation(0xeeee);
+    // Same authorized actor/ticket as the original stop: only method differs.
+    let request = d.env.request_with(
+        "hub.start",
+        stop_id.clone(),
+        json!({}),
+        &d.env.actor,
+        Some(TICKET.into()),
+    );
+    let reply = d.env.call(request).await;
+    assert_eq!(reply["type"], "error", "{reply}");
+    assert_eq!(reply["error"]["code"], "conflict", "{reply}");
+    let unowned = receipt_of(&mut d.env, &stop_id).await;
+    assert!(
+        unowned["type"] == "error" || unowned["result"]["state"] != "applied",
+        "authorized start consumed the stop ID: {unowned}"
+    );
+    let revoked = d.local("revoke_output_lease", json!({})).await;
+    assert_eq!(revoked["ok"], true, "{revoked}");
+    let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(reconciled["ok"], true, "{reconciled}");
+    assert_eq!(reconciled["result"]["state"], "stopped", "{reconciled}");
+    assert_eq!(reconciled["result"]["operation_id"], stop_id);
+    let receipt = receipt_of(&mut d.env, &stop_id).await;
+    applied(&receipt);
+    assert_eq!(receipt["result"]["operation_id"], stop_id);
+    let attested = d.local("attest_applied", d.pins(&a)).await;
+    assert_eq!(attested["ok"], true, "{attested}");
+    drop(link);
+    d.restart().await;
+    assert_eq!(
+        d.env.simple("hub.status").await["result"]["state"],
+        "stopped"
+    );
+    let retained = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(retained["ok"], true, "{retained}");
+    assert_eq!(retained["result"], reconciled["result"], "{retained}");
+    let retained_receipt = receipt_of(&mut d.env, &stop_id).await;
+    applied(&retained_receipt);
+    assert_eq!(retained_receipt["result"], receipt["result"]);
+    let after = d.local("attest_applied", d.pins(&a)).await;
+    assert_eq!(after["ok"], true, "{after}");
+    assert_eq!(after["result"], attested["result"]);
+    assert_ne!(after["daemon_instance"], attested["daemon_instance"]);
 }
 
 /// Valid receiver intervention (actor/ticket params, no context, seq 0 and

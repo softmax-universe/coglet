@@ -119,7 +119,10 @@ anchor_logical_millis}` (u64 millis), `admitted_capabilities` (unique
 `storage:"available"`, `attempt_fence` ∈ `clear|uncertain`, `lifecycle` ∈
 `running|stopped|faulted`, `code_pending` bool, `output_lease_state` ∈
 `closed|enabled|revoked|uncertain`. Unavailable/unverifiable state is a failure
-reply, never a sample; there is no `unavailable` member value.
+reply, never a sample; there is no `unavailable` member value. A durably paused
+scheduler is unavailable to this interface: the frozen lifecycle enum cannot
+represent pause, so it must not be mislabeled `running`. Refusal retains no new
+observation sequence, including after WAL reopen.
 
 ### `enable_output_lease` result
 

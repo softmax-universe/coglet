@@ -377,6 +377,11 @@ impl RuntimeService {
         }
         let mut next = self.state.clone();
         let managed = next.managed.as_mut().unwrap();
+        // The frozen health lifecycle has no paused representation. Do not
+        // misreport a durably paused scheduler as running or mint a sample.
+        if managed.paused {
+            return Err("unavailable: scheduler is paused".into());
+        }
         let policy = managed.policy.as_mut().unwrap();
         // An exhausted domain cannot supply a healthy observation while unable
         // to retain its next begin/result. Probe capacity without changing it.
