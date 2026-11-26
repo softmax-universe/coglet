@@ -58,7 +58,7 @@
 <text x="510.0" y="48.0" text-anchor="middle" class="dg-b">BlenderCoglet</text>
 <line x1="715" y1="64" x2="715" y2="722" class="dg-life" stroke-width="1.4"/>
 <rect x="647.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
-<text x="715.0" y="48.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<text x="715.0" y="48.0" text-anchor="middle" class="dg-b">Router</text>
 <line x1="920" y1="64" x2="920" y2="722" class="dg-life" stroke-width="1.4"/>
 <rect x="852.0" y="24" width="136" height="40" rx="8" class="dg-coglet"/>
 <text x="920.0" y="48.0" text-anchor="middle" class="dg-b">Factory</text>

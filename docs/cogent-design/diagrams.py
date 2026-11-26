@@ -159,7 +159,7 @@ def stacks(name: str, label: str, columns, hub_title: str = "Hub kernel") -> Svg
         svg.text(cx + 10, 384, "messages, patches", "dg-m", "start")
     svg.rect(40, 410, 880, 62, "dg-hub")
     svg.text(480, 437, hub_title, "dg-b")
-    svg.text(480, 456, "finds runtimes · carries messages between them · carries patches and logs", "dg-m")
+    svg.text(480, 456, "each runtime's hub router reaches the others · carries messages, patches and logs", "dg-m")
     return svg
 
 
@@ -167,25 +167,25 @@ def stacks(name: str, label: str, columns, hub_title: str = "Hub kernel") -> Svg
 def deployment() -> Svg:
     return stacks(
         "deployment",
-        "The Softmax app on the user's machine runs Face and the coglets for its connected apps; a Softmax-hosted runtime runs the fast loop, factory, optimizer and memory; the router joins them.",
+        "The user's machine runs a hub (router and optimizer), Face and the coglets for its apps; a Softmax-hosted runtime runs a hub, the factory and memory; the two hubs' routers peer.",
         [
             (
                 40,
                 440,
-                "USER'S MACHINE: THE SOFTMAX APP",
+                "USER'S MACHINE: ANY APP'S RUNTIME",
                 [("Orb, mic, speaker", "Softmax app", None), ("Blender", "Blender adapter", None), ("Chrome", "Chrome adapter", None)],
-                ["FaceCoglet", "BlenderCoglet", "BrowserCoglet"],
+                ["Hub", "Face", "Blender", "Browser"],
             ),
-            (540, 380, "SOFTMAX-HOSTED RUNTIME", [("Workers", "Factory adapter", "runs the jobs")], ["FastLoop", "Factory", "Optimizer", "Memory"]),
+            (540, 380, "SOFTMAX-HOSTED RUNTIME", [("Workers", "Factory adapter", "runs the jobs")], ["Hub", "Factory", "Memory"]),
         ],
-        hub_title="Router",
+        hub_title="Routers peer",
     )
 
 
 def cogent() -> Svg:
-    svg = Svg("cogent", 1040, 730, "A cogent has no centre: its coglets run on many runtimes, on a laptop, a robot, a phone, in the Softmax Universe and on a Softmax-hosted runtime, and one router carries messages and patches between all of them. The cogent is present on Face and Blender on the laptop; the rest run on their own.")
+    svg = Svg("cogent", 1040, 762, "A cogent has no centre: every runtime it uses, on a laptop, a robot, a phone, in the Softmax Universe and on a Softmax-hosted runtime, runs a hub (a router and an optimizer), and the hubs' routers peer. Devices run Face and the coglets for their apps; the hosted runtime runs the factory, memory and a database. The cogent is present on Face and Blender on the laptop; the rest run on their own.")
     stroke = 'class="dg-ink" stroke-width="1.5"'
-    svg.add('<g transform="translate(0,190)">')
+    svg.add('<g transform="translate(0,222)">')
 
     def icon(kind, x, y):
         if kind == "laptop":
@@ -209,9 +209,15 @@ def cogent() -> Svg:
                 f'<path d="M{x + 3} {t + 15}V{t + 20}M{x + 19} {t + 15}V{t + 20}" {stroke}/>'
             )
 
-    # the router, linking every runtime; no coglet is special
-    svg.box(385, 135, 270, 62, "Router", "dg-hub", "a coglet: messages, patches, presence")
-    icon("cogent", 398, 147)
+    # the hubs' routers peer; this is a network, not a coglet
+    svg.box(385, 135, 270, 62, "Routers peer", "dg-hub", "each hub's router reaches the others")
+
+    def hub_strip(x, y, w, h):
+        svg.rect(x, y, w, h, "dg-hub", 8)
+        svg.text(x + w / 2, y + h / 2 + 4, "Hub: router + optimizer", "dg-t")
+
+    def link(d):  # a coglet's link to its runtime's router
+        svg.add(f'<path d="{d}" class="dg-blue" stroke-width="1.6" fill="none"/>')
 
     def side_device(x, kind, caption, apps, coglets, coglet_on_right, shared=None):
         """Rows of app and coglet, with the coglets on the side facing the cogent."""
@@ -235,13 +241,23 @@ def cogent() -> Svg:
             if i == shared:  # the coglet in the next row uses this app too
                 svg.path(f"M{x + 114} {ry + 53}H{x + 129}V{ry + 29}H{x + 144}", "warm", both=True)
         row = 0
+        bus_x = x + w - 7 if coglet_on_right else x + 7
+        edge_x = cog_x + 98 if coglet_on_right else cog_x
+        mids = []
         for item in coglets:
             name, span = item if isinstance(item, tuple) else (item, 1)
-            svg.box(cog_x, y + 42 + row * 46, 98, span * 38 + (span - 1) * 8, name, "dg-coglet")
+            h = span * 38 + (span - 1) * 8
+            svg.box(cog_x, y + 42 + row * 46, 98, h, name, "dg-coglet")
+            mids.append(y + 42 + row * 46 + h / 2)
             row += span
+        # every local coglet talks to the others through this runtime's router
+        for m in mids:
+            link(f"M{edge_x} {m}H{bus_x}")
+        link(f"M{bus_x} {mids[0]}V{y + 249}H{x + 14 if coglet_on_right else x + w - 14}")
+        hub_strip(x + 14, y + 232, w - 28, 34)
 
-    side_device(20, "laptop", "LAPTOP", ["Softmax app", "Blender", "Chrome", "Minecraft", "Mindustry"], ["Face", "Blender", "Browser", "Minecraft", "Mindustry"], True)
-    side_device(750, "robot", "ROBOT", ["Microphone", "Display", "Camera", "Wheels", "Hand"], [("Face", 3), ("Controller", 2)], False, shared=2)
+    side_device(20, "laptop", "LAPTOP", ["Softmax app", "Blender", "Chrome", "Minecraft"], ["Face", "Blender", "Browser", "Minecraft"], True)
+    side_device(750, "robot", "ROBOT", ["Microphone", "Display", "Camera", "Wheels"], [("Face", 3), ("Controller", 1)], False, shared=2)
 
     svg.arrow(383, 166, 292, 166, "blue", both=True)
     svg.arrow(657, 166, 748, 166, "blue", both=True)
@@ -253,7 +269,7 @@ def cogent() -> Svg:
     def top_box(bx, bw, caption, pairs):
         """Apps on top, coglets underneath on the side facing the cogent."""
         by = 20
-        svg.rect(bx, by, bw, 168, "dg-bg", 12)
+        svg.rect(bx, by, bw, 200, "dg-bg", 12)
         svg.text(bx + 46, by + 25, caption, "dg-cap", "start")
         cw = (bw - 28 - 8 * (len(pairs) - 1)) / len(pairs)
         for i, (app, name) in enumerate(pairs):
@@ -263,6 +279,8 @@ def cogent() -> Svg:
             svg.text(gx + cw / 2, by + 60, app, "dg-t")
             svg.arrow(gx + cw / 2, by + 84, gx + cw / 2, by + 112, "warm", both=True)
             svg.box(gx, by + 114, cw, 42, name, "dg-coglet")
+            link(f"M{gx + cw / 2} {by + 156}V{by + 166}")
+        hub_strip(bx + 14, by + 166, bw - 28, 26)
 
     # games hosted in the Softmax Universe, above left
     top_box(213, 344, "SOFTMAX UNIVERSE", [("Paintbot", "Paintbot"), ("GOTA", "GOTA"), ("PudgeWars", "PudgeWars")])
@@ -273,28 +291,30 @@ def cogent() -> Svg:
     # the phone, above right
     top_box(587, 240, "PHONE", [("Softmax app", "Face"), ("A phone app", "App coglet")])
     icon("phone", 601, 33)
-    svg.arrow(450, 190, 450, 323, "blue", both=True)
-    svg.arrow(600, 190, 600, 323, "blue", both=True)
-    svg.text(462, 262, "installs, patches, messages", "dg-m", "start")
+    svg.arrow(450, 222, 450, 355, "blue", both=True)
+    svg.arrow(600, 222, 600, 355, "blue", both=True)
+    svg.text(462, 294, "installs, patches, messages", "dg-m", "start")
 
     # a Softmax-hosted runtime: just another runtime, its coglets run on their own
-    hx, hy, hw = 250, 520, 540
-    svg.rect(hx, hy, hw, 136, "dg-bg", 12)
+    hx, hy, hw = 250, 552, 540
+    svg.rect(hx, hy, hw, 150, "dg-bg", 12)
     svg.text(hx + 14, hy + 25, "SOFTMAX-HOSTED RUNTIME", "dg-cap", "start")
-    hosted = [("FastLoop", "attention"), ("Factory", "builds patches"), ("Optimizer", "improves"), ("Memory", "what it knows"), ("Database", "structured data")]
-    cw = (hw - 28 - 8 * 4) / 5
+    svg.text(hx + hw - 14, hy + 25, "running on their own; the cogent checks in", "dg-m", "end")
+    hosted = [("Factory", "builds patches"), ("Memory", "what it knows"), ("Database", "structured data")]
+    cw = (hw - 28 - 8 * 2) / 3
     for i, (name, what) in enumerate(hosted):
         svg.box(hx + 14 + i * (cw + 8), hy + 40, cw, 60, name, "dg-coglet", what)
-    svg.text(hx + hw / 2, hy + 122, "running on their own; the cogent checks in", "dg-m")
-    svg.arrow(520, 389, 520, 518, "blue", both=True)
+        link(f"M{hx + 14 + i * (cw + 8) + cw / 2} {hy + 100}V{hy + 112}")
+    hub_strip(hx + 14, hy + 112, hw - 28, 28)
+    svg.arrow(520, 421, 520, 550, "blue", both=True)
 
-    legend(svg, 40, 695, [("blue", False, "the router carries it"), ("warm", False, "a coglet uses an app through its adapter")])
-    svg.rect(500, 685, 22, 20, "dg-present", 5)
-    svg.text(530, 699, "present", "dg-m", "start")
+    legend(svg, 40, 737, [("blue", False, "routers carry it"), ("warm", False, "a coglet uses an app through its adapter")])
+    svg.rect(500, 727, 22, 20, "dg-present", 5)
+    svg.text(530, 741, "present", "dg-m", "start")
     lx = 610
     for cls, label in [("dg-coglet", "coglet"), ("dg-adapter", "adapter"), ("dg-world", "app or hardware")]:
-        svg.rect(lx, 685, 20, 20, cls, 4)
-        svg.text(lx + 28, 699, label, "dg-m", "start")
+        svg.rect(lx, 727, 20, 20, cls, 4)
+        svg.text(lx + 28, 741, label, "dg-m", "start")
         lx += 60 + len(label) * 6
     return svg
 
@@ -418,7 +438,7 @@ def turn() -> Svg:
         ("App UI adapter", "dg-adapter"),
         ("FaceCoglet", "dg-coglet"),
         ("BlenderCoglet", "dg-coglet"),
-        ("FastLoop", "dg-coglet"),
+        ("Router", "dg-coglet"),
         ("Factory", "dg-coglet"),
     ]
     messages = [
@@ -447,7 +467,7 @@ def turn() -> Svg:
 
 
 def calls() -> Svg:
-    svg = Svg("calls", 770, 344, "Face exchanges intents with app coglets on the device and feature requests with the fast loop; the fast loop and the optimizer use memory and file tickets with the factory, wherever those coglets run.")
+    svg = Svg("calls", 770, 344, "Face exchanges intents with app coglets on the device and feature requests with the router; the router and the optimizer use memory and file tickets with the factory, wherever those coglets run.")
     # on a device, stacked
     svg.rect(20, 30, 190, 294, "dg-group", 14)
     svg.text(38, 54, "ON A DEVICE", "dg-cap", "start")
@@ -455,8 +475,8 @@ def calls() -> Svg:
     svg.box(40, 250, 150, 56, "App coglets", "dg-coglet", "drive the apps")
     # the learning coglets, two by two, wherever they run
     svg.rect(310, 30, 440, 294, "dg-group", 14)
-    svg.text(328, 54, "LEARNING AND MEMORY", "dg-cap", "start")
-    svg.box(330, 70, 150, 56, "FastLoop", "dg-coglet", "attention: responds, forwards")
+    svg.text(328, 54, "THINKING AND LEARNING", "dg-cap", "start")
+    svg.box(330, 70, 150, 56, "Router", "dg-coglet", "attention: responds, forwards")
     svg.box(580, 70, 150, 56, "Memory", "dg-coglet", "what the cogent knows")
     svg.box(330, 250, 150, 56, "Factory", "dg-coglet", "tickets in, patches out")
     svg.box(580, 250, 150, 56, "Optimizer", "dg-coglet", "watches, improves")
@@ -546,7 +566,7 @@ def adapters() -> Svg:
 
 
 def runtime() -> Svg:
-    svg = Svg("runtime", 1180, 392, "Two runtimes joined by a network link. Each has pluggable execution engines and capabilities it provides, such as a database, a key-value store and random numbers; it runs coglets and connects to adapters outside it. Messages pass between coglets inside a runtime and between runtimes over the network.")
+    svg = Svg("runtime", 1180, 392, "Two runtimes joined by their routers. Each exposes an unforged repository in which every coglet is a user, mounts the adapters it connects to, and has pluggable execution engines and capabilities it provides, such as a database, a key-value store and random numbers. Messages pass between coglets inside a runtime and between runtimes through their routers.")
     engine_cls = {"BASIC": "dg-e-basic", "WASM": "dg-e-wasm", "JavaScript": "dg-e-js", "Java": "dg-e-java", "Python": "dg-e-llm"}
 
     def one(x, engines_on_left, adapters, coglets, engines, caps, uses):
@@ -560,15 +580,16 @@ def runtime() -> Svg:
         for i, name in enumerate(engines):
             svg.rect(ex + 8, 150 + i * 40, 84, 32, engine_cls[name], 6)
             svg.text(ex + 50, 170 + i * 40, name, "dg-t")
-        svg.text(ax + 192, 128, "RUNTIME", "dg-cap")
+        svg.text(ax + 192, 128, "RUNTIME · UNFORGED REPO", "dg-cap")
         xs = [ax + i * 140 for i in range(3)]
         for i, engine in enumerate(coglets):  # a coglet takes the colour of the engine it runs on
-            svg.box(xs[i], 146, 104, 56, "Coglet", engine_cls[engine], engine)
+            svg.box(xs[i], 146, 104, 56, "Coglet", engine_cls[engine], f"user · {engine}")
         for i, name in adapters:
             svg.box(xs[i] - 8, 28, 120, 40, name, "dg-adapter")
             svg.arrow(xs[i] + 52, 70, xs[i] + 52, 144, "warm", both=True)
+            svg.text(xs[i] + 60, 92, "mounted", "dg-m", "start")
         svg.arrow(xs[0] + 106, 174, xs[1] - 2, 174, "teal", both=True)
-        svg.text(xs[0] + 122, 164, "local", "dg-m")
+        svg.text(xs[0] + 122, 164, "router", "dg-m")
         # capabilities the runtime provides, along the bottom, with the label underneath
         svg.rect(ax, 276, 384, 82, "dg-bg", 10)
         cw = (384 - 28 - 6 * (len(caps) - 1)) / len(caps)
@@ -591,7 +612,7 @@ def runtime() -> Svg:
     left = one(30, True, [(0, "App adapter"), (2, "Camera adapter")], ["BASIC", "Python", "WASM"], ["BASIC", "WASM", "JavaScript", "Java", "Python"], ["Database", "KV store", "LLM", "Random"], [(0, 0, -12), (0, 1, 12), (1, 1, -12), (1, 2, 12), (2, 3, 0)])
     right = one(630, False, [(0, "Game adapter")], ["Java", "JavaScript", "Python"], ["JavaScript", "Java", "Python"], ["KV store", "Random", "LLM", "GPU"], [(0, 0, 0), (1, 1, 20), (2, 2, -14), (2, 3, 10)])
     svg.arrow(left[2] + 106, 174, right[0] - 2, 174, "blue", both=True)
-    svg.text((left[2] + 104 + right[0]) / 2, 164, "network", "dg-m", halo=True)
+    svg.text((left[2] + 104 + right[0]) / 2, 164, "via their routers", "dg-m", halo=True)
     return svg
 
 
@@ -730,7 +751,7 @@ def speech() -> Svg:
 
 
 def unforged_stack() -> Svg:
-    svg = Svg("unforged-stack", 960, 470, "Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent's refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.")
+    svg = Svg("unforged-stack", 960, 470, "Every runtime keeps its coglets as git refs, each coglet a user with its own. Devices run steps in process and run a hub; each hub's router keeps an unforged repository of the refs of the coglets it reaches; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.")
     # device
     svg.rect(24, 24, 300, 300, "dg-group", 12)
     svg.text(40, 48, "DEVICE", "dg-cap", "start")
@@ -740,29 +761,29 @@ def unforged_stack() -> Svg:
     svg.rect(40, 130, 268, 178, "dg-runtime")
     svg.text(54, 151, "cogletd", "dg-code", "start")
     svg.text(294, 151, "hot path", "dg-m", "end")
-    svg.box(54, 162, 116, 40, "Face", "dg-coglet")
-    svg.box(178, 162, 116, 40, "Blender", "dg-coglet")
+    for i, name in enumerate(["Hub", "Face", "Blender"]):
+        svg.box(54 + i * 82, 162, 76, 40, name, "dg-coglet")
     svg.box(54, 212, 240, 34, "WAMR engine", "dg-e-wasm")
     svg.box(54, 254, 240, 42, "object store, in process", "dg-runtime", "git trees and commits, no git binary")
     # router
     svg.rect(352, 24, 256, 300, "dg-group", 12)
-    svg.text(368, 48, "ROUTER", "dg-cap", "start")
+    svg.text(368, 48, "ANY HUB'S ROUTER", "dg-cap", "start")
     svg.rect(368, 62, 224, 246, "dg-hub")
     svg.text(480, 86, "unforged", "dg-code")
-    svg.text(480, 102, "the cogent's repository", "dg-m")
-    rows = [("refs/coglets/*", "every coglet's state"), ("refs/published/*", "promoted policies"), ("allowed_signers", "who may do what"), ("iroh ticket", "reach it from anywhere")]
+    svg.text(480, 102, "refs of the coglets it reaches", "dg-m")
+    rows = [("refs/users/*", "each coglet's refs"), ("refs/published/*", "promoted policies"), ("allowed_signers", "who may do what"), ("iroh ticket", "reach it from anywhere")]
     for i, (code, what) in enumerate(rows):
         y = 112 + i * 40
         svg.rect(380, y, 200, 36, "dg-runtime", 6)
         svg.text(392, y + 15, code, "dg-code", "start")
         svg.text(392, y + 29, what, "dg-m", "start")
-    svg.box(380, 274, 200, 30, "Router coglet", "dg-coglet")
+    svg.box(380, 274, 200, 30, "Router coglet, peered", "dg-coglet")
     # a Softmax-hosted runtime
     svg.rect(636, 24, 300, 300, "dg-group", 12)
     svg.text(652, 48, "SOFTMAX-HOSTED RUNTIME", "dg-cap", "start")
     svg.rect(652, 62, 268, 142, "dg-runtime")
     svg.text(666, 83, "cogletd", "dg-code", "start")
-    for i, name in enumerate(["FastLoop", "Factory", "Optimizer", "Memory"]):
+    for i, name in enumerate(["Router", "Optimizer", "Factory", "Memory"]):
         svg.box(666 + (i % 2) * 124, 94 + (i // 2) * 52, 116, 42, name, "dg-coglet")
     svg.box(652, 236, 268, 72, "unforged workers on CAOS", "dg-hub", "river exec: replays, forks, tests")
     svg.arrow(786, 206, 786, 234, "teal", both=True)
@@ -772,7 +793,7 @@ def unforged_stack() -> Svg:
     svg.arrow(594, 140, 650, 140, "blue", both=True)
     svg.arrow(310, 250, 366, 250, "teal", dashed=True, both=True)
     svg.arrow(594, 270, 650, 270, "teal", dashed=True, both=True)
-    svg.text(480, 372, "Every box speaks the same objects: a coglet is a ref, a step is a commit, a patch is a merge.", "dg-t")
+    svg.text(480, 372, "Every box speaks the same objects: a coglet is a user with its refs, a step is a commit, a patch is a merge.", "dg-t")
     svg.text(480, 394, "Only the transport differs: messages ride QUIC streams, state and patches ride git fetch and push over iroh.", "dg-m")
     legend(svg, 190, 440, [("blue", False, "messages, health"), ("teal", True, "git fetch / push of refs"), ("warm", False, "adapter events, actions")])
     return svg

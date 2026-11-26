@@ -4,7 +4,9 @@
 - Date: 2026-11-25
 - Authors: David Bloomin (design), David's Claude Code session
 - Related PR: #182
-- Supersedes / superseded by: none. Amends the [cogent design](../cogent-design/README.md)
+- Supersedes / superseded by: superseded in part by
+  [ADR-0040](0040-hubs-and-coglets-on-unforged.md) (the router is the attention;
+  one attending router among many). Amends the [cogent design](../cogent-design/README.md)
   pages, which described "the cogent's centre". Builds on the router of
   [ADR-0020](0020-vocabulary.md) and the manage port of
   [ADR-0031](0031-manage-port-and-filesystem-patches.md).
