@@ -309,7 +309,7 @@ Softmax-hosted runtime is one hub among several, not the centre.
 that device's adapters: an app coglet for Blender, a controller for a robot's
 wheels.
 
-Detail: [ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md).
+Detail: [ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md).
 
 ## Face
 
@@ -378,7 +378,7 @@ Router
 ```
 
 Detail and rules: [ADR-0036](../adr/0036-distributed-cogent-and-presence.md);
-the attention is a router since [ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md).
+the attention is a router since [ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md).
 
 ## A request, end to end
 

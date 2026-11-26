@@ -264,7 +264,7 @@ A runtime supports running a set of coglets. It exposes one or more unforged
 repositories and runs each coglet in one as a **user**, with its own refs and
 grants. It manages routing events, executing the coglet code, and providing and
 managing capabilities, and it mounts each adapter it connects to under
-`/net/<adapter>/` ([ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md)).
+`/net/<adapter>/` ([ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md)).
 
 ```idl
 Runtime

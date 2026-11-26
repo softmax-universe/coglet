@@ -444,7 +444,7 @@ both runners produce the same commit id.</strong> That is the conformance check.
 </svg>
 </figure>
 <p><em>The refs of one coglet, its step commits, and the tree of the latest one.</em></p>
-<p><a href="../adr/0039-hubs-and-coglets-on-unforged.md">ADR-0039</a> makes each coglet a
+<p><a href="../adr/0040-hubs-and-coglets-on-unforged.md">ADR-0040</a> makes each coglet a
 <strong>user</strong> of the repository its runtime exposes: it has its own key, signs its
 own ref updates, and its refs live in its own namespace, <code>refs/users/&lt;coglet&gt;/…</code>.
 Below, <code>refs/coglets/&lt;id&gt;/</code> stands for that namespace.</p>
@@ -1181,9 +1181,9 @@ Everything outside is an adapter, reached the same way:</p>
 <h2 id="the-router-is-an-unforged-repository">The router is an unforged repository<a class="headerlink" href="#the-router-is-an-unforged-repository" title="Permanent link">#</a></h2>
 <p>The router stays what <a href="index.html">the cogent design</a> says it is: a
 coglet that finds runtimes and carries messages and patches, and since
-ADR-0039 also the cogent's fast loop and attention. unforged is its
+ADR-0040 also the cogent's fast loop and attention. unforged is its
 storage and its git transport. Since
-<a href="../adr/0039-hubs-and-coglets-on-unforged.md">ADR-0039</a> every runtime exposes
+<a href="../adr/0040-hubs-and-coglets-on-unforged.md">ADR-0040</a> every runtime exposes
 its own repositories and runs a hub; the repository described here is the one a
 hub's router keeps for the coglets it reaches, and peered routers sync refs
 between them.</p>

@@ -5,7 +5,7 @@ thinking and learning, and how they are wired. None of them is a centre. Every
 runtime runs a **hub**, a router and an optimizer, and every other coglet
 reaches the rest through its hub's router
 ([ADR-0036](../adr/0036-distributed-cogent-and-presence.md),
-[ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md)).
+[ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md)).
 
 ## Who talks to whom
 
@@ -407,7 +407,7 @@ The heart of a hub. It knows which runtimes the cogent may use, installs
 coglets on them, and carries messages and manage operations such as `patch`
 between coglets and to the routers of other hubs. It is also **smart**: it is
 the cogent's **fast loop** and **attention**
-([ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md)). It answers what
+([ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md)). It answers what
 present coglets send, takes feature requests from Face, checks memory, files
 tickets with the factory, applies the patches that come back, and tells Face.
 It holds presence: it decides where the cogent is present, holds what absent

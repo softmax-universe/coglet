@@ -1,4 +1,4 @@
-# ADR-0039: Coglets live in unforged repos; hubs and smart routers
+# ADR-0040: Coglets live in unforged repos; hubs and smart routers
 
 - Status: Proposed
 - Date: 2026-11-25

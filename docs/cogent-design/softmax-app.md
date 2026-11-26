@@ -3,7 +3,7 @@
 An app the user can install. Part of the [cogent design](README.md).
 
 **Any app can host a runtime** and run coglets: a game, Blender, a browser, a
-phone app ([ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md)). The Softmax
+phone app ([ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md)). The Softmax
 app is one host among them, useful on a computer where no other app hosts one.
 It does three things:
 

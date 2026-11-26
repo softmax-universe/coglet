@@ -5,7 +5,7 @@
 - Authors: David Bloomin (design), David's Claude Code session
 - Related PR: #182
 - Supersedes / superseded by: superseded in part by
-  [ADR-0039](0039-hubs-and-coglets-on-unforged.md) (the router is the attention;
+  [ADR-0040](0040-hubs-and-coglets-on-unforged.md) (the router is the attention;
   one attending router among many). Amends the [cogent design](../cogent-design/README.md)
   pages, which described "the cogent's centre". Builds on the router of
   [ADR-0020](0020-vocabulary.md) and the manage port of
