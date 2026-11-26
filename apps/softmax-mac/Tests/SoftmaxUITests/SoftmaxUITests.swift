@@ -54,19 +54,27 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertEqual(continueButton.label, "Continue")
         XCTAssertTrue(continueButton.isEnabled)
         XCTAssertTrue(continueButton.isHittable)
-        let nonce = UUID().uuidString
-        try Data(nonce.utf8).write(to: directory.appendingPathComponent("request"), options: .atomic)
-        let predicate = NSPredicate { _, _ in
-            guard let data = try? Data(contentsOf: directory.appendingPathComponent("response.json")),
-                  let probe = try? JSONDecoder().decode(CatalogProbe.self, from: data) else { return false }
-            return probe.request == nonce
+        func captureProbe(_ name: String) throws -> CatalogProbe {
+            let nonce = UUID().uuidString
+            try Data(nonce.utf8).write(to: directory.appendingPathComponent("request"), options: .atomic)
+            let predicate = NSPredicate { _, _ in
+                guard let data = try? Data(contentsOf: directory.appendingPathComponent("response.json")),
+                      let probe = try? JSONDecoder().decode(CatalogProbe.self, from: data) else { return false }
+                return probe.request == nonce
+            }
+            let waiter = XCTNSPredicateExpectation(predicate: predicate, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [waiter], timeout: 5), .completed)
+            let bytes = try Data(contentsOf: directory.appendingPathComponent("response.json"))
+            let probe = try JSONDecoder().decode(CatalogProbe.self, from: bytes)
+            XCTAssertEqual(probe.request, nonce)
+            XCTAssertFalse(probe.registrationFailed, "an AX id cannot hide a refused registry mount")
+            XCTAssertEqual(Set(probe.registrations.map(\.id)).count, probe.registrations.count)
+            let attachment = XCTAttachment(data: bytes, uniformTypeIdentifier: "public.json")
+            attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+            return probe
         }
-        let waiter = XCTNSPredicateExpectation(predicate: predicate, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [waiter], timeout: 5), .completed)
-        let probe = try JSONDecoder().decode(CatalogProbe.self,
-            from: Data(contentsOf: directory.appendingPathComponent("response.json")))
-        XCTAssertEqual(probe.request, nonce)
-        XCTAssertFalse(probe.registrationFailed, "an AX id cannot hide a refused registry mount")
+        let mode = omitContinueRegistration ? "omitted" : "normal"
+        let probe = try captureProbe("onboarding-welcome-" + mode + "-registry")
         let entries = probe.registrations.filter { $0.window == "onboarding" && $0.route == "welcome" }
         let ids = Set(entries.map(\.id))
         XCTAssertFalse(ids.isEmpty)
@@ -90,12 +98,22 @@ final class SoftmaxUITests: XCTestCase {
             }
         }
         XCTAssertTrue(seen.contains("onboarding.continue"), "must exercise a real product control")
-        let attachment = XCTAttachment(data: try Data(contentsOf: directory.appendingPathComponent("response.json")),
-            uniformTypeIdentifier: "public.json")
-        attachment.name = omitContinueRegistration ? "onboarding-welcome-omitted-registry" : "onboarding-welcome-live-registry"
-        attachment.lifetime = .keepAlways; add(attachment)
-        // Even with registration omitted, the SAME native user button must work.
+        // The SAME native button works by mouse and default Return, and its
+        // registration follows each mounted route rather than leaking the hook.
         window.buttons["onboarding.continue"].click()
+        XCTAssertTrue(window.staticTexts["Let Softmax hear you."].waitForExistence(timeout: 5))
+        let permissions = try captureProbe("onboarding-permissions-" + mode + "-registry")
+        XCTAssertFalse(permissions.registrations.contains { $0.window == "onboarding" && $0.route == "welcome" })
+        XCTAssertEqual(permissions.registrations.filter {
+            $0.id == "onboarding.continue" && $0.route == "permissions" && $0.visible && $0.enabled
+        }.count, 1)
+        window.buttons["onboarding.back"].click()
+        XCTAssertTrue(window.staticTexts["Speak without switching apps."].waitForExistence(timeout: 5))
+        let returned = try captureProbe("onboarding-returned-" + mode + "-registry")
+        XCTAssertFalse(returned.registrations.contains { $0.window == "onboarding" && $0.route == "permissions" })
+        XCTAssertEqual(returned.registrations.filter { $0.id == "onboarding.continue" }.count,
+            omitContinueRegistration ? 0 : 1)
+        window.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(window.staticTexts["Let Softmax hear you."].waitForExistence(timeout: 5))
         return (probe, seen)
     }

@@ -260,6 +260,29 @@ struct OnboardingView: View {
             registry: model.appControls, window: "onboarding", route: "permissions", sensitive: true,
             failure: model.appControlFailure) { model.openPrivacy("Privacy_ListenEvent") }
     }
+    private func advance() {
+        if step < 2 { step += 1 } else { finish() }
+    }
+    @ViewBuilder private var advanceButton: some View {
+        #if DEBUG
+        if model.testing && step == 0 && ProcessInfo.processInfo.arguments.contains("--catalog-omit-welcome-continue-registration") {
+            // App-local negative control: preserve native semantics, omit only the mount.
+            Button("Continue", action: advance)
+                .accessibilityIdentifier("onboarding.continue")
+                .keyboardShortcut(.defaultAction)
+        } else {
+            registeredAdvanceButton
+        }
+        #else
+        registeredAdvanceButton
+        #endif
+    }
+    private var registeredAdvanceButton: some View {
+        CogletButton(step < 2 ? "Continue" : "Finish", id: step < 2 ? "onboarding.continue" : "onboarding.finish",
+            registry: model.appControls, window: "onboarding", route: route,
+            failure: model.appControlFailure, action: advance)
+            .keyboardShortcut(.defaultAction)
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
             Text("\(step + 1) of 3").softmaxFont(SoftmaxDesignTokens.fontBody, weight: .medium)
@@ -302,10 +325,7 @@ struct OnboardingView: View {
                     CogletButton("Back", id: "onboarding.back", registry: model.appControls, window: "onboarding",
                         route: route, failure: model.appControlFailure) { step -= 1 }
                 }
-                CogletButton(step < 2 ? "Continue" : "Finish", id: step < 2 ? "onboarding.continue" : "onboarding.finish",
-                    registry: model.appControls, window: "onboarding", route: route,
-                    failure: model.appControlFailure) { if step < 2 { step += 1 } else { finish() } }
-                    .keyboardShortcut(.defaultAction)
+                advanceButton
             }
         }.padding(SoftmaxDesignTokens.spacing[4]).frame(minWidth: 620, minHeight: 600).modifier(SoftmaxTheme())
     }
