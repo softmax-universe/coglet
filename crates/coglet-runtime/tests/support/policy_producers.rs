@@ -335,7 +335,7 @@ impl Daemon {
         self.raw(frame).await
     }
     async fn install(&mut self, wat: &str) -> Bundle {
-        let manifest = serde_json::to_vec(&json!({"version":"0.1","id":self.env.coglet,
+        let manifest = serde_json::to_vec(&json!({"version":"1.0","id":self.env.coglet,
             "subscriptions":["speech.start"],"required_capabilities":operations(self.action),
             "exclusive_outputs":["audio.mic","audio.speaker"],"budgets":{"compute":10000,
             "compute_mode":native_compute_mode(),"memory_pages":2,"wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}})).unwrap();

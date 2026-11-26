@@ -1,4 +1,4 @@
-"""Hub 1.0 schemas and spec-only management oracles, not runtime conformance."""
+"""Hub 2.0 schemas and spec-only management oracles, not runtime conformance."""
 import copy
 import hashlib
 import json

@@ -7,7 +7,10 @@ pub(crate) fn validate(rule: &str, value: &Value) -> Result<()> {
     if rule.starts_with("surface02::") {
         // Rust Value identities differ. Deterministic CBOR preserves integers and
         // map keys without serde_json feature-dependent numeric serialization.
-        let bytes = coglet_types::encode_profile(value)?;
+        // Historical (private-scope) roots are validated through a version-only
+        // projection; the caller's value and bytes are never changed.
+        let projected = crate::hash_upgrade::current_projection(rule, value)?;
+        let bytes = coglet_types::encode_profile(projected.as_ref().unwrap_or(value))?;
         let selected = coglet_types_current::decode_profile(&bytes)?;
         coglet_types_current::validate(rule, &selected)
     } else {

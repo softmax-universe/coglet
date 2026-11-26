@@ -45,7 +45,7 @@ Exact output shape (all setup arrays are empty, never canned host output):
     "wal": "/absolute/private/writable/state.wal",
     "setup": {
       "manifest": {
-        "version": "0.1",
+        "version": "1.0",
         "id": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "subscriptions": ["speech.end"],
         "required_capabilities": ["speech.speak_chunk"],

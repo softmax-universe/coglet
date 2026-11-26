@@ -1,7 +1,7 @@
 use super::tests::{OWNER, bundle, provision, replay};
 use super::*;
 
-fn archived() -> ArchivedDecision {
+fn archived(historical: bool) -> ArchivedDecision {
     use coglet_types::Value as V;
     let cases: serde_json::Value = serde_json::from_str(include_str!(
         "../../../../spec/fixtures/database/cases.json"
@@ -18,6 +18,11 @@ fn archived() -> ArchivedDecision {
             .unwrap(),
     )
     .unwrap();
+    let raw = if historical {
+        hex::decode(include_str!("../legacy_step_record.hex").trim()).unwrap()
+    } else {
+        raw
+    };
     let V::Map(mut m) = coglet_types::decode_profile(&raw).unwrap() else {
         panic!()
     };
@@ -40,11 +45,19 @@ fn archived() -> ArchivedDecision {
 }
 #[test]
 fn snapshot_restores_nonempty_markers_receipts_and_immutable_artifacts() {
+    snapshot_roundtrip(false);
+}
+#[test]
+fn snapshot_restores_validated_historical_decision_bytes_without_translation() {
+    snapshot_roundtrip(true);
+}
+fn snapshot_roundtrip(historical: bool) {
     let root = tempfile::tempdir().unwrap();
     let mut db = provision(root.path());
     db.connection.execute_batch("CREATE TABLE outbox(intent_id TEXT PRIMARY KEY NOT NULL, idempotency_key TEXT UNIQUE NOT NULL, state TEXT NOT NULL, receipt TEXT); INSERT INTO outbox VALUES('one','stable-key','succeeded','receipt-one'); INSERT INTO outbox VALUES('two','uncertain-key','uncertain',NULL);").unwrap();
-    let a = archived();
-    let r = coglet_types::DatabaseDbStepRecord1::from_cbor(&a.record).unwrap();
+    let a = archived(historical);
+    let r = coordinator::validate_stored_committed(&a.record).unwrap();
+    assert_eq!(r.version, if historical { "0.2" } else { "1.1" });
     db.connection
         .execute(
             "INSERT INTO _coglet_markers VALUES(?1,?2,?3,?4,?5,?6,1)",
@@ -78,8 +91,8 @@ fn snapshot_restores_nonempty_markers_receipts_and_immutable_artifacts() {
                 return Err("replay/artifact divergence".into());
             }
             // Offline recorded-observation decode. Full engine replay remains D.
-            let r = coglet_types::DatabaseDbStepRecord1::from_cbor(&b.decisions[0].record)?;
-            let expected = coglet_types::DatabaseDbStepRecord1::from_cbor(&self.expected.record)?;
+            let r = coordinator::validate_stored_committed(&b.decisions[0].record)?;
+            let expected = coordinator::validate_stored_committed(&self.expected.record)?;
             if r.calls != expected.calls {
                 return Err("recorded call divergence".into());
             }

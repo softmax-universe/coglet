@@ -11,23 +11,20 @@ from reference_cddl import Schema, ValidationError
 from referencing import Registry, Resource
 
 from test_common import SPEC, decode, encode
+from state_hash import snapshot_hash as digest
 from heard_archive import HEARD_PATH, read_state, check_transition
 
 BASE = 'https://coglet.dev/spec/'
 
 
-def digest(value):
-    return hashlib.sha256(encode(value)).hexdigest()
-
-
 def record_hash(rec):
-    return digest({k: v for k, v in rec.items() if k != 'record_hash'})
+    return hashlib.sha256(encode({k: v for k, v in rec.items() if k != 'record_hash'})).hexdigest()
 
 
 def valid_path(path):
     parts = path.split('/')
     return (len(parts) >= 3 and parts[0] == '' and parts[1] in ('code', 'data', 'logs')
-            and all(p not in ('', '.', '..') and all(ord(c) >= 32 and ord(c) != 127 and c != '\\' for c in p) for p in parts[1:])
+            and all(p not in ('', '.', '..') and p.lower() != '.git' and all(ord(c) >= 32 and ord(c) != 127 and c != '\\' for c in p) for p in parts[1:])
             and str(PurePosixPath(path)) == path)
 
 
@@ -561,7 +558,7 @@ class AbiFixtures(unittest.TestCase):
     def test_manifest_catalog_and_resource_admission(self):
         vectors = json.loads((SPEC / 'fixtures/abi/manifest-admission.fixture').read_text())
         from build_manifest_admission import cases
-        timelines = json.loads((SPEC.parent / 'conformance/abi/manifest-admission.json').read_text())
+        timelines = json.loads((SPEC / 'fixtures/abi/manifest-admission-timeline.fixture').read_text())
         self.assertEqual(timelines, cases())
         self.assertEqual(len(timelines), len(vectors['cases']))
         for case in vectors['cases']:
@@ -624,7 +621,7 @@ class AbiFixtures(unittest.TestCase):
                 records = [step['expect']['journal'] for step in case['steps'] if 'expect' in step]
                 manifest_bytes = encode(first['manifest'])
                 code_bytes = bytes.fromhex(first['initial_files']['/code/bin/step.wasm'])
-                trace = dict(version='0.1', trace_id=records[0]['trace_id'], coglet=records[0]['coglet'],
+                trace = dict(version='1.0', trace_id=records[0]['trace_id'], coglet=records[0]['coglet'],
                              initial_hash=digest(first['initial_files']), records=records,
                              blobs={hashlib.sha256(code_bytes).hexdigest(): code_bytes.hex(),
                                     hashlib.sha256(manifest_bytes).hexdigest(): manifest_bytes.hex()},

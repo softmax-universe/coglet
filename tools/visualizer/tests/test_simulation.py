@@ -57,9 +57,9 @@ def archive():
                 records=trace['records'])
 
 
-def test_recording_from_older_world_snapshot_schema_is_refused_not_rewritten():
-    # PR83's episode predates max_steps in the gridbot-v1 snapshot, so the current
-    # production model cannot reproduce its hashes. Refuse; never adapt the hashes.
+def test_recording_with_different_world_configuration_is_refused_not_rewritten():
+    # The fixture is recaptured under ADR-0035 with max_steps=16. A different
+    # configuration must still be refused, never adapted by rewriting hashes.
     trace = json.loads((FIXTURES / 'native-m2-gridbot-trace.json').read_text())
     legacy = dict(archive(), records=trace['records'], config=dict(width=8, height=8, max_steps=10000))
     with pytest.raises(ValueError, match='replay mismatch'):

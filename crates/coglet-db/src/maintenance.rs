@@ -178,14 +178,9 @@ fn alignment(db: &Database, bundle: &RecoveryBundle, profile: ContractProfile) -
     }
     let mut records = BTreeMap::new();
     for decision in &bundle.decisions {
-        let r = super::coordinator::validate_committed(&decision.record, profile)?;
-        if r.coglet != db.owner
-            || r.status != "committed"
-            || r.version != "0.2"
-            || super::coordinator::record_hash_of(&decision.record)? != r.record_hash
-            || coglet_types::encode_profile(&coglet_types::decode_profile(&decision.record)?)?
-                != decision.record
-        {
+        let r =
+            super::coordinator::validate_stored_committed_with_profile(&decision.record, profile)?;
+        if r.coglet != db.owner {
             return Err("invalid archived decision".into());
         }
         if records

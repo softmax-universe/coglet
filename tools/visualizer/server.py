@@ -23,7 +23,7 @@ MAX_HISTORY = 128
 
 def project(record):
     """Validate the display subset only; never claim complete ABI validation."""
-    if not isinstance(record, dict) or record.get("version") != "0.1":
+    if not isinstance(record, dict) or record.get("version") not in ("1.0", "1.1"):
         raise ValueError("Invalid record version")
     for field, pattern in [("coglet", r"coglet:[0-9a-f]{64}"), ("trace_id", r"[0-9a-f]{32}"),
                            ("output_hash", r"[0-9a-f]{64}"), ("record_hash", r"[0-9a-f]{64}")]:

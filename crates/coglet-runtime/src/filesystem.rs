@@ -1,4 +1,4 @@
-use crate::{Result, cbor};
+use crate::Result;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 pub struct Snapshot(
     std::sync::Arc<BTreeMap<String, String>>,
     std::sync::OnceLock<String>,
+    // Private in-memory historical hash mode; never persisted or caller-set.
+    bool,
     #[cfg(feature = "native-engine")] std::sync::OnceLock<coglet_fs::Snapshot>,
 );
 
@@ -38,19 +40,25 @@ impl<'de> Deserialize<'de> for Snapshot {
 }
 
 pub fn valid_path(path: &str) -> bool {
-    let mut components = path.split('/');
-    components.next() == Some("")
-        && matches!(components.next(), Some("code" | "data" | "logs"))
-        && {
-            let rest: Vec<_> = components.collect();
-            !rest.is_empty()
-                && rest
-                    .iter()
-                    .all(|c| !c.is_empty() && *c != "." && *c != "..")
-        }
-        && !path
-            .chars()
-            .any(|c| c <= '\u{1f}' || c == '\u{7f}' || c == '\\')
+    coglet_fs::validate_path(path).is_ok()
+        || (crate::hash_upgrade::historical() && legacy_path(path))
+}
+
+// Historical ABI allowed .git components; retain every original constraint.
+fn legacy_path(path: &str) -> bool {
+    let mut parts = path.split('/');
+    parts.next() == Some("") && matches!(parts.next(), Some("code" | "data" | "logs")) && {
+        let rest: Vec<_> = parts.collect();
+        !rest.is_empty()
+            && rest.iter().all(|p| {
+                !p.is_empty()
+                    && *p != "."
+                    && *p != ".."
+                    && !p
+                        .chars()
+                        .any(|c| c <= '\u{1f}' || c == '\u{7f}' || c == '\\')
+            })
+    }
 }
 
 pub fn digest(bytes: &[u8]) -> String {
@@ -139,6 +147,7 @@ impl Snapshot {
         Ok(Self(
             std::sync::Arc::new(files),
             std::sync::OnceLock::new(),
+            crate::hash_upgrade::historical(),
             #[cfg(feature = "native-engine")]
             std::sync::OnceLock::new(),
         ))
@@ -147,7 +156,7 @@ impl Snapshot {
     #[cfg(all(test, feature = "native-engine"))]
     pub(crate) fn from_fs(decoded: coglet_fs::Snapshot) -> Result<Self> {
         let snapshot = Self::new(decoded.export())?;
-        let _ = snapshot.2.set(decoded);
+        let _ = snapshot.3.set(decoded);
         Ok(snapshot)
     }
 
@@ -169,13 +178,13 @@ impl Snapshot {
             files.insert(path.to_owned(), encoded);
         }
         let snapshot = Self::new(files)?;
-        let _ = snapshot.2.set(decoded);
+        let _ = snapshot.3.set(decoded);
         Ok(snapshot)
     }
 
     #[cfg(feature = "native-engine")]
     pub(crate) fn decoded_fs(&self) -> Result<&coglet_fs::Snapshot> {
-        if let Some(decoded) = self.2.get() {
+        if let Some(decoded) = self.3.get() {
             return Ok(decoded);
         }
         let map = self
@@ -184,8 +193,8 @@ impl Snapshot {
             .map(|(path, encoded)| Ok((path.clone(), decode_hex(encoded)?)))
             .collect::<Result<BTreeMap<_, _>>>()?;
         let decoded = coglet_fs::Snapshot::from_files(map).map_err(|e| e.to_string())?;
-        let _ = self.2.set(decoded);
-        Ok(self.2.get().expect("immutable decoded cache initialized"))
+        let _ = self.3.set(decoded);
+        Ok(self.3.get().expect("immutable decoded cache initialized"))
     }
 
     pub fn files(&self) -> &BTreeMap<String, String> {
@@ -194,19 +203,27 @@ impl Snapshot {
     pub(crate) fn append_host_log(&mut self, line: &[u8]) {
         self.1.take();
         #[cfg(feature = "native-engine")]
-        self.2.take();
+        self.3.take();
         std::sync::Arc::make_mut(&mut self.0)
             .entry("/logs/events.jsonl".into())
             .or_default()
             .push_str(&hex::encode(line));
     }
+    /// Frozen hub0 debug read/write/audit identity, not the current ABI state ID.
+    /// ADR-0035 forbids redefining the published debug protocol in place.
+    pub(crate) fn frozen_hub0_hash(&self) -> Result<String> {
+        Ok(digest(&crate::cbor(&serde_json::json!(self.files()))?))
+    }
+
     pub fn tree_hash(&self) -> Result<String> {
         if let Some(hash) = self.1.get() {
             return Ok(hash.clone());
         }
-        let hash = digest(&cbor(
-            &serde_json::to_value(self.0.as_ref()).map_err(|e| e.to_string())?,
-        )?);
+        let hash = if self.2 {
+            digest(&crate::cbor(&serde_json::json!(self.files()))?)
+        } else {
+            coglet_fs::snapshot_tree_hash(&self.0).map_err(|e| e.to_string())?
+        };
         // Another reader can only compute the same hash from immutable bytes.
         let _ = self.1.set(hash.clone());
         Ok(hash)
@@ -302,7 +319,7 @@ mod tests {
             ("/data/state".into(), "01".into()),
         ]))
         .unwrap();
-        let expected = digest(&cbor(&serde_json::to_value(original.files()).unwrap()).unwrap());
+        let expected = coglet_fs::snapshot_tree_hash(original.files()).unwrap();
         let mut copy = original.clone();
         #[cfg(feature = "native-engine")]
         assert_eq!(original.decoded_fs().unwrap().export(), *original.files());
@@ -321,7 +338,7 @@ mod tests {
         assert_ne!(copy.tree_hash().unwrap(), before_log);
         assert_eq!(
             copy.tree_hash().unwrap(),
-            digest(&cbor(&serde_json::to_value(copy.files()).unwrap()).unwrap())
+            coglet_fs::snapshot_tree_hash(copy.files()).unwrap()
         );
         original.append_host_log(b"another\n");
         assert_ne!(original.tree_hash().unwrap(), expected);

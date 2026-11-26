@@ -25,7 +25,7 @@ fn s(p: &Path) -> &str {
     p.to_str().unwrap()
 }
 fn manifest() -> Value {
-    json!({"version":"0.1","id":format!("coglet:{}",iroh::SecretKey::from_bytes(&[9;32]).public()),
+    json!({"version":"1.0","id":format!("coglet:{}",iroh::SecretKey::from_bytes(&[9;32]).public()),
         "subscriptions":[],"required_capabilities":[],"exclusive_outputs":[],
         "budgets":{"compute_mode":"wamr-2.4.3-fast-cumulative-v1","compute":100000,"memory_pages":2,"host_bytes":1000000,"wall_time_us":2000000,"max_events":64}})
 }

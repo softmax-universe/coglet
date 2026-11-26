@@ -4,6 +4,7 @@ import copy
 import json
 from pathlib import Path
 from test_common import encode
+from build_surface02 import manifest_versions
 
 ROOT = Path(__file__).resolve().parents[2]
 COG = 'coglet:' + 'b' * 64
@@ -11,8 +12,19 @@ CID = '1' * 32
 SID = 'surface:' + 'a' * 64
 
 
+def rename(v):
+    if isinstance(v, str):
+        return v.replace('softmax.app.', 'speech.')
+    if isinstance(v, list):
+        return [rename(x) for x in v]
+    if isinstance(v, dict):
+        return {rename(k): rename(x) for k, x in v.items()}
+    return v
+
+
 def build():
     cases = []
+    versions = manifest_versions()
 
     def add(name, rule, value, valid):
         case = dict(name=name, type=rule, value=value, valid=valid)
@@ -50,10 +62,10 @@ def build():
     }
     budgets = dict(compute=1, compute_mode='fuel', memory_pages=1, wall_time_us=1,
                    max_events=1, host_bytes=1)
-    manifest = dict(version='0.1', id=COG, subscriptions=['softmax.app.view_changed'],
+    manifest = dict(version=versions['manifest'], id=COG, subscriptions=['softmax.app.view_changed'],
                     required_capabilities=['softmax.app'], exclusive_outputs=['softmax.app_control'], budgets=budgets)
     records['manifest'] = manifest
-    records['db-manifest'] = dict(manifest, version='0.2',
+    records['db-manifest'] = dict(manifest, version=versions['db-manifest'],
                                   database=dict(schema_min=0, schema_max=1, catalog_hash='0' * 64))
     for rule, record in records.items():
         add(rule + '-app-opt-in', 's02-' + rule, record, True)
@@ -61,20 +73,17 @@ def build():
         extra = dict(record, unexpected=True)
         add(rule + '-closed', 's02-' + rule, extra, False)
         # Old two-component names remain shape-valid under the opt-in rules.
-        def rename(v):
-            if isinstance(v, str):
-                return v.replace('softmax.app.', 'speech.')
-            if isinstance(v, list):
-                return [rename(x) for x in v]
-            if isinstance(v, dict):
-                return {rename(k): rename(x) for k, x in v.items()}
-            return v
         add(rule + '-two-component-compatible', 's02-' + rule, rename(record), True)
 
     for rule in ('manifest', 'db-manifest'):
         wrong = copy.deepcopy(records[rule])
-        wrong['version'] = '0.2' if rule == 'manifest' else '0.1'
+        wrong['version'] = versions['db-manifest' if rule == 'manifest' else 'manifest']
         add(rule + '-format-not-profile', 's02-' + rule, wrong, False)
+        for old_version in ('0.1', '0.2'):
+            for selected_rule in (rule, 's02-' + rule):
+                old = rename(copy.deepcopy(records[rule]))
+                old['version'] = old_version
+                add(selected_rule + '-old-version-' + old_version, selected_rule, old, False)
     for field in ('subscriptions', 'required_capabilities', 'exclusive_outputs'):
         wrong = copy.deepcopy(manifest)
         wrong[field] = ['other.app.state']

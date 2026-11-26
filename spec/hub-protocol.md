@@ -1,4 +1,10 @@
-# Router protocol — 1.0
+# Router protocol — 2.0
+
+ADR-0035 takes its fallback: merged router 1.0 retains its CBOR hash meaning.
+Its normative text and schema snapshots are retained in
+[`frozen/hub-1.0/`](frozen/hub-1.0/README.md). Router 2.0 is a distinct major;
+no negotiation of 1.0 authorizes Git-tree hash semantics.
+
 
 > **Names on this page.** The prose says *adapter* and *router* ([ADR-0020](../docs/adr/0020-vocabulary.md)). Identifiers, file names and wire names still say `surface` and `hub` until the rename lands; they mean the same things. The runtime's own dispatcher is called the *event router*.
 
@@ -29,7 +35,7 @@ bad arguments receives `invalid_argument`; a valid operation failure receives
 SHOULD send a failure before closing when it can safely identify the request.
 
 Every connection begins with `hub.enroll`, initiated by the device, with common
-`version-offer`; a success carries common `version-selection`. Only 1.0 is
+`version-offer`; a success carries common `version-selection`. Only 2.0 is
 supported here. The ALPN suffix identifies unchanged transport framing, not
 the selected message version. Common and surface 0.1 shapes remain unchanged;
 there is no negotiation fallback to the removed hub 0.1 method set. No other operation is admitted before success. The initiator
@@ -121,7 +127,7 @@ relay binding instead, and enroll uses its one-use invite/allowlist.
 
 `manage.read` and `manage.write` never imply one another or pause/step. A manage
 reader needing pause or single-step needs those additional explicit grants.
-All methods above are the entire 1.0 method set; unknown methods fail
+All methods above are the entire 2.0 method set; unknown methods fail
 `invalid_argument`, not extension fallback. Grant provisioning/revocation is
 operator configuration, not a remotely self-authorizing method.
 
@@ -220,10 +226,13 @@ pause, step or installation authority.
 
 The closed `manage-patch` record is `{? base, revision, generation, files,
 signature}`. `base` and `revision` are tree hashes (64 lowercase hex characters).
-A code tree hash is the ABI state-hash algorithm restricted to `/code`: SHA-256
-of core-deterministic CBOR of the absolute `/code/...` path-to-lowercase-hex map.
+A code tree hash is the ABI 1.0 Git SHA-256 tree id applied to the snapshot
+restricted to `/code`. The root holds a `code` tree entry, not just its subtree
+id; empty code has the empty tree id (ADR-0035).
 It is not the full ABI snapshot hash; `/data` and `/logs` are excluded. Empty
-code trees use the hash of the empty map. No new tree serialization is introduced.
+code trees use the Git SHA-256 empty tree id. The snapshot map remains only the
+wire representation. Paths with a case-insensitive `.git` component and
+file/directory collisions are rejected before hashing.
 
 `files` contains 1..4096 whole-file changes, sorted strictly by UTF-8 path bytes,
 with unique paths. A `FileChange` is `{path, ? bytes}`; `bytes` is **lowercase
@@ -368,7 +377,7 @@ qualification, production admission under that policy fails closed.
 `build/provenance.cbor` is a core-deterministic CBOR `hub-build-record`, included
 in the signed resulting code tree. Its closed fields are:
 
-- `version`: `"1.0"`;
+- `version`: `"2.0"`;
 - `source_tree`: code tree hash of the pinned source before build;
 - `recipe_sha256`: SHA-256 of the retained build recipe/toolchain lock bytes;
 - `policy_sha256`: SHA-256 of the retained policy document/parameters bytes;
@@ -486,7 +495,7 @@ symlink resolution, inbox or runtime cursor/
 receipt/audit internals. Permission/path limits and expected hash are checked
 again at application. Failure is atomic `conflict`/`permission_denied`. There is
 no arbitrary command execution or `/code` write via manage. Binary manage writes
-are not in 1.0. Reads use similarly canonical `/data` or `/logs` paths (and
+are not in 2.0. Reads use similarly canonical `/data` or `/logs` paths (and
 `@step/<decimal>` for recorded inputs/outputs); grant scopes may narrow them.
 
 A mutation result is a receipt `{operation_id, state, step, error}`. State is
@@ -561,18 +570,18 @@ Run `python3 -m unittest discover -s spec/tests -v` with
 `test_hub.py` validates every request/result/transfer/signing shape against both
 schemas, exact golden CBOR, framing negatives and test-key signatures.
 The legacy 0.1 `conformance/hub/` cases and runtime implementations are migrated
-separately, not accepted as 1.0 coverage by these spec-only tests. The filesystem
+separately, not accepted as 2.0 coverage by these spec-only tests. The filesystem
 patch, signed-negative and fresh-process tail vectors here are specification
 oracles, not proof that a router/runtime or mock implements the new wire revision.
 Snapshot hashes and persisted inbox/journal encoding are owned by [the ABI](abi.md):
-SHA-256 of core deterministic CBOR of the snapshot path-to-hex map, including
-`/code`, `/data`, `/logs`, excluding journal storage. `manage.read.snapshot_hash`
+the Git SHA-256 tree id of the snapshot including `/code`, `/data`, `/logs`,
+excluding journal storage; see ABI 1.0 and ADR-0035. `manage.read.snapshot_hash`
 and `manage.write.expected_hash` use that definition. No alternate hash or inbox
 format is standardized here.
 
 ## Compatibility alias table (temporary)
 
-Hub 1.0 peers MUST normalize the following method names before canonical schema
+Hub 2.0 peers MUST normalize the following method names before canonical schema
 validation, grant lookup, operation-intent digesting, audit and receipt storage.
 Provisioned grants use that same canonicalization; aliases confer no additional
 authority. Reject an alias at or after **2027-02-25T00:00:00Z**, using trusted

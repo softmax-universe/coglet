@@ -100,19 +100,33 @@ class WorkflowBinding(unittest.TestCase):
         selection = jobs["source"]
         self.assertIn("          ref: ${{ github.sha }}\n          fetch-depth: 0", selection)
         self.assertIn("run: python3 scripts/ci/rust_source.py", selection)
-        for name in ("transform-native", "rust"):
+        needs = {
+            "transform-native": "source",
+            "transform-publication": "source",
+            "transform-runtime-arm": "source, transform-publication",
+            "rust-core": "source, transform-native, transform-publication, transform-runtime-arm",
+            "factory": "source",
+        }
+        for name, dependencies in needs.items():
             job = jobs[name]
-            self.assertRegex(job, r"^    needs: \[source(?:, transform-native)?\]", )
+            self.assertTrue(job.startswith(f"    needs: [{dependencies}]\n"))
             self.assertEqual(job.count("uses: actions/checkout@v4"), 1)
             self.assertIn("          ref: ${{ needs.source.outputs.sha }}", job)
         native = jobs["transform-native"]
         self.assertNotRegex(native, r"(?m)^\s+if:")
         self.assertEqual(re.findall(r"^            arch: (\w+)$", native, re.M), ["x86_64", "aarch64"])
         self.assertIn("check.py --native-leg", native)
-        aggregate = jobs["rust"]
+        aggregate = jobs["rust-core"]
         self.assertIn("    if: always()", aggregate)
         self.assertIn("test '${{ needs.source.result }}' = 'success'", aggregate)
         self.assertIn("test '${{ needs.transform-native.result }}' = 'success'", aggregate)
+        for name in ("transform-publication", "transform-runtime-arm"):
+            self.assertNotRegex(jobs[name], r"(?m)^\s+if:")
+            self.assertIn(f"test '${{{{ needs.{name}.result }}}}' = 'success'", aggregate)
+        self.assertIn("check_r3.py --publication", jobs["transform-publication"])
+        self.assertIn("check_r3.py --runtime", jobs["transform-publication"])
+        self.assertIn("check_r3.py --runtime", jobs["transform-runtime-arm"])
+        self.assertIn("check_r3.py --aggregate", aggregate)
         self.assertLess(aggregate.index("needs.source.result"), aggregate.index("uses: actions/checkout"))
         self.assertIn("--aggregate-test", aggregate)
         self.assertIn("  merge_group:", workflow)

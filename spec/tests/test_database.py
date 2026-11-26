@@ -104,7 +104,7 @@ def step_contract(request, observed):
 
 def recovery_replay_contract(record, execution):
     """Archive-only case oracle, not guest execution or physical recovery."""
-    if record['version']!='0.2' or record['status']!='aborted' or record['failure']['kind']!='db_recovery_abort':
+    if record['version']!='1.1' or record['status']!='aborted' or record['failure']['kind']!='db_recovery_abort':
         raise ValueError('not a recovery abort')
     if execution['guest_return']!=0 or execution['calls']!=record['calls']:
         raise ValueError('replay divergence')

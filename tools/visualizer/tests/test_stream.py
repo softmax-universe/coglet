@@ -25,9 +25,21 @@ def test_partial_append_is_not_published(tmp_path):
 
 
 def record(step=0):
-    return {"version": "0.1", "coglet": "coglet:" + "1" * 64, "trace_id": "5" * 32,
+    return {"version": "1.0", "coglet": "coglet:" + "1" * 64, "trace_id": "5" * 32,
             "step": step, "logical_time": step, "status": "committed", "output_hash": "a" * 64,
             "record_hash": f"{step:064x}", "events": [], "output_files": {"/data/count": "30"}}
+
+
+@pytest.mark.parametrize('version', ['1.0', '1.1'])
+def test_current_record_versions_are_projected(version):
+    value = {**record(), 'version': version}
+    assert load().project(value)['version'] == version
+
+
+@pytest.mark.parametrize('version', ['0.1', '0.2', '1.2', '2.0', '', None, 1, True, [], {}])
+def test_record_versions_fail_closed(version):
+    with pytest.raises(ValueError, match='version'):
+        load().project({**record(), 'version': version})
 
 
 def test_projection_is_bounded_and_never_exports_code(tmp_path):

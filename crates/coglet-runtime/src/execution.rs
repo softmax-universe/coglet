@@ -1,4 +1,10 @@
 use crate::{DurableStore, Router, TrustedExtensionCatalog};
+#[path = "hash_upgrade.rs"]
+pub(crate) mod hash_upgrade;
+#[cfg(test)]
+#[path = "hash_upgrade_tests.rs"]
+mod hash_upgrade_tests;
+use hash_upgrade::{database_version, historical_scope, legacy_version};
 #[path = "supervisor_reads.rs"]
 mod supervisor_reads;
 use crate::{EffectLedger, Result, Snapshot, StepHost, cbor, digest, profile_value, validate};
@@ -222,6 +228,19 @@ impl RuntimeService {
         catalog: &TrustedExtensionCatalog,
         configured_reads: &BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
     ) -> Result<ServiceState> {
+        let historical = legacy_version(&saved["runtime"]["manifest"]["version"]);
+        historical_scope(historical, || {
+            Self::restore_inner(store, configured, saved, catalog, configured_reads)
+        })
+    }
+
+    fn restore_inner(
+        store: &DurableStore,
+        configured: &Runtime,
+        saved: &Value,
+        catalog: &TrustedExtensionCatalog,
+        configured_reads: &BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
+    ) -> Result<ServiceState> {
         let mut state: ServiceState =
             serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
         if state.catalog_pin.as_deref() != catalog.pin() {
@@ -249,7 +268,23 @@ impl RuntimeService {
         state.router.validate_recovered()?;
         #[cfg(feature = "device")]
         state.receiver.validate()?;
-        let offset = Self::validate_segments(&state, &configured.initial_setup, store.records())?;
+        // Only the manifest version may differ from the configured root. All
+        // other root bytes, code pins and pending-state inputs remain exact.
+        let mut root = configured.initial_setup.clone();
+        let stored_root = state
+            .completed_segments
+            .first()
+            .map(|s| &s.initial_setup)
+            .unwrap_or(&state.runtime.initial_setup);
+        if legacy_version(&stored_root["manifest"]["version"]) {
+            if hash_upgrade::current_version(&stored_root["manifest"]["version"])?
+                != root["manifest"]["version"]
+            {
+                return Err("recovery ABI version mapping differs".into());
+            }
+            root["manifest"]["version"] = stored_root["manifest"]["version"].clone();
+        }
+        let offset = Self::validate_segments(&state, &root, store.records())?;
         state.runtime.records = store.records()[offset..].to_vec();
         let code_files = |runtime: &Runtime| {
             runtime
@@ -358,13 +393,15 @@ impl RuntimeService {
         if crate::ContractProfile::from_setup(setup)? != catalog.contract_profile() {
             return Err("setup and catalog contract profiles differ".into());
         }
-        let mut store = DurableStore::open(path)?;
+        let store = DurableStore::open(path)?;
         let fresh = store.state().is_none();
         let configured = Runtime::from_fixture(setup)?;
         let configured_reads = Self::configured_reads(setup, &catalog)?;
         let mut state: ServiceState = if let Some(saved) = store.state() {
-            let saved_state: ServiceState =
-                serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            let saved_state: ServiceState = historical_scope(
+                legacy_version(&saved["runtime"]["manifest"]["version"]),
+                || serde_json::from_value(saved.clone()).map_err(|e| e.to_string()),
+            )?;
             if let Some(managed) = &saved_state.managed {
                 managed.validate()?;
                 if install.is_some_and(|(identity, _, _)| managed.identity() != identity) {
@@ -442,26 +479,24 @@ impl RuntimeService {
         {
             return Err("durable dispatch call order mismatch".into());
         }
+        let mut normalized = false;
         if state.dispatch_order != order {
             state.dispatch_order = order;
-            store.commit(
-                &serde_json::to_value(&state).map_err(|e| e.to_string())?,
-                None,
-            )?;
+            normalized = true;
         }
         // Restart has no live authenticated leases. Keep source highwaters but
         // never deliver queued old-owner observations into a fresh connection.
         if !state.private_events.is_empty() || !state.heard_pending.is_empty() {
             state.heard_pending.clear();
             let revoked = std::mem::take(&mut state.private_events);
-            let attempted = Self::attempted_ordinals(&state)?;
+            let attempted =
+                historical_scope(legacy_version(&state.runtime.manifest["version"]), || {
+                    Self::attempted_ordinals(&state)
+                })?;
             state.router.retain_ordinals(|ordinal| {
                 !revoked.contains_key(&ordinal) || attempted.contains(&ordinal)
             });
-            store.commit(
-                &serde_json::to_value(&state).map_err(|e| e.to_string())?,
-                None,
-            )?;
+            normalized = true;
         }
         let mut service = Self {
             policy_instance: {
@@ -486,6 +521,15 @@ impl RuntimeService {
             #[cfg(feature = "native-engine")]
             native: None,
         };
+        let upgrading = legacy_version(&service.state.runtime.manifest["version"])
+            && service.state.runtime.unresolved_attempt.is_none();
+        service.upgrade_hash_if_ready()?;
+        if normalized && !upgrading {
+            service.store.commit(
+                &serde_json::to_value(&service.state).map_err(|e| e.to_string())?,
+                None,
+            )?;
+        }
         if let Some((identity, operation_id, scope)) = install {
             gate()?;
             service.managed_install_scoped(identity, operation_id, scope)?;
@@ -619,7 +663,12 @@ impl RuntimeService {
     }
 
     /// Host-side consequences of a recorded step, shared by all commit paths.
-    fn consume_attempt(next: &mut ServiceState, events: &[Value], result: &Value) -> Result<()> {
+    fn consume_attempt(
+        next: &mut ServiceState,
+        events: &[Value],
+        result: &Value,
+        _before: &Snapshot,
+    ) -> Result<()> {
         // Candidate predates the durable begin frame. Publish both boundaries
         // atomically with the actual outcome, not with successful engine entry.
         if let Some(managed) = &mut next.managed {
@@ -637,7 +686,7 @@ impl RuntimeService {
         next.private_events
             .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
         #[cfg(feature = "device")]
-        Self::receiver_finish_step(next, result)?;
+        Self::receiver_finish_step(next, result, _before)?;
         Ok(())
     }
 
@@ -672,7 +721,7 @@ impl RuntimeService {
             );
         }
         let result = result?;
-        Self::consume_attempt(&mut next, &events, &result)?;
+        Self::consume_attempt(&mut next, &events, &result, &self.state.runtime.files)?;
         self.store.commit(
             &serde_json::to_value(&next).map_err(|e| e.to_string())?,
             Some(&result["journal"]),
@@ -887,8 +936,20 @@ pub struct Runtime {
 }
 impl Runtime {
     pub fn from_fixture(setup: &Value) -> Result<Self> {
+        // Current deployments pin ABI 1.0 or database ABI 1.1. The private
+        // historical reader alone can reconstruct the corresponding old pins.
+        // Surface-0.1 keeps ADR-0035 version routing; the selected surface-0.2
+        // profile uses its own manifest rules.
         let contract_profile = crate::ContractProfile::from_setup(setup)?;
-        contract_profile.validate_manifest(&setup["manifest"])?;
+        if contract_profile == crate::ContractProfile::Surface01 {
+            if database_version(&setup["manifest"]["version"]) {
+                validate("database::db-manifest", &setup["manifest"])?;
+            } else {
+                validate("manifest", &setup["manifest"])?;
+            }
+        } else {
+            contract_profile.validate_manifest(&setup["manifest"])?;
+        }
         let files = Snapshot::new(
             serde_json::from_value(setup["initial_files"].clone()).map_err(|e| e.to_string())?,
         )?;
@@ -1030,6 +1091,9 @@ impl Runtime {
     /// Compute an attempted step. No dispatch occurs here. Integration with the
     /// durable store must commit returned state + record before external effects.
     pub fn step(&mut self, inputs: &Value, engine: &mut impl Engine) -> Result<Value> {
+        if legacy_version(&self.manifest["version"]) && !hash_upgrade::historical() {
+            return Err("historical runtime requires hash upgrade before guest execution".into());
+        }
         if self.unresolved_attempt.is_some() {
             return Err(
                 "unresolved engine attempt; authoritative outcome recovery required".into(),
@@ -1164,28 +1228,36 @@ impl Runtime {
         };
         // A recorded ABI 0.2 record re-enters here only to be re-derived from
         // its ordinary host calls (offline/durable reconstruction).
-        let recorded_database = inputs.get("version") == Some(&json!("0.2"));
+        let recorded_database = database_version(&inputs["version"]);
         let observation = if recorded_database {
             None
         } else {
             engine.database_observation(committed)?
         };
+        let raw_code_hash = || {
+            Ok::<_, String>(digest(&crate::filesystem::decode_hex(
+                self.files
+                    .files()
+                    .get("/code/bin/step.wasm")
+                    .ok_or("missing /code/bin/step.wasm")?,
+            )?))
+        };
         #[cfg(feature = "native-engine")]
-        let code_hash = self
-            .files
-            .decoded_fs()?
-            .blob_hash("/code/bin/step.wasm")
-            .map_err(|e| e.to_string())?
-            .to_owned();
-        #[cfg(not(feature = "native-engine"))]
-        let code_hash = digest(&crate::filesystem::decode_hex(
+        let code_hash = if legacy_version(&self.manifest["version"]) {
+            // Historical snapshots may contain now-forbidden .git components;
+            // no current filesystem mount is needed for offline reconstruction.
+            raw_code_hash()?
+        } else {
             self.files
-                .files()
-                .get("/code/bin/step.wasm")
-                .ok_or("missing /code/bin/step.wasm")?,
-        )?);
+                .decoded_fs()?
+                .blob_hash("/code/bin/step.wasm")
+                .map_err(|e| e.to_string())?
+                .to_owned()
+        };
+        #[cfg(not(feature = "native-engine"))]
+        let code_hash = raw_code_hash()?;
         let mut record = json!({
-            "version":if observation.is_some() { "0.2" } else { "0.1" },
+            "version":if observation.is_some() { "1.1" } else { if legacy_version(&self.manifest["version"]) { "0.1" } else { "1.0" } },
             "trace_id":inputs["trace_id"], "coglet":inputs["coglet"],
             "step":self.step,"logical_time":time,"seed":inputs["seed"],"previous":self.previous,
             "code_hash":code_hash,
@@ -1230,10 +1302,14 @@ impl Runtime {
                 coglet_types::Value::Text("record_hash".into()),
                 coglet_types::Value::Text(hash),
             ));
-            let raw = crate::profile_codec::encode(
-                self.contract_profile.rule("database::db-step-record"),
-                &native,
-            )?;
+            let raw = if self.contract_profile == crate::ContractProfile::Surface01 {
+                hash_upgrade::encode_database(&native)?
+            } else {
+                crate::profile_codec::encode(
+                    self.contract_profile.rule("database::db-step-record"),
+                    &native,
+                )?
+            };
             record = crate::journal::database_projection_with_profile(&raw, self.contract_profile)?;
             raw_record = Some(raw);
         } else if recorded_database {
@@ -1242,7 +1318,7 @@ impl Runtime {
             // projection before it is adopted as this runtime's record.
             let recorded = inputs;
             let mut derived = record.clone();
-            derived["version"] = json!("0.2");
+            derived["version"] = inputs["version"].clone();
             for key in [
                 "version",
                 "trace_id",
@@ -1309,7 +1385,7 @@ impl Runtime {
         self.next_source_seq = next_source_seq;
         self.pending_llm = pending_llm;
         self.time = time;
-        if record["version"] == "0.2" {
+        if database_version(&record["version"]) {
             self.db_revision = Some(record["db_after"].as_u64().ok_or("missing DB revision")?);
         }
         self.step = self.step.checked_add(1).ok_or("step counter exhausted")?;
@@ -1498,8 +1574,8 @@ impl Runtime {
         }
         let mut next = self.clone();
         next.apply_boundary_changes(changes)?;
-        let database = self.manifest["version"] == "0.2";
-        let mut record = json!({"version":if database { "0.2" } else { "0.1" },"trace_id":trace_id,"coglet":self.manifest["id"],
+        let database = database_version(&self.manifest["version"]);
+        let mut record = json!({"version":self.manifest["version"],"trace_id":trace_id,"coglet":self.manifest["id"],
             "previous":self.previous,"logical_time":logical_time,"boundary":changes,
             "before_hash":self.files.tree_hash()?,"output_hash":next.files.tree_hash()?,"output_files":next.files.files()});
         record["record_hash"] = json!(digest(&cbor(&record)?));

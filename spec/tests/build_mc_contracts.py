@@ -72,7 +72,7 @@ def heard_vectors():
             rec['record_hash'] = record_hash(rec)
             trace['records'] = [rec]
         elif changes:
-            rec = dict(version='0.1',trace_id=trace['trace_id'],coglet=trace['coglet'],logical_time=20,
+            rec = dict(version='1.0',trace_id=trace['trace_id'],coglet=trace['coglet'],logical_time=20,
                        previous=None,before_hash=trace['initial_hash'],output_hash=digest(files),
                        boundary=changes,output_files=files)
             rec['record_hash'] = record_hash(rec)

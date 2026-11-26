@@ -18,6 +18,7 @@ pub use policy_local::{PrincipalBinding, ProducerProfile, StopPlan};
 #[cfg(feature = "native-engine")]
 pub mod database;
 mod execution;
+use execution::hash_upgrade;
 pub mod ffi;
 mod filesystem;
 mod heard;
@@ -173,7 +174,24 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
 mod profile_codec;
 
 pub fn validate(rule: &str, value: &Value) -> Result<()> {
-    profile_codec::validate(rule, &profile_value(value, 0)?)
+    let abi = matches!(
+        rule,
+        "manifest"
+            | "trace"
+            | "step-record"
+            | "boundary-record"
+            | "abi::manifest"
+            | "abi::trace"
+            | "abi::step-record"
+            | "abi::boundary-record"
+    ) || rule.starts_with("database::");
+    if abi && !(hash_upgrade::historical() && hash_upgrade::legacy_version(&value["version"])) {
+        coglet_types_current::decode(rule, &cbor(value)?).map(|_| ())
+    } else {
+        // Selected surface02 roots route to the current types; every other
+        // legacy/historical or frozen hub rule stays on the pinned hub0 types.
+        profile_codec::validate(rule, &profile_value(value, 0)?)
+    }
 }
 
 #[cfg(test)]

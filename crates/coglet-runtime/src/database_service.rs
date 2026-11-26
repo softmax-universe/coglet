@@ -190,7 +190,7 @@ struct WalJournal<'s, 'g> {
 impl WalJournal<'_, '_> {
     fn check(&mut self, kind: Publication, id: &StepId) -> Result<()> {
         match &mut self.gate {
-            Some(gate) => gate(kind, id),
+            Some(gate) => historical_scope(false, || gate(kind, id)),
             None => Ok(()),
         }
     }
@@ -237,10 +237,15 @@ impl Journal for WalJournal<'_, '_> {
         let saved: Value = coglet_types::decode_profile(artifacts)?
             .deserialized()
             .map_err(|e| e.to_string())?;
-        let state: ServiceState =
-            serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+        // Snapshot's hash mode is deliberately not serialized. Rehydrate it
+        // against the validated prepared record's ABI, not an ambient caller's
+        // mode: old PREPARED artifacts carry CBOR snapshot hashes, never Git ids.
+        let state: ServiceState = historical_scope(legacy_version(&projection["version"]), || {
+            serde_json::from_value(saved).map_err(|e| e.to_string())
+        })?;
         let runtime = &state.runtime;
-        if runtime.unresolved_attempt.is_some()
+        if legacy_version(&runtime.manifest["version"]) != legacy_version(&projection["version"])
+            || runtime.unresolved_attempt.is_some()
             || runtime.previous != projection["record_hash"]
             || json!(runtime.step) != json!(projection["step"].as_u64().ok_or("step")? + 1)
             || json!(runtime.time) != projection["logical_time"]
@@ -441,7 +446,7 @@ impl RuntimeService {
             );
         }
         let result = result?;
-        Self::consume_attempt(&mut next, &events, &result)?;
+        Self::consume_attempt(&mut next, &events, &result, &self.state.runtime.files)?;
         let state = serde_json::to_value(&next).map_err(|e| e.to_string())?;
         let Some(raw) = result["record_raw"].as_str() else {
             // No database call happened: ordinary ABI commit of a 0.1 record.
@@ -490,7 +495,15 @@ impl RuntimeService {
                 store: &mut self.store,
                 gate,
             };
-            db.recover_with_profile(&mut journal, database_profile(self.state.contract_profile))
+            historical_scope(
+                legacy_version(&self.state.runtime.manifest["version"]),
+                || {
+                    db.recover_with_profile(
+                        &mut journal,
+                        database_profile(self.state.contract_profile),
+                    )
+                },
+            )
         };
         if self.store.is_healthy() {
             let saved = self.store.state().ok_or("missing WAL state")?.clone();
@@ -501,6 +514,9 @@ impl RuntimeService {
                 &self.catalog,
                 &self.state.supervisor_reads,
             )?;
+        }
+        if result.is_ok() {
+            self.upgrade_hash_if_ready()?;
         }
         result
     }
@@ -577,7 +593,8 @@ mod tests {
             entered: None,
         };
         let result = next.runtime.step(&inputs, &mut attempt).unwrap();
-        RuntimeService::consume_attempt(&mut next, &events, &result).unwrap();
+        RuntimeService::consume_attempt(&mut next, &events, &result, &service.state.runtime.files)
+            .unwrap();
         let raw = hex::decode(result["record_raw"].as_str().unwrap()).unwrap();
         let artifacts = cbor(&serde_json::to_value(next).unwrap()).unwrap();
         let id = StepId {

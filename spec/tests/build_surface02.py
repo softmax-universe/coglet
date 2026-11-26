@@ -32,6 +32,13 @@ def sources():
     return definitions, cddl
 
 
+def manifest_versions():
+    """Naming profiles inherit ABI/DB formats; they never version the ABI."""
+    definitions, _ = sources()
+    return {name: definitions[family, name]['properties']['version']['const']
+            for family, name in (('abi', 'manifest'), ('database', 'db-manifest'))}
+
+
 def references(value, family):
     if isinstance(value, dict):
         if '$ref' in value:

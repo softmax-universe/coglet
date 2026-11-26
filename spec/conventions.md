@@ -12,7 +12,7 @@ rule is the standalone union of common messages.
 
 ## Encoding
 
-Wire and hashed values MUST be RFC 8949 §4.2.1 **core deterministic** CBOR:
+Wire values and values hashed as CBOR MUST be RFC 8949 §4.2.1 **core deterministic** CBOR:
 shortest integer/length encodings, definite lengths, and map keys sorted by
 bytewise lexicographic order of their deterministic encodings. This is NOT
 §4.2.3 length-first ordering (some libraries call that mode `canonical`).
@@ -37,6 +37,13 @@ Records at the negotiated version reject unknown fields; payload/args/details
 are open text-key maps but remain restricted to profile values.
 
 ## Names and identities
+
+Filesystem state hashes are the Git SHA-256 tree object ids specified in
+[the ABI](abi.md#journal-and-trace-one-format), not hashes of CBOR snapshot maps
+([ADR-0035](../docs/adr/0035-state-hash-git-tree-id.md)). Files use mode `100644`,
+directories `40000`, Git entry ordering and raw 32-byte ids inside trees; ids
+elsewhere are 64 lowercase hex. The empty snapshot is the SHA-256 empty tree.
+Record, code, manifest and other non-filesystem hashes retain their definitions.
 
 All grammars are ASCII and case-sensitive; regexes match the whole string.
 
@@ -127,7 +134,8 @@ not valid at 0.1; additions require a negotiated minor version.
 
 A spec version is `MAJOR.MINOR`, each a decimal integer 0..9999 without leading
 zeros (except zero). This document defines **0.1** common shapes. The router
-protocol separately negotiates **1.0** under ADR-0031; other protocol specs define
+protocol separately negotiates **2.0** under ADR-0031 and ADR-0035; frozen router
+1.0 retains its original CBOR hash meaning. Other protocol specs define
 their own supported versions. There is no implicit 0.x compatibility exception.
 Major changes may break compatibility. Minor changes
 MUST be additive only: no removals, changed meanings, stricter bounds or new

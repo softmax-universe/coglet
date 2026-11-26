@@ -1,0 +1,472 @@
+[
+  {
+    "name": "manifest-operation-and-independent-resource",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [],
+            "required_capabilities": [
+              "speech.speak_chunk"
+            ],
+            "exclusive_outputs": [
+              "audio.speaker"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "operations": [
+              "speech.speak_chunk"
+            ],
+            "resources": [
+              "audio.speaker"
+            ]
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": true,
+          "reason": null,
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  },
+  {
+    "name": "manifest-entry-is-not-operation",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [],
+            "required_capabilities": [
+              "speech.output"
+            ],
+            "exclusive_outputs": [
+              "audio.speaker"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "operations": [
+              "speech.speak_chunk"
+            ],
+            "resources": [
+              "audio.speaker"
+            ]
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "reason": "unknown operation",
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  },
+  {
+    "name": "manifest-resource-is-not-operation",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [],
+            "required_capabilities": [
+              "audio.speaker"
+            ],
+            "exclusive_outputs": [
+              "audio.speaker"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "operations": [
+              "speech.speak_chunk"
+            ],
+            "resources": [
+              "audio.speaker"
+            ]
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "reason": "unknown operation",
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  },
+  {
+    "name": "manifest-unknown-resource",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [],
+            "required_capabilities": [
+              "speech.speak_chunk"
+            ],
+            "exclusive_outputs": [
+              "audio.unknown"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "operations": [
+              "speech.speak_chunk"
+            ],
+            "resources": [
+              "audio.speaker"
+            ]
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "reason": "unknown resource",
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  },
+  {
+    "name": "manifest-lease-does-not-grant-operation",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [],
+            "required_capabilities": [
+              "speech.speak_chunk"
+            ],
+            "exclusive_outputs": [
+              "audio.speaker"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "operations": [],
+            "resources": [
+              "audio.speaker"
+            ]
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "reason": "missing operation grant",
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  },
+  {
+    "name": "manifest-operation-does-not-grant-lease",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [],
+            "required_capabilities": [
+              "speech.speak_chunk"
+            ],
+            "exclusive_outputs": [
+              "audio.speaker"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "operations": [
+              "speech.speak_chunk"
+            ],
+            "resources": []
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "reason": "missing resource lease",
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  },
+  {
+    "name": "manifest-action-is-not-event",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [
+              "speech.speak_chunk"
+            ],
+            "required_capabilities": [
+              "speech.speak_chunk"
+            ],
+            "exclusive_outputs": [
+              "audio.speaker"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "operations": [
+              "speech.speak_chunk"
+            ],
+            "resources": [
+              "audio.speaker"
+            ]
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "reason": "unknown event",
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  },
+  {
+    "name": "manifest-another-owner",
+    "steps": [
+      {
+        "send": {
+          "operation": "abi.manifest_admit",
+          "manifest": {
+            "version": "1.0",
+            "id": "coglet:1111111111111111111111111111111111111111111111111111111111111111",
+            "subscriptions": [],
+            "required_capabilities": [
+              "speech.speak_chunk"
+            ],
+            "exclusive_outputs": [
+              "audio.speaker"
+            ],
+            "budgets": {
+              "compute": 10000,
+              "compute_mode": "fixture.interpreter",
+              "memory_pages": 2,
+              "wall_time_us": 100000,
+              "max_events": 16,
+              "host_bytes": 65536
+            }
+          },
+          "catalog": [
+            {
+              "name": "speech.output",
+              "events": [],
+              "reads": [],
+              "actions": [
+                "speech.speak_chunk"
+              ],
+              "exclusive": [
+                "audio.speaker"
+              ]
+            }
+          ],
+          "grant": {
+            "coglet": "coglet:2222222222222222222222222222222222222222222222222222222222222222",
+            "operations": [
+              "speech.speak_chunk"
+            ],
+            "resources": [
+              "audio.speaker"
+            ]
+          }
+        }
+      },
+      {
+        "expect": {
+          "admitted": false,
+          "reason": "missing operation grant",
+          "instantiated": false
+        },
+        "within_ms": 200
+      }
+    ]
+  }
+]

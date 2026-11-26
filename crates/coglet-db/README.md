@@ -61,7 +61,7 @@ Wasm probe are retained, not production runtime qualification.
 ## Milestone B: durable full-step coordinator and crash recovery
 
 `Unit::complete(&Decision, &mut dyn Journal)` is the only production commit path.
-It validates the prepared ABI 0.2 `db-step-record` (closed schema, canonical
+It validates the prepared ABI 1.1 `db-step-record` (closed schema, canonical
 bytes, hash, revision/schema/catalog/owner against the admitted unit), then:
 durably prepares the decision (fsynced file beside the owner DB) -> one SQLite
 commit of application writes, revision, cursors and the host-only
@@ -71,7 +71,7 @@ Steps with no DB calls use ordinary ABI commit and are refused here.
 
 `Database::recover(&mut dyn Journal)` takes no guest runner. Marker present:
 roll forward the exact prepared decision. Marker absent: authoritative abort via
-`recovery_abort_record`, the ABI 0.2 `db_recovery_abort` overlay (retains calls,
+`recovery_abort_record`, the ABI 1.1 `db_recovery_abort` overlay (retains calls,
 events and boundary; drops files/effects; `db_after=db_before`; new record hash),
 published before the preparation is deleted. An unreadable DB or journal is a
 `held:` error, never an inferred abort. A missing preparation with an unpublished
@@ -79,6 +79,14 @@ marker, hash/identity mismatch, torn preparation or duplicate preparations write
 a durable `corruption.halt` and return `corruption:`; admission, recovery and
 dispatch then refuse with `halted:` until an operator repairs the owner. Admission
 and `dispatch_fence` also refuse while a prior decision is unreconciled.
+
+ADR-0035: new completions and the public abort helper accept only database 1.1.
+Private recovery and archive alignment also accept durable historical 0.2
+decisions after frozen closed-schema, canonical-byte and record-hash validation.
+Committed recovery publishes the original bytes, and a historical abort retains
+the old version/filesystem hashes and references the original prepared hash.
+Neither path translates old records or admits new 0.2 commits. The catalog digest
+version remains 0.2: it is not a filesystem state-hash format.
 
 Tests kill real child processes (`process::exit(137)` at each crash point, no
 destructors) and reopen the same SQLite files:
