@@ -14,6 +14,7 @@ from coglet_surface.codec import decode, decode_profile, encode_profile
 from coglet_surface.transport import frame
 from coglet_sim.surface import WorldSurface, runtime_binding
 from coglet_sim.worlds import Cartpole, Gridbot
+from coglet_sim._native_diagnostics import retain_failure
 
 ROOT = Path(__file__).resolve().parents[2]
 S = 'surface:' + 'a' * 64
@@ -94,6 +95,12 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
         received_actions = {}
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         child = None
+        started = time.monotonic()
+        phase = 'startup'
+        native_failure = None
+        diagnostic = {}
+        initialized = barrier_sent = False
+        last_sent_at = last_received_at = last_message = None
         try:
             child = subprocess.Popen([str(tools.daemon), '--surface-service-socket',
                 str(path / 'sock/control'), str(path / 'binding.json'), str(os.getuid()),
@@ -111,12 +118,16 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
             assert pid == child.pid and uid == os.getuid()
             sock.settimeout(5)
             sock.sendall(frame(surface.open()))
+            last_sent_at = time.monotonic() - started
             initialized = False
             barrier_sent = False
             deadline = time.monotonic() + 90
+            phase = 'loop'
             while time.monotonic() < deadline:
                 raw = exact(sock, int.from_bytes(exact(sock, 4), 'big'))
+                last_received_at = time.monotonic() - started
                 msg = decode(WIRE, raw)
+                last_message = msg['type']
                 before_steps = world.steps
                 surface.receive(raw)
                 if surface.state == 'ready' and not initialized:
@@ -137,21 +148,26 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
                 surface.tick()
                 for out in surface.drain():
                     sock.sendall(frame(out))
+                    last_sent_at = time.monotonic() - started
                 if world.done and not barrier_sent:
                     sock.sendall(frame(surface._message('health', dict(state='ready',
                         clock=surface.now(), pending=0, correlation_id='9'*32))))
                     barrier_sent = True
+                    last_sent_at = time.monotonic() - started
                 elif (barrier_sent and msg['type'] == 'health'
                       and msg['body']['correlation_id'] == '9'*32):
                     break
             assert world.done, 'episode failed to terminate'
+            phase = 'post-loop-terminate'
             sock.close()
             child.terminate()
             child.wait(timeout=5)
             proof = tmp_path / 'proof.json'
+            phase = 'proof'
             subprocess.run([str(tools.proof), str(path/'setup.json'), str(path/'state.wal'),
                             str(proof)], check=True, timeout=90)
             report = json.loads(proof.read_text())
+            phase = 'replay'
             assert report['independent_guest_reexecution']
             assert report['changed_seed_rejected'] and report['changed_guest_rejected']
             emitted = [a['args']['direction'] for r in report['records'] for a in r['actions']]
@@ -180,10 +196,37 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
                         rewritten_sha256=sha256(wasm).hexdigest(), action_count=len(actions),
                         world_hashes=snapshots, runtime_state_hashes=report['state_hashes'],
                         independent_guest_reexecution=True, passed=failure is None, failure=failure)
+        except Exception as error:
+            native_failure = error
+            # Diagnostic failures never replace the original native exception.
+            try:
+                diagnostic = dict(phase=phase, elapsed=time.monotonic() - started,
+                    exception=type(error).__name__, errno=getattr(error, 'errno', None),
+                    daemon_pid=child.pid if child else None,
+                    observed_returncode=child.poll() if child else None,
+                    status_observation='at exception; may race daemon error logging',
+                    actions=len(actions), steps=world.steps, surface_state=surface.state,
+                    initialized=initialized, barrier_sent=barrier_sent,
+                    last_sent_at=last_sent_at, last_received_at=last_received_at,
+                    last_message=last_message, deadline_remaining=deadline-time.monotonic())
+                retain_failure(error, tmp_path, diagnostic)
+            except Exception:
+                pass
+            raise
         finally:
             sock.close()
             surface.close()
+            supervisor_killed = False
             if child is not None and child.poll() is None:
+                supervisor_killed = True
                 child.kill()
                 child.wait(timeout=5)
             stderr.close()
+            if native_failure is not None:
+                try:
+                    diagnostic['cleanup'] = dict(supervisor_killed=supervisor_killed,
+                        returncode=child.returncode if child else None,
+                        status_observation='after existing supervisor cleanup')
+                    retain_failure(native_failure, tmp_path, diagnostic)
+                except Exception:
+                    pass
