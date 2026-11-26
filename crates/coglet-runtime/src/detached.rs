@@ -5,6 +5,9 @@ use super::*;
 use std::sync::{Arc, Mutex};
 
 type EntryGate<'a> = dyn Fn(&dyn Fn() -> Result<()>) -> Result<()> + 'a;
+#[cfg(test)]
+#[path = "detached_replay_tests.rs"]
+mod tests;
 type LiveGate<'a> = dyn Fn(&mut RuntimeService, &Value) -> Result<()> + 'a;
 
 struct DetachedBasis {
@@ -129,7 +132,7 @@ impl RuntimeService {
         // A failed admission has no fence; an unknown entered outcome retains
         // its durable fence even after dropping the in-process reservation.
         match result {
-            Ok(result) => locked.recover_attempt(&result["journal"]),
+            Ok(result) => locked.recover_detached_attempt(&result["journal"]),
             Err(error) => Err(error),
         }
     }

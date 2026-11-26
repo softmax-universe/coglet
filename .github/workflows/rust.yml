@@ -208,6 +208,15 @@ jobs:
           bash tests/m1/run.sh
       - name: Sandbox worlds through cogletd and independent WAMR replay
         run: bash sim/check-native.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulator-native-diagnostics-${{ inputs.bundle-mode || 'normal' }}
+          path: |
+            target/sandbox/native-junit.xml
+            target/sandbox/pytest/**/daemon.log
+            target/sandbox/pytest/**/native-failure.json
+          if-no-files-found: warn
       - name: Visualizer native M2 replay, scrub and receipt forks in Chromium
         run: bash tools/visualizer/check-native.sh
       - uses: actions/upload-artifact@v4
