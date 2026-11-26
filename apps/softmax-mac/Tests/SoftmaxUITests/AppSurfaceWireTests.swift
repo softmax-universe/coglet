@@ -156,7 +156,7 @@ final class AppSurfaceWireTests: XCTestCase {
                 if payload(frame)["status"] as? String == "succeeded" { return actionID }
                 let error = (body(frame)["error"] ?? payload(frame)["error"]) as? [String: Any]
                 if operation == "softmax.app.navigate", attempt == 0,
-                   ["conflict", "unavailable"].contains(error?["code"] as? String ?? "") { continue }
+                   error?["code"] as? String == "conflict" { continue }
                 XCTFail("ordinary live action was refused or failed"); throw WireTestFailure()
             }
             throw WireTestFailure()
@@ -173,11 +173,26 @@ final class AppSurfaceWireTests: XCTestCase {
             XCTAssertEqual(body(reply)["ok"] as? Bool, true)
             return try XCTUnwrap(body(reply)["value"] as? [String: Any])
         }
-        // First open Settings on another real route so the following navigation
-        // MUST emit view_changed, not merely an initial window_changed.
-        try act("softmax.app.navigate", ["window": "settings", "route": "audio"])
+        // Navigate changes an OPEN window's route; it must not implicitly open it.
+        // Retain a wire-state witness for the closed-window precondition that
+        // caused the original native failure, then prove the actual open path.
+        let initial = try state()
+        let initialWindows = try XCTUnwrap(initial["windows"] as? [[String: Any]])
+        let initialSettings = try XCTUnwrap(initialWindows.first { $0["window"] as? String == "settings" })
+        XCTAssertEqual(initialSettings["open"] as? Bool, false)
+        try act("softmax.app.open_window", ["window": "settings"])
         let settings = app.windows["Softmax Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        _ = try event("softmax.app.window_changed") {
+            $0["window"] as? String == "settings" && $0["open"] as? Bool == true
+        }
+        let opened = try state()
+        let openedWindows = try XCTUnwrap(opened["windows"] as? [[String: Any]])
+        let openedSettings = try XCTUnwrap(openedWindows.first { $0["window"] as? String == "settings" })
+        XCTAssertEqual(openedSettings["open"] as? Bool, true)
+        // Visit another real route so the following navigation MUST emit
+        // view_changed, not merely an initial window_changed.
+        try act("softmax.app.navigate", ["window": "settings", "route": "audio"])
         XCTAssertTrue(settings.checkBoxes["settings.audio.sound_cues"].waitForExistence(timeout: 5))
         try act("softmax.app.navigate", ["window": "settings", "route": "general"])
         let navigation = try event("softmax.app.view_changed") {
