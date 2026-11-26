@@ -65,6 +65,11 @@ both runners produce the same commit id.** That is the conformance check.
 
 *The refs of one coglet, its step commits, and the tree of the latest one.*
 
+[ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md) makes each coglet a
+**user** of the repository its runtime exposes: it has its own key, signs its
+own ref updates, and its refs live in its own namespace, `refs/users/<coglet>/…`.
+Below, `refs/coglets/<id>/` stands for that namespace.
+
 Each coglet has four refs under `refs/coglets/<id>/`:
 
 | Ref | Points at | Moved by |
@@ -179,7 +184,7 @@ Decisions this makes:
 | Engine | WAMR, with compute and deadline metering | The same engine build, named by the resolver |
 | Writes | Step commits, moved with a local ref compare-and-swap | The same commits, plus a cache entry and a receipt |
 | Cache | None: every live step runs | `refs/notes/memoization` locally, CAOS's cache remotely |
-| Used for | Live work: voice, apps, the fast loop | Replays, forks, gates, factory tests, simulations |
+| Used for | Live work: voice, apps, routers | Replays, forks, gates, factory tests, simulations |
 
 **The hot path.** `coglet-fs` becomes a git-tree store: blobs and trees are
 written in process as SHA-256 git objects, loose at first and packed in the
@@ -342,7 +347,11 @@ Everything outside is an adapter, reached the same way:
 
 The router stays what [the cogent design](README.md) says it is: a
 coglet that finds runtimes and carries messages and patches. unforged is its
-storage and its git transport.
+storage and its git transport. Since
+[ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md) every runtime exposes
+its own repositories and runs a hub; the repository described here is the one a
+hub's router keeps for the coglets it reaches, and peered routers sync refs
+between them.
 
 - **One repository per cogent.** Every coglet's refs, namespaced by runtime.
   `refs/published/<id>` and the kernel's probation refs live outside the

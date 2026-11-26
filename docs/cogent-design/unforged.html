@@ -287,11 +287,11 @@ committed. Coglets do not see any of this; their code still reads and writes
 <rect x="652" y="62" width="268" height="142" rx="8" class="dg-runtime"/>
 <text x="666" y="83" text-anchor="start" class="dg-code">cogletd</text>
 <rect x="666" y="94" width="116" height="42" rx="8" class="dg-coglet"/>
-<text x="724.0" y="119.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<text x="724.0" y="119.0" text-anchor="middle" class="dg-b">Router</text>
 <rect x="790" y="94" width="116" height="42" rx="8" class="dg-coglet"/>
-<text x="848.0" y="119.0" text-anchor="middle" class="dg-b">Factory</text>
+<text x="848.0" y="119.0" text-anchor="middle" class="dg-b">Optimizer</text>
 <rect x="666" y="146" width="116" height="42" rx="8" class="dg-coglet"/>
-<text x="724.0" y="171.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<text x="724.0" y="171.0" text-anchor="middle" class="dg-b">Factory</text>
 <rect x="790" y="146" width="116" height="42" rx="8" class="dg-coglet"/>
 <text x="848.0" y="171.0" text-anchor="middle" class="dg-b">Memory</text>
 <rect x="652" y="236" width="268" height="72" rx="8" class="dg-hub"/>
@@ -441,6 +441,10 @@ both runners produce the same commit id.</strong> That is the conformance check.
 </svg>
 </figure>
 <p><em>The refs of one coglet, its step commits, and the tree of the latest one.</em></p>
+<p><a href="../adr/0039-hubs-and-coglets-on-unforged.md">ADR-0039</a> makes each coglet a
+<strong>user</strong> of the repository its runtime exposes: it has its own key, signs its
+own ref updates, and its refs live in its own namespace, <code>refs/users/&lt;coglet&gt;/…</code>.
+Below, <code>refs/coglets/&lt;id&gt;/</code> stands for that namespace.</p>
 <p>Each coglet has four refs under <code>refs/coglets/&lt;id&gt;/</code>:</p>
 <div class="tablewrap"><table>
 <thead>
@@ -678,7 +682,7 @@ covers which engine ran, not just which coglet.</em></p>
 </tr>
 <tr>
 <td>Used for</td>
-<td>Live work: voice, apps, the fast loop</td>
+<td>Live work: voice, apps, routers</td>
 <td>Replays, forks, gates, factory tests, simulations</td>
 </tr>
 </tbody>
@@ -1174,7 +1178,11 @@ Everything outside is an adapter, reached the same way:</p>
 <h2 id="the-router-is-an-unforged-repository">The router is an unforged repository<a class="headerlink" href="#the-router-is-an-unforged-repository" title="Permanent link">#</a></h2>
 <p>The router stays what <a href="index.html">the cogent design</a> says it is: a
 coglet that finds runtimes and carries messages and patches. unforged is its
-storage and its git transport.</p>
+storage and its git transport. Since
+<a href="../adr/0039-hubs-and-coglets-on-unforged.md">ADR-0039</a> every runtime exposes
+its own repositories and runs a hub; the repository described here is the one a
+hub's router keeps for the coglets it reaches, and peered routers sync refs
+between them.</p>
 <ul>
 <li><strong>One repository per cogent.</strong> Every coglet's refs, namespaced by runtime.
   <code>refs/published/&lt;id&gt;</code> and the kernel's probation refs live outside the

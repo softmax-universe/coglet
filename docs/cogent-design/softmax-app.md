@@ -1,8 +1,11 @@
 # The Softmax app
 
-What the user installs. Part of the [cogent design](README.md).
+An app the user can install. Part of the [cogent design](README.md).
 
-It is one app that does three things:
+**Any app can host a runtime** and run coglets: a game, Blender, a browser, a
+phone app ([ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md)). The Softmax
+app is one host among them, useful on a computer where no other app hosts one.
+It does three things:
 
 1. **It is the user's way in.** A menu bar icon, a floating orb, and
    push-to-talk.
@@ -161,10 +164,13 @@ The same events and actions for either engine:
 
 ## It runs coglets locally
 
-The app contains a [runtime](coglets-and-runtime.md#runtime). The coglets
-that need to be close to the user run there, on the user's machine:
+The app contains a [runtime](coglets-and-runtime.md#runtime), and like every
+runtime that joins a cogent it runs a [hub](README.md#hub): a router and an
+optimizer. The coglets that need to be close to the user run there too, on the
+user's machine:
 
-- the coglet that drives this app's own UI, using the capabilities above;
+- [Face](README.md#face), which listens, watches the screen, and drives this
+  app's own UI using the capabilities above;
 - the coglets that drive the apps the user has connected, using
   [those apps' adapters](app-integration.md#adapter).
 

@@ -278,7 +278,7 @@ coming in and logs going out.</em></p>
 <tr>
 <td>Who uses it</td>
 <td>The runtime, on behalf of adapters and other coglets</td>
-<td>Its manager: a person, or a cogent coglet such as the fast loop or the optimizer</td>
+<td>Its manager: a person, or a cogent coglet such as a router or an optimizer</td>
 </tr>
 <tr>
 <td>What it is for</td>
@@ -577,7 +577,7 @@ the run succeeds, so the answer never comes back in the same run.</p>
   <span class="na">fields</span>   <span class="ty">ProfileMap</span></pre></div>
 <h2 id="manage-port">Manage port<a class="headerlink" href="#manage-port" title="Permanent link">#</a></h2>
 <p>The manage port is how a coglet's manager changes it and watches it. The
-manager can be a person, or another coglet such as the fast loop or the
+manager can be a person, or another coglet such as a router or the
 optimizer applying a patch.</p>
 <p>The coglet's own policy does nothing to serve the manage port. The runtime
 does it, between events, and keeps a record of every change. Each operation
@@ -634,19 +634,25 @@ needs its own grant, and reading is off unless granted.</p>
   <span class="na">manager</span>  <span class="ty">SourceId</span>  <span class="sd">Who is asking.</span>
   <span class="na">ticket</span>   <span class="ty">Id?</span>       <span class="sd">The factory ticket that authorizes it, if any.</span></pre></div>
 <h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">#</a></h2>
-<p>A runtime supports running a set of coglets. It manages routing events,
-executing the coglet code, and providing and managing capabilities.</p>
+<p>A runtime supports running a set of coglets. It exposes one or more unforged
+repositories and runs each coglet in one as a <strong>user</strong>, with its own refs and
+grants. It manages routing events, executing the coglet code, and providing and
+managing capabilities, and it mounts each adapter it connects to under
+<code>/net/&lt;adapter&gt;/</code> (<a href="../adr/0039-hubs-and-coglets-on-unforged.md">ADR-0039</a>).</p>
 <div class="codehilite idl"><pre><span class="nc">Runtime</span>
-  <span class="nf">run</span>(<span class="ty">coglet</span>)
-      <span class="sd">Load a coglet and run its event loop.</span>
+  <span class="nf">repositories</span>() -&gt; <span class="ty">[Repo]</span>
+  <span class="nf">run</span>(<span class="ty">coglet, Repo</span>)
+      <span class="sd">Add the coglet as a user of the repository and run its event loop.</span>
   <span class="nf">stop</span>(<span class="ty">coglet</span>)
   <span class="nf">connect</span>(<span class="ty">adapter</span>)
-      <span class="sd">Open a link to an adapter and learn its capabilities and grants.</span>
-  <span class="nf">join</span>(<span class="ty">router</span>)
-      <span class="sd">Make itself known to a cogent, so the cogent can run coglets here.</span></pre></div>
-<p>A runtime can be its own process next to an app, or be built into one. It can
-be connected to several adapters at once, and it can have several execution
-engines, one per language a policy's code is written in.</p>
+      <span class="sd">Open a link to an adapter, learn its capabilities and grants, and mount it.</span>
+  <span class="nf">join</span>(<span class="ty">cogent</span>)
+      <span class="sd">Start this runtime&#x27;s hub, a router and an optimizer, and peer it with the</span>
+      <span class="sd">cogent&#x27;s other hubs.</span></pre></div>
+<p>Any app can host a runtime: it can be its own process next to an app, or be
+built into one. It can be connected to several adapters at once, and it can
+have several execution engines, one per language a policy's code is written
+in.</p>
 <h3 id="where-a-request-goes">Where a request goes<a class="headerlink" href="#where-a-request-goes" title="Permanent link">#</a></h3>
 <p>After a run succeeds, the runtime sends each thing the coglet asked for to
 whoever provides it.</p>
@@ -671,7 +677,7 @@ whoever provides it.</p>
 </tr>
 <tr>
 <td>A message to a coglet in another runtime</td>
-<td>The router</td>
+<td>Its hub's router, which passes it to the router of the other runtime's hub</td>
 <td>The outcome, as soon as the router accepts it</td>
 </tr>
 <tr>
@@ -848,7 +854,10 @@ Delivery to the receiver is a separate step.</em></p>
   <span class="na">messages</span>  <span class="ty">[OpName]</span>
   <span class="na">expires</span>   <span class="ty">u64</span></pre></div>
 <h3 id="runtime-and-router">Runtime and router<a class="headerlink" href="#runtime-and-router" title="Permanent link">#</a></h3>
-<p>What passes between a runtime and the cogent's router.</p>
+<p>What passes between a runtime and a router. Since every runtime runs its own
+hub, this is mostly the runtime and its own hub's router; peered routers pass
+the same operations to each other for coglets on their runtimes. The wire names
+are today's; the router protocol changes for peering come with their own ADR.</p>
 <div class="codehilite idl"><pre><span class="nc">RuntimeToRouter</span>
   <span class="nf">join</span>(<span class="ty">JoinParams</span>) -&gt; <span class="ty">JoinResult</span>
       <span class="sd">Join a cogent with a one-time invite.</span>

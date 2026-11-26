@@ -91,11 +91,11 @@
 <rect x="652" y="62" width="268" height="142" rx="8" class="dg-runtime"/>
 <text x="666" y="83" text-anchor="start" class="dg-code">cogletd</text>
 <rect x="666" y="94" width="116" height="42" rx="8" class="dg-coglet"/>
-<text x="724.0" y="119.0" text-anchor="middle" class="dg-b">FastLoop</text>
+<text x="724.0" y="119.0" text-anchor="middle" class="dg-b">Router</text>
 <rect x="790" y="94" width="116" height="42" rx="8" class="dg-coglet"/>
-<text x="848.0" y="119.0" text-anchor="middle" class="dg-b">Factory</text>
+<text x="848.0" y="119.0" text-anchor="middle" class="dg-b">Optimizer</text>
 <rect x="666" y="146" width="116" height="42" rx="8" class="dg-coglet"/>
-<text x="724.0" y="171.0" text-anchor="middle" class="dg-b">Optimizer</text>
+<text x="724.0" y="171.0" text-anchor="middle" class="dg-b">Factory</text>
 <rect x="790" y="146" width="116" height="42" rx="8" class="dg-coglet"/>
 <text x="848.0" y="171.0" text-anchor="middle" class="dg-b">Memory</text>
 <rect x="652" y="236" width="268" height="72" rx="8" class="dg-hub"/>
