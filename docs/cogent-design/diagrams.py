@@ -216,6 +216,9 @@ def cogent() -> Svg:
         svg.rect(x, y, w, h, "dg-hub", 8)
         svg.text(x + w / 2, y + h / 2 + 4, "Hub: router + optimizer", "dg-t")
 
+    def link(d):  # a coglet's link to its runtime's router
+        svg.add(f'<path d="{d}" class="dg-blue" stroke-width="1.6" fill="none"/>')
+
     def side_device(x, kind, caption, apps, coglets, coglet_on_right, shared=None):
         """Rows of app and coglet, with the coglets on the side facing the cogent."""
         y, w = 30, 270
@@ -238,10 +241,19 @@ def cogent() -> Svg:
             if i == shared:  # the coglet in the next row uses this app too
                 svg.path(f"M{x + 114} {ry + 53}H{x + 129}V{ry + 29}H{x + 144}", "warm", both=True)
         row = 0
+        bus_x = x + w - 7 if coglet_on_right else x + 7
+        edge_x = cog_x + 98 if coglet_on_right else cog_x
+        mids = []
         for item in coglets:
             name, span = item if isinstance(item, tuple) else (item, 1)
-            svg.box(cog_x, y + 42 + row * 46, 98, span * 38 + (span - 1) * 8, name, "dg-coglet")
+            h = span * 38 + (span - 1) * 8
+            svg.box(cog_x, y + 42 + row * 46, 98, h, name, "dg-coglet")
+            mids.append(y + 42 + row * 46 + h / 2)
             row += span
+        # every local coglet talks to the others through this runtime's router
+        for m in mids:
+            link(f"M{edge_x} {m}H{bus_x}")
+        link(f"M{bus_x} {mids[0]}V{y + 249}H{x + 14 if coglet_on_right else x + w - 14}")
         hub_strip(x + 14, y + 232, w - 28, 34)
 
     side_device(20, "laptop", "LAPTOP", ["Softmax app", "Blender", "Chrome", "Minecraft"], ["Face", "Blender", "Browser", "Minecraft"], True)
@@ -267,7 +279,8 @@ def cogent() -> Svg:
             svg.text(gx + cw / 2, by + 60, app, "dg-t")
             svg.arrow(gx + cw / 2, by + 84, gx + cw / 2, by + 112, "warm", both=True)
             svg.box(gx, by + 114, cw, 42, name, "dg-coglet")
-        hub_strip(bx + 14, by + 162, bw - 28, 28)
+            link(f"M{gx + cw / 2} {by + 156}V{by + 166}")
+        hub_strip(bx + 14, by + 166, bw - 28, 26)
 
     # games hosted in the Softmax Universe, above left
     top_box(213, 344, "SOFTMAX UNIVERSE", [("Paintbot", "Paintbot"), ("GOTA", "GOTA"), ("PudgeWars", "PudgeWars")])
@@ -291,7 +304,8 @@ def cogent() -> Svg:
     cw = (hw - 28 - 8 * 2) / 3
     for i, (name, what) in enumerate(hosted):
         svg.box(hx + 14 + i * (cw + 8), hy + 40, cw, 60, name, "dg-coglet", what)
-    hub_strip(hx + 14, hy + 108, hw - 28, 30)
+        link(f"M{hx + 14 + i * (cw + 8) + cw / 2} {hy + 100}V{hy + 112}")
+    hub_strip(hx + 14, hy + 112, hw - 28, 28)
     svg.arrow(520, 421, 520, 550, "blue", both=True)
 
     legend(svg, 40, 737, [("blue", False, "routers carry it"), ("warm", False, "a coglet uses an app through its adapter")])
