@@ -572,7 +572,7 @@ mod unix {
                 go.1.notify_all();
             };
             let (wait, lane_profile, lane_ops) = (go.clone(), profile.clone(), ops.clone());
-            std::thread::Builder::new()
+            let lane = std::thread::Builder::new()
                 .name("cogletd-emerg-accept".into())
                 .spawn(move || {
                     if wait_go(&wait) {
@@ -589,6 +589,10 @@ mod unix {
                     }
                 });
             signal(spawned.is_ok());
+            if spawned.is_err() {
+                // The sibling is unlinked before startup reports the failure.
+                let _ = lane.join();
+            }
             spawned.map(drop).map_err(|e| e.to_string())
         }
     }
@@ -610,18 +614,17 @@ mod unix {
                 active.fetch_sub(1, Ordering::SeqCst);
                 continue; // drop: too many local connections
             }
-            let (profile, ops, slots) = (profile.clone(), ops.clone(), active.clone());
-            let spawned = std::thread::Builder::new()
+            // The guard releases on completion, error, panic and failed spawn.
+            let slot = Slot(active.clone());
+            let (profile, ops) = (profile.clone(), ops.clone());
+            let _ = std::thread::Builder::new()
                 .name("cogletd-producer".into())
                 .spawn(move || {
+                    let _slot = slot;
                     if let Err(error) = serve_connection(stream, &profile, ops.as_ref()) {
                         eprintln!("cogletd producer connection: {error}");
                     }
-                    slots.fetch_sub(1, Ordering::SeqCst);
                 });
-            if spawned.is_err() {
-                active.fetch_sub(1, Ordering::SeqCst);
-            }
         }
     }
 
@@ -873,9 +876,14 @@ mod tests {
         for vector in vectors["reserved_endpoint"].as_array().unwrap() {
             let name = vector["name"].as_str().unwrap();
             let frame = vector["frame"].as_str().unwrap();
-            // The peer holds exactly the binding the frame names.
+            // The peer holds exactly the binding the frame names, unless the
+            // vector gives the configured binding (forged-binding cases).
             let mut profile = profile(7);
-            if let Ok(Value::Object(sent)) = serde_json::from_str::<Value>(frame) {
+            let configured = match vector.get("configured") {
+                Some(configured) => Some(configured.clone()),
+                None => serde_json::from_str::<Value>(frame).ok(),
+            };
+            if let Some(Value::Object(sent)) = configured {
                 let binding = &mut profile.principals[0];
                 binding.ticket = sent
                     .get("ticket")
@@ -907,7 +915,7 @@ mod tests {
                 "{name}: {reply}"
             );
         }
-        assert!(dispatched >= 1 && refused >= 12, "{dispatched}/{refused}");
+        assert!(dispatched >= 1 && refused >= 16, "{dispatched}/{refused}");
     }
 
     fn profile(uid: u32) -> ProducerProfile {
@@ -1216,6 +1224,10 @@ mod tests {
             let mut idle = vec![];
             for i in 0..4 {
                 let mut stream = UnixStream::connect(&lane).unwrap();
+                // Set now: macOS refuses socket options once the peer closed.
+                stream
+                    .set_read_timeout(Some(std::time::Duration::from_secs(8)))
+                    .unwrap();
                 if i % 2 == 0 {
                     stream.write_all(b"{\"version\":1,").unwrap();
                 }
@@ -1229,9 +1241,6 @@ mod tests {
             // Each holder is closed at the 3 s request deadline without a reply,
             // which reclaims its slot for a subsequent valid revoke.
             for stream in idle {
-                stream
-                    .set_read_timeout(Some(std::time::Duration::from_secs(8)))
-                    .unwrap();
                 assert!(closed_without_reply(stream));
             }
             assert!(started.elapsed() >= std::time::Duration::from_millis(2900));

@@ -38,6 +38,12 @@ adapter or guest method is added. Not a frozen-hub conformance claim.
   a `profile` neither socket exists.
 - While runtime custody is busy, at most ONE deferred revoke recorder exists per
   target across both sockets; further revokes report `durable:"pending"`.
+- Residual: when runtime custody is free, the revoke worker writes the
+  stop-pending record itself AFTER the gate is closed and without SQL. A WAL
+  write that never returns therefore delays that reply and keeps that one worker
+  (per target) busy until the process is restarted; the output fence is already
+  in effect and boot-closed custody covers the restart. The 3 s bounds are
+  transport bounds, not a bound on the storage device.
 - Closed objects: unknown/missing fields, duplicate keys at any depth (including
   via escapes), non-UTF-8, trailing text, floats/negative integers are refused.
 

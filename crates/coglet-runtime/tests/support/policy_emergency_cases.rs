@@ -64,6 +64,21 @@ impl Daemon {
         let frame = self.frame("observe_health", self.pins(bundle));
         exchange_on(&self.ordinary(), &frame).await.is_none()
     }
+    /// Wait until no ordinary connection worker of an EARLIER request is still
+    /// alive, so the next 16 connections are exactly the pool's 16 slots.
+    /// (Worker threads are named `cogletd-producer`, as is the accept thread.)
+    async fn ordinary_idle(&self) {
+        let pid = self.child.0.id();
+        wait_for("earlier ordinary workers to retire", || {
+            std::fs::read_dir(format!("/proc/{pid}/task"))
+                .unwrap()
+                .filter_map(|task| std::fs::read_to_string(task.ok()?.path().join("comm")).ok())
+                .filter(|comm| comm.trim_end() == &"cogletd-producer"[..15])
+                .count()
+                == 1
+        })
+        .await;
+    }
     /// Deferred revoke recorder threads alive in the real daemon (Linux thread
     /// names are truncated to 15 bytes).
     fn recorders(&self) -> usize {
@@ -87,7 +102,9 @@ impl Daemon {
             "closed",
             "boot-closed output"
         );
-        applied(&self.env.simple("hub.start").await);
+        // Recovery restarts the running coglet; nothing here starts it.
+        let status = self.env.simple("hub.status").await;
+        assert_eq!(status["result"]["state"], "running", "{status}");
         let attested = self.local("attest_applied", self.pins(bundle)).await;
         assert_eq!(attested["ok"], true, "{attested}");
         let mut params = self.pins(bundle);
@@ -109,11 +126,17 @@ impl Daemon {
 }
 
 /// `blocked == false`: all 16 ordinary slots are held by idle and partial-frame
-/// connections. `blocked == true`: all 16 are held by authenticated operations
-/// that are inside the producer, waiting on runtime custody behind one stalled
-/// genuine WAL write, while receiving-side SQL authority is exclusively held.
-/// (SQL contention alone fails fast in this producer: there is no busy wait, so
-/// it cannot by itself keep an ordinary slot occupied.)
+/// connections. `blocked == true`, two phases:
+/// 1. With the lease ENABLED, all 16 slots are held by authenticated operations
+///    inside the producer, waiting on runtime custody behind one stalled genuine
+///    WAL write, while SQL authority is exclusively held. With one target and an
+///    enabled lease no ordinary operation can reach authority SQL (enable and
+///    reconcile are refused on gate state first; attest and health do not use
+///    it), so custody is the only way to hold a slot at that point.
+/// 2. After that revoke, 16 authenticated `reconcile_emergency_stop` operations
+///    are held on the exclusively locked authority database (5 s busy wait);
+///    a further reserved revoke is admitted and answered while they wait, and
+///    the daemon is SIGKILLed with them still blocked.
 async fn saturation_case(seed: u8, blocked: bool) {
     let mut d = Daemon::with(
         seed,
@@ -137,6 +160,7 @@ async fn saturation_case(seed: u8, blocked: bool) {
         .await
     );
     assert!(is_socket_0600(&d.lane()) && is_socket_0600(&d.ordinary()));
+    d.ordinary_idle().await;
     let (stall, stalled) = d.stall_files();
     let mut held = vec![];
     if blocked {
@@ -198,6 +222,7 @@ async fn saturation_case(seed: u8, blocked: bool) {
     }
     if blocked {
         assert!(stall.exists());
+        wait_for("the deferred recorder", || d.recorders() >= 1).await;
         assert_eq!(d.recorders(), 1, "exactly one deferred recorder");
     }
     assert_eq!(
@@ -248,6 +273,59 @@ async fn saturation_case(seed: u8, blocked: bool) {
         false,
         "a revoked gate never re-enables in this process"
     );
+    if blocked {
+        // The recorder slot was reclaimed: with custody free a further revoke
+        // records synchronously (a guest step may own the runtime for an
+        // instant: then it is one new recorder, never two).
+        let mut durable = Value::Null;
+        for _ in 0..200 {
+            let again = d.reserved("revoke_output_lease", json!({})).await;
+            assert_eq!(again["result"]["lease"], "revoked", "{again}");
+            assert!(d.recorders() <= 1);
+            durable = again["result"]["durable"].clone();
+            if durable == "recorded" {
+                break;
+            }
+            assert_eq!(durable, "pending", "{again}");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        assert_eq!(durable, "recorded", "recorder slot was never reclaimed");
+        // Phase 2: authenticated ordinary operations blocked on authority SQL.
+        d.ordinary_idle().await;
+        let authority = d.hold_authority();
+        let mut waiting = vec![];
+        for _ in 0..16 {
+            let frame = d.frame("reconcile_emergency_stop", json!({}));
+            let mut stream = UnixStream::connect(d.ordinary()).await.unwrap();
+            let mut bytes = serde_json::to_vec(&frame).unwrap();
+            bytes.push(b'\n');
+            stream.write_all(&bytes).await.unwrap();
+            waiting.push(stream);
+        }
+        assert!(
+            d.ordinary_dropped(&a).await,
+            "ordinary pool is not saturated by SQL-blocked operations"
+        );
+        let started = tokio::time::Instant::now();
+        let again = d.reserved("revoke_output_lease", json!({})).await;
+        let elapsed = started.elapsed();
+        assert_eq!(again["ok"], true, "{again}");
+        assert_eq!(again["result"]["gate"], "closed", "{again}");
+        assert_eq!(again["result"]["lease"], "revoked", "{again}");
+        assert!(elapsed < Duration::from_secs(2), "revoke waited: {elapsed:?}");
+        assert!(
+            d.ordinary_dropped(&a).await,
+            "SQL-blocked operations released before the reserved revoke returned"
+        );
+        for stream in &waiting {
+            assert_eq!(queued_bytes(stream), 0, "a SQL-blocked operation was answered");
+        }
+        assert_eq!(queued_bytes(&link), 0, "output exposed while SQL-blocked");
+        // SIGKILL with every reconcile still blocked: none may apply the stop.
+        d.child.kill_and_wait();
+        authority.execute_batch("ROLLBACK;").unwrap();
+        drop((authority, waiting));
+    }
     drop(link);
     d.restart().await;
     d.assert_retained_stop_after_restart(&a).await;
@@ -421,6 +499,9 @@ async fn repeated_revoke_coalesces_pending_recorder() {
         assert_eq!(revoked["result"]["lease"], "revoked", "{revoked}");
         assert_eq!(revoked["result"]["durable"], "pending", "{revoked}");
         // Repeated requests never spawn a second recorder for the target.
+        if round == 0 {
+            wait_for("the deferred recorder", || d.recorders() >= 1).await;
+        }
         assert_eq!(d.recorders(), 1, "round {round}");
         instance = revoked["result"]["daemon_instance"].clone();
     }
@@ -442,24 +523,10 @@ async fn repeated_revoke_coalesces_pending_recorder() {
     let held: Value = serde_json::from_str(&line).unwrap();
     d.conform(&frame, &held);
     assert_eq!(held["ok"], true, "{held}");
-    // With custody free a further revoke records synchronously (a guest step
-    // may still own the mutex for an instant: then it is one new recorder).
-    let mut durable = Value::Null;
-    for _ in 0..200 {
-        let again = d.reserved("revoke_output_lease", json!({})).await;
-        assert_eq!(again["result"]["lease"], "revoked", "{again}");
-        assert!(d.recorders() <= 1);
-        durable = again["result"]["durable"].clone();
-        if durable == "recorded" {
-            break;
-        }
-        assert_eq!(durable, "pending", "{again}");
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
-    assert_eq!(durable, "recorded", "slot was never reclaimed");
-    // No implicit enable, in this process or from the recorded WAL state.
+    // No further revoke is sent: whatever the WAL holds was written by the
+    // ONE deferred recorder. No implicit enable in this process.
     let mut params = d.pins(&a);
-    params["daemon_instance"] = instance;
+    params["daemon_instance"] = instance.clone();
     assert_eq!(d.local("enable_output_lease", params).await["ok"], false);
     assert_eq!(
         d.health(&a).await["result"]["output_lease_state"],
@@ -471,7 +538,23 @@ async fn repeated_revoke_coalesces_pending_recorder() {
     tokio::time::sleep(Duration::from_millis(700)).await;
     assert_eq!(queued_bytes(&link), queued, "output exposed after revoke");
     drop(link);
-    d.restart().await;
+    // SIGKILL, then read the reopened WAL before the next process starts: the
+    // deferred recorder durably wrote the ORIGINAL obligation as stop-pending,
+    // attributed to the process that revoked.
+    d.restart_full(
+        |_| {},
+        move |store| {
+            let emergency = &store.state().unwrap()["managed"]["emergency"];
+            assert_eq!(emergency["phase"], "stop_pending", "{emergency}");
+            assert_eq!(emergency["revoked_by"], instance, "{emergency}");
+            assert_eq!(
+                emergency["obligation"]["operation_id"],
+                correlation(0xeeee),
+                "{emergency}"
+            );
+        },
+    )
+    .await;
     d.assert_retained_stop_after_restart(&a).await;
 }
 
