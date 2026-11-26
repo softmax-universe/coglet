@@ -8,6 +8,8 @@ publish.workspace = true
 [features]
 default = []
 test-controls = ["coglet-proto/test-controls"]
+# Required CI explicitly selects live GitHub provisioning and native replay proofs.
+r3-qualification = []
 
 [dependencies]
 coglet-proto = { path = "../coglet-proto" }
@@ -35,3 +37,8 @@ coglet-transform = { path = "../coglet-transform", features = ["test-fixtures"] 
 coglet-mock = { path = "../coglet-mock" }
 coglet-runtime = { path = "../coglet-runtime", features = ["native-engine"] }
 tempfile = "3"
+
+[[test]]
+name = "r3_runtime"
+path = "tests/build/r3_runtime.rs"
+required-features = ["r3-qualification"]
