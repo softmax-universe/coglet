@@ -79,6 +79,11 @@ impl ManagedState {
         }
         Ok(())
     }
+    pub(super) fn emergency_contains_operation(&self, id: &str) -> bool {
+        self.emergency
+            .as_ref()
+            .is_some_and(|r| r.obligation.operation_id == id)
+    }
     pub(super) fn emergency_id_conflicts(
         &self,
         id: &str,

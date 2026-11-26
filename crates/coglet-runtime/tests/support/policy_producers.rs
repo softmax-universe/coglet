@@ -722,9 +722,12 @@ async fn emergency_stop_reconciles_original_context_after_restart() {
     );
 }
 
+/// Valid receiver intervention (actor/ticket params, no context, seq 0 and
+/// logical_time T0 like the main receiver control). `tag` makes message ids and
+/// payloads unique; only the operation `id` differs between controls and collisions.
 fn receiver_inbox_at(d: &mut Daemon, id: &str, tag: &str) -> Value {
     let message = json!({"id":tag.repeat(16),"sender":d.env.actor,"event":{"source":d.env.actor,
-        "kind":"test.message","seq":1,"logical_time":0,"payload":{"note":"collision"},
+        "kind":"test.message","seq":0,"logical_time":T0,"payload":{"note":tag},
         "correlation_id":"b2".repeat(16)}});
     let mut params = json!({"message":message});
     params["actor"] = json!(d.env.actor);
@@ -740,8 +743,28 @@ fn receiver_inbox_at(d: &mut Daemon, id: &str, tag: &str) -> Value {
     request
 }
 
-/// Receiver authority is valid (hub.inbox grant, delegation, back-channel pin), so
-/// the only reason for rejection is the retained emergency stop ID.
+/// Admit a valid inbox control and poll the actual receiver to a durable terminal receipt.
+async fn receiver_admit(d: &mut Daemon, id: &str, tag: &str) -> Value {
+    let request = receiver_inbox_at(d, id, tag);
+    let admitted = d.env.call(request).await;
+    assert_eq!(admitted["type"], "reply", "{admitted}");
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let receipt = receipt_of(&mut d.env, id).await;
+            assert_eq!(receipt["type"], "reply", "{receipt}");
+            if receipt["result"]["state"] != "queued" {
+                return receipt;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("receiver reaches a durable terminal receipt")
+}
+
+/// Receiver authority is valid (hub.inbox grant, delegation, back-channel pin): a
+/// distinct-ID inbox control is admitted, so the only reason the same request
+/// shape at the armed stop ID is rejected is the retained emergency stop ID.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn receiver_cannot_consume_prearmed_emergency_stop_id() {
     let mut d = Daemon::with(
@@ -753,25 +776,41 @@ async fn receiver_cannot_consume_prearmed_emergency_stop_id() {
     )
     .await;
     let a = d.install(WASM_WAT).await;
-    let link = d.execute(&a).await; // arms the emergency obligation (0xeeee)
+    let link = d.execute(&a).await; // real guest step; arms the emergency obligation (0xeeee)
     let stop_id = correlation(0xeeee);
+    let control_id = correlation(0xeef1);
+    let before_inbox = d.step().await;
+    let control = receiver_admit(&mut d, &control_id, "d1").await;
+    assert_eq!(control["result"]["state"], "applied", "{control}");
+    restart_adapter::step_at_least(&mut d.env, before_inbox + 1).await;
     let request = receiver_inbox_at(&mut d, &stop_id, "a1");
     let reply = d.env.call(request).await;
     assert_eq!(reply["type"], "error", "{reply}");
     assert_eq!(reply["error"]["code"], "conflict", "{reply}");
-    // The exact original stop context survives revoke + restart.
+    let unowned = receipt_of(&mut d.env, &stop_id).await;
+    assert!(
+        unowned["type"] == "error" || unowned["result"]["state"] != "applied",
+        "receiver consumed the stop ID: {unowned}"
+    );
+    // The exact original stop context survives revoke + restart (real guest records).
     let revoked = d.local("revoke_output_lease", json!({})).await;
     assert_eq!(revoked["ok"], true, "{revoked}");
     drop(link);
-    d.restart().await;
+    let records = d.restart().await;
+    assert!(!records.is_empty());
     let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
     assert_eq!(reconciled["ok"], true, "{reconciled}");
     assert_eq!(reconciled["result"]["state"], "stopped", "{reconciled}");
     assert_eq!(reconciled["result"]["operation_id"], stop_id);
     let receipt = receipt_of(&mut d.env, &stop_id).await;
     assert_eq!(receipt["result"]["state"], "applied", "{receipt}");
+    // The valid control receipt is retained unchanged across restart.
+    let retained = receipt_of(&mut d.env, &control_id).await;
+    assert_eq!(retained["result"], control["result"], "{retained}");
 }
 
+/// Reverse order: the receiver owns the operation ID first (and across a real
+/// reopen), then emergency arming with that ID is refused with `conflict`.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn emergency_arming_refuses_operation_id_already_owned_by_receiver() {
     let mut d = Daemon::with(
@@ -783,22 +822,45 @@ async fn emergency_arming_refuses_operation_id_already_owned_by_receiver() {
     )
     .await;
     let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await; // real guest step; original obligation 0xeeee armed
+    let old_id = correlation(0xeeee);
+    let new_id = correlation(0xeeef);
+    // Admit while the adapter is live, then require a real guest boundary to
+    // consume the inbox stage before stopping. Otherwise the staged boundary
+    // correctly fences a new output lease before the ID check can run.
+    let before_inbox = d.step().await;
+    let owned = receiver_admit(&mut d, &new_id, "c3").await;
+    assert_eq!(owned["result"]["state"], "applied", "{owned}");
+    restart_adapter::step_at_least(&mut d.env, before_inbox + 1).await;
+    let revoked = d.local("revoke_output_lease", json!({})).await;
+    assert_eq!(revoked["ok"], true, "{revoked}");
+    drop(link);
+    let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(reconciled["ok"], true, "{reconciled}");
+    assert_eq!(reconciled["result"]["operation_id"], old_id);
+    // Reopen with the stop configured at the receiver-owned ID.
+    let records = d
+        .restart_with(|config| {
+            config["profile"]["principals"][0]["stop"]["operation_id"] = json!(new_id);
+        })
+        .await;
+    assert!(!records.is_empty());
+    let before = receipt_of(&mut d.env, &new_id).await;
+    assert_eq!(before["result"]["state"], "applied", "{before}");
+    assert_eq!(before["result"], owned["result"], "receipt survives reopen");
     applied(&d.env.simple("hub.start").await);
-    let stop_id = correlation(0xeeee);
-    let request = receiver_inbox_at(&mut d, &stop_id, "c3");
-    let admitted = d.env.call(request).await;
-    assert_eq!(admitted["type"], "reply", "{admitted}");
-    // Arming must refuse (no obligation retained) rather than strand a stop that
-    // managed_operation would later reject as receiver-owned.
+    let attested = d.local("attest_applied", d.pins(&a)).await;
+    assert_eq!(attested["ok"], true, "{attested}");
     let mut params = d.pins(&a);
-    params["daemon_instance"] = d.local("attest_applied", d.pins(&a)).await["daemon_instance"].clone();
+    params["daemon_instance"] = attested["daemon_instance"].clone();
     let enabled = d.local("enable_output_lease", params).await;
     assert_eq!(enabled["ok"], false, "{enabled}");
-    assert!(
-        enabled.to_string().contains("conflict"),
-        "expected collision refusal: {enabled}"
-    );
-    // Nothing was retained, so nothing is stranded; the receiver keeps its receipt.
-    let receipt = receipt_of(&mut d.env, &stop_id).await;
-    assert_ne!(receipt["type"], "error", "{receipt}");
+    assert_eq!(enabled["error"]["code"], "conflict", "{enabled}");
+    // Arming must not replace the original, completed obligation; the
+    // receiver also keeps its exact receipt.
+    let retained = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(retained["ok"], true, "{retained}");
+    assert_eq!(retained["result"]["operation_id"], old_id, "{retained}");
+    let after = receipt_of(&mut d.env, &new_id).await;
+    assert_eq!(after["result"], before["result"], "{after}");
 }

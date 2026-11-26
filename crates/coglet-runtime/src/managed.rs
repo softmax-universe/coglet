@@ -223,7 +223,7 @@ impl RuntimeService {
             m.install_receipt["operation_id"] == id
                 || m.operations.contains_key(id)
                 // A retained emergency stop ID is reserved before its receipt exists.
-                || m.emergency.as_ref().is_some_and(|r| r.obligation.operation_id == id)
+                || m.emergency_contains_operation(id)
         })
     }
 

@@ -16,6 +16,9 @@ async fn guest_action_output_races_revoke_without_exposure_after_return() {
     let first_id = first["body"]["action"]["id"].as_str().unwrap().to_owned();
     let (mut read, mut write) = link.into_split();
     let surface = d.surface.clone();
+    // Sample before starting the finite event stream; sampling afterward can
+    // accidentally wait for work beyond its end.
+    let running = d.step().await;
     // The guest keeps executing and producing actions while revoke arrives.
     let writer = tokio::spawn(async move {
         for seq in 3..=120 {
@@ -26,7 +29,6 @@ async fn guest_action_output_races_revoke_without_exposure_after_return() {
         }
         write
     });
-    let running = d.step().await;
     restart_adapter::step_at_least(&mut d.env, running + 1).await;
     let started = tokio::time::Instant::now();
     let revoked = d.local("revoke_output_lease", json!({})).await;
@@ -41,9 +43,11 @@ async fn guest_action_output_races_revoke_without_exposure_after_return() {
     // Everything physically exposed was written before revoke returned: the
     // client never reads while racing, so kernel-queued bytes are exact.
     let queued = queued_bytes(read.as_ref() as &UnixStream);
-    let at_revoke = d.step().await;
     let write = writer.await.unwrap();
-    restart_adapter::step_at_least(&mut d.env, at_revoke + 1).await;
+    // A revoked publication can disconnect the adapter and discard pending
+    // events. That is legal fail-closed behavior, not a promise of another
+    // guest commit. The control above proves real guest output during the
+    // race; here the oracle is physical non-publication, not session liveness.
     tokio::time::sleep(Duration::from_millis(700)).await;
     assert_eq!(
         queued_bytes(read.as_ref() as &UnixStream),
