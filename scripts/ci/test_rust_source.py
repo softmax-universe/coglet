@@ -100,7 +100,7 @@ class WorkflowBinding(unittest.TestCase):
         selection = jobs["source"]
         self.assertIn("          ref: ${{ github.sha }}\n          fetch-depth: 0", selection)
         self.assertIn("run: python3 scripts/ci/rust_source.py", selection)
-        for name in ("transform-native", "rust"):
+        for name in ("transform-native", "rust-core", "factory"):
             job = jobs[name]
             self.assertRegex(job, r"^    needs: \[source(?:, transform-native)?\]", )
             self.assertEqual(job.count("uses: actions/checkout@v4"), 1)
@@ -109,7 +109,7 @@ class WorkflowBinding(unittest.TestCase):
         self.assertNotRegex(native, r"(?m)^\s+if:")
         self.assertEqual(re.findall(r"^            arch: (\w+)$", native, re.M), ["x86_64", "aarch64"])
         self.assertIn("check.py --native-leg", native)
-        aggregate = jobs["rust"]
+        aggregate = jobs["rust-core"]
         self.assertIn("    if: always()", aggregate)
         self.assertIn("test '${{ needs.source.result }}' = 'success'", aggregate)
         self.assertIn("test '${{ needs.transform-native.result }}' = 'success'", aggregate)

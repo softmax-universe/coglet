@@ -65,7 +65,31 @@ jobs:
           name: transform-native-${{ matrix.arch }}-${{ inputs.bundle-mode || 'normal' }}
           path: ${{ runner.temp }}/transform-proof
           if-no-files-found: error
-  rust:
+  factory:
+    needs: [source]
+    # Independent runner/private target: preserve the entire owned qualification
+    # while removing its serial cost from the core critical path.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+      - uses: ./.github/actions/dependency-restore
+        with:
+          # Dependency-only union closure, captured once by core after explicit
+          # standalone Factory fetch. Supported by old exact-source helpers too.
+          job: rust
+          mode: ${{ inputs.bundle-mode || 'normal' }}
+          release: ${{ inputs.bundle-release || 'dependency-mirror-v1' }}
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: ${{ inputs.bundle-mode != 'proof' }}
+      - name: Factory guest and real/mock runtime database qualification
+        run: bash coglets/factory/check.sh
+
+  rust-core:
     needs: [source, transform-native]
     if: always()
     runs-on: ubuntu-24.04
@@ -121,8 +145,6 @@ jobs:
           cargo test --locked -p coglet-runtime --test sim_duplex_heard -- --ignored "${extra[@]}"
       - name: Execute compiled guest ABI tests
         run: uv run --with-requirements sdk/guest-rust/tests/requirements.txt python3 sdk/guest-rust/tests/test_wasm.py -v
-      - name: Factory opt-in DB guest slice (not runtime DB conformance)
-        run: bash coglets/factory/check.sh
       - name: Execute reference ABI cases on mock and WAMR
         run: |
           python3 sdk/guest-rust/tests/build_reference_cases.py --check
@@ -167,7 +189,23 @@ jobs:
           if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
+      - name: Complete standalone Factory Cargo closure for both runners
+        if: inputs.bundle-mode == 'prepare'
+        run: cargo fetch --locked --manifest-path coglets/factory/Cargo.toml
       - uses: ./.github/actions/dependency-capture
         if: inputs.bundle-mode == 'prepare'
         with:
           job: rust
+  rust:
+    # Preserve the required context; no skipped/cancelled producer is success.
+    needs: [source, transform-native, rust-core, factory]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: All exact-source qualification legs are mandatory
+        run: |
+          set -euo pipefail
+          test '${{ needs.source.result }}' = 'success'
+          test '${{ needs.transform-native.result }}' = 'success'
+          test '${{ needs.rust-core.result }}' = 'success'
+          test '${{ needs.factory.result }}' = 'success'
