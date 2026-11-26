@@ -135,5 +135,5 @@
 <path d="M960 204V246H901.5V286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
 <line x1="984" y1="204" x2="984" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
 <line x1="540" y1="174" x2="640" y2="174" class="dg-blue" stroke-width="1.6" marker-end="url(#runtime-blue)" marker-start="url(#runtime-blue-s)"/>
-<text x="590.0" y="164" text-anchor="middle" class="dg-m dg-halo">routers peer</text>
+<text x="590.0" y="164" text-anchor="middle" class="dg-m dg-halo">via their routers</text>
 </svg>

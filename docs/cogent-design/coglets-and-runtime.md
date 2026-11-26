@@ -521,7 +521,7 @@ older names for the same things:
 | Here | In `spec/` |
 |---|---|
 | adapter | surface |
-| router | hub |
+| router | hub (the `hub.*` protocol; in prose a hub is now a router plus an optimizer) |
 | runtime | device, runtime |
 | message between coglets | not defined yet |
 | manage port | the `debug.*` and `hub.git.*` methods, to become `manage.*` under [ADR-0031](../adr/0031-manage-port-and-filesystem-patches.md) |

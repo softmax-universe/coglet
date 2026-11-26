@@ -3,10 +3,14 @@
 - Status: Proposed
 - Date: 2026-11-25
 - Authors: David Bloomin (design), David's Claude Code session
-- Related PR: the publishing PR
-- Supersedes / superseded by: supersedes the split between the router and the
-  fast loop in [ADR-0036](0036-distributed-cogent-and-presence.md) (the router is
-  now the cogent's attention), and the direction of
+- Related PR: #210
+- Supersedes / superseded by: amends [ADR-0020](0020-vocabulary.md): "hub" is
+  no longer only the old word for the router; in prose it now names a router
+  plus an optimizer (the `hub.*` identifiers in `spec/` still mean the router
+  protocol). Supersedes in part [ADR-0036](0036-distributed-cogent-and-presence.md):
+  the split between the router and the fast loop, the single router of §1, and
+  "the router" as the one holder in §2, now the attending router (§5 below).
+  Supersedes the direction of
   [ADR-0031](0031-manage-port-and-filesystem-patches.md) §2–§5 (no Git inside a
   coglet). The implementation order of
   [ADR-0035](0035-state-hash-git-tree-id.md) and the
@@ -76,14 +80,25 @@ The **router** carries messages and patches between coglets and runtimes, and it
 is also the cogent's **attention**: what ADR-0036 gave to the fast loop. It
 answers present coglets, decides what to forward, files tickets, applies
 patches, sets presence and reads check-ins. There is no separate fast loop
-coglet. Presence works as ADR-0036 specifies, with `Presence.attention` naming a
-router.
+coglet.
+
+**Presence with many routers.** A cogent has a router in every hub, but its
+presence has one holder at a time: the **attending router**, the router that
+`Presence.attention` names, normally the hub router on the device the user is
+using. ADR-0036's rules apply with "the router" read as the attending router:
+it holds the presence record and its revision, it holds what absent coglets
+send to the attention, and it runs check-ins. Every other router forwards
+presence traffic and messages for the attention to it, as ADR-0036 has runtimes
+forward local deliveries. Since the attending router is itself the attention,
+holding a message "for the attention" means queueing it for its own next
+check-in. Moving the attention to another router is a `presence.set` with a new
+`attention`, under the `presence.attention` grant; what is held moves with it.
 
 ### 6. A hub is a router and an optimizer
 
 A **hub** is a **router** plus an **optimizer** that improves it: it watches the
 router's routing and its fast-loop decisions, files tickets, and patches the
-router's policy (and, where granted, its own). Every runtime that joins a cogent
+router's policy, and, where granted, its own and other coglets'. Every runtime that joins a cogent
 runs a hub; hubs peer with each other, so a cogent is **a set of peered hubs and
 the coglets attached to them**. There is still no centre: a hub on a
 Softmax-hosted runtime is one hub among several.
@@ -128,10 +143,13 @@ come with their own ADRs when the staged integration reaches them.
 - The Softmax app page describes one host, not the host.
 - ADR-0031's plain-filesystem patches remain the near-term implementation; this
   ADR is the target that a later ADR in the staged integration will make
-  normative.
-- Open questions: how hubs choose which router is a cogent's lead attention when
-  the user moves between devices, and how far a device optimizer may patch its
-  own router.
+  normative. Until then `manage.patch` keeps ADR-0031 §3's signer (the router's
+  node key). In the target, a coglet signs its own `state` updates and a patch
+  is signed by whoever authored it (a router, an optimizer, a factory or a
+  person), under the grant to push to that coglet's `policy`.
+- Open questions: whether the attention moves to another router automatically
+  when the user moves between devices, or only by `presence.set`; and how far a
+  device optimizer may patch its own router.
 
 ## Verification
 

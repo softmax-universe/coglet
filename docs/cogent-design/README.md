@@ -22,7 +22,7 @@ Pages: [Coglets and runtime](coglets-and-runtime.md) ·
 [Secrets and adapters](secrets.md) ·
 [LLMs on unforged](llms.md)
 
-![A cogent has no centre: its coglets run on many runtimes, on a laptop, a robot, a phone, in the Softmax Universe and on a Softmax-hosted runtime, and one router carries messages and patches between all of them. The cogent is present on Face and Blender on the laptop; the rest run on their own.](diagrams/cogent.svg)
+![A cogent has no centre: every runtime it uses, on a laptop, a robot, a phone, in the Softmax Universe and on a Softmax-hosted runtime, runs a hub (a router and an optimizer), and the hubs' routers peer. Devices run Face and the coglets for their apps; the hosted runtime runs the factory, memory and a database. The cogent is present on Face and Blender on the laptop; the rest run on their own.](diagrams/cogent.svg)
 
 *A cogent: hubs on many runtimes, peered with each other, and coglets attached
 to each hub. On each device, a hub, Face and the coglets for that device's

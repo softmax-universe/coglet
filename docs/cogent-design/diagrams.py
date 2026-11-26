@@ -159,7 +159,7 @@ def stacks(name: str, label: str, columns, hub_title: str = "Hub kernel") -> Svg
         svg.text(cx + 10, 384, "messages, patches", "dg-m", "start")
     svg.rect(40, 410, 880, 62, "dg-hub")
     svg.text(480, 437, hub_title, "dg-b")
-    svg.text(480, 456, "finds runtimes · carries messages between them · carries patches and logs", "dg-m")
+    svg.text(480, 456, "each runtime's hub router reaches the others · carries messages, patches and logs", "dg-m")
     return svg
 
 
@@ -461,7 +461,7 @@ def calls() -> Svg:
     svg.box(40, 250, 150, 56, "App coglets", "dg-coglet", "drive the apps")
     # the learning coglets, two by two, wherever they run
     svg.rect(310, 30, 440, 294, "dg-group", 14)
-    svg.text(328, 54, "LEARNING AND MEMORY", "dg-cap", "start")
+    svg.text(328, 54, "THINKING AND LEARNING", "dg-cap", "start")
     svg.box(330, 70, 150, 56, "Router", "dg-coglet", "attention: responds, forwards")
     svg.box(580, 70, 150, 56, "Memory", "dg-coglet", "what the cogent knows")
     svg.box(330, 250, 150, 56, "Factory", "dg-coglet", "tickets in, patches out")
@@ -598,7 +598,7 @@ def runtime() -> Svg:
     left = one(30, True, [(0, "App adapter"), (2, "Camera adapter")], ["BASIC", "Python", "WASM"], ["BASIC", "WASM", "JavaScript", "Java", "Python"], ["Database", "KV store", "LLM", "Random"], [(0, 0, -12), (0, 1, 12), (1, 1, -12), (1, 2, 12), (2, 3, 0)])
     right = one(630, False, [(0, "Game adapter")], ["Java", "JavaScript", "Python"], ["JavaScript", "Java", "Python"], ["KV store", "Random", "LLM", "GPU"], [(0, 0, 0), (1, 1, 20), (2, 2, -14), (2, 3, 10)])
     svg.arrow(left[2] + 106, 174, right[0] - 2, 174, "blue", both=True)
-    svg.text((left[2] + 104 + right[0]) / 2, 164, "routers peer", "dg-m", halo=True)
+    svg.text((left[2] + 104 + right[0]) / 2, 164, "via their routers", "dg-m", halo=True)
     return svg
 
 
@@ -737,7 +737,7 @@ def speech() -> Svg:
 
 
 def unforged_stack() -> Svg:
-    svg = Svg("unforged-stack", 960, 470, "Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent's refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.")
+    svg = Svg("unforged-stack", 960, 470, "Every runtime keeps its coglets as git refs, each coglet a user with its own. Devices run steps in process and run a hub; each hub's router keeps an unforged repository of the refs of the coglets it reaches; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.")
     # device
     svg.rect(24, 24, 300, 300, "dg-group", 12)
     svg.text(40, 48, "DEVICE", "dg-cap", "start")
@@ -747,23 +747,23 @@ def unforged_stack() -> Svg:
     svg.rect(40, 130, 268, 178, "dg-runtime")
     svg.text(54, 151, "cogletd", "dg-code", "start")
     svg.text(294, 151, "hot path", "dg-m", "end")
-    svg.box(54, 162, 116, 40, "Face", "dg-coglet")
-    svg.box(178, 162, 116, 40, "Blender", "dg-coglet")
+    for i, name in enumerate(["Hub", "Face", "Blender"]):
+        svg.box(54 + i * 82, 162, 76, 40, name, "dg-coglet")
     svg.box(54, 212, 240, 34, "WAMR engine", "dg-e-wasm")
     svg.box(54, 254, 240, 42, "object store, in process", "dg-runtime", "git trees and commits, no git binary")
     # router
     svg.rect(352, 24, 256, 300, "dg-group", 12)
-    svg.text(368, 48, "ROUTER", "dg-cap", "start")
+    svg.text(368, 48, "A HUB'S ROUTER", "dg-cap", "start")
     svg.rect(368, 62, 224, 246, "dg-hub")
     svg.text(480, 86, "unforged", "dg-code")
-    svg.text(480, 102, "the cogent's repository", "dg-m")
-    rows = [("refs/coglets/*", "every coglet's state"), ("refs/published/*", "promoted policies"), ("allowed_signers", "who may do what"), ("iroh ticket", "reach it from anywhere")]
+    svg.text(480, 102, "refs of the coglets it reaches", "dg-m")
+    rows = [("refs/users/*", "each coglet's refs"), ("refs/published/*", "promoted policies"), ("allowed_signers", "who may do what"), ("iroh ticket", "reach it from anywhere")]
     for i, (code, what) in enumerate(rows):
         y = 112 + i * 40
         svg.rect(380, y, 200, 36, "dg-runtime", 6)
         svg.text(392, y + 15, code, "dg-code", "start")
         svg.text(392, y + 29, what, "dg-m", "start")
-    svg.box(380, 274, 200, 30, "Router coglet", "dg-coglet")
+    svg.box(380, 274, 200, 30, "Router coglet, peered", "dg-coglet")
     # a Softmax-hosted runtime
     svg.rect(636, 24, 300, 300, "dg-group", 12)
     svg.text(652, 48, "SOFTMAX-HOSTED RUNTIME", "dg-cap", "start")
@@ -779,7 +779,7 @@ def unforged_stack() -> Svg:
     svg.arrow(594, 140, 650, 140, "blue", both=True)
     svg.arrow(310, 250, 366, 250, "teal", dashed=True, both=True)
     svg.arrow(594, 270, 650, 270, "teal", dashed=True, both=True)
-    svg.text(480, 372, "Every box speaks the same objects: a coglet is a ref, a step is a commit, a patch is a merge.", "dg-t")
+    svg.text(480, 372, "Every box speaks the same objects: a coglet is a user with its refs, a step is a commit, a patch is a merge.", "dg-t")
     svg.text(480, 394, "Only the transport differs: messages ride QUIC streams, state and patches ride git fetch and push over iroh.", "dg-m")
     legend(svg, 190, 440, [("blue", False, "messages, health"), ("teal", True, "git fetch / push of refs"), ("warm", False, "adapter events, actions")])
     return svg

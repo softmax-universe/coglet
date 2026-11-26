@@ -40,7 +40,7 @@ steps, grants, and the rule that nothing leaves a runtime until a step has
 committed. Coglets do not see any of this; their code still reads and writes
 `/data` and returns.
 
-![Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent's refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.](diagrams/unforged-stack.svg)
+![Every runtime keeps its coglets as git refs, each coglet a user with its own. Devices run steps in process and run a hub; each hub's router keeps an unforged repository of the refs of the coglets it reaches; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.](diagrams/unforged-stack.svg)
 
 *Three places, one object format. Devices step coglets in process. The router
 is an unforged daemon. A Softmax-hosted runtime steps its coglets the same way and can
@@ -75,7 +75,7 @@ Each coglet has four refs under `refs/coglets/<id>/`:
 | Ref | Points at | Moved by |
 |---|---|---|
 | `state` | The commit of its latest step | The runtime, once per step |
-| `policy` | Candidate code, prompts and skills | Its manager: the factory, the optimizer or a person |
+| `policy` | Candidate code, prompts and skills | Its manager: a router, the optimizer, the factory or a person |
 | `published` | The policy the cogent has promoted | The router kernel, after probation |
 | `inputs` | The latest recorded input | The runtime, once per step |
 
@@ -346,14 +346,16 @@ Everything outside is an adapter, reached the same way:
 ## The router is an unforged repository
 
 The router stays what [the cogent design](README.md) says it is: a
-coglet that finds runtimes and carries messages and patches. unforged is its
+coglet that finds runtimes and carries messages and patches, and since
+ADR-0039 also the cogent's fast loop and attention. unforged is its
 storage and its git transport. Since
 [ADR-0039](../adr/0039-hubs-and-coglets-on-unforged.md) every runtime exposes
 its own repositories and runs a hub; the repository described here is the one a
 hub's router keeps for the coglets it reaches, and peered routers sync refs
 between them.
 
-- **One repository per cogent.** Every coglet's refs, namespaced by runtime.
+- **Repositories per runtime.** Each runtime exposes its own, and each hub's
+  router keeps the refs of the coglets it reaches, namespaced by runtime.
   `refs/published/<id>` and the kernel's probation refs live outside the
   runtime namespaces, and only the kernel moves them.
 - **Install, start and deploy become ref moves.** To install a coglet on a
@@ -403,7 +405,7 @@ between them.
 | `spec/conventions.md` | Object ids are git SHA-256. CBOR stays for message and file contents. |
 | `spec/abi.md` | State hash is the git tree id. Paths may not be `.git` names or both a file and a directory. The journal and trace become step commits, input commits and notes. Usage moves to a note. A failed step makes a commit with an unchanged tree. Effects are staged under `out/`. The `llm` host capability and `llm-request` effect are replaced by ordinary actions; outcome recording covers every adapter, with streamed outcomes as sequenced partial events. |
 | `spec/manifest.schema.json` | The manifest lives in the tree as `manifest.cbor` and names its resolver (engine) by id. |
-| `spec/hub-protocol.md` | ADR-0031 already replaces `hub.git.push` and the SHA-1 bundles with `manage.patch` over plain files. Under this design code and state move as fetch and push of SHA-256 refs over a git ALPN, with partial push for `data/`; `manage.patch` becomes a push to `…/policy`, and `install` and `start` become ref moves. One repository per cogent, namespaced by runtime. |
+| `spec/hub-protocol.md` | ADR-0031 already replaces `hub.git.push` and the SHA-1 bundles with `manage.patch` over plain files. Under this design code and state move as fetch and push of SHA-256 refs over a git ALPN, with partial push for `data/`; `manage.patch` becomes a push to `…/policy`, and `install` and `start` become ref moves. Each runtime exposes its own repositories; peered routers sync refs, namespaced by runtime. |
 | `spec/promotion.md`, `spec/policy.md` | Promotion is a signed compare-and-swap of `refs/published/<id>`. Gates are replays on the cold path. |
 | `spec/tickets.md` | A ticket's result names a `policy` commit and the receipts of the gate that tested it. |
 | `spec/surface-protocol.md` | Adapters publish their tools as a catalog ref; tools carry an effect class (`read` or `write`) and an approval rule. Outcomes are scrubbed of leased values. |

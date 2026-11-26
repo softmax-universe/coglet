@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent&#x27;s refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs, each coglet a user with its own. Devices run steps in process and run a hub; each hub&#x27;s router keeps an unforged repository of the refs of the coglets it reaches; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -58,23 +58,25 @@
 <rect x="40" y="130" width="268" height="178" rx="8" class="dg-runtime"/>
 <text x="54" y="151" text-anchor="start" class="dg-code">cogletd</text>
 <text x="294" y="151" text-anchor="end" class="dg-m">hot path</text>
-<rect x="54" y="162" width="116" height="40" rx="8" class="dg-coglet"/>
-<text x="112.0" y="186.0" text-anchor="middle" class="dg-b">Face</text>
-<rect x="178" y="162" width="116" height="40" rx="8" class="dg-coglet"/>
-<text x="236.0" y="186.0" text-anchor="middle" class="dg-b">Blender</text>
+<rect x="54" y="162" width="76" height="40" rx="8" class="dg-coglet"/>
+<text x="92.0" y="186.0" text-anchor="middle" class="dg-b">Hub</text>
+<rect x="136" y="162" width="76" height="40" rx="8" class="dg-coglet"/>
+<text x="174.0" y="186.0" text-anchor="middle" class="dg-b">Face</text>
+<rect x="218" y="162" width="76" height="40" rx="8" class="dg-coglet"/>
+<text x="256.0" y="186.0" text-anchor="middle" class="dg-b">Blender</text>
 <rect x="54" y="212" width="240" height="34" rx="8" class="dg-e-wasm"/>
 <text x="174.0" y="233.0" text-anchor="middle" class="dg-b">WAMR engine</text>
 <rect x="54" y="254" width="240" height="42" rx="8" class="dg-runtime"/>
 <text x="174.0" y="272.0" text-anchor="middle" class="dg-b">object store, in process</text>
 <text x="174.0" y="288.0" text-anchor="middle" class="dg-m">git trees and commits, no git binary</text>
 <rect x="352" y="24" width="256" height="300" rx="12" class="dg-group"/>
-<text x="368" y="48" text-anchor="start" class="dg-cap">ROUTER</text>
+<text x="368" y="48" text-anchor="start" class="dg-cap">A HUB&#x27;S ROUTER</text>
 <rect x="368" y="62" width="224" height="246" rx="8" class="dg-hub"/>
 <text x="480" y="86" text-anchor="middle" class="dg-code">unforged</text>
-<text x="480" y="102" text-anchor="middle" class="dg-m">the cogent&#x27;s repository</text>
+<text x="480" y="102" text-anchor="middle" class="dg-m">refs of the coglets it reaches</text>
 <rect x="380" y="112" width="200" height="36" rx="6" class="dg-runtime"/>
-<text x="392" y="127" text-anchor="start" class="dg-code">refs/coglets/*</text>
-<text x="392" y="141" text-anchor="start" class="dg-m">every coglet&#x27;s state</text>
+<text x="392" y="127" text-anchor="start" class="dg-code">refs/users/*</text>
+<text x="392" y="141" text-anchor="start" class="dg-m">each coglet&#x27;s refs</text>
 <rect x="380" y="152" width="200" height="36" rx="6" class="dg-runtime"/>
 <text x="392" y="167" text-anchor="start" class="dg-code">refs/published/*</text>
 <text x="392" y="181" text-anchor="start" class="dg-m">promoted policies</text>
@@ -85,7 +87,7 @@
 <text x="392" y="247" text-anchor="start" class="dg-code">iroh ticket</text>
 <text x="392" y="261" text-anchor="start" class="dg-m">reach it from anywhere</text>
 <rect x="380" y="274" width="200" height="30" rx="8" class="dg-coglet"/>
-<text x="480.0" y="293.0" text-anchor="middle" class="dg-b">Router coglet</text>
+<text x="480.0" y="293.0" text-anchor="middle" class="dg-b">Router coglet, peered</text>
 <rect x="636" y="24" width="300" height="300" rx="12" class="dg-group"/>
 <text x="652" y="48" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
 <rect x="652" y="62" width="268" height="142" rx="8" class="dg-runtime"/>
@@ -107,7 +109,7 @@
 <line x1="594" y1="140" x2="650" y2="140" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-stack-blue)" marker-start="url(#unforged-stack-blue-s)"/>
 <line x1="310" y1="250" x2="366" y2="250" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#unforged-stack-teal)" marker-start="url(#unforged-stack-teal-s)"/>
 <line x1="594" y1="270" x2="650" y2="270" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#unforged-stack-teal)" marker-start="url(#unforged-stack-teal-s)"/>
-<text x="480" y="372" text-anchor="middle" class="dg-t">Every box speaks the same objects: a coglet is a ref, a step is a commit, a patch is a merge.</text>
+<text x="480" y="372" text-anchor="middle" class="dg-t">Every box speaks the same objects: a coglet is a user with its refs, a step is a commit, a patch is a merge.</text>
 <text x="480" y="394" text-anchor="middle" class="dg-m">Only the transport differs: messages ride QUIC streams, state and patches ride git fetch and push over iroh.</text>
 <line x1="190" y1="440" x2="224" y2="440" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-stack-blue)"/>
 <text x="232" y="444" text-anchor="start" class="dg-m">messages, health</text>

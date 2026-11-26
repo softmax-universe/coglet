@@ -194,7 +194,7 @@ SHA-256 ids</strong>, the format unforged is already built on.</p>
 steps, grants, and the rule that nothing leaves a runtime until a step has
 committed. Coglets do not see any of this; their code still reads and writes
 <code>/data</code> and returns.</p>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs. Devices run steps in process; the router is an unforged daemon holding the cogent&#x27;s refs; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="470" viewBox="0 0 960 470" role="img" aria-label="Every runtime keeps its coglets as git refs, each coglet a user with its own. Devices run steps in process and run a hub; each hub&#x27;s router keeps an unforged repository of the refs of the coglets it reaches; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -254,23 +254,25 @@ committed. Coglets do not see any of this; their code still reads and writes
 <rect x="40" y="130" width="268" height="178" rx="8" class="dg-runtime"/>
 <text x="54" y="151" text-anchor="start" class="dg-code">cogletd</text>
 <text x="294" y="151" text-anchor="end" class="dg-m">hot path</text>
-<rect x="54" y="162" width="116" height="40" rx="8" class="dg-coglet"/>
-<text x="112.0" y="186.0" text-anchor="middle" class="dg-b">Face</text>
-<rect x="178" y="162" width="116" height="40" rx="8" class="dg-coglet"/>
-<text x="236.0" y="186.0" text-anchor="middle" class="dg-b">Blender</text>
+<rect x="54" y="162" width="76" height="40" rx="8" class="dg-coglet"/>
+<text x="92.0" y="186.0" text-anchor="middle" class="dg-b">Hub</text>
+<rect x="136" y="162" width="76" height="40" rx="8" class="dg-coglet"/>
+<text x="174.0" y="186.0" text-anchor="middle" class="dg-b">Face</text>
+<rect x="218" y="162" width="76" height="40" rx="8" class="dg-coglet"/>
+<text x="256.0" y="186.0" text-anchor="middle" class="dg-b">Blender</text>
 <rect x="54" y="212" width="240" height="34" rx="8" class="dg-e-wasm"/>
 <text x="174.0" y="233.0" text-anchor="middle" class="dg-b">WAMR engine</text>
 <rect x="54" y="254" width="240" height="42" rx="8" class="dg-runtime"/>
 <text x="174.0" y="272.0" text-anchor="middle" class="dg-b">object store, in process</text>
 <text x="174.0" y="288.0" text-anchor="middle" class="dg-m">git trees and commits, no git binary</text>
 <rect x="352" y="24" width="256" height="300" rx="12" class="dg-group"/>
-<text x="368" y="48" text-anchor="start" class="dg-cap">ROUTER</text>
+<text x="368" y="48" text-anchor="start" class="dg-cap">A HUB&#x27;S ROUTER</text>
 <rect x="368" y="62" width="224" height="246" rx="8" class="dg-hub"/>
 <text x="480" y="86" text-anchor="middle" class="dg-code">unforged</text>
-<text x="480" y="102" text-anchor="middle" class="dg-m">the cogent&#x27;s repository</text>
+<text x="480" y="102" text-anchor="middle" class="dg-m">refs of the coglets it reaches</text>
 <rect x="380" y="112" width="200" height="36" rx="6" class="dg-runtime"/>
-<text x="392" y="127" text-anchor="start" class="dg-code">refs/coglets/*</text>
-<text x="392" y="141" text-anchor="start" class="dg-m">every coglet&#x27;s state</text>
+<text x="392" y="127" text-anchor="start" class="dg-code">refs/users/*</text>
+<text x="392" y="141" text-anchor="start" class="dg-m">each coglet&#x27;s refs</text>
 <rect x="380" y="152" width="200" height="36" rx="6" class="dg-runtime"/>
 <text x="392" y="167" text-anchor="start" class="dg-code">refs/published/*</text>
 <text x="392" y="181" text-anchor="start" class="dg-m">promoted policies</text>
@@ -281,7 +283,7 @@ committed. Coglets do not see any of this; their code still reads and writes
 <text x="392" y="247" text-anchor="start" class="dg-code">iroh ticket</text>
 <text x="392" y="261" text-anchor="start" class="dg-m">reach it from anywhere</text>
 <rect x="380" y="274" width="200" height="30" rx="8" class="dg-coglet"/>
-<text x="480.0" y="293.0" text-anchor="middle" class="dg-b">Router coglet</text>
+<text x="480.0" y="293.0" text-anchor="middle" class="dg-b">Router coglet, peered</text>
 <rect x="636" y="24" width="300" height="300" rx="12" class="dg-group"/>
 <text x="652" y="48" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
 <rect x="652" y="62" width="268" height="142" rx="8" class="dg-runtime"/>
@@ -303,7 +305,7 @@ committed. Coglets do not see any of this; their code still reads and writes
 <line x1="594" y1="140" x2="650" y2="140" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-stack-blue)" marker-start="url(#unforged-stack-blue-s)"/>
 <line x1="310" y1="250" x2="366" y2="250" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#unforged-stack-teal)" marker-start="url(#unforged-stack-teal-s)"/>
 <line x1="594" y1="270" x2="650" y2="270" class="dg-teal dg-dash" stroke-width="1.6" marker-end="url(#unforged-stack-teal)" marker-start="url(#unforged-stack-teal-s)"/>
-<text x="480" y="372" text-anchor="middle" class="dg-t">Every box speaks the same objects: a coglet is a ref, a step is a commit, a patch is a merge.</text>
+<text x="480" y="372" text-anchor="middle" class="dg-t">Every box speaks the same objects: a coglet is a user with its refs, a step is a commit, a patch is a merge.</text>
 <text x="480" y="394" text-anchor="middle" class="dg-m">Only the transport differs: messages ride QUIC streams, state and patches ride git fetch and push over iroh.</text>
 <line x1="190" y1="440" x2="224" y2="440" class="dg-blue" stroke-width="1.6" marker-end="url(#unforged-stack-blue)"/>
 <text x="232" y="444" text-anchor="start" class="dg-m">messages, health</text>
@@ -463,7 +465,7 @@ Below, <code>refs/coglets/&lt;id&gt;/</code> stands for that namespace.</p>
 <tr>
 <td><code>policy</code></td>
 <td>Candidate code, prompts and skills</td>
-<td>Its manager: the factory, the optimizer or a person</td>
+<td>Its manager: a router, the optimizer, the factory or a person</td>
 </tr>
 <tr>
 <td><code>published</code></td>
@@ -1177,14 +1179,16 @@ Everything outside is an adapter, reached the same way:</p>
 </ul>
 <h2 id="the-router-is-an-unforged-repository">The router is an unforged repository<a class="headerlink" href="#the-router-is-an-unforged-repository" title="Permanent link">#</a></h2>
 <p>The router stays what <a href="index.html">the cogent design</a> says it is: a
-coglet that finds runtimes and carries messages and patches. unforged is its
+coglet that finds runtimes and carries messages and patches, and since
+ADR-0039 also the cogent's fast loop and attention. unforged is its
 storage and its git transport. Since
 <a href="../adr/0039-hubs-and-coglets-on-unforged.md">ADR-0039</a> every runtime exposes
 its own repositories and runs a hub; the repository described here is the one a
 hub's router keeps for the coglets it reaches, and peered routers sync refs
 between them.</p>
 <ul>
-<li><strong>One repository per cogent.</strong> Every coglet's refs, namespaced by runtime.
+<li><strong>Repositories per runtime.</strong> Each runtime exposes its own, and each hub's
+  router keeps the refs of the coglets it reaches, namespaced by runtime.
   <code>refs/published/&lt;id&gt;</code> and the kernel's probation refs live outside the
   runtime namespaces, and only the kernel moves them.</li>
 <li><strong>Install, start and deploy become ref moves.</strong> To install a coglet on a
@@ -1271,7 +1275,7 @@ between them.</p>
 </tr>
 <tr>
 <td><code>spec/hub-protocol.md</code></td>
-<td>ADR-0031 already replaces <code>hub.git.push</code> and the SHA-1 bundles with <code>manage.patch</code> over plain files. Under this design code and state move as fetch and push of SHA-256 refs over a git ALPN, with partial push for <code>data/</code>; <code>manage.patch</code> becomes a push to <code>…/policy</code>, and <code>install</code> and <code>start</code> become ref moves. One repository per cogent, namespaced by runtime.</td>
+<td>ADR-0031 already replaces <code>hub.git.push</code> and the SHA-1 bundles with <code>manage.patch</code> over plain files. Under this design code and state move as fetch and push of SHA-256 refs over a git ALPN, with partial push for <code>data/</code>; <code>manage.patch</code> becomes a push to <code>…/policy</code>, and <code>install</code> and <code>start</code> become ref moves. Each runtime exposes its own repositories; peered routers sync refs, namespaced by runtime.</td>
 </tr>
 <tr>
 <td><code>spec/promotion.md</code>, <code>spec/policy.md</code></td>
