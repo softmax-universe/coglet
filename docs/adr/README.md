@@ -34,7 +34,6 @@ and the other ADR status decisions remain separate.
 | 0037 | [Baby Bear iOS command disposition for the embedded cutover](0037-babybear-ios-command-disposition.md) | Proposed; status admission only, physical qualification separate |
 | 0038 | [Private observation ownership and transfer fences](0038-private-observation-ownership.md) | Accepted decision (#204); implementation qualification separate |
 | 0039 | [Fail-closed iOS process-scoped runtime clock](0039-ios-process-runtime-clock.md) | Accepted decision (#207); renumbered from duplicate 0038; implementation and physical qualification separate |
-| 0039 | [Coglets live in unforged repos; hubs and smart routers](0039-hubs-and-coglets-on-unforged.md) | Proposed; direction decided by David 2026-11-25, target design, implementation staged |
 | 0040 | [Coglets live in unforged repos; hubs and smart routers](0040-hubs-and-coglets-on-unforged.md) | Proposed; direction decided by David 2026-11-25, target design, implementation staged |
 
 0002 belongs to common conventions; the platform findings retain their evidence
