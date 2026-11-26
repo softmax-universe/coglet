@@ -88,16 +88,16 @@ impl RuntimeService {
         }
         let phase = self.store.phase_sink();
         mark(&phase, Phase::ReconcileEnter);
-        let next = Self::reconcile_attempt_inner(&self.state, self.store.records(), record, true)?;
-        mark(&phase, Phase::ReconcileReturn);
+        let result = Self::reconcile_attempt_inner(&self.state, self.store.records(), record, true);
+        let next = crate::phase_evidence::returned(&phase, Phase::ReconcileReturn, result)?;
         self.publish_recovered_attempt(next, record)
     }
 
     fn publish_recovered_attempt(&mut self, next: ServiceState, record: &Value) -> Result<()> {
         let phase = self.store.phase_sink();
         mark(&phase, Phase::SerdeEnter);
-        let value = serde_json::to_value(&next).map_err(|e| e.to_string())?;
-        mark(&phase, Phase::SerdeReturn);
+        let result = serde_json::to_value(&next).map_err(|e| e.to_string());
+        let value = crate::phase_evidence::returned(&phase, Phase::SerdeReturn, result)?;
         self.store.commit(&value, Some(record))?;
         self.state = next;
         Ok(())

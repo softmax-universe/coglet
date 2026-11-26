@@ -36,7 +36,7 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
         // Authority providers acquire SQL first and invoke this WAL callback
         // under that guard. Neither guard survives into actual guest execution.
         mark(self.phase, Phase::FenceEnter);
-        (self.authorized)(&|| {
+        let result = (self.authorized)(&|| {
             let mut service = self
                 .service
                 .lock()
@@ -53,8 +53,8 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
             )?;
             service.state = next;
             Ok(())
-        })?;
-        mark(self.phase, Phase::FenceReturn);
+        });
+        crate::phase_evidence::returned(self.phase, Phase::FenceReturn, result)?;
         mark(self.phase, Phase::EngineEnter);
         let result = self.engine.execute(inputs, host);
         mark(self.phase, Phase::EngineReturn);
@@ -102,29 +102,30 @@ impl RuntimeService {
     pub(super) fn prepare_detached(&mut self, context: &Value) -> Result<Option<DetachedRun>> {
         let phase = self.store.phase_sink();
         mark(&phase, Phase::PrepareEnter);
-        self.require_deliverable()?;
-        let Some((inputs, _, next)) = self.begin_attempt(context)? else {
-            mark(&phase, Phase::PrepareReturn);
-            return Ok(None);
-        };
-        let basis = DetachedBasis {
-            files_hash: self.state.runtime.files.tree_hash()?,
-            manifest: self.state.runtime.manifest.clone(),
-            staged: self
-                .state
-                .staged_boundary
-                .as_ref()
-                .map(|s| s.changes.clone())
-                .unwrap_or_default(),
-        };
-        self.detached_execution = true;
-        mark(&phase, Phase::PrepareReturn);
-        Ok(Some(DetachedRun {
-            phase,
-            basis,
-            inputs,
-            runtime: next.runtime,
-        }))
+        let result = (|| {
+            self.require_deliverable()?;
+            let Some((inputs, _, next)) = self.begin_attempt(context)? else {
+                return Ok(None);
+            };
+            let basis = DetachedBasis {
+                files_hash: self.state.runtime.files.tree_hash()?,
+                manifest: self.state.runtime.manifest.clone(),
+                staged: self
+                    .state
+                    .staged_boundary
+                    .as_ref()
+                    .map(|s| s.changes.clone())
+                    .unwrap_or_default(),
+            };
+            self.detached_execution = true;
+            Ok(Some(DetachedRun {
+                phase: phase.clone(),
+                basis,
+                inputs,
+                runtime: next.runtime,
+            }))
+        })();
+        crate::phase_evidence::returned(&phase, Phase::PrepareReturn, result)
     }
     pub(crate) fn execute_detached(
         service: &Arc<Mutex<Self>>,

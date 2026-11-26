@@ -156,8 +156,12 @@ impl SurfaceSession {
             return Ok(());
         };
         crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::SupervisorEnter);
-        self.pump_supervisor_reads(now)?;
-        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::SupervisorReturn);
+        let result = self.pump_supervisor_reads(now);
+        crate::phase_evidence::returned(
+            &self.phase,
+            crate::phase_evidence::Phase::SupervisorReturn,
+            result,
+        )?;
         #[cfg(feature = "native-engine")]
         crate::RuntimeService::run_native(&service, self, now)?;
         while self.output.len() < SURFACE_QUEUE {
@@ -176,9 +180,13 @@ impl SurfaceSession {
             crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DispatchEnter);
             let next = service
                 .lock()
-                .map_err(|_| "runtime service poisoned")?
-                .next_dispatch(self, &self.sent_dispatches, now)?;
-            crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DispatchReturn);
+                .map_err(|_| "runtime service poisoned".to_string())
+                .and_then(|mut guard| guard.next_dispatch(self, &self.sent_dispatches, now));
+            let next = crate::phase_evidence::returned(
+                &self.phase,
+                crate::phase_evidence::Phase::DispatchReturn,
+                next,
+            )?;
             let Some((id, bytes)) = next else {
                 break;
             };

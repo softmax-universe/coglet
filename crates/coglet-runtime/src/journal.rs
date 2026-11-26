@@ -237,11 +237,16 @@ impl DurableStore {
             validate_record(record, crate::ContractProfile::from_setup(state)?)?;
         }
         mark(&self.phase, Phase::EncodeEnter);
-        let mut transaction = json!({"state":state, "journal":record, "previous":self.previous});
-        let hash = digest(&cbor(&transaction)?);
-        transaction["hash"] = Value::String(hash.clone());
-        let raw = cbor(&transaction)?;
-        mark(&self.phase, Phase::EncodeReturn);
+        let encoded = (|| -> Result<_> {
+            let mut transaction =
+                json!({"state":state, "journal":record, "previous":self.previous});
+            let hash = digest(&cbor(&transaction)?);
+            transaction["hash"] = Value::String(hash.clone());
+            let raw = cbor(&transaction)?;
+            Ok((raw, hash))
+        })();
+        let (raw, hash) =
+            crate::phase_evidence::returned(&self.phase, Phase::EncodeReturn, encoded)?;
         self.append(&raw, hash, state)?;
         if let Some(record) = record {
             self.journal.push(record.clone());

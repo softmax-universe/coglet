@@ -197,11 +197,15 @@ fn serve_session(
         let deadline = Instant::now() + Duration::from_secs(3);
         let mut header = [0; 4];
         mark(&phase, Phase::HeaderEnter);
-        if !read_exact_until(stream, &mut header, deadline, true, session, clock)? {
+        let complete = crate::phase_evidence::returned(
+            &phase,
+            Phase::HeaderReturn,
+            read_exact_until(stream, &mut header, deadline, true, session, clock),
+        )?;
+        if !complete {
             session.disconnect();
             return Ok(ServeEnd::Eof);
         }
-        mark(&phase, Phase::HeaderReturn);
         let n = u32::from_be_bytes(header) as usize;
         if n == 0 || n > SURFACE_MAX_FRAME {
             session.disconnect();
@@ -209,11 +213,17 @@ fn serve_session(
         }
         let mut raw = vec![0; n];
         mark(&phase, Phase::BodyEnter);
-        read_exact_until(stream, &mut raw, deadline, false, session, clock)?;
-        mark(&phase, Phase::BodyReturn);
+        crate::phase_evidence::returned(
+            &phase,
+            Phase::BodyReturn,
+            read_exact_until(stream, &mut raw, deadline, false, session, clock),
+        )?;
         mark(&phase, Phase::ClockEnter);
-        let now = session.transport_now(clock)?;
-        mark(&phase, Phase::ClockReturn);
+        let now = crate::phase_evidence::returned(
+            &phase,
+            Phase::ClockReturn,
+            session.transport_now(clock),
+        )?;
         mark(&phase, Phase::SendEnter);
         let status = session.send(&raw, now);
         mark(&phase, Phase::SendReturn);
@@ -221,15 +231,14 @@ fn serve_session(
             return Err("fatal surface message".into());
         }
         mark(&phase, Phase::PumpEnter);
-        session.pump_dispatch(now)?;
-        mark(&phase, Phase::PumpReturn);
+        crate::phase_evidence::returned(&phase, Phase::PumpReturn, session.pump_dispatch(now))?;
         while let Some(response) = session.pop() {
             mark(&phase, Phase::WireEnter);
-            stream
+            let written = stream
                 .write_all(&(response.len() as u32).to_be_bytes())
                 .and_then(|_| stream.write_all(&response))
-                .map_err(|e| e.to_string())?;
-            mark(&phase, Phase::WireReturn);
+                .map_err(|e| e.to_string());
+            crate::phase_evidence::returned(&phase, Phase::WireReturn, written)?;
         }
         if session.is_closed() {
             return Ok(ServeEnd::Closed);
@@ -248,24 +257,26 @@ fn read_exact_until(
     let mut first = true;
     while !out.is_empty() {
         mark(&phase, Phase::ClockEnter);
-        let now = session.transport_now(clock)?;
-        mark(&phase, Phase::ClockReturn);
+        let now = crate::phase_evidence::returned(
+            &phase,
+            Phase::ClockReturn,
+            session.transport_now(clock),
+        )?;
         mark(&phase, Phase::TickEnter);
         session.tick(now);
         mark(&phase, Phase::TickReturn);
         mark(&phase, Phase::PumpEnter);
-        session.pump_dispatch(now)?;
-        mark(&phase, Phase::PumpReturn);
+        crate::phase_evidence::returned(&phase, Phase::PumpReturn, session.pump_dispatch(now))?;
         if session.is_closed() {
             return Err("surface inactivity timeout".into());
         }
         while let Some(response) = session.pop() {
             mark(&phase, Phase::WireEnter);
-            stream
+            let written = stream
                 .write_all(&(response.len() as u32).to_be_bytes())
                 .and_then(|_| stream.write_all(&response))
-                .map_err(|e| e.to_string())?;
-            mark(&phase, Phase::WireReturn);
+                .map_err(|e| e.to_string());
+            crate::phase_evidence::returned(&phase, Phase::WireReturn, written)?;
         }
         let remaining = deadline
             .checked_duration_since(Instant::now())

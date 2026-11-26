@@ -130,6 +130,12 @@ impl Recorder {
     }
 }
 #[inline]
+pub(crate) fn returned<T>(sink: &Option<Sink>, phase: Phase, result: T) -> T {
+    mark(sink, phase);
+    result
+}
+
+#[inline]
 pub(crate) fn mark(sink: &Option<Sink>, phase: Phase) {
     let Some(sink) = sink else {
         return;

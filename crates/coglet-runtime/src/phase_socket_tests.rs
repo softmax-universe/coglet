@@ -52,4 +52,43 @@ fn phase_socket_failure_retains_read_and_teardown_order_without_masking() {
     assert_eq!(phases.last(), Some(&Phase::DisconnectReturn));
     let text = std::str::from_utf8(&out).unwrap();
     assert!(text.contains("native-phase-v1"));
+
+    // A real mid-body EOF returns through `?`; its return observation must
+    // survive without changing the original transport error.
+    let cases: serde_json::Value =
+        serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
+    let setup = cases
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["name"] == "no-effects")
+        .unwrap()["steps"][0]["send"]
+        .clone();
+    let mut service = crate::RuntimeService::open(&dir.path().join("body.wal"), &setup, 8).unwrap();
+    service.enable_phase_sink();
+    let sink = service.phase_sink().unwrap();
+    let binding = SurfaceBinding::new(
+        format!("surface:{}", "a".repeat(64)),
+        vec![setup["manifest"]["id"].as_str().unwrap().into()],
+    )
+    .unwrap();
+    let (mut peer, mut stream) = UnixStream::pair().unwrap();
+    peer.write_all(&4u32.to_be_bytes()).unwrap();
+    peer.write_all(&[0, 0]).unwrap();
+    peer.shutdown(std::net::Shutdown::Write).unwrap();
+    let result = serve_with_service_to(
+        &mut stream,
+        uid,
+        binding,
+        Some(Arc::new(Mutex::new(service))),
+        &mut Vec::new(),
+    );
+    assert_eq!(result, Err("EOF mid-frame".into()));
+    let snap = sink.snapshot();
+    assert!(
+        snap.entries[..snap.count]
+            .iter()
+            .any(|e| e.phase == Phase::BodyReturn),
+        "missing error-return marker"
+    );
 }
