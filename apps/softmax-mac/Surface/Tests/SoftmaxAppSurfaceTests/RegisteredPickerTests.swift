@@ -254,18 +254,18 @@ final class RegisteredPickerTests: XCTestCase {
         let staleSelect = try h.registry.prepare(args(pickerID, verb: "select", value: "Dark"), sensitive: false)
         let failure: (ControlRegistryFailure) -> Void = { XCTFail("Registration failed: \($0)") }
         // Route change re-registers every control on that route.
-        h.hosting.rootView = fixture(h.model, h.registry, "other", failure)
+        h.hosting.rootView = fixture(h.model, h.registry, "audio", failure)
         h.hosting.layoutSubtreeIfNeeded()
-        waitUntil { h.registry.registrationInventory().count == 8 && h.registry.registrationInventory().allSatisfy { $0.route == "other" } }
+        waitUntil { h.registry.registrationInventory().count == 8 && h.registry.registrationInventory().allSatisfy { $0.route == "audio" } }
         XCTAssertEqual(h.registry.registrationInventory().count, 8)
-        XCTAssertTrue(h.registry.registrationInventory().allSatisfy { $0.route == "other" })
+        XCTAssertTrue(h.registry.registrationInventory().allSatisfy { $0.route == "audio" })
         XCTAssertThrowsError(try h.registry.perform(stale, authorized: { true }))
         XCTAssertThrowsError(try h.registry.perform(staleSelect, authorized: { true }))
         XCTAssertEqual(h.model.appearance, "System")
         XCTAssertEqual(h.model.appearanceWrites, 0)
         // The actual open route is still "general": the new mounts are unavailable.
         XCTAssertThrowsError(try press(h.registry, pickerID + ".dark"))
-        h.routeBox.open = "other"
+        h.routeBox.open = "audio"
         try press(h.registry, pickerID + ".dark")
         XCTAssertEqual(h.model.appearance, "Dark")
         // Remove the whole view: mounts disappear, requests prepared earlier cannot resurrect them.
