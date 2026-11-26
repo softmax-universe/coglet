@@ -70,7 +70,9 @@ public struct CogletRadioGroup: NSViewRepresentable {
             super.init(frame: frameRect)
             orientation = .vertical
             alignment = .leading
-            spacing = 4
+            // Match the original SwiftUI radio picker: a fixed six-point
+            // inter-control gap, independent of the app's text scale.
+            spacing = 6
             setAccessibilityElement(true)
             setAccessibilityRole(.radioGroup)
         }

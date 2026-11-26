@@ -64,16 +64,30 @@ final class CogletRadioGroupTests: XCTestCase {
             let group = CogletRadioGroup.NativeView(frame: NSRect(x: 0, y: 0, width: 160, height: 90))
             configure(group, registry: registry, choices: choices, id: id, selection: .constant(choices[0].value))
             window.contentView?.addSubview(group)
-            group.layoutSubtreeIfNeeded()
-            XCTAssertEqual(group.orientation, .vertical)
-            XCTAssertEqual(group.alignment, .leading)
-            XCTAssertEqual(group.spacing, 4)
-            for (first, second) in zip(group.buttons, group.buttons.dropFirst()) {
-                XCTAssertEqual(first.frame.minX, second.frame.minX, accuracy: 0.01)
-                XCTAssertGreaterThan(first.frame.height, 0)
-                XCTAssertGreaterThan(second.frame.height, 0)
-                XCTAssertFalse(first.frame.intersects(second.frame))
-                XCTAssertGreaterThan(group.isFlipped ? second.frame.minY - first.frame.minY : first.frame.minY - second.frame.minY, 0)
+            for scale in [1.0, 1.3, 1.6, 1.0] {
+                group.configure(title: "Appearance", id: id, registry: registry,
+                    window: "settings", route: "general", choices: choices,
+                    selection: .constant(choices[0].value), enabled: true, fontSize: 14 * scale,
+                    failure: { XCTFail("Registration failed: \($0)") })
+                group.setFrameSize(group.fittingSize)
+                group.layoutSubtreeIfNeeded()
+                XCTAssertEqual(group.orientation, .vertical)
+                XCTAssertEqual(group.alignment, .leading)
+                XCTAssertEqual(group.spacing, 6, "The baseline gap is fixed, not text-scaled")
+                for (first, second) in zip(group.buttons, group.buttons.dropFirst()) {
+                    XCTAssertEqual(first.frame.minX, second.frame.minX, accuracy: 0.01)
+                    XCTAssertGreaterThan(first.frame.height, 0)
+                    XCTAssertGreaterThan(second.frame.height, 0)
+                    XCTAssertFalse(first.frame.intersects(second.frame))
+                    let gap = group.isFlipped
+                        ? second.frame.minY - first.frame.maxY
+                        : first.frame.minY - second.frame.maxY
+                    XCTAssertEqual(gap, 6, accuracy: 0.5)
+                    let pitch = abs(second.frame.midY - first.frame.midY)
+                    XCTAssertEqual(pitch, (first.frame.height + second.frame.height) / 2 + 6, accuracy: 0.5)
+                }
+                let buttonHeights = group.buttons.reduce(CGFloat.zero) { $0 + $1.frame.height }
+                XCTAssertEqual(group.fittingSize.height, buttonHeights + 12, accuracy: 0.5)
             }
             group.dismantle(); group.removeFromSuperview()
         }
