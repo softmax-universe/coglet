@@ -4,11 +4,12 @@ use crate::counter::{Files, context, echo_events};
 use crate::report::ActReport;
 use crate::unf::{
     HotChain, StepInput, build_wamr_resolver, cold_replay, engine_pin, hot_run, is_hex64,
+    resolver_file,
 };
 use gecaos::coglet::{
-    BoundaryChange, CogletStepResult, LooseObjectStore, ObjectId, Oid256, StepReceipt, StepUsage,
-    decode_commit, read_latest_step_receipt, read_step_receipts, record_step_receipt,
-    record_step_usage,
+    BoundaryChange, COGLET_ENGINE_RESOLVER_PATH, CogletStepResult, LooseObjectStore, ObjectId,
+    Oid256, StepReceipt, StepUsage, decode_commit, parse_engine_pin_blob_oid,
+    read_latest_step_receipt, read_step_receipts, record_step_receipt, record_step_usage,
 };
 use gecaos::driver::{CachePolicy, DriverSource, ResolverConfig};
 use gecaos::os::GecaosOs;
@@ -126,9 +127,46 @@ pub fn run(
         "Stage 1: first test on real coglets/counter (hot vs cold)",
     );
     let pin = engine_pin(helper, "");
-    let resolver = build_wamr_resolver(os, helper, &pin, true)?;
+    let resolver = build_wamr_resolver(os, helper, "", true)?;
     r.hash("resolver (deterministic, engine pinned)", resolver.clone());
     r.note(format!("engine = {pin}"));
+    // The resolver is unforged's stock engine-bin resolver: the helper bytes live
+    // in the resolver tree and unforged's own driver execs them.
+    let engine = resolver_file(os, &resolver, COGLET_ENGINE_RESOLVER_PATH);
+    r.check(
+        "resolver: engines/coglet-engine is the coglet-wamr-step helper (100755, same bytes)",
+        engine
+            .as_ref()
+            .is_ok_and(|(mode, bytes)| mode == "100755" && bytes.as_slice() == helper),
+        match &engine {
+            Ok((mode, bytes)) => format!("{mode} {} bytes", bytes.len()),
+            Err(e) => e.clone(),
+        },
+    );
+    let strategy = resolver_file(os, &resolver, "strategy")
+        .map(|(_, b)| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default();
+    r.check(
+        "resolver: strategy pins engine = <label>@sha256:<engine blob oid>",
+        strategy
+            .lines()
+            .any(|l| l.trim() == format!("engine = {pin}"))
+            && parse_engine_pin_blob_oid(&pin).as_deref()
+                == Some(unforged_gitobj::hash_blob(helper).to_hex().as_str()),
+        strategy
+            .lines()
+            .find(|l| l.starts_with("engine"))
+            .unwrap_or("")
+            .to_string(),
+    );
+    let driver = resolver_file(os, &resolver, "drivers/coglet-step")
+        .map(|(_, b)| String::from_utf8_lossy(&b).into_owned())
+        .unwrap_or_default();
+    r.check(
+        "resolver: unforged's drivers/coglet-step execs engines/coglet-engine, no built-in fallback",
+        driver.contains(COGLET_ENGINE_RESOLVER_PATH) && !driver.contains("coglet-step-worktree"),
+        format!("{} bytes", driver.len()),
+    );
 
     // ---- Hot path: in-process cogletd-style writer -------------------------------
     let chain = hot_run(os, coglet_id, genesis, &steps(), &resolver)?;
@@ -254,8 +292,7 @@ pub fn run(
         "local",
     );
 
-    let bumped_pin = engine_pin(helper, "+bump1");
-    let bumped = build_wamr_resolver(os, helper, &bumped_pin, true)?;
+    let bumped = build_wamr_resolver(os, helper, "+bump1", true)?;
     r.hash("resolver (engine pin bumped only)", bumped.clone());
     let bump = cold_replay(os, coglet_id, &chain, &bumped, CachePolicy::Default)?;
     check_pass(
@@ -269,7 +306,7 @@ pub fn run(
         "none",
     );
 
-    let nondet = build_wamr_resolver(os, helper, &pin, false)?;
+    let nondet = build_wamr_resolver(os, helper, "", false)?;
     r.hash("resolver (deterministic = false)", nondet.clone());
     let _ = cold_replay(os, coglet_id, &chain, &nondet, CachePolicy::Default)?;
     let again = cold_replay(os, coglet_id, &chain, &nondet, CachePolicy::Default)?;
@@ -287,7 +324,7 @@ pub fn run(
     // (unforged maps the driver failure to an aborted step), so the matches above
     // came from the pinned WAMR helper actually executing.
     let broken = b"#!/bin/sh\nexit 3\n";
-    let broken_res = build_wamr_resolver(os, broken, &engine_pin(broken, ""), true)?;
+    let broken_res = build_wamr_resolver(os, broken, "", true)?;
     let tampered = cold_replay(os, coglet_id, &chain, &broken_res, CachePolicy::Bypass)?;
     r.check(
         "tamper control: helper that exits 3 -> step 1 aborted, tree != hot tree",

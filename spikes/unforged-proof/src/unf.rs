@@ -1,16 +1,17 @@
 //! Thin helpers over real unforged APIs shared by the acts: ref pins, the
-//! WAMR resolver commit, the in-process hot path and the cold-path replay.
+//! engine-bin resolver commit, the in-process hot path and the cold-path replay.
 use crate::counter::{Files, StepOutcome, encode_input, wamr_step};
 use gecaos::coglet::{
     BoundaryChange, CogletEvent, CogletStepOptions, CogletStepResult, CommitSpec, IdentSpec,
-    LooseObjectStore, MemoryObjectBatch, Oid256, StepCommitSpec, StepContext, TreeEntry,
-    TreeProfile, execute_coglet_step,
+    LooseObjectStore, MemoryObjectBatch, Oid256, StepCommitSpec, StepContext, TreeProfile,
+    build_coglet_resolver_with_engine_bin, coglet_engine_pin_for_blob, execute_coglet_step,
 };
 use gecaos::driver::{CachePolicy, LocalDriverRunner};
 use gecaos::git::{GitEnv, git_spawn_count, reset_git_spawn_count};
 use gecaos::os::GecaosOs;
 use std::process::Command;
 use std::time::Instant;
+use unforged_gitobj::{ObjectId, hash_blob};
 
 pub type StepInput = (StepContext, Vec<CogletEvent>, Vec<BoundaryChange>);
 
@@ -57,75 +58,60 @@ pub fn fsck(os: &GecaosOs) -> (bool, String) {
     }
 }
 
-/// Engine pin naming the exact helper bytes and WAMR build.
-pub fn engine_pin(helper: &[u8], suffix: &str) -> String {
+/// Engine label naming the WAMR build and the helper. unforged's
+/// `build_coglet_resolver_with_engine_bin` appends `@sha256:<engine blob oid>`, so
+/// the pin in `strategy` always names the exact helper bytes stored in the resolver.
+pub fn engine_label(suffix: &str) -> String {
     format!(
-        "coglet-engine-wamr@{}+coglet-wamr-step-sha256:{}{suffix}",
-        coglet_engine_wamr::BUILD,
-        gecaos::coglet::sha256_hex(helper)
+        "coglet-engine-wamr@{}+coglet-wamr-step{suffix}",
+        coglet_engine_wamr::BUILD
     )
 }
 
-/// The driver script: exec the pinned helper from the read-only resolver mount.
-pub const DRIVER_SCRIPT: &str = "#!/bin/sh\n\
-# coglet-step driver: real coglet WAMR engine pinned at /run/resolver/bin/coglet-wamr-step\n\
-exec \"${UNFORGED_RESOLVER_DIR:-/run/resolver}/bin/coglet-wamr-step\" step-worktree \"$PWD\"\n";
+/// The full `engine = ...` pin unforged writes for `helper` under `engine_label(suffix)`.
+pub fn engine_pin(helper: &[u8], suffix: &str) -> String {
+    coglet_engine_pin_for_blob(&engine_label(suffix), &hash_blob(helper).to_hex())
+}
 
-/// Build a `coglet-step` resolver commit whose tree pins the real WAMR helper:
-/// `strategy`, `drivers/coglet-step` (100755) and `bin/coglet-wamr-step` (100755).
+/// Build a `coglet-step` resolver through unforged's stock
+/// `build_coglet_resolver_with_engine_bin`: the helper bytes are stored at
+/// `engines/coglet-engine` (100755) and unforged's own `drivers/coglet-step` execs
+/// them on the cold path (it never falls back to unforged's built-in interpreter).
 pub fn build_wamr_resolver(
     os: &GecaosOs,
     helper: &[u8],
-    engine_pin: &str,
+    label_suffix: &str,
     deterministic: bool,
 ) -> Result<String, String> {
+    build_coglet_resolver_with_engine_bin(os, &engine_label(label_suffix), helper, deterministic)
+}
+
+/// Read `path` (`a/b/c`) out of a resolver commit in-process: `(mode, blob bytes)`.
+pub fn resolver_file(
+    os: &GecaosOs,
+    resolver: &str,
+    path: &str,
+) -> Result<(String, Vec<u8>), String> {
     let store = LooseObjectStore::new(&os.git.git_dir);
     let e = |e: gecaos::coglet::GitObjError| e.to_string();
-    let strategy = format!(
-        "driver = coglet-step\ndeterministic = {deterministic}\nengine = {engine_pin}\nvalidation = coglet\n"
-    );
-    let strategy_oid = store.write_blob(strategy.as_bytes()).map_err(e)?;
-    let driver_oid = store.write_blob(DRIVER_SCRIPT.as_bytes()).map_err(e)?;
-    let helper_oid = store.write_blob(helper).map_err(e)?;
-    let bin = store
-        .write_tree(
-            &[TreeEntry::executable("coglet-wamr-step", helper_oid)],
-            TreeProfile::Standard,
-        )
-        .map_err(e)?;
-    let drivers = store
-        .write_tree(
-            &[TreeEntry::executable("coglet-step", driver_oid)],
-            TreeProfile::Standard,
-        )
-        .map_err(e)?;
-    let root = store
-        .write_tree(
-            &[
-                TreeEntry::dir("bin", bin),
-                TreeEntry::dir("drivers", drivers),
-                TreeEntry::file("strategy", strategy_oid),
-            ],
-            TreeProfile::Standard,
-        )
-        .map_err(e)?;
-    let ident = IdentSpec::new("unforged-resolver", "resolver@unforged", 0);
-    let commit = store
-        .write_commit(&CommitSpec::unsigned(
-            root,
-            Vec::new(),
-            ident.clone(),
-            ident,
-            format!("coglet resolver (engine={engine_pin})"),
-        ))
+    let mut tree = store
+        .read_commit(&Oid256::from_hex_str(resolver).map_err(e)?)
         .map_err(e)?
-        .to_hex();
-    pin(
-        os,
-        &format!("refs/gecaos/coglet-resolvers/{commit}"),
-        &commit,
-    )?;
-    Ok(commit)
+        .tree;
+    let mut comps = path.split('/').peekable();
+    while let Some(name) = comps.next() {
+        let entry = store
+            .read_tree(&tree, TreeProfile::Standard)
+            .map_err(e)?
+            .into_iter()
+            .find(|x| x.name == name)
+            .ok_or_else(|| format!("resolver {resolver} has no `{path}`"))?;
+        if comps.peek().is_none() {
+            return Ok((entry.mode.clone(), store.read_blob(&entry.oid).map_err(e)?));
+        }
+        tree = entry.oid;
+    }
+    Err(format!("empty resolver path `{path}`"))
 }
 
 /// A recorded hot-path chain.

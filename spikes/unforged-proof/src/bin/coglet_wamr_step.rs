@@ -6,8 +6,42 @@
 //! this binary from `/run/resolver/bin/`. It runs exactly one step of the real
 //! counter guest through coglet's `Runtime::step` + WAMR (the same function the hot
 //! path calls) and replaces the worktree with the `{ status, state/ }` envelope.
+//!
+//! `coglet-wamr-step --batch-stdio` serves unforged's length-framed engine protocol
+//! for `replay_step_chain_in_store_with_engine` (one process for a whole chain).
 use coglet_unforged_proof::counter::{Files, decode_input, wamr_step};
+use gecaos::coglet::{PureStepTransition, StepEngine, serve_engine_batch_stdio};
 use std::path::Path;
+
+/// One counter step through coglet's `Runtime::step` + WAMR, as an unforged `StepEngine`.
+struct Wamr;
+
+impl StepEngine for Wamr {
+    fn engine_name(&self) -> String {
+        "coglet-wamr-step".into()
+    }
+
+    fn step(&mut self, ours: &Files, theirs: &Files) -> Result<PureStepTransition, String> {
+        let (ctx, events, boundary) = decode_input(theirs)?;
+        let o = wamr_step(ours, &ctx, &events, &boundary)?;
+        Ok(PureStepTransition {
+            files: o.files,
+            context: ctx,
+            aborted: o.aborted,
+            abort_reason: o.reason,
+            compute: o.compute,
+            mem_bytes: 0,
+        })
+    }
+}
+
+/// unforged's persistent `--batch-stdio` protocol: one process serves every step of a
+/// chain replay (`ExternalCommandStepEngine::batch_stdio`).
+fn batch_stdio() -> Result<(), String> {
+    let stdin = std::io::stdin();
+    let stdout = std::io::stdout();
+    serve_engine_batch_stdio(&mut stdin.lock(), &mut stdout.lock(), &mut Wamr).map(|_| ())
+}
 
 fn read_dir_strict(root: &Path, cur: &Path, out: &mut Files) -> Result<(), String> {
     if !cur.exists() {
@@ -81,7 +115,8 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let result = match args.get(1).map(String::as_str) {
         Some("step-worktree") => step_worktree(Path::new(args.get(2).map_or(".", String::as_str))),
-        _ => Err("usage: coglet-wamr-step step-worktree <dir>".to_string()),
+        Some("--batch-stdio") => batch_stdio(),
+        _ => Err("usage: coglet-wamr-step step-worktree <dir> | --batch-stdio".to_string()),
     };
     if let Err(e) = result {
         eprintln!("coglet-wamr-step: {e}");

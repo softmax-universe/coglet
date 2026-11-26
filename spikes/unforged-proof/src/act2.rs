@@ -1,19 +1,20 @@
-//! Act 2 — Stage 2: a 100-step real-counter chain replayed in one in-process job
-//! with zero `git` spawns, plus ingest #2 (two SHA-1 maintainer signatures over one
+//! Act 2 — Stage 2: a 100-step real-counter chain replayed by unforged's stock
+//! `replay_step_chain_in_store_with_engine` (coglet-wamr-step over `--batch-stdio`:
+//! one engine process, zero `git` spawns), plus ingest #2 (two SHA-1 maintainer signatures over one
 //! counter policy tree, translated to SHA-256 and verified).
-use crate::counter::{Files, context, decode_input, echo_events, wamr_step};
+use crate::counter::{Files, context, echo_events};
 use crate::report::ActReport;
 use crate::unf::{HotChain, hot_run, pin};
 use gecaos::coglet::{
-    CommitSpec, IdentSpec, LooseObjectStore, MemoryObjectBatch, ObjectId, ObjectKind, Oid256,
-    RECEIPTS_NOTES_REF, StepCommitSpec, StepContext, StepReceipt, TreeEntry, TreeProfile,
-    build_coglet_resolver, build_counter_coglet_wasm, collect_recorded_chain_inproc,
-    import_sha1_commit_with_envelope, load_strict_tree_inproc, replay_step_chain_in_store,
+    CommitSpec, ExternalCommandStepEngine, ExternalStepProtocol, IdentSpec, LooseObjectStore,
+    ObjectId, Oid256, RECEIPTS_NOTES_REF, StepContext, StepEngine, build_coglet_resolver,
+    build_counter_coglet_wasm, collect_recorded_chain_inproc, import_sha1_commit_with_envelope,
+    load_strict_tree_inproc, replay_step_chain_in_store, replay_step_chain_in_store_with_engine,
     step_coglet_hot_inproc, verify_translated_commit_signature,
 };
 use gecaos::git::{GitEnv, git_spawn_count, reset_git_spawn_count};
 use gecaos::os::GecaosOs;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::io::Write as _;
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -25,37 +26,19 @@ struct Replay {
     commits: Vec<String>,
     notes_commit: String,
     spawns: u64,
+    engine_spawns: u64,
+    engine_steps: u64,
     micros: u128,
     final_count: String,
 }
 
-/// Read every note in a notes tree (flat or fanned out) as `target -> body`.
-fn read_notes(
-    store: &LooseObjectStore,
-    tree: &Oid256,
-    prefix: &str,
-    out: &mut BTreeMap<String, String>,
-) -> Result<(), String> {
-    for e in store
-        .read_tree(tree, TreeProfile::Standard)
-        .map_err(|e| e.to_string())?
-    {
-        let name = format!("{prefix}{}", e.name);
-        if e.is_dir() {
-            read_notes(store, &e.oid, &name, out)?;
-        } else {
-            let body = store.read_blob(&e.oid).map_err(|e| e.to_string())?;
-            out.insert(name, String::from_utf8_lossy(&body).trim().to_string());
-        }
-    }
-    Ok(())
-}
-
-/// Single-job chain replay of the REAL counter through coglet WAMR, built from
-/// unforged's in-process primitives (`collect_recorded_chain_inproc`,
-/// `load_strict_tree_inproc`, `MemoryObjectBatch`, `StepCommitSpec`). unforged's own
-/// `replay_step_chain` is wired to its built-in interpreter, so the engine call is
-/// the only piece swapped. The `refs/notes/receipts` commit is built in the batch.
+/// The 100-step chain replayed by unforged's STOCK
+/// `replay_step_chain_in_store_with_engine` with an `ExternalCommandStepEngine` in
+/// `--batch-stdio` mode. The engine is materialized in-process from the resolver's own
+/// `engines/coglet-engine` blob (the exact `coglet-wamr-step` bytes Act 1 pinned), so
+/// the `Engine:` trailer, the resolver pin and the bytes that ran are one object.
+/// unforged reads/writes every object, validates CogletStrict, re-derives every
+/// StepCommit and builds the `refs/notes/receipts` commit; the helper only computes.
 fn replay_chain_wamr(
     os: &GecaosOs,
     coglet_id: &str,
@@ -64,107 +47,43 @@ fn replay_chain_wamr(
     resolver: &str,
     prev_notes: Option<&str>,
 ) -> Result<Replay, String> {
-    let e = |e: gecaos::coglet::GitObjError| e.to_string();
+    let git_dir = &os.git.git_dir;
     reset_git_spawn_count();
     let started = Instant::now();
-    let git_dir = &os.git.git_dir;
-    let store = LooseObjectStore::new(git_dir);
     let steps = collect_recorded_chain_inproc(git_dir, state_0, tip)?;
-    let mut batch = MemoryObjectBatch::new();
-    let mut cache: HashMap<Oid256, (ObjectKind, Vec<u8>)> = HashMap::new();
-    let mut cur_commit = Oid256::from_hex_str(state_0).map_err(e)?;
-    let state_tree = store.read_commit(&cur_commit).map_err(e)?.tree;
-    let mut cur: Files = load_strict_tree_inproc(&store, Some(&batch), &state_tree, &mut cache)?;
-    let mut commits = Vec::new();
-    let mut receipts = Vec::new();
-    for item in &steps {
-        let input = Oid256::from_hex_str(&item.input_commit_oid).map_err(e)?;
-        let input_tree = store.read_commit(&input).map_err(e)?.tree;
-        let theirs = load_strict_tree_inproc(&store, Some(&batch), &input_tree, &mut cache)?;
-        let (ctx, events, boundary) = decode_input(&theirs)?;
-        let outcome = wamr_step(&cur, &ctx, &events, &boundary)?;
-        let tree = batch.stage_snapshot_tree(outcome.files.iter()).map_err(e)?;
-        let spec = StepCommitSpec::new(
-            coglet_id,
-            ctx.logical_time,
-            ctx.step,
-            tree,
-            vec![cur_commit, input],
-            resolver,
-            outcome.aborted,
-        );
-        let commit = batch.stage_step_commit(&spec).map_err(e)?;
-        let hex = commit.to_hex();
-        if let Some(want) = &item.expected_step_commit_oid
-            && *want != hex
-        {
-            return Err(format!(
-                "chain replay mismatch at step {}: {want} != {hex}",
-                ctx.step
-            ));
-        }
-        receipts.push(StepReceipt {
-            runner: "unforged".into(),
-            worker_image: None,
-            executed: true,
-            cache: "none".into(),
-            commit: hex.clone(),
-        });
-        commits.push(hex);
-        cur_commit = commit;
-        cur = outcome.files;
-    }
-    let mut notes = BTreeMap::new();
-    let mut parents = Vec::new();
-    if let Some(prev) = prev_notes {
-        let prev = Oid256::from_hex_str(prev).map_err(e)?;
-        read_notes(
-            &store,
-            &store.read_commit(&prev).map_err(e)?.tree,
-            "",
-            &mut notes,
-        )?;
-        parents.push(prev);
-    }
-    for rc in &receipts {
-        let line = rc.to_json();
-        notes
-            .entry(rc.commit.clone())
-            .and_modify(|b: &mut String| {
-                b.push('\n');
-                b.push_str(&line);
-            })
-            .or_insert(line);
-    }
-    let entries: Vec<TreeEntry> = notes
-        .iter()
-        .map(|(t, body)| {
-            TreeEntry::file(t.clone(), batch.stage_blob(format!("{body}\n").as_bytes()))
-        })
-        .collect();
-    let notes_tree = batch
-        .stage_tree(&entries, TreeProfile::Standard)
-        .map_err(e)?;
-    let ident = IdentSpec::new("unforged", "receipts@unforged", 0);
-    let notes_commit = batch
-        .stage_commit(&CommitSpec::unsigned(
-            notes_tree,
-            parents,
-            ident.clone(),
-            ident,
-            format!(
-                "coglet-unforged-proof: WAMR chain replay receipts ({} steps)",
-                steps.len()
-            ),
-        ))
-        .map_err(e)?;
-    batch.flush_to(&store).map_err(e)?;
+    let mut engine = ExternalCommandStepEngine::from_resolver(
+        git_dir,
+        resolver,
+        ExternalStepProtocol::BatchStdio,
+    )?;
+    let rep = replay_step_chain_in_store_with_engine(
+        git_dir,
+        coglet_id,
+        state_0,
+        &steps,
+        resolver,
+        prev_notes,
+        &mut engine,
+    )?;
+    engine.finish()?;
+    let micros = started.elapsed().as_micros();
+    let spawns = git_spawn_count();
+    let store = LooseObjectStore::new(git_dir);
+    let e = |e: gecaos::coglet::GitObjError| e.to_string();
+    let tree = store
+        .read_commit(&Oid256::from_hex_str(&rep.final_commit_oid).map_err(e)?)
+        .map_err(e)?
+        .tree;
+    let mut cache = HashMap::new();
+    let files: Files = load_strict_tree_inproc(&store, None, &tree, &mut cache)?;
     Ok(Replay {
-        commits,
-        notes_commit: notes_commit.to_hex(),
-        spawns: git_spawn_count(),
-        micros: started.elapsed().as_micros(),
-        final_count: String::from_utf8_lossy(cur.get("data/count").map_or(&[][..], |v| v))
+        commits: rep.step_commits,
+        notes_commit: rep.receipts_notes_commit_oid,
+        spawns,
+        engine_spawns: engine.spawn_count(),
+        engine_steps: engine.steps_executed(),
+        micros,
+        final_count: String::from_utf8_lossy(files.get("data/count").map_or(&[][..], |v| v))
             .into_owned(),
     })
 }
@@ -373,6 +292,41 @@ fn ingest2(
     Ok(())
 }
 
+/// Control: an external engine whose bytes differ from the resolver's pinned
+/// `engines/coglet-engine` blob is refused before any step runs.
+fn pin_mismatch_control(
+    r: &mut ActReport,
+    os: &GecaosOs,
+    coglet_id: &str,
+    state_0: &str,
+    tip: &str,
+    resolver: &str,
+    work: &Path,
+) -> Result<(), String> {
+    std::fs::create_dir_all(work).map_err(|e| e.to_string())?;
+    let impostor = work.join("impostor-engine");
+    std::fs::write(&impostor, b"#!/bin/sh\nexit 0\n").map_err(|e| e.to_string())?;
+    let steps = collect_recorded_chain_inproc(&os.git.git_dir, state_0, tip)?;
+    let mut engine = ExternalCommandStepEngine::batch_stdio(&impostor);
+    let res = replay_step_chain_in_store_with_engine(
+        &os.git.git_dir,
+        coglet_id,
+        state_0,
+        &steps,
+        resolver,
+        None,
+        &mut engine,
+    );
+    r.check(
+        "control: engine bytes != resolver's pinned engine blob -> replay refused, 0 engine spawns",
+        res.as_ref()
+            .is_err_and(|e| e.contains("engine pin mismatch"))
+            && engine.spawn_count() == 0,
+        res.err().unwrap_or_else(|| "accepted".into()),
+    );
+    Ok(())
+}
+
 /// Control: unforged's own `replay_step_chain_in_store` on its built-in interpreter module.
 fn builtin_control(r: &mut ActReport, os: &GecaosOs) -> Result<(), String> {
     let e = |e: gecaos::coglet::GitObjError| e.to_string();
@@ -495,7 +449,16 @@ pub fn run(
         resolver,
         prev.as_deref(),
     )?;
-    r.check_eq("chain replay: one job, 0 git spawns", rep.spawns, 0);
+    r.check_eq(
+        "chain replay (stock replay_step_chain_in_store_with_engine): 0 git spawns",
+        rep.spawns,
+        0,
+    );
+    r.check(
+        "chain replay: ExternalCommandStepEngine --batch-stdio spawned coglet-wamr-step once for 100 steps",
+        rep.engine_spawns == 1 && rep.engine_steps == CHAIN_LEN,
+        format!("spawns={} steps={}", rep.engine_spawns, rep.engine_steps),
+    );
     let matched = rep
         .commits
         .iter()
@@ -534,6 +497,7 @@ pub fn run(
         rep.notes_commit.clone(),
     );
 
+    pin_mismatch_control(&mut r, os, coglet_id, &chain.state_0, &tip, resolver, work)?;
     builtin_control(&mut r, os)?;
 
     let policy: Files = genesis
