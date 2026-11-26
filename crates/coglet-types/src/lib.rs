@@ -597,6 +597,15 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
                     _ => Err("expected text".into()),
                 };
             }
+            if let Value::Text(text) = v
+                && let Some(matches) = fixed_hex_pattern(pattern, text)
+            {
+                return if matches {
+                    Ok(())
+                } else {
+                    Err("regexp mismatch".into())
+                };
+            }
             let re = regex_for(pattern)?;
             match v {
                 Value::Text(t) if re.is_match(t) => Ok(()),
@@ -621,6 +630,23 @@ fn validate_in(s: &Schema, rule: &str, value: &Value) -> Result<(), String> {
     check_profile(value, 0)?;
     let e = s.rule(rule)?;
     eval(s, e, value, 0)
+}
+
+// Only these exact frozen regexp spellings are specialized. Other patterns
+// retain the general engine, including different lengths, alphabets or prefixes.
+fn fixed_hex_pattern(pattern: &str, text: &str) -> Option<bool> {
+    let (prefix, size) = match pattern {
+        "^coglet:[0-9a-f]{64}$" => ("coglet:", 64),
+        "^surface:[0-9a-f]{64}$" => ("surface:", 64),
+        "^hub:[0-9a-f]{64}$" => ("hub:", 64),
+        "^[0-9a-f]{64}$" => ("", 64),
+        "^[0-9a-f]{32}$" => ("", 32),
+        _ => return None,
+    };
+    Some(
+        text.strip_prefix(prefix)
+            .is_some_and(|hex| hex.len() == size && is_lower_hex_pairs(hex)),
+    )
 }
 
 // ---------------------------------------------------------------- public API
@@ -673,6 +699,58 @@ fn is_lower_hex_pairs(t: &str) -> bool {
 #[cfg(test)]
 mod hex_pattern_tests {
     use super::*;
+
+    #[test]
+    fn fixed_hex_patterns_match_independent_regex_language() {
+        for (pattern, prefix, size) in [
+            ("^coglet:[0-9a-f]{64}$", "coglet:", 64),
+            ("^surface:[0-9a-f]{64}$", "surface:", 64),
+            ("^hub:[0-9a-f]{64}$", "hub:", 64),
+            ("^[0-9a-f]{64}$", "", 64),
+            ("^[0-9a-f]{32}$", "", 32),
+        ] {
+            let oracle = regex_for(pattern).unwrap();
+            let valid = format!("{prefix}{}", "a".repeat(size));
+            assert_eq!(fixed_hex_pattern(pattern, &valid), Some(true));
+            let compare = |text: &str| {
+                assert_eq!(
+                    fixed_hex_pattern(pattern, text),
+                    Some(oracle.is_match(text)),
+                    "{pattern} {text:?}"
+                );
+                assert_eq!(
+                    check(pattern, &Value::Text(text.to_owned())).is_ok(),
+                    oracle.is_match(text)
+                );
+            };
+            for len in 0..=valid.len() + 2 {
+                compare(&"0".repeat(len));
+                compare(&format!("{prefix}{}", "f".repeat(len)));
+            }
+            for pos in 0..valid.len() {
+                for byte in 0..=255u8 {
+                    let mut bytes = valid.as_bytes().to_vec();
+                    bytes[pos] = byte;
+                    if let Ok(text) = std::str::from_utf8(&bytes) {
+                        compare(text);
+                    }
+                }
+            }
+            for suffix in ["\n", "\r", "\0", "é", "🦀"] {
+                compare(&format!("{valid}{suffix}"));
+                compare(&format!("{suffix}{valid}"));
+            }
+            assert!(check(pattern, &Value::Null).is_err());
+        }
+        for pattern in [
+            "^[0-9a-f]{63}$",
+            "^[0-9A-F]{64}$",
+            "^(?:[0-9a-f]{64})$",
+            "^other:[0-9a-f]{64}$",
+        ] {
+            assert_eq!(fixed_hex_pattern(pattern, ""), None);
+        }
+    }
 
     const FAST: &str = "^([0-9a-f]{2})*$";
 
