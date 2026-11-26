@@ -151,7 +151,7 @@ fn run(
     }));
     let handle = std::thread::spawn(move || {
         let result =
-            serve_session(&mut stream, &mut session, Instant::now()).map(|end| match end {
+            serve_session(&mut stream, &mut session, Instant::now(), None).map(|end| match end {
                 ServeEnd::Eof => "eof",
                 ServeEnd::Closed => "closed",
             });

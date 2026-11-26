@@ -259,7 +259,7 @@ async fn exercise(crash: Option<&'static str>, daemon: bool) {
     let kill = root.path().join("kill.json");
     std::fs::write(&kill, b"{\"latched\":false}").unwrap();
     let handler=DeviceHandler::new(DeviceConfig {hub:router.id(),device,wal_root:root.path().join("wal"),quarantine:root.path().join("device-quarantine"),catalog:json!([]),grants:json!({"coglet":target,"operations":[],"resources":[]}),kill_switch:Some(kill),
-  targets:BTreeMap::from([(target.clone(),TargetPin{grant_generation:1,delegation_generation:1,native_schedule:Some(json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8388608,"stack_bytes":65536})),back_channel:Default::default(),fetch_snapshots:Default::default()})]),adapter:None},authority.clone(),&validator,Arc::new(||Some(NOW))).unwrap();
+  targets:BTreeMap::from([(target.clone(),TargetPin{grant_generation:1,delegation_generation:1,native_schedule:Some(json!({"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8388608,"stack_bytes":65536})),back_channel:Default::default(),fetch_snapshots:Default::default()})]),adapter:None,profile:None},authority.clone(),&validator,Arc::new(||Some(NOW))).unwrap();
     let boundary = Arc::new(CrashBoundary {
         handler: handler.clone(),
         method: crash,

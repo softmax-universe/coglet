@@ -268,7 +268,7 @@ fn main() {
         ),
         _ => {
             eprintln!(
-                "usage: cogletd --version | --mock-stdio | --router-service CONFIG.json | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--contract-profile surface-0.1|surface-0.2] [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration. --router-service enrolls as Role::Device then serves hub.git.push/install/start/stop/status. It does not execute Wasm without a connected adapter session."
+                "usage: cogletd --version | --mock-stdio | --router-service CONFIG.json | --surface-service-socket SOCKET BINDING_JSON UID WAL SETUP_JSON [--contract-profile surface-0.1|surface-0.2] [--trusted-extension-catalog CATALOG_JSON SHA256]\nService mode hosts committed outbox/receipts; native scheduling requires the native-engine feature and explicit supervisor configuration. --router-service enrolls as Role::Device then serves hub.git.push/install/start/stop/status. It does not execute Wasm without a connected adapter session. An optional config `profile` (ADR-0033) enables the private local producer socket and boot-closed output custody; without it neither exists."
             );
             std::process::exit(2);
         }

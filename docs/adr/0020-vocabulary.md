@@ -36,7 +36,7 @@ Adopt the new words everywhere, in two stages.
 | Old | New | Notes |
 |---|---|---|
 | surface | adapter | The interface an app or a piece of hardware exposes. |
-| hub, hub kernel | router | The part of a cogent that reaches runtimes. |
+| hub, hub kernel | router | The part of a cogent that reaches runtimes. Since [ADR-0040](0040-hubs-and-coglets-on-unforged.md), "hub" in prose names a router plus an optimizer; `hub.*` identifiers still mean the router protocol. |
 | device (as a protocol peer) | runtime | "Device" stays for the physical machine. |
 | service call | message | A call from one coglet to another. |
 | debug port, debug methods | back channel | How a coglet's manager patches it and reads its logs. |

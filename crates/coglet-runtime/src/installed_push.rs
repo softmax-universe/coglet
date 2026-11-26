@@ -140,6 +140,12 @@ impl DeviceHandler {
                                     .map_err(|_| "permission_denied".to_owned())?;
                                     Ok(now)
                                 };
+                                // A lease authorizes ONE activation, not any future
+                                // executable installed in the same process. Close
+                                // before the code-cut WAL effect, including retries.
+                                if let Some(output) = handler.inner.gates.get(&target) {
+                                    output.revoke()?;
+                                }
                                 locked.complete_code_revision(&revision, &fresh)
                             },
                         )

@@ -44,6 +44,11 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
             service.require_detached_entry(inputs, self.basis)?;
             (self.live)(&mut service, inputs)?;
             let mut next = service.state.clone();
+            // Same durable begin boundary as the non-detached attempt: the
+            // fence frame retains the attempt counter before guest entry.
+            if let Some(managed) = &mut next.managed {
+                managed.policy_begin()?;
+            }
             next.runtime.unresolved_attempt = Some(inputs.clone());
             next.fenced_staged_prefix =
                 Some(next.staged_boundary.as_ref().map_or(0, |s| s.changes.len()));

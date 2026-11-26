@@ -887,3 +887,254 @@ fn surface02_historical_database_record_keeps_exact_bytes() {
     assert_eq!(std::fs::read(&path).unwrap(), before);
     assert_eq!(service.store.database_record_bytes(0), Some(raw.as_slice()));
 }
+
+// ---- policy producer provenance across the one-way hash upgrade ----------------
+// WAL/coordinator unit test with the Mock engine and a historical (ABI 0.1) fixture
+// runtime; NOT native WAMR or ADR-0033 daemon acceptance evidence.
+#[cfg(feature = "device")]
+struct UnknownOutcome;
+#[cfg(feature = "device")]
+impl Engine for UnknownOutcome {
+    fn execute(&mut self, _: &Value, _: &mut StepHost) -> Result<EngineReport> {
+        Err("unknown guest outcome".into())
+    }
+}
+
+#[cfg(feature = "device")]
+fn policy_identity(setup: &Value) -> (Value, ReceiptScope) {
+    let key = iroh::SecretKey::from_bytes(&[41; 32]);
+    let router = key.public().to_string();
+    let statement = json!({"purpose":"hub-ref","hub":router,"coglet":setup["manifest"]["id"],
+        "ref":"refs/heads/hub","old":null,"new":"a".repeat(40),
+        "archive_sha256":"b".repeat(64),"generation":1});
+    let signature = key.sign(&coglet_proto::signing::preimage("hub-ref", &statement).unwrap());
+    let signed = json!({"statement":statement,"signer":router,"signature":hex::encode(signature.to_bytes())});
+    let scope = ReceiptScope {
+        actor: "install-actor".into(),
+        ticket: None,
+        method: "hub.install".into(),
+    };
+    let identity = json!({"initial":signed,"policy_admission":{"router":router,
+        "code":{"signed_ref":signed,"operation_id":"1".repeat(32),"intent":"c".repeat(64),
+            "scope":{"actor":"original-code-actor","ticket":null,"method":"hub.git.push"}},
+        "install":{"operation_id":"2".repeat(32),"intent":"d".repeat(64),"scope":scope}}});
+    (identity, scope)
+}
+
+/// Historical managed+policy install with one unknown (pending) or no attempt.
+#[cfg(feature = "device")]
+fn old_policy_wal(path: &Path, pending: bool) -> Value {
+    let mut setup = fixture();
+    setup["manifest"]["version"] = json!("1.0");
+    setup["initial_files"]
+        .as_object_mut()
+        .unwrap()
+        .retain(|p, _| !p.starts_with("/data/"));
+    let mut old = setup.clone();
+    old["manifest"]["version"] = json!("0.1");
+    let (identity, scope) = policy_identity(&setup);
+    let mut service = RuntimeService::open(path, &setup, 8).unwrap();
+    historical_scope(true, || {
+        service.state.runtime = Runtime::from_fixture(&old).unwrap();
+        service
+            .managed_install_scoped(&identity, &"2".repeat(32), Some(&scope))
+            .unwrap();
+        if pending {
+            service.managed_start().unwrap();
+            service.enqueue(old["inputs"]["events"][0].clone()).unwrap();
+            assert!(
+                service
+                    .run_next(&old["inputs"], &mut UnknownOutcome)
+                    .is_err()
+            );
+        }
+    });
+    setup
+}
+
+#[cfg(feature = "device")]
+fn assert_policy_after_upgrade(
+    service: &mut RuntimeService,
+    target: &str,
+    committed: u64,
+    attempted: u64,
+) -> Value {
+    let commit = "a".repeat(40);
+    let applied = service.policy_attest_applied(target, 1, &commit).unwrap();
+    assert_eq!(applied["code"]["scope"]["actor"], "original-code-actor");
+    assert_eq!(service.state.runtime.manifest["version"], "1.0");
+    service.supervised_now().unwrap();
+    let sample = service
+        .policy_observe_health(target, 1, &commit, &[], "closed")
+        .unwrap();
+    assert_eq!(sample["counters"]["attempted"], attempted);
+    assert_eq!(sample["counters"]["committed"], committed);
+    applied
+}
+
+#[cfg(feature = "device")]
+#[test]
+fn policy_provenance_survives_hash_upgrade_with_pending_attempt_and_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("policy.wal");
+    let setup = old_policy_wal(&path, true);
+    let target = setup["manifest"]["id"].as_str().unwrap().to_owned();
+    // Historical restore (still ABI 0.1, attempt pending) validates provenance.
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert!(service.state.runtime.unresolved_attempt.is_some());
+    assert!(service.state.completed_segments.is_empty());
+    let inputs = service.state.runtime.unresolved_attempt.clone().unwrap();
+    let record = historical_scope(true, || {
+        let mut original = service.state.runtime.clone();
+        original.unresolved_attempt = None;
+        original
+            .step(&inputs, &mut MockEngine::new(setup["guest_script"].clone()))
+            .unwrap()["journal"]
+            .clone()
+    });
+    service.recover_attempt(&record).unwrap();
+    assert_eq!(service.state.completed_segments.len(), 1);
+    assert!(service.state.completed_segments[0].hash_upgrade);
+    // Immediately after the persisted successor: attestation + counters.
+    let applied = assert_policy_after_upgrade(&mut service, &target, 1, 1);
+    drop(service);
+    // Second WAL reopen under the active current scope.
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let again = assert_policy_after_upgrade(&mut service, &target, 1, 1);
+    assert_eq!(again, applied);
+    drop(service);
+    // Strict public admission: the retained original bytes stay historical.
+    assert_eq!(
+        RuntimeService::open(&path, &setup, 8)
+            .unwrap()
+            .state
+            .completed_segments[0]
+            .initial_setup["manifest"]["version"],
+        "0.1"
+    );
+}
+
+#[cfg(feature = "device")]
+#[test]
+fn policy_provenance_survives_resolved_hash_upgrade_and_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("policy.wal");
+    let setup = old_policy_wal(&path, false);
+    let target = setup["manifest"]["id"].as_str().unwrap().to_owned();
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let applied = assert_policy_after_upgrade(&mut service, &target, 0, 0);
+    drop(service);
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(
+        assert_policy_after_upgrade(&mut service, &target, 0, 0),
+        applied
+    );
+}
+
+/// Historical install, step, then a REAL historical code revision (populates a
+/// `code_revision` completed segment with a retained ABI 0.1 setup), a post-revision
+/// step, and only then the one-way hash upgrade on reopen.
+#[cfg(feature = "device")]
+fn old_policy_code_revision_wal(path: &Path) -> (Value, CodeRevision) {
+    let mut setup = fixture();
+    setup["manifest"]["version"] = json!("1.0");
+    setup["initial_files"]
+        .as_object_mut()
+        .unwrap()
+        .retain(|p, _| !p.starts_with("/data/"));
+    let mut old = setup.clone();
+    old["manifest"]["version"] = json!("0.1");
+    let (identity, scope) = policy_identity(&setup);
+    let key = iroh::SecretKey::from_bytes(&[41; 32]);
+    let statement = json!({"purpose":"hub-ref","hub":key.public().to_string(),
+        "coglet":setup["manifest"]["id"],"ref":"refs/heads/hub","old":"a".repeat(40),
+        "new":"e".repeat(40),"archive_sha256":"f".repeat(64),"generation":2});
+    let signature = key.sign(&coglet_proto::signing::preimage("hub-ref", &statement).unwrap());
+    let signed = json!({"statement":statement,"signer":key.public().to_string(),
+        "signature":hex::encode(signature.to_bytes())});
+    let mut code = old["initial_files"].clone();
+    code.as_object_mut()
+        .unwrap()
+        .retain(|p, _| p.starts_with("/code/"));
+    code["/code/revision.txt"] = json!(hex::encode("2"));
+    let revision = CodeRevision {
+        setup: json!({"manifest": old["manifest"], "initial_files": code}),
+        signed_ref: signed,
+        operation_id: "3".repeat(32),
+        intent: "4".repeat(64),
+        scope: ReceiptScope {
+            actor: "revision-actor".into(),
+            ticket: None,
+            method: "hub.git.push".into(),
+        },
+    };
+    let mut service = RuntimeService::open(path, &setup, 8).unwrap();
+    historical_scope(true, || {
+        service.state.runtime = Runtime::from_fixture(&old).unwrap();
+        service
+            .managed_install_scoped(&identity, &"2".repeat(32), Some(&scope))
+            .unwrap();
+        service.managed_start().unwrap();
+        service.enqueue(old["inputs"]["events"][0].clone()).unwrap();
+        service
+            .run_next(
+                &old["inputs"],
+                &mut MockEngine::new(old["guest_script"].clone()),
+            )
+            .unwrap()
+            .unwrap();
+        service.apply_code_revision(&revision, &|| Ok(0)).unwrap();
+        let mut again = old["inputs"].clone();
+        again["trace_id"] = service.state.runtime.trace_id.clone().unwrap();
+        service.enqueue(old["inputs"]["events"][0].clone()).unwrap();
+        service
+            .run_next(&again, &mut MockEngine::new(old["guest_script"].clone()))
+            .unwrap()
+            .unwrap();
+        assert_eq!(service.state.completed_segments.len(), 1);
+        assert!(service.state.completed_segments[0].code_revision.is_some());
+        assert_eq!(service.state.runtime.manifest["version"], "0.1");
+    });
+    (setup, revision)
+}
+
+#[cfg(feature = "device")]
+#[test]
+fn policy_provenance_survives_historical_code_revision_then_hash_upgrade_and_reopen() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("policy.wal");
+    let (setup, revision) = old_policy_code_revision_wal(&path);
+    let target = setup["manifest"]["id"].as_str().unwrap().to_owned();
+    let commit = "e".repeat(40);
+    // Reopen: resolved historical state upgrades; code_revision segment is retained
+    // with its original ABI 0.1 setup beside the new hash_upgrade segment.
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let segments = &service.state.completed_segments;
+    assert_eq!(segments.len(), 2);
+    assert!(segments[0].code_revision.is_some() && !segments[0].hash_upgrade);
+    assert_eq!(segments[0].initial_setup["manifest"]["version"], "0.1");
+    assert!(segments[1].hash_upgrade && segments[1].code_revision.is_none());
+    assert_eq!(service.state.runtime.manifest["version"], "1.0");
+    for _ in 0..2 {
+        let applied = service.policy_attest_applied(&target, 2, &commit).unwrap();
+        assert_eq!(applied["code"]["operation_id"], revision.operation_id);
+        assert_eq!(applied["code"]["scope"]["actor"], "revision-actor");
+        service.supervised_now().unwrap();
+        let sample = service
+            .policy_observe_health(&target, 2, &commit, &[], "closed")
+            .unwrap();
+        // Counters restart at the code cut: exactly the one post-revision step.
+        assert_eq!(sample["counters"]["attempted"], 1);
+        assert_eq!(sample["counters"]["committed"], 1);
+        drop(service);
+        // Second real WAL reopen under the active current scope.
+        service = RuntimeService::open(&path, &setup, 8).unwrap();
+    }
+    // Explicit public admission of the historical manifest stays strict.
+    let mut old = setup.clone();
+    old["manifest"]["version"] = json!("0.1");
+    assert!(Runtime::from_fixture(&old).is_err());
+    drop(service);
+    assert!(RuntimeService::open(&path, &old, 8).is_err());
+    let _ = &revision;
+}

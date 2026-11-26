@@ -70,14 +70,15 @@ jobs:
         run: cargo build --locked -p coglet-engine-wamr -p coglet-runtime --features coglet-runtime/native-engine --target x86_64-apple-darwin
       - name: iOS interpreter archive and SDK link probe (not a device run)
         run: bash crates/coglet-runtime/tools/apple-link-probe.sh
-  # The successful main run spent 1142.92s in Factory alone; on PR200 it
-  # exhausted the shared 25m cap. Partition the actual inventory, not a skip list.
+  # Main's 19-test inventory overflowed a 25m shard: comparison alone took
+  # 16m11s. Isolate that outlier; split only original shard 0 after its main
+  # run also exceeded the cap. Preserve other memberships and all caps.
   apple-factory:
     needs: apple-runtime
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2]
+        shard: [0, 1, 2, 3, 4]
     runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 25
     env:

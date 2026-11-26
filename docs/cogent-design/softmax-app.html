@@ -129,8 +129,11 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 </nav>
 <main>
 <h1 id="the-softmax-app">The Softmax app<a class="headerlink" href="#the-softmax-app" title="Permanent link">#</a></h1>
-<p>What the user installs. Part of the <a href="index.html">cogent design</a>.</p>
-<p>It is one app that does three things:</p>
+<p>An app the user can install. Part of the <a href="index.html">cogent design</a>.</p>
+<p><strong>Any app can host a runtime</strong> and run coglets: a game, Blender, a browser, a
+phone app (<a href="../adr/0040-hubs-and-coglets-on-unforged.md">ADR-0040</a>). The Softmax
+app is one host among them, useful on a computer where no other app hosts one.
+It does three things:</p>
 <ol>
 <li><strong>It is the user's way in.</strong> A menu bar icon, a floating orb, and
    push-to-talk.</li>
@@ -598,10 +601,13 @@ Face coglet does the deciding directly.</p>
 <li><strong>Whether transcripts are kept</strong> by default, and for how long.</li>
 </ul>
 <h2 id="it-runs-coglets-locally">It runs coglets locally<a class="headerlink" href="#it-runs-coglets-locally" title="Permanent link">#</a></h2>
-<p>The app contains a <a href="coglets-and-runtime.html#runtime">runtime</a>. The coglets
-that need to be close to the user run there, on the user's machine:</p>
+<p>The app contains a <a href="coglets-and-runtime.html#runtime">runtime</a>, and like every
+runtime that joins a cogent it runs a <a href="index.html#hub">hub</a>: a router and an
+optimizer. The coglets that need to be close to the user run there too, on the
+user's machine:</p>
 <ul>
-<li>the coglet that drives this app's own UI, using the capabilities above;</li>
+<li><a href="index.html#face">Face</a>, which listens, watches the screen, and drives this
+  app's own UI using the capabilities above;</li>
 <li>the coglets that drive the apps the user has connected, using
   <a href="app-integration.html#adapter">those apps' adapters</a>.</li>
 </ul>

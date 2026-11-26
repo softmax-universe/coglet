@@ -1,0 +1,17 @@
+[package]
+name = "coglet-unforged-proof"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+coglet-runtime = { path = "../../../crates/coglet-runtime", features = ["native-engine"] }
+coglet-cli = { path = "../../../crates/coglet-cli" }
+serde_json = "1"
+hex = "0.4"
+
+[profile.dev]
+debug = 0
+incremental = false

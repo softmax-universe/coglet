@@ -25,16 +25,31 @@ pub fn snapshot_tree_hash(files: &BTreeMap<String, String>) -> Result<String> {
         })
         .collect::<Result<BTreeMap<_, _>>>()?;
     let snapshot = Snapshot::from_files(decoded)?;
+    Ok(tree_from_ids(
+        snapshot
+            .files()
+            .map(|(path, bytes)| (path, object_id("blob", bytes))),
+    ))
+}
+
+pub(crate) fn decoded_tree_hash(snapshot: &Snapshot) -> String {
+    tree_from_ids(snapshot.files.iter().map(|(path, blob)| {
+        let id = *blob.git_id.get_or_init(|| object_id("blob", &blob.bytes));
+        (path.as_str(), id)
+    }))
+}
+
+fn tree_from_ids<'a>(files: impl Iterator<Item = (&'a str, [u8; 32])>) -> String {
     // Bottom-up evaluation avoids a call stack proportional to path depth.
     type Entry<'a> = (&'a str, bool, [u8; 32]);
     let mut directories: BTreeMap<&str, Vec<Entry<'_>>> = BTreeMap::new();
     directories.insert("", Vec::new());
-    for (path, bytes) in snapshot.files() {
+    for (path, id) in files {
         let (parent, name) = path.rsplit_once('/').expect("validated absolute path");
         directories
             .entry(parent)
             .or_default()
-            .push((name, false, object_id("blob", bytes)));
+            .push((name, false, id));
         let mut directory = parent;
         while !directory.is_empty() {
             directories.entry(directory).or_default();
@@ -60,7 +75,7 @@ pub fn snapshot_tree_hash(files: &BTreeMap<String, String>) -> Result<String> {
         }
         let id = object_id("tree", &body);
         if path.is_empty() {
-            return Ok(hex(&id));
+            return hex(&id);
         }
         let (parent, name) = path.rsplit_once('/').expect("absolute directory");
         directories
@@ -69,4 +84,67 @@ pub fn snapshot_tree_hash(files: &BTreeMap<String, String>) -> Result<String> {
             .push((name, true, id));
     }
     unreachable!("root directory always exists")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn git_blob_id_cache_is_lazy_and_shared_across_copy_on_write() {
+        let original = Snapshot::from_files(BTreeMap::from([
+            ("/code/bin/step.wasm".into(), vec![23; 65536]),
+            ("/data/state".into(), b"old".to_vec()),
+        ]))
+        .unwrap();
+        let blob = &original.files["/code/bin/step.wasm"];
+        assert!(blob.git_id.get().is_none());
+        let expected = snapshot_tree_hash(&original.export()).unwrap();
+        assert_eq!(original.tree_hash(), expected);
+        assert_eq!(blob.git_id.get(), Some(&object_id("blob", &[23; 65536])));
+        let mut changed = original.clone();
+        changed.put("/data/state", b"new").unwrap();
+        assert!(std::sync::Arc::ptr_eq(
+            &blob.git_id,
+            &changed.files["/code/bin/step.wasm"].git_id
+        ));
+        assert_ne!(changed.tree_hash(), expected);
+        assert_eq!(
+            changed.tree_hash(),
+            snapshot_tree_hash(&changed.export()).unwrap()
+        );
+        assert_eq!(original.tree_hash(), expected);
+        changed.put("/code/bin/step.wasm", b"replacement").unwrap();
+        assert!(!std::sync::Arc::ptr_eq(
+            &blob.git_id,
+            &changed.files["/code/bin/step.wasm"].git_id
+        ));
+        assert_eq!(
+            changed.tree_hash(),
+            snapshot_tree_hash(&changed.export()).unwrap()
+        );
+    }
+
+    #[test]
+    fn cached_git_tree_matches_hex_reference_for_prefix_order_and_empty_blobs() {
+        let snapshot = Snapshot::from_files(BTreeMap::from([
+            ("/data/foo.bar".into(), vec![]),
+            ("/data/foo/child".into(), b"nested".to_vec()),
+            ("/data/foo0".into(), vec![0, 255]),
+            ("/logs/é".into(), vec![1]),
+        ]))
+        .unwrap();
+        assert_eq!(
+            snapshot.tree_hash(),
+            snapshot_tree_hash(&snapshot.export()).unwrap()
+        );
+        assert_eq!(
+            Snapshot::default().tree_hash(),
+            snapshot_tree_hash(&BTreeMap::new()).unwrap()
+        );
+        assert_eq!(
+            snapshot.blob_hash("/data/foo0").unwrap(),
+            crate::digest(&[0, 255])
+        );
+    }
 }

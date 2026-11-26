@@ -120,6 +120,9 @@ impl<E: Engine> Engine for DurableAttempt<'_, E> {
     }
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
         let mut intent = self.before.clone();
+        if let Some(managed) = &mut intent.managed {
+            managed.policy_begin()?;
+        }
         intent.runtime.unresolved_attempt = Some(inputs.clone());
         intent.fenced_staged_prefix = Some(
             intent
@@ -193,6 +196,8 @@ struct StagedBoundary {
 /// Serial durable coordinator. Admission and consumption commit host metadata
 /// together with files/journal; dispatchers may observe only committed state.
 pub struct RuntimeService {
+    /// New identity for each exclusively owned producer open, never restored.
+    policy_instance: Option<String>,
     #[cfg(feature = "native-engine")]
     detached_execution: bool,
     #[cfg(feature = "device")]
@@ -332,6 +337,9 @@ impl RuntimeService {
         Self::validate_queued_wakes(&state)?;
         Self::validate_private_events(&state)?;
         Self::attempted_ordinals(&state)?;
+        if let Some(managed) = &state.managed {
+            managed.policy_validate(&state, store.records())?;
+        }
         Ok(state)
     }
 
@@ -502,6 +510,14 @@ impl RuntimeService {
             normalized = true;
         }
         let mut service = Self {
+            policy_instance: {
+                use std::io::Read;
+                let mut bytes = [0u8; 32];
+                std::fs::File::open("/dev/urandom")
+                    .and_then(|mut f| f.read_exact(&mut bytes))
+                    .ok()
+                    .map(|()| hex::encode(bytes))
+            },
             #[cfg(feature = "native-engine")]
             detached_execution: false,
             #[cfg(feature = "device")]
@@ -664,6 +680,12 @@ impl RuntimeService {
         result: &Value,
         _before: &Snapshot,
     ) -> Result<()> {
+        // Candidate predates the durable begin frame. Publish both boundaries
+        // atomically with the actual outcome, not with successful engine entry.
+        if let Some(managed) = &mut next.managed {
+            managed.policy_begin()?;
+            managed.policy_result(&result["journal"])?;
+        }
         for action in result["journal"]["actions"]
             .as_array()
             .ok_or("missing committed actions")?
@@ -696,6 +718,10 @@ impl RuntimeService {
         let result = next.runtime.step(&inputs, &mut attempt);
         let entered = attempt.entered;
         if let Some(inputs) = entered {
+            // Preserve durable begin counters even on post-entry/write failure.
+            if let Some(saved) = self.store.state() {
+                self.state = serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            }
             // Also retain the fence on post-engine validation/commit failures.
             self.state.runtime.unresolved_attempt = Some(inputs);
             self.state.fenced_staged_prefix = Some(
@@ -1344,7 +1370,7 @@ impl Runtime {
             }
             record = recorded.clone();
         } else {
-            record["record_hash"] = Value::String(digest(&cbor(&record)?));
+            record["record_hash"] = Value::String(crate::cbor_digest(&record)?);
             self.contract_profile.validate("step-record", &record)?;
         }
         let mut result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});

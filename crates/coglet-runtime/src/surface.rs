@@ -83,6 +83,10 @@ pub struct SurfaceSession {
     read_expiry_diagnostics: VecDeque<Value>,
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
     sent_dispatches: BTreeSet<String>,
+    /// ADR-0033 output custody. `None` is the legacy ungated behavior; with a
+    /// gate no new dispatch is even prepared while it is not enabled, and the
+    /// transport re-checks it at the physical write (see `socket.rs`).
+    gate: Option<std::sync::Arc<crate::output_lease::OutputGate>>,
 }
 impl SurfaceSession {
     #[cfg(test)]
@@ -97,6 +101,13 @@ impl SurfaceSession {
 
     pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
         self.phase.clone()
+    }
+    pub fn with_output_gate(
+        mut self,
+        gate: std::sync::Arc<crate::output_lease::OutputGate>,
+    ) -> Self {
+        self.gate = Some(gate);
+        self
     }
     pub(crate) fn transport_now(&self, probe_clock: std::time::Instant) -> Result<u64> {
         if let Some(service) = &self.service {
@@ -142,6 +153,7 @@ impl SurfaceSession {
             read_expiry_diagnostics: VecDeque::new(),
             service: None,
             sent_dispatches: BTreeSet::new(),
+            gate: None,
         }
     }
     pub fn is_closed(&self) -> bool {
@@ -188,6 +200,11 @@ impl SurfaceSession {
         )?;
         #[cfg(feature = "native-engine")]
         crate::RuntimeService::run_native(&service, self, now)?;
+        // Execution and observation continue, but no new effect is prepared for
+        // exposure unless the output lease is currently enabled.
+        if self.gate.as_ref().is_some_and(|gate| !gate.is_open()) {
+            return Ok(());
+        }
         while self.output.len() < SURFACE_QUEUE {
             // Guest execution and fsync can outlive the admission lease. Native
             // routes recheck the supervised clock for EACH new dispatch, never

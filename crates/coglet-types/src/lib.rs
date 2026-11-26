@@ -660,7 +660,14 @@ pub fn decode_typed<T: DeserializeOwned>(rule: &str, raw: &[u8]) -> Result<T, St
 /// Fast path for the portable `^([0-9a-f]{2})*$` regexp: even-length, lowercase
 /// ASCII hex only. Non-ASCII bytes can never match `[0-9a-f]`.
 fn is_lower_hex_pairs(t: &str) -> bool {
-    t.len().is_multiple_of(2) && t.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+    // Fixed-size, non-short-circuit byte reduction permits vectorization while
+    // still validating every byte and bounding work before early rejection.
+    t.len().is_multiple_of(2)
+        && t.as_bytes().chunks(64).all(|chunk| {
+            chunk.iter().fold(0u8, |bad, &b| {
+                bad | u8::from(!((b.wrapping_sub(b'0') <= 9) | (b.wrapping_sub(b'a') <= 5)))
+            }) == 0
+        })
 }
 
 #[cfg(test)]
@@ -668,6 +675,26 @@ mod hex_pattern_tests {
     use super::*;
 
     const FAST: &str = "^([0-9a-f]{2})*$";
+
+    #[test]
+    fn chunked_hex_matches_scalar_across_chunk_boundaries() {
+        for len in 0..130 {
+            assert_eq!(is_lower_hex_pairs(&"0".repeat(len)), len % 2 == 0);
+            for pos in 0..len {
+                for byte in 0..=255u8 {
+                    let mut bytes = vec![b'0'; len];
+                    bytes[pos] = byte;
+                    if let Ok(text) = std::str::from_utf8(&bytes) {
+                        let expected = len % 2 == 0
+                            && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+                        assert_eq!(is_lower_hex_pairs(text), expected, "{len}/{pos}/{byte}");
+                    }
+                }
+            }
+        }
+        assert!(!is_lower_hex_pairs("é"));
+        assert!(!is_lower_hex_pairs("🦀"));
+    }
     // Same language, different spelling: forces the general regex engine.
     const REGEX: &str = "^(?:[0-9a-f]{2})*$";
 

@@ -121,7 +121,7 @@ rewriting the harness. So a harness runs as an adapter:
 
 | Use | For |
 |---|---|
-| Unrolled loop with the prompt runner | Coglets whose policy is mostly prompts: the fast loop, Face, app coglets |
+| Unrolled loop with the prompt runner | Coglets whose policy is mostly prompts: routers, Face, app coglets |
 | Harness as an adapter | Heavy coding and long jobs: the factory |
 
 ## Open questions
