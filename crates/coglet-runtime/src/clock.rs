@@ -51,7 +51,39 @@ fn sample() -> Result<(String, u64)> {
         .ok_or("boot clock overflow")?;
     Ok((boot, micros))
 }
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+// ADR-0039: iOS cannot read the kernel boot UUID in an application sandbox.
+// Cache failures too: no caller may substitute a new epoch after entropy failure.
+#[cfg(any(target_os = "ios", test))]
+fn process_epoch(
+    epoch: &std::sync::OnceLock<Result<String>>,
+    entropy: impl FnOnce(&mut [u8; 32]) -> Result<()>,
+) -> Result<String> {
+    epoch
+        .get_or_init(|| {
+            let mut bytes = [0; 32];
+            entropy(&mut bytes)?;
+            Ok(format!("ios-process:{}", hex::encode(bytes)))
+        })
+        .clone()
+}
+#[cfg(any(target_os = "ios", test))]
+fn os_entropy(bytes: &mut [u8; 32]) -> Result<()> {
+    // SAFETY: getentropy receives a writable buffer below its 256-byte limit.
+    if unsafe { libc::getentropy(bytes.as_mut_ptr().cast(), bytes.len()) } != 0 {
+        return Err("process epoch entropy unavailable".into());
+    }
+    Ok(())
+}
+#[cfg(any(target_os = "ios", test))]
+fn ios_process_epoch() -> Result<String> {
+    static EPOCH: std::sync::OnceLock<Result<String>> = std::sync::OnceLock::new();
+    process_epoch(&EPOCH, os_entropy)
+}
+#[cfg(target_os = "ios")]
+fn sample() -> Result<(String, u64)> {
+    Ok((ios_process_epoch()?, apple_continuous_micros()?))
+}
+#[cfg(target_os = "macos")]
 fn sample() -> Result<(String, u64)> {
     // Boot-session UUID is stable across process restarts and wall-clock edits.
     // Do not fall back to kern.boottime, which can move when civil time changes.
@@ -82,6 +114,10 @@ fn sample() -> Result<(String, u64)> {
     }) {
         return Err("invalid boot-session UUID".into());
     }
+    Ok((format!("darwin:{boot}"), apple_continuous_micros()?))
+}
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn apple_continuous_micros() -> Result<u64> {
     #[repr(C)]
     struct Timebase {
         numer: u32,
@@ -103,7 +139,7 @@ fn sample() -> Result<(String, u64)> {
     let micros =
         u64::try_from(u128::from(ticks) * u128::from(scale.numer) / u128::from(scale.denom) / 1000)
             .map_err(|_| "boot clock overflow")?;
-    Ok((format!("darwin:{boot}"), micros))
+    Ok(micros)
 }
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
 fn sample() -> Result<(String, u64)> {
@@ -196,6 +232,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         (dir, setup)
     }
+    include!("clock_process_tests.rs");
     #[test]
     fn same_boot_wal_recovery_preserves_epoch_and_elapsed_time() {
         let (dir, setup) = fixture("same-boot");

@@ -86,11 +86,22 @@ not uninterrupted surface liveness. No runtime timeout or authorization policy
 changed. The source of the slow grants call (guest/setup/WAL/scheduling) is not
 isolated, and long-call surface liveness remains outside this qualification.
 
-The same recovery policy runs on Linux and Apple. Linux samples boot_id and
-CLOCK_BOOTTIME; Apple samples `kern.bootsessionuuid` and
-`mach_continuous_time`, with checked u128 tick conversion. These clocks include
-sleep; CI tests continuity/downtime but does not physically suspend a Mac or
-reboot it. Boot identity failure has no civil-time fallback. Named regressions:
+The anchor recovery policy is shared, but continuity scope differs by platform.
+Linux samples boot_id and CLOCK_BOOTTIME; macOS samples `kern.bootsessionuuid`
+and `mach_continuous_time`. iOS uses an OS-CSPRNG process epoch and the same
+checked u128 continuous-time conversion (ADR-0039). These clocks include sleep;
+iOS anchored WALs refuse another process before guest admission, not only after
+reboot. Entropy failure is sticky and has no identity fallback. CI continuity
+proof is not physical sandbox/suspend qualification. Named regressions:
+
+- `ios_process_epoch_is_stable_and_entropy_failure_refuses` checks real OS
+  entropy, concurrent one-time initialization and sticky injected failure.
+- `same_process_wal_reopen_preserves_epoch_and_elapsed_time` reopens a real WAL
+  with the production process epoch; elapsed time advances without rebasing.
+- `ios_anchored_wal_refuses_another_process_before_guest_admission` executes a
+  separate process with the production epoch helper and retains the WAL bytes.
+  Linux uses BOOTTIME for this profile test; Apple uses continuous time.
+  This is not an installed iOS execution claim.
 
 - `native_boot_sample_is_stable_and_monotonic` uses the real kernel sampler.
 - `same_boot_wal_recovery_preserves_epoch_and_elapsed_time` reopens the real WAL
