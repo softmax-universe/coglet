@@ -1,207 +1,41 @@
-name: Softmax Mac
+# DISPOSABLE DIAGNOSTIC BRANCH ONLY. NEVER MERGE OR CHERRY-PICK THIS FILE.
+# This job measures radio presentation; it is NOT softmax-mac-gate or acceptance.
+name: Softmax radio presentation measurement ONLY
 on:
-  push:
-    branches: [main, feat/softmax-mac-shell, feat/softmax-embedded-runtime]
-  pull_request:
-  merge_group:
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: softmax-mac-${{ github.ref }}
-  cancel-in-progress: true
+  group: softmax-radio-measure-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  changes:
-    runs-on: ubuntu-24.04
-    outputs:
-      macos: ${{ steps.paths.outputs.macos }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Test Mac path selection
-        run: python3 -m unittest discover -s scripts/ci -p 'test_softmax_mac_paths.py' -v
-      - name: Select native build (always on main and in the merge queue)
-        id: paths
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          build=true
-          if [[ "$EVENT_NAME" == pull_request ]]; then
-            build=$(git diff --name-only --no-renames -z "$BASE_SHA...$HEAD_SHA" | python3 scripts/ci/softmax_mac_paths.py)
-          fi
-          echo "macos=$build" >> "$GITHUB_OUTPUT"
-  # Stable required status: a legitimate Rust-only skip succeeds, but a failed
-  # classifier or native build must never look like a successful skip.
-  softmax-mac-gate:
-    if: always()
-    needs: [changes, macos]
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Require path selection and selected native build
-        env:
-          PATHS_RESULT: ${{ needs.changes.result }}
-          BUILD_SELECTED: ${{ needs.changes.outputs.macos }}
-          BUILD_RESULT: ${{ needs.macos.result }}
-        run: |
-          test "$PATHS_RESULT" = success
-          if [[ "$BUILD_SELECTED" == true ]]; then
-            test "$BUILD_RESULT" = success
-          else
-            test "$BUILD_SELECTED" = false
-            test "$BUILD_RESULT" = skipped
-          fi
-  macos:
-    needs: changes
-    # A skipped job reports success without reserving a macOS runner. Classifier
-    # failures fail the workflow; non-PR events always build the merged tree.
-    if: needs.changes.outputs.macos == 'true'
+  radio-measurement:
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 15
+    env:
+      SOFTMAX_RADIO_MEASUREMENT_DIR: ${{ github.workspace }}/radio-measurement
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - name: Product app catalog differential and native registry tests
-        env:
-          BUNDLE_GEMFILE: ${{ github.workspace }}/spec/tests/Gemfile
-          BUNDLE_PATH: ${{ runner.temp }}/softmax-product-gems
+      - name: Record exact source and native environment
         run: |
-          bundle install --jobs 2
-          uv run --python 3.12 --with-requirements apps/softmax-mac/Surface/requirements.txt python apps/softmax-mac/Surface/generate.py --check
-          uv run --python 3.12 --with-requirements apps/softmax-mac/Surface/requirements.txt python apps/softmax-mac/Surface/test_surface.py
-          swift test --package-path apps/softmax-mac/Surface
-      - name: Hub account tests (before native runtime build)
-        run: swift test --package-path apps/softmax-mac --filter 'Hub(Connection|EnrollmentCommand|Keychain)Tests'
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-wasip1,aarch64-apple-darwin,x86_64-apple-darwin
-      - uses: Swatinem/rust-cache@v2
-      - name: Check Darwin proto and prove validator refuses unsupported execution
+          mkdir -p radio-measurement
+          git rev-parse HEAD > radio-measurement/head.txt
+          git status --porcelain > radio-measurement/source-status.txt
+          sw_vers > radio-measurement/os.txt
+          xcodebuild -version > radio-measurement/xcode.txt
+          swift --version > radio-measurement/swift.txt
+      - name: Measure only paired original and actual native radios
         run: |
-          cargo check --locked -p coglet-proto --target aarch64-apple-darwin
-          cargo test --locked -p coglet-proto --test bundle_envelope unsupported_platform_refuses_validator_execution -- --exact
-      - name: Darwin ADAPTER SDK randomness
+          set -o pipefail
+          swift test --package-path apps/softmax-mac/Surface --filter RadioPresentationMeasurementTests 2>&1 | tee radio-measurement/test.log
+      - name: Hash retained measurements
+        if: always()
         run: |
-          cargo check --locked -p coglet-surface-rust --target aarch64-apple-darwin
-          cargo test --locked -p coglet-surface-rust --lib ids::tests::
-      - name: Build real hub helper and mock launcher
-        run: |
-          cargo build --locked --manifest-path apps/softmax-mac/HubTransport/Cargo.toml -j 2
-          cargo build --locked -p coglet-mock --example hub -j 2
-      - name: HubConnectionTests against real coglet-mock
-        env:
-          SOFTMAX_HUB_HELPER: ${{ github.workspace }}/apps/softmax-mac/HubTransport/target/debug/softmax-hub-link
-          SOFTMAX_MOCK_HUB: ${{ github.workspace }}/target/debug/examples/hub
-          SOFTMAX_REQUIRE_HUB_TESTS: '1'
-        run: swift test --package-path apps/softmax-mac --filter HubNativeConnectionTests
-      - name: Install pinned header generator
-        run: cargo install cbindgen --version 0.29.2 --locked
-      - name: Build test runtime xcframework (real WAMR, both Apple architectures)
-        env:
-          COGLET_RUNTIME_TEST_HOOKS: '1'
-        run: bash scripts/build-runtime-xcframework.sh
-      - name: Install real compiled speech and trap guests
-        run: |
-          python3 apps/softmax-mac/tools/install_speech_echo.py --output-dir "$RUNNER_TEMP/speech-echo" --wal "$RUNNER_TEMP/speech-echo/state.wal"
-          python3 apps/softmax-mac/tools/install_speech_echo.py --output-dir "$RUNNER_TEMP/speech-trap" --wal "$RUNNER_TEMP/speech-trap/state.wal" --trap-injection
-      - name: RuntimeHostTests (native C ABI, speech echo, guest trap and caught panic)
-        env:
-          SOFTMAX_ECHO_INSTALL: ${{ runner.temp }}/speech-echo
-          SOFTMAX_TRAP_INSTALL: ${{ runner.temp }}/speech-trap
-        run: swift test --package-path apps/softmax-mac/Runtime -Xswiftc -DCOGLET_RUNTIME_TEST_HOOKS -Xcc -DCOGLET_RUNTIME_TEST_HOOKS
-      - name: Rebuild distributable runtime without fault-injection hooks
-        run: |
-          bash scripts/build-runtime-xcframework.sh
-          if nm -g apps/softmax-mac/Runtime/Artifacts/universal/libCogletRuntime.a | grep -q ' _coglet_runtime_test_panic$'; then exit 1; fi
+          cd radio-measurement
+          shasum -a 256 *.json *.png *.txt *.log > SHA256SUMS
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: CogletRuntime-xcframework
-          path: apps/softmax-mac/Runtime/Artifacts/CogletRuntime.xcframework
+          name: Softmax-radio-measurement-only
+          path: radio-measurement
           if-no-files-found: error
-      - name: Test portable core
-        env:
-          FACE_SNAPSHOT_OUTPUT: ${{ github.workspace }}/apps/softmax-mac/build
-        run: swift test --package-path apps/softmax-mac
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Face-native-snapshots
-          path: apps/softmax-mac/build/FaceSnapshots
-          if-no-files-found: ignore
-      - name: Test dev identity pinning (fake keychain, not TCC)
-        run: python3 apps/softmax-mac/Tests/test_dev_signing.py
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate project
-        working-directory: apps/softmax-mac
-        run: xcodegen generate
-      - name: Build and test app (unit + UI smoke)
-        working-directory: apps/softmax-mac
-        run: >-
-          xcodebuild test -project Softmax.xcodeproj -scheme Softmax
-          -destination 'platform=macOS' -derivedDataPath build
-          -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
-      - name: Export live accessibility screenshots and audit evidence
-        if: ${{ !cancelled() }}
-        working-directory: apps/softmax-mac
-        run: xcrun xcresulttool export attachments --path TestResults.xcresult --output-path build/LiveWindowAttachments
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Softmax-live-window-audit-evidence
-          path: apps/softmax-mac/build/LiveWindowAttachments
-          if-no-files-found: warn
-      - name: Verify bundled universal ROUTER helper and inside-out signing
-        if: ${{ !cancelled() }}
-        working-directory: apps/softmax-mac
-        env:
-          SOFTMAX_DEV_SIGNING_IDENTITY: '-'
-          SOFTMAX_DEV_IDENTITY_FILE: ${{ runner.temp }}/softmax-hub-signing-identity
-        run: |
-          app=build/Build/Products/Debug/Softmax.app
-          helper="$app/Contents/Helpers/softmax-hub-link"
-          test -x "$helper"
-          lipo "$helper" -verify_arch arm64
-          lipo "$helper" -verify_arch x86_64
-          bash scripts/sign-dev.sh "$app"
-          codesign --verify --strict --verbose=2 "$helper"
-          codesign --verify --deep --strict --verbose=2 "$app"
-      - name: Package app artifact
-        if: always()
-        working-directory: apps/softmax-mac
-        run: ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Debug/Softmax.app Softmax.app.zip
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Softmax-macOS
-          path: apps/softmax-mac/Softmax.app.zip
-          if-no-files-found: error
-      - name: Render native design matrix (isolated, no hardware or network)
-        if: ${{ !cancelled() }}
-        working-directory: apps/softmax-mac
-        run: build/Build/Products/Debug/Softmax.app/Contents/MacOS/Softmax --ui-testing --design-snapshots "$PWD/build/DesignSnapshots"
-      - uses: astral-sh/setup-uv@v6
-        if: ${{ !cancelled() }}
-      - name: Compare reviewed native snapshots and build HTML side-by-sides
-        if: ${{ !cancelled() }}
-        working-directory: apps/softmax-mac
-        run: |
-          uv run --with pillow==12.0.0 python scripts/tests/test_design_snapshots.py
-          uv run --with pillow==12.0.0 python scripts/check-design-snapshots.py --actual build/DesignSnapshots
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Softmax-native-design-and-comparisons
-          path: |
-            apps/softmax-mac/build/DesignSnapshots
-            apps/softmax-mac/build/DesignComparisons
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Softmax-test-results
-          path: apps/softmax-mac/TestResults.xcresult
-          if-no-files-found: ignore
