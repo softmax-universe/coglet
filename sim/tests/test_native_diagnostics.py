@@ -1,6 +1,5 @@
 """Failure evidence must survive native startup and connection failures."""
 import json
-import os
 from pathlib import Path
 import sys
 

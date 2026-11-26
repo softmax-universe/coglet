@@ -96,6 +96,7 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         child = None
         started = time.monotonic()
+        deadline = None
         phase = 'startup'
         native_failure = None
         diagnostic = {}
@@ -208,7 +209,8 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
                     actions=len(actions), steps=world.steps, surface_state=surface.state,
                     initialized=initialized, barrier_sent=barrier_sent,
                     last_sent_at=last_sent_at, last_received_at=last_received_at,
-                    last_message=last_message, deadline_remaining=deadline-time.monotonic())
+                    last_message=last_message,
+                    deadline_remaining=deadline-time.monotonic() if deadline is not None else None)
                 retain_failure(error, tmp_path, diagnostic)
             except Exception:
                 pass
