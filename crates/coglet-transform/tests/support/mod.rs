@@ -1,5 +1,7 @@
 //! Local crypto/binding unit fixtures ONLY. Never provision production trust.
-use coglet_transform::admit::{AdmissionStatement, Allowlist, Authority, Evidence, QualifiedPins};
+use coglet_transform::admit::{
+    AdmissionStatement, Allowlist, Authority, Evidence, GatePins, PublicationInputs,
+};
 use coglet_transform::{PROFILE, profile_bytes, sha256_hex, transform_source_bytes};
 pub fn fixture() -> (
     ed25519_dalek::SigningKey,
@@ -12,35 +14,44 @@ pub fn fixture() -> (
     let issuer = key.verifying_key().to_bytes();
     let source = transform_source_bytes().to_vec();
     let profile = profile_bytes().to_vec();
-    let pins = QualifiedPins {
+    let (raw, trust) = coglet_transform::qualification::test_fixtures::evidence();
+    let qualification = coglet_transform::verify_ci_qualification(&raw, &trust).unwrap();
+    let files = raw.verified_files(&trust).unwrap();
+    let inputs = PublicationInputs {
+        source_sha256: sha256_hex(b"fixture source"),
+        original_sha256: sha256_hex(b"fixture original"),
+        output_sha256: sha256_hex(b"fixture output"),
+    };
+    let pins = GatePins {
         profile: PROFILE.into(),
-        transform_artifact_sha256: sha256_hex(b"fixture tool artifact"),
+        transform_artifact_sha256: qualification.transform_exe_sha256().into(),
         profile_bytes_sha256: sha256_hex(&profile),
         engine: "fixture engine".into(),
         compute_mode: "fixture mode".into(),
         arch: "fixture arch".into(),
         exec_mode: "fixture execution".into(),
-        source_commit: "fixture commit".into(),
         transform_source_sha256: sha256_hex(&source),
         toolchain_sha256: sha256_hex(b"fixture toolchain"),
         dependency_lock_sha256: sha256_hex(b"fixture lock"),
         recipe_sha256: sha256_hex(b"fixture recipe"),
-        corpus_sha256: sha256_hex(b"fixture corpus"),
+        corpus_sha256: qualification.corpus_sha256().into(),
         gate_outputs_sha256: sha256_hex(b"fixture gates"),
         engine_artifact_sha256: sha256_hex(b"fixture engine artifact"),
-        original_sha256: sha256_hex(b"fixture original"),
-        output_sha256: sha256_hex(b"fixture output"),
     };
     let evidence = Evidence {
         pins: pins.clone(),
-        transform_artifact: b"fixture tool artifact".to_vec(),
+        qualification: qualification.clone(),
+        inputs: inputs.clone(),
+        source: b"fixture source".to_vec(),
+        transform_artifact: files["coglet-transform"].clone(),
         transform_source: source,
         profile,
         toolchain: b"fixture toolchain".to_vec(),
         dependency_lock: b"fixture lock".to_vec(),
         recipe: b"fixture recipe".to_vec(),
-        corpus: b"fixture corpus".to_vec(),
+        corpus: files["fuzz.corpus"].clone(),
         gate_outputs: b"fixture gates".to_vec(),
+        publication_gate_outputs: b"fixture publication gates".to_vec(),
         engine_artifact: b"fixture engine artifact".to_vec(),
         original: b"fixture original".to_vec(),
         output: b"fixture output".to_vec(),
@@ -50,9 +61,9 @@ pub fn fixture() -> (
         router: "r".into(),
         coglet: "c".into(),
         runtime: "rt".into(),
-        source_commit: pins.source_commit.clone(),
-        original_sha256: pins.original_sha256.clone(),
-        output_sha256: pins.output_sha256.clone(),
+        source_commit: "fixture commit".into(),
+        original_sha256: inputs.original_sha256.clone(),
+        output_sha256: inputs.output_sha256.clone(),
         profile: pins.profile.clone(),
         evidence_sha256: evidence.digest(),
         delegation_generation: 1,
@@ -62,6 +73,8 @@ pub fn fixture() -> (
         ref_generation: 1,
         issuer,
         qualification: pins.clone(),
+        ci_qualification: qualification,
+        inputs,
         now_unix: 100,
         delegation_expires_at_unix: 200,
         revoked: false,

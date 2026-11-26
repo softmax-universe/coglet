@@ -16,6 +16,23 @@ var catalogJSON []byte
 type Binding struct {
 	Entry, Direction, Input string
 	Output                  *string
+	// local marks a trusted-catalog binding: Input/Output hold the advertised
+	// schema URIs and rin/rout the generated local rule names.
+	local     bool
+	rin, rout string
+}
+
+func (b Binding) inRule() string {
+	if b.local {
+		return b.rin
+	}
+	return rule(b.Input)
+}
+func (b Binding) outRule() string {
+	if b.local {
+		return b.rout
+	}
+	return rule(*b.Output)
 }
 
 var catalog = func() map[string]Binding {
@@ -70,6 +87,12 @@ func errorCode(err error) string {
 }
 func rule(s string) string { return strings.Replace(s, ":", "::", 1) }
 func (b Binding) uri() string {
+	if b.local {
+		if b.Direction == "read" {
+			return *b.Output
+		}
+		return b.Input
+	}
 	s := b.Input
 	if b.Direction == "read" && b.Output != nil {
 		s = *b.Output

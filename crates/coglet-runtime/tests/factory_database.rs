@@ -29,6 +29,7 @@ use std::{
 #[allow(dead_code)]
 mod factory;
 mod factory_dispatch_result;
+mod factory_goals;
 use factory_dispatch_result::dispatch_result_consumed;
 #[rustfmt::skip]
 #[path = "../../../spikes/cross-engine-hash/host-wasmtime/src/nancanon.rs"]
@@ -227,6 +228,7 @@ struct Fx {
     code: Vec<u8>,
     cat: Catalog,
     migration: Migration,
+    now: std::cell::Cell<u64>,
 }
 const GRANTS: [&str; 3] = ["db.read", "db.write", "factory.work"];
 impl Fx {
@@ -324,6 +326,7 @@ impl Fx {
             code,
             cat,
             migration,
+            now: std::cell::Cell::new(10),
         }
     }
     fn service(&self) -> RuntimeService {
@@ -362,7 +365,7 @@ impl Fx {
         event
     }
     fn context(&self) -> Value {
-        json!({"trace_id":self.setup["inputs"]["trace_id"],"logical_time":10,"seed":7,
+        json!({"trace_id":self.setup["inputs"]["trace_id"],"logical_time":self.now.get(),"seed":7,
             "budgets":self.manifest["budgets"],"grants":self.grants,"boundary":[]})
     }
     fn step<E: SharedEngine>(

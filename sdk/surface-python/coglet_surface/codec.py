@@ -146,7 +146,9 @@ def validate(rule, value, schema=None):
             return
         good = False
         if op == 'literal':
-            good = type(val) is type(node['value']) and val == node['value']
+            # Python container equality conflates nested True/1 and False/0.
+            # Canonical profile bytes retain the literal's exact value types.
+            good = encode_profile(val) == encode_profile(node['value'])
         elif op == 'primitive':
             good = type(val) is {'tstr': str, 'bool': bool, 'null': type(None)}[node['name']]
         elif op == 'range':

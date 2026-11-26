@@ -35,7 +35,7 @@ EXPECTED = {
         "qualification::test_fixtures::tests::ci_qualification_rejects_wrong_artifact_digest_or_mode",
     },
 }
-REQUIRED_FILES = {"rustc.txt", "Cargo.lock", "build.jsonl", "tool-build.jsonl", "coglet-transform", "transform.source", "fuzz.corpus", "fuzz.results"} | set(EXPECTED) | {f"{name}.log" for name in EXPECTED}
+REQUIRED_FILES = {"rustc.txt", "Cargo.lock", "build.jsonl", "tool-build.jsonl", "gate-build.jsonl", "coglet-transform-gate", "coglet-transform", "transform.source", "fuzz.corpus", "fuzz.results"} | set(EXPECTED) | {f"{name}.log" for name in EXPECTED}
 
 
 def run(args, **kw):
@@ -82,6 +82,7 @@ def verify_pair(root, head, run_id, attempt):
         for name, expected in EXPECTED.items():
             validate_report((path / f"{name}.log").read_text(), expected)
         production_tool(path / "tool-build.jsonl")
+        production_tool(path / "gate-build.jsonl", "coglet-transform-gate")
         assert (path / "fuzz.results").stat().st_size == 960 * 80
         legs[arch] = path
     assert set(legs) == {"x86_64", "aarch64"}
@@ -106,6 +107,10 @@ def native_leg():
     (out / "tool-build.jsonl").write_text(tool_build.stdout)
     tool = production_tool(out / "tool-build.jsonl")
     shutil.copy2(tool, out / "coglet-transform")
+    gate_build = run(["cargo", "build", "--locked", "-p", "coglet-transform", "--bin", "coglet-transform-gate", "--message-format=json"], capture_output=True)
+    (out / "gate-build.jsonl").write_text(gate_build.stdout)
+    shutil.copy2(production_tool(out / "gate-build.jsonl", "coglet-transform-gate"), out / "coglet-transform-gate")
+    env["COGLET_TRANSFORM_GATE"] = str(out / "coglet-transform-gate")
     source = subprocess.run([str(out / "coglet-transform"), "--source"], cwd=ROOT, check=True, capture_output=True).stdout
     assert source
     (out / "transform.source").write_bytes(source)
@@ -141,11 +146,11 @@ def native_leg():
     print("Component proof manifest:", out / "manifest.json")
 
 
-def production_tool(build_log):
+def production_tool(build_log, name="coglet-transform"):
     candidates = [m for line in build_log.read_text().splitlines() if (m := json.loads(line)).get("reason") == "compiler-artifact" and m.get("executable")]
     assert len(candidates) == 1
     tool = candidates[0]
-    assert tool["target"]["name"] == "coglet-transform"
+    assert tool["target"]["name"] == name
     assert tool["target"]["kind"] == ["bin"] and tool["profile"]["test"] is False
     return Path(tool["executable"])
 

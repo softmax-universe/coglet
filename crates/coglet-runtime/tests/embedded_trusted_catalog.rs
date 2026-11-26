@@ -74,6 +74,8 @@ fn scenario_child() {
         "loader_errors" => loader_errors(),
         "live_link_stop_fence" => live_link_stop_fence(),
         "reopen_pin_fence" => reopen_pin_fence(),
+        "profile_provisioning" => profile_provisioning(),
+        "wire_profile_downgrade" => wire_profile_downgrade(),
         other => panic!("unknown scenario {other}"),
     }
     println!("scenario-ok:{name}");
@@ -97,6 +99,193 @@ fn embedded_trusted_catalog_failure_fences() {
     run_scenario("loader_errors", t);
     run_scenario("live_link_stop_fence", t);
     run_scenario("reopen_pin_fence", t);
+}
+
+#[test]
+fn embedded_local_contract_profile_provisioning() {
+    run_scenario("profile_provisioning", Duration::from_secs(120));
+}
+
+#[test]
+fn embedded_wire_profile_negotiation_and_downgrade() {
+    run_scenario("wire_profile_downgrade", Duration::from_secs(120));
+}
+
+/// Actual C pointer ABI: selected 0.2 product wire, then a live 0.1 downgrade of
+/// the SAME provisioned 0.2 WAL. SYNTHETIC CLOSED catalog, not the app catalog.
+fn wire_profile_downgrade() {
+    let face = json!({"coglet":C,"id":"4".repeat(32),"capability":"expression.set_expression","args":{"expression":"happy","intensity":500,"duration_ms":10},"deadline":50_000_000,"correlation_id":"5".repeat(32)});
+    let app = json!({"coglet":C,"id":"6".repeat(32),"capability":"softmax.app.navigate","args":{},"deadline":50_000_000,"correlation_id":"7".repeat(32)});
+    let mut s = setup(false);
+    s["contract_profile"] = json!("surface-0.2");
+    s["manifest"]["subscriptions"] = json!(["softmax.app.view_changed"]);
+    s["initial_actions"] = json!([face, app]);
+    s["initial_effect_ids"]["actions"] = json!(["4".repeat(32), "6".repeat(32)]);
+    let uri = "https://example.invalid/softmax/1#empty";
+    let raw = serde_json::to_vec(&json!({"version":1,"namespace":"softmax",
+        "entries":{"softmax.app":["softmax.app_control"]},
+        "schemas":{uri:"empty"},"rules":{"empty":{"op":"record","fields":[]}},
+        "operations":{
+            "softmax.app.view_changed":{"entry":"softmax.app","direction":"event","input":uri,"resources":[],"single_owner":true},
+            "softmax.app.navigate":{"entry":"softmax.app","direction":"action","input":uri,"output":uri,"resources":["softmax.app_control"],"single_owner":true}}}))
+    .unwrap();
+    let env = Env::new("wire", s);
+    assert_eq!(env.start_with(Some(Env::pinned(&raw))), 0);
+    let face_entry = json!({"name":"expression.control","events":[],"reads":[],"actions":["expression.set_expression"],"exclusive":["display.face"],"schemas":{"expression.set_expression":"https://coglet.dev/spec/messages/expression.schema.json#/$defs/set-expression"}});
+    let app_entry = json!({"name":"softmax.app","events":["softmax.app.view_changed"],"reads":[],"actions":["softmax.app.navigate"],"exclusive":["softmax.app_control"],"schemas":{"softmax.app.view_changed":uri,"softmax.app.navigate":uri}});
+    let caps = |entries: Value| json!({"revision":1,"clock":1100,"entries":entries,"correlation_id":"2".repeat(32)});
+    let grants = |epoch: u64, ops: Value, resources: Value| json!({"epoch":epoch,"entries":[{"coglet":C,"operations":ops,"resources":resources,"expires":100_000_000}],"correlation_id":"3".repeat(32)});
+    let hello = |versions: Value| json!({"surface":S,"offer":{"versions":versions},"clock":1000,"correlation_id":"1".repeat(32)});
+    let event = json!({"source":S,"kind":"softmax.app.view_changed","seq":1,"logical_time":1200,"payload":{},"correlation_id":"9".repeat(32)});
+
+    let mut link = Link::open();
+    link.send_ok("hello", hello(json!(["0.1", "0.2"])));
+    assert_eq!(
+        link.recv_until("hello_reply")["body"]["selection"]["version"],
+        "0.2"
+    );
+    link.send_ok("capabilities", caps(json!([face_entry, app_entry])));
+    link.send_ok(
+        "grants",
+        grants(
+            1,
+            json!([
+                "expression.set_expression",
+                "softmax.app.view_changed",
+                "softmax.app.navigate"
+            ]),
+            json!(["display.face", "softmax.app_control"]),
+        ),
+    );
+    let first = link.recv_until("act")["body"]["action"].clone();
+    let second = link.recv_until("act")["body"]["action"].clone();
+    assert_eq!(first["capability"], "expression.set_expression");
+    assert_eq!(second["capability"], "softmax.app.navigate");
+    link.send_ok("event", event.clone());
+    link.barrier();
+    let before = env.snapshot("before");
+    assert_eq!(private_events(&before).len(), 1);
+    let retained = before.state().unwrap()["dispatches"].clone();
+    link.close();
+
+    // Same live process/WAL, peer offers only 0.1: Face retry remains, app is unavailable.
+    let mut link = Link::open();
+    link.send_ok("hello", hello(json!(["0.1"])));
+    assert_eq!(
+        link.recv_until("hello_reply")["body"]["selection"]["version"],
+        "0.1"
+    );
+    link.send_ok("capabilities", caps(json!([face_entry])));
+    link.send_ok(
+        "grants",
+        grants(
+            2,
+            json!(["expression.set_expression"]),
+            json!(["display.face"]),
+        ),
+    );
+    assert_eq!(
+        link.recv_until("act")["body"]["action"],
+        first,
+        "retained Face retry"
+    );
+    link.barrier(); // an app retry would precede this barrier and fail recv_until
+    let mut fresh = event.clone();
+    fresh["seq"] = json!(2); // fresh seq: refusal must be the profile fence, not rollback
+    fresh["logical_time"] = json!(1300);
+    link.assert_refused("event", fresh);
+    drop(link);
+    for bad in [
+        caps(
+            json!([face_entry, {"name":"softmax.app","events":[],"reads":[],"actions":[],"exclusive":[],"schemas":{}}]),
+        ),
+        caps(json!([app_entry])),
+    ] {
+        let mut link = Link::open();
+        link.send_ok("hello", hello(json!(["0.1"])));
+        link.recv_until("hello_reply");
+        link.assert_refused("capabilities", bad);
+    }
+    let after = env.snapshot("after");
+    let state = after.state().unwrap();
+    assert_eq!(state["contract_profile"], "surface-0.2");
+    assert_eq!(state["catalog_pin"], digest(&raw));
+    assert_eq!(
+        state["dispatches"], retained,
+        "downgrade never rewrites retained dispatches"
+    );
+    assert!(
+        private_events(&after).is_empty(),
+        "0.2 queued event not restored on 0.1"
+    );
+    assert_eq!(coglet_runtime_stop(), 0);
+}
+
+fn profile_provisioning() {
+    let mut s = setup(false);
+    s["contract_profile"] = json!("surface-0.2");
+    s["manifest"]["subscriptions"] = json!(["softmax.app.view_changed"]);
+    let env = Env::new("profile", s);
+    // Synthetic profile fixture, not the production app catalog. Closed v1;
+    // only trusted setup selects the naming dialect.
+    let artifact = json!({"version":1,"namespace":"softmax",
+        "entries":{"softmax.app":["softmax.app_control"]},
+        "schemas":{"https://example.invalid/softmax/1#empty":"empty"},
+        "rules":{"empty":{"op":"record","fields":[]}},
+        "operations":{"softmax.app.invoke":{"entry":"softmax.app","direction":"action",
+            "input":"https://example.invalid/softmax/1#empty",
+            "output":"https://example.invalid/softmax/1#empty",
+            "resources":["softmax.app_control"],"single_owner":true}}});
+    let raw = serde_json::to_vec(&artifact).unwrap();
+    assert_eq!(env.start_with(Some(Env::pinned(&raw))), 0);
+    let state = env.snapshot("profile").state().unwrap().clone();
+    assert_eq!(state["contract_profile"], "surface-0.2");
+    assert_eq!(state["catalog_pin"], digest(&raw));
+    assert_eq!(coglet_runtime_stop(), 0);
+    // A genuinely profile-neutral catalog/manifest isolates the recovery pair
+    // fence: rejection must not merely be the frozen loader rejecting app names.
+    let mut neutral = artifact.clone();
+    let operation = neutral["operations"]
+        .as_object_mut()
+        .unwrap()
+        .remove("softmax.app.invoke")
+        .unwrap();
+    neutral["operations"]["softmax.invoke"] = operation;
+    let neutral_raw = serde_json::to_vec(&neutral).unwrap();
+    let mut pair = env.config(Some(Env::pinned(&neutral_raw)));
+    pair["wal"] = json!(env.dir.join("pair.wal"));
+    pair["setup"]["manifest"]["subscriptions"] = json!([]);
+    assert_eq!(start_value(&pair), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
+    pair["setup"]["contract_profile"] = json!("surface-0.1");
+    assert_ne!(start_value(&pair), 0);
+    let mut fresh = pair.clone();
+    fresh["wal"] = json!(env.dir.join("neutral-fresh.wal"));
+    assert_eq!(
+        start_value(&fresh),
+        0,
+        "same supplied default pair valid on fresh WAL"
+    );
+    assert_eq!(coglet_runtime_stop(), 0);
+    pair["setup"]["contract_profile"] = json!("surface-0.2");
+    assert_eq!(start_value(&pair), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
+    // Invalid explicit selectors refuse before any service is published.
+    for profile in [json!(null), json!(""), json!("surface-0.3"), json!([])] {
+        let mut invalid = env.config(None);
+        invalid["setup"]["contract_profile"] = profile;
+        assert_ne!(start_value(&invalid), 0);
+    }
+    assert_eq!(env.start_with(Some(Env::pinned(&raw))), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
+    // Catalog-free startup persists the selected profile as well.
+    let mut bare = env.config(None);
+    bare["wal"] = json!(env.dir.join("bare.wal"));
+    assert_eq!(start_value(&bare), 0);
+    assert_eq!(coglet_runtime_stop(), 0);
+    let saved = DurableStore::open(&env.dir.join("bare.wal")).unwrap();
+    assert_eq!(saved.state().unwrap()["contract_profile"], "surface-0.2");
+    assert!(saved.state().unwrap()["catalog_pin"].is_null());
 }
 
 // ---------------------------------------------------------------- fixtures
@@ -171,10 +360,14 @@ fn observation(op: &str, args: Value, value: Value) -> Value {
     json!({"source":S,"kind":"game.observation","seq":1,"logical_time":1200,"payload":{"query_id":"6".repeat(32),"operation":op,"args":args,"value":value,"revision":1,"world_generation":1,"grant_epoch":1},"correlation_id":"7".repeat(32)})
 }
 fn decode(raw: &[u8]) -> Value {
-    coglet_types::decode("surface-message", raw)
-        .unwrap()
-        .deserialized()
-        .unwrap()
+    // The current generated family owns 0.2; the hub/0 snapshot does not.
+    coglet_types_current::decode(
+        coglet_runtime::ContractProfile::Surface02.rule("surface-message"),
+        raw,
+    )
+    .unwrap()
+    .deserialized()
+    .unwrap()
 }
 
 // ---------------------------------------------------------------- C pointer helpers

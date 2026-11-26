@@ -132,7 +132,9 @@ impl EmergencyCustody for RuntimeService {
                 return Err("conflict: unresolved or reused emergency obligation".into());
             }
         }
-        if managed.operations.contains_key(&obligation.operation_id)
+        if self.receiver_contains(&obligation.operation_id)
+            || managed.install_receipt["operation_id"] == obligation.operation_id
+            || managed.operations.contains_key(&obligation.operation_id)
             || managed.operations.len() >= OPERATION_LEDGER - 1
         {
             return Err("conflict: emergency operation ID or receipt capacity unavailable".into());

@@ -1,4 +1,5 @@
 /target/
+/coglets/factory/target/
 /.tools/
 __pycache__/
 .pytest_cache/

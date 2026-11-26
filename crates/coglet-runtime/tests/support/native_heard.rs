@@ -81,11 +81,7 @@ fn exercise_heard_order(ffi: bool, name: &str, revoke: bool, reverse: bool) {
     if reverse {
         link.send("event",json!({"source":S,"seq":4,"logical_time":1300,"kind":"speech.position","payload":{"stream":"a".repeat(32),"chunk":0,"item":"4".repeat(32),"played_ms":30,"position_ms":30,"state":"stopped"},"correlation_id":"6".repeat(32)}));
     }
-    link.send(
-        "health",
-        json!({"state":"ready","clock":1500,"pending":1,"correlation_id":"9".repeat(32)}),
-    );
-    assert_eq!(decode(&link.recv())["type"], "health");
+    link.health_barrier(&"9".repeat(32));
     drop(link);
     host.stop();
     if revoke {

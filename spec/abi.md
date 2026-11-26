@@ -76,16 +76,16 @@ drop events. The recorded batch is the replay ordering authority; arrival ordina
 are durable event-router metadata, not reconstructed from source clocks by replay.
 Record the exact batch, a nondecreasing runtime-epoch microsecond
 logical_time and seed. Preserve source event clocks unchanged. Replay uses the
-recording, not a new scheduling decision. An authorized router debug.step with no
-queued event injects one recorded common `runtime.debug_step` event: source is
+recording, not a new scheduling decision. An authorized router manage.step with no
+queued event injects one recorded common `runtime.manage_step` event: source is
 the target coglet, seq uses that source's shared durable sequence, logical_time
 is the step's runtime logical time, payload is `{}`, and correlation_id is the
 router operation ID. It bypasses subscriptions like runtime.inbox/runtime.timer.
-With pending events, debug.step consumes the ordinary batch instead; it never
+With pending events, manage.step consumes the ordinary batch instead; it never
 calls handle with an empty batch. Router authorization/receipt/audit binds the
 operation; an external producer cannot self-authorize a runtime-generated wake.
 
-Apply authenticated debug writes/inbox appends between steps only, in recorded
+Apply authenticated manage writes/inbox appends between steps only, in recorded
 order. Pin code, manifest, grants and input snapshot before instantiation.
 Each boundary change includes actor, audit_id (router operation_id or runtime
 materialization ID as defined below), nullable
@@ -94,7 +94,7 @@ The enclosing step or standalone boundary-record supplies before/after tree hash
 boundary change is the successful apply outcome. Rejected router operations belong
 to the router audit, not the guest mutation list. Initial_hash is before boundary changes; input_hash is after them.
 Boundary reconstruction must produce the recorded input (or trailing output) snapshot. Method names
-match router wire methods: hub.inbox for inbox appends and debug.write for debug
+match router wire methods: hub.inbox for inbox appends and manage.write for manage
 writes. Runtime terminal receipt materialization uses `runtime.receipt` (not a router
 RPC): actor=target coglet, ticket=null, path=/data/inbox.jsonl. It may only append
 terminal action messages. Journal origin is structural: this method is origin
@@ -116,7 +116,7 @@ mutations appear here, with failed/queued outcomes retained in router receipts/a
 
 Paths are absolute UTF-8 with no C0 controls (U+0000–U+001F), DEL
 (U+007F), backslash, empty, dot or dot-dot components or trailing slash.
-No Unicode normalization is performed. Router debug paths are a bounded ASCII
+No Unicode normalization is performed. Router manage paths are a bounded ASCII
 subset of these filesystem paths, not a second filesystem namespace. Only regular files; roots implicit. Symlinks, hardlinks, device nodes and
 mount escapes forbidden. Mount permissions apply to descriptors too, including
 open/rename operations; no chmod escalation. Denial returns WASI permission errno
@@ -132,7 +132,7 @@ Local commit is crash-durable, e.g. fsynced WAL plus content-addressed blobs.
 Periodic flush checkpoints committed trees; reclaim WAL only after snapshot and
 metadata fsync. fd_sync neither commits a step nor dispatches effects. Recovery
 selects the last complete durable commit, never partial files/JSONL lines. Journal
-storage is outside guest mounts. Logs may be batch git-committed (~30s/rotation),
+storage is outside guest mounts. Logs feed the durable ordered manage.tail_log stream (hub protocol 1.0),
 not per step; this is separate from local durability. Persistence failure means
 no dispatch; recover the commit identity (trace_id,step), do not blindly rerun.
 Dispatch committed outbox in call order with stable identities. Receipt/outcome
@@ -206,7 +206,7 @@ Replay checks all these transitions and never dispatches or synthesizes results.
 retained across retries. Its before/after hex bytes encode core-deterministic CBOR
 `heard-state` (ABI schema), a complete private snapshot of per-item alignment and
 heard projection. Absence means empty history; after MUST NOT be null. This file
-is guest-read-only and cannot be changed by debug.write/hub.inbox/guest writes;
+is guest-read-only and cannot be changed by manage.write/hub.inbox/guest writes;
 only the runtime may replace it at a boundary. It is not an inbox append and
 queues NO wake, guest event or engine invocation. An ordinary later step can read
 it; it must be durable before that step consumes conversation history. It may
@@ -426,7 +426,7 @@ pair; a promotion starts a new trace from the previous durable output snapshot.
 files permit raw append. Log calls must append their exact JSON lines, in order.
 The explicit effective budgets field records admission limits; it must not exceed
 the pinned manifest limits or change compute_mode. Runtime-generated inbox/timer/
-debug_step wakes bypass subscription filtering, but external events must match subscriptions.
+manage_step wakes bypass subscription filtering, but external events must match subscriptions.
 proc_exit/nonzero handle map to guest_return; memory access traps to trap; invalid
 host buffer addresses to invalid_argument. Wall failures use deadline_exceeded;
 compute/memory/host_bytes use resource_exhausted.

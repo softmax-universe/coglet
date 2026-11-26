@@ -121,7 +121,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 <nav>
   <div class="brand">The Softmax app</div>
   <div class="sub">Generated from softmax-app.md. Do not edit.</div>
-  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html" class="here">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a></div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html" class="here">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html">Coglets on unforged</a><a href="unforged-staging.html">Staged integration</a><a href="secrets.html">Secrets and adapters</a><a href="llms.html">LLMs on unforged</a></div>
   <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
   <ul>
   <li class="h2"><a href="#what-the-user-sees">What the user sees</a></li><li class="h2"><a href="#capabilities-it-provides">Capabilities it provides</a></li><li class="h2"><a href="#speech">Speech</a></li><li class="h3"><a href="#what-stays-the-same-in-both">What stays the same in both</a></li><li class="h3"><a href="#with-a-realtime-provider">With a realtime provider</a></li><li class="h3"><a href="#with-models-on-this-mac">With models on this Mac</a></li><li class="h3"><a href="#what-a-coglet-sees">What a coglet sees</a></li><li class="h3"><a href="#choosing-and-falling-back">Choosing and falling back</a></li><li class="h3"><a href="#still-to-decide">Still to decide</a></li><li class="h2"><a href="#it-runs-coglets-locally">It runs coglets locally</a></li><li class="h2"><a href="#capability-detail">Capability detail</a></li><li class="h3"><a href="#softmax-app-adapter-speechcontrol">Softmax app adapter: <code>speech.control</code></a></li><li class="h3"><a href="#softmax-app-adapter-expressioncontrol">Softmax app adapter: <code>expression.control</code></a></li>
@@ -160,6 +160,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -180,6 +181,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -338,6 +340,7 @@ without changing any coglet.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -358,6 +361,7 @@ without changing any coglet.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }

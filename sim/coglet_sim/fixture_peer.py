@@ -84,13 +84,16 @@ def main():
     # this channel, and inherited harness state is removed for ordinary peers.
     path = os.environ['COGLET_FIXTURE_CLOCK_SOCKET']
     with socket.socket(socket.AF_UNIX) as clock, tempfile.TemporaryDirectory(prefix='duplex-clock-') as directory:
-        clock.connect(path)
         def write(raw):
             sys.stdout.buffer.write(raw)
             sys.stdout.buffer.flush()
         session = ScheduledSession(directory, write)
         parser, control = Frames(), bytearray()
         try:
+            # Clock connection is the harness startup barrier. Publish it only
+            # after the real ledger/device and initial hello are ready, so slow
+            # initialization stays inside the existing connection watchdog.
+            clock.connect(path)
             while True:
                 readable, _, _ = select.select([clock, sys.stdin.fileno()], [], [])
                 if clock in readable:

@@ -4,6 +4,9 @@ use super::*;
 use coglet_types::Value as V;
 use std::{cell::Cell as StdCell, process::Command};
 
+#[path = "profile_tests.rs"]
+mod profile_tests;
+
 const OWNER: &str = "coglet:1111111111111111111111111111111111111111111111111111111111111111";
 const TRACE: &str = "55555555555555555555555555555555";
 

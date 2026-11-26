@@ -26,7 +26,7 @@ func shapeErr(format string, args ...any) error {
 type node struct {
 	op       string
 	name     string // ref, primitive
-	lit      any    // literal: nil, bool, string or *big.Int
+	lit      []byte // literal: exact canonical profile bytes
 	min, max *big.Int
 	pattern  patternMatcher
 	items    []*node // union
@@ -153,15 +153,16 @@ func buildNode(v any) (*node, error) {
 			return nil, fmt.Errorf("unsupported primitive %v", m["name"])
 		}
 	case "literal":
-		switch lv := m["value"].(type) {
-		case nil, bool, string:
-			n.lit = lv
-		case json.Number:
-			if n.lit, err = asBig(lv); err != nil {
-				return nil, err
-			}
-		default:
-			return nil, fmt.Errorf("unsupported literal %T", lv)
+		lv, present := m["value"]
+		if !present {
+			return nil, errors.New("literal without value")
+		}
+		value, err := literalValue(lv, 0)
+		if err != nil {
+			return nil, err
+		}
+		if n.lit, err = EncodeProfile(value); err != nil {
+			return nil, err
 		}
 	case "range", "size":
 		if n.min, err = asBig(m["min"]); err != nil {
@@ -387,23 +388,8 @@ func (s *Schema) check(n *node, v any, depth int) error {
 		}
 		return shapeErr("no union branch matched")
 	case "literal":
-		switch lit := n.lit.(type) {
-		case nil:
-			if v == nil {
-				return nil
-			}
-		case bool:
-			if b, ok := v.(bool); ok && b == lit {
-				return nil
-			}
-		case string:
-			if str, ok := v.(string); ok && str == lit {
-				return nil
-			}
-		case *big.Int:
-			if i, ok := intOf(v); ok && i.Cmp(lit) == 0 {
-				return nil
-			}
+		if raw, err := EncodeProfile(v); err == nil && bytes.Equal(raw, n.lit) {
+			return nil
 		}
 		return shapeErr("literal mismatch")
 	case "primitive":

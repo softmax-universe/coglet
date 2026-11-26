@@ -45,7 +45,7 @@ impl RuntimeService {
             .as_array()
             .ok_or("invalid attempted grants")?
         {
-            validate("capability-name", grant)?;
+            state.contract_profile.validate("capability-name", grant)?;
         }
         let mut candidate = state.runtime.clone();
         candidate.unresolved_attempt = None;
@@ -143,6 +143,12 @@ impl RuntimeService {
             next.dispatch_order
                 .push(action["id"].as_str().ok_or("missing action ID")?.to_owned());
         }
+        #[cfg(feature = "device")]
+        Self::receiver_finish_step(&mut next, &json!({"journal":record}))?;
+        Self::finish_pending_stops(
+            &mut next,
+            journal.iter().filter(|r| r.get("step").is_some()).count() as u64,
+        )?;
         Ok(next)
     }
 
@@ -173,6 +179,13 @@ impl RuntimeService {
         for event in state.router.events() {
             observe(event)?;
         }
+        #[cfg(feature = "device")]
+        for event in Self::receiver_retired_wakes(state) {
+            if &event["source"] != owner {
+                return Err("invalid retired wake source".into());
+            }
+            observe(event)?;
+        }
         let runtime = state
             .staged_boundary
             .as_ref()
@@ -180,9 +193,10 @@ impl RuntimeService {
             .unwrap_or(&state.runtime);
         // Initial inbox contents are supplied state, not reservations made by
         // this coordinator. Later lines cannot be removed or rewritten.
-        let initial_count = crate::boundary::inbox(&root.files)?.len();
+        let initial_count =
+            crate::boundary::inbox_with_profile(&root.files, state.contract_profile)?.len();
         let mut external_reservations = BTreeSet::new();
-        for message in crate::boundary::inbox(&runtime.files)?
+        for message in crate::boundary::inbox_with_profile(&runtime.files, state.contract_profile)?
             .iter()
             .skip(initial_count)
         {
@@ -213,7 +227,7 @@ impl RuntimeService {
             .as_ref()
             .map(|s| &s.runtime)
             .unwrap_or(&state.runtime);
-        let inbox = crate::boundary::inbox(&runtime.files)?;
+        let inbox = crate::boundary::inbox_with_profile(&runtime.files, state.contract_profile)?;
         let mut inbox_indices = Vec::new();
         let mut timers = BTreeSet::new();
         let mut source_sequences = BTreeSet::new();
@@ -229,6 +243,12 @@ impl RuntimeService {
                 }
             }
             match kind {
+                #[cfg(feature = "device")]
+                "runtime.debug_step" => {
+                    if !Self::receiver_valid_debug_wake(state, event) {
+                        return Err("recovered debug-step wake has no original operation".into());
+                    }
+                }
                 "runtime.inbox" => {
                     let index = event["payload"]["index"]
                         .as_u64()

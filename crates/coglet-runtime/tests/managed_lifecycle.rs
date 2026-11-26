@@ -446,36 +446,37 @@ fn native_scheduler_obeys_durable_stop_and_resumes_only_after_explicit_start() {
         service.clone(),
     )
     .unwrap();
-    for (kind, body, now) in [
-        (
-            "hello",
-            json!({"surface":adapter,"offer":{"versions":["0.1"]},"clock":10,"correlation_id":"1".repeat(32)}),
-            10,
-        ),
-        (
-            "capabilities",
-            json!({"revision":1,"clock":110,"entries":[],"correlation_id":"2".repeat(32)}),
-            110,
-        ),
-        (
-            "grants",
-            json!({"epoch":1,"entries":[{"coglet":coglet,"operations":[],"resources":[],"expires":10_000_000}],"correlation_id":"3".repeat(32)}),
-            120,
-        ),
-    ] {
+    // Native entry resamples the durable clock at the preguest fence. Use that
+    // same epoch for negotiation, rather than synthetic samples ahead of a
+    // not-yet-activated clock (which correctly refuse as clock rollback).
+    let clock = || service.lock().unwrap().supervised_now().unwrap();
+    for kind in ["hello", "capabilities", "grants"] {
+        let now = clock();
+        let body = match kind {
+            "hello" => {
+                json!({"surface":adapter,"offer":{"versions":["0.1"]},"clock":now,"correlation_id":"1".repeat(32)})
+            }
+            "capabilities" => {
+                json!({"revision":1,"clock":now,"entries":[],"correlation_id":"2".repeat(32)})
+            }
+            _ => {
+                json!({"epoch":1,"entries":[{"coglet":coglet,"operations":[],"resources":[],"expires":now + 10_000_000}],"correlation_id":"3".repeat(32)})
+            }
+        };
         assert_eq!(
             session.send(&cbor(&json!({"type":kind,"body":body})).unwrap(), now),
             0
         );
     }
-    session.pump_dispatch(130).unwrap();
+    session.pump_dispatch(clock()).unwrap();
     assert_eq!(service.lock().unwrap().records().len(), 0);
     service.lock().unwrap().managed_start().unwrap();
-    session.pump_dispatch(140).unwrap();
+    session.pump_dispatch(clock()).unwrap();
     assert_eq!(service.lock().unwrap().records().len(), 1);
     assert_eq!(service.lock().unwrap().records()[0]["status"], "committed");
-    service.lock().unwrap().managed_stop(150).unwrap();
-    session.pump_dispatch(160).unwrap();
+    let stopped_at = clock();
+    service.lock().unwrap().managed_stop(stopped_at).unwrap();
+    session.pump_dispatch(clock()).unwrap();
     assert_eq!(service.lock().unwrap().records().len(), 1);
     drop(session);
     drop(service);

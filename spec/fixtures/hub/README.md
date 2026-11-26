@@ -1,30 +1,44 @@
-# Router (hub-protocol) fixture catalog
+# Router (hub protocol 1.0) fixture catalog
 
-- `cases.json`: shape-valid/shape-invalid JSON views, selected CDDL rule and
-  JSON Schema definition, and core-deterministic `cbor_hex` for each positive.
-  `valid` means **schema shape**, not enrollment, crypto, grant or temporal
-  acceptance. In particular the repetitive keys/signatures in shape fixtures are
-  not signed credentials; use `signatures.json` for actual signature verification.
-- `framing.json`: full u32-prefixed malformed/non-profile wire frames. All reject.
-- `signatures.json`: actual test-key Ed25519 signatures for four signing domains,
-  including exact signed CBOR preimages. Domain prefix is not part of the CBOR
-  item. Tests verify signatures and reject changed preimages with OpenSSL.
-- `git.json`: actual Git bundle v2 plus archive, SHA-256 digests, object ID and
-  router-key signed ref statement. No private `/data` files. Tests import into an
-  isolated repository, run strict fsck, reconstruct the archive and verify the
-  signature. This is a transfer fixture, not a guest implementing the Wasm ABI.
+- `cases.json`: every local CDDL/JSON Schema rule has a positive golden CBOR
+  vector; closed maps, domains and enclosing roots have shape negatives. Shape
+  validity is not proof of signer, authority, code admission or temporal behavior.
+- `framing.json`: malformed u32-prefixed/non-profile frames; all reject.
+- `signatures.json`: actual test-key Ed25519 delegation signature and exact
+  domain-separated preimage. `test_signing_vectors_and_target_binding` verifies
+  it with OpenSSL, plus patch signatures and altered target/generation controls.
+- `patch.json`: a signed filesystem Patch, resulting `/code` map, pinned source
+  tree and test-only no-op build provenance. The empty core Wasm is a digest
+  binding fixture, not guest ABI or ADR-0003 transform qualification.
+- `patch-rejections.json`: correctly signed stale-base, equal/lower-generation,
+  unsafe-path and missing-executable candidates; executable rejection has the
+  correct recomputed resulting revision. `test_patch_stale_base_replay_bad_path_missing_executable`
+  checks typed errors and no input mutation. `test_patch_oversize_boundary`
+  tests exact 64 MiB admission and an actual encoded overrun without committing
+  a large fixture file.
+- `tail-restart.json`: committed ordered log-entry bytes and a persisted cursor.
+  `test_tail_across_fresh_process_restart` crosses an actual interpreter boundary
+  with only persisted bytes/cursor, then resumes without duplication or omission.
+  It is an archive contract oracle, not a live runtime durability claim.
+- Each non-codec JSON vector has an adjacent `.json.format` marker containing
+  `semantic-vectors-v1`. Codec exclusions are counted; protocol tests own these
+  vectors explicitly.
 
-- `fetch.json`: real coglet-signed published/logs A/B/C bundles and competing
-  statements; `test_fetch_history_artifacts_and_observer_oracle` checks artifacts
-  and the snapshot-observation decision oracle.
-- Adjacent `fetch/framing/git/signatures.json.format` files explicitly classify
-  these four non-codec vector formats as `semantic-vectors-v1`. Generic codec
-  runners count their exclusions; all remain validated by `test_hub.py`.
-- The code Git archive includes `build/provenance.cbor`; its test-only no-op
-  transform's actual input/output digests are checked by
-  `test_build_provenance_binding`. This does not qualify ADR-0003 or execute R3.
+Regenerate from the repository root:
 
-Schemas import `common.cddl` / `common.schema.json`; generators live in
-`spec/messages/hub/`. Run from repository root with the fixture dependencies
-installed, as described in `conformance/hub/README.md`. Shape checks do not
-replace the shared future wire harness or its required stateful oracles.
+```sh
+python3 spec/messages/hub/generate.py
+python3 spec/tests/build_manage_vectors.py
+python3 spec/tests/generate_abi.py
+python3 spec/tests/build_boundary_receipts.py
+python3 spec/tests/build_mc_contracts.py
+python3 spec/tests/build_database.py
+codegen/run
+```
+
+Run `python3 -m unittest discover -s spec/tests -v` with the pinned Python/Ruby
+requirements. Generated ABI timeline companions for the new method/provenance
+names live in `spec/fixtures/abi/*-timeline.fixture`. The old `conformance/`
+implementation corpus is unchanged here; its runtime conversion is separate.
+No runtime, CLI, mock or registered 1.0 implementation is qualified by these
+specification oracles.

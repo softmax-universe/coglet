@@ -10,7 +10,8 @@ default = []
 test-controls = []
 
 [dependencies]
-coglet-types = { path = "../coglet-types" }
+# ADR-0031: existing implementation remains hub/0 until its separate migration.
+coglet-types = { package = "coglet-types-hub0", path = "../coglet-types-hub0" }
 ciborium = "0.2"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }

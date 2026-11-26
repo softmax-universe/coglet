@@ -7,9 +7,22 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, VecDeque};
 use std::path::Path;
 
+/// Files, inbox wakes, pending LLM requests, pending actions and next source
+/// seq, after boundary staging.
+type StagedBoundaryInputs = (
+    Snapshot,
+    VecDeque<u64>,
+    BTreeMap<String, Value>,
+    BTreeMap<String, Value>,
+    u64,
+);
+
 #[path = "clock.rs"]
 mod clock;
 
+#[cfg(test)]
+#[path = "boundary_stage_tests.rs"]
+mod boundary_stage_tests;
 #[cfg(feature = "native-engine")]
 #[path = "database_replay.rs"]
 mod database_replay;
@@ -30,10 +43,16 @@ pub(crate) use managed::ReceiptScope;
 #[cfg(feature = "device")]
 pub(crate) use managed::StartRecovery;
 #[cfg(feature = "native-engine")]
+#[path = "detached.rs"]
+mod detached;
+#[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
 #[path = "playback.rs"]
 mod playback;
+#[cfg(feature = "device")]
+#[path = "receiver.rs"]
+pub(crate) mod receiver;
 #[path = "recovery.rs"]
 mod recovery;
 #[path = "speech_temporal.rs"]
@@ -124,10 +143,15 @@ pub struct EngineReport {
 
 #[derive(Clone, Serialize, Deserialize)]
 struct ServiceState {
+    #[cfg(feature = "device")]
+    #[serde(default)]
+    receiver: receiver::ReceiverState,
     #[serde(default)]
     managed: Option<managed::ManagedState>,
     #[serde(default)]
     catalog_pin: Option<String>,
+    #[serde(default)]
+    contract_profile: crate::ContractProfile,
     #[serde(default)]
     supervisor_reads: BTreeMap<String, supervisor_reads::SupervisorReadRecord>,
     runtime: Runtime,
@@ -168,6 +192,10 @@ struct StagedBoundary {
 pub struct RuntimeService {
     /// New identity for each exclusively owned producer open, never restored.
     policy_instance: Option<String>,
+    #[cfg(feature = "native-engine")]
+    detached_execution: bool,
+    #[cfg(feature = "device")]
+    debug_executing: bool,
     #[cfg(test)]
     test_clock_sample: Option<clock::TestClockSample>,
     pub(crate) catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
@@ -179,6 +207,11 @@ pub struct RuntimeService {
     native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
+    /// Trusted local provisioning identity, already fenced against the WAL on open.
+    pub fn contract_profile(&self) -> crate::ContractProfile {
+        self.state.contract_profile
+    }
+
     /// Validate a saved WAL state against the configured pins and the exact
     /// journal. Shared by `open` and by database recovery reload, so a state
     /// published by a collaborator is checked as strictly as a restart.
@@ -194,6 +227,16 @@ impl RuntimeService {
         if state.catalog_pin.as_deref() != catalog.pin() {
             return Err("recovery extension catalog pin differs from configuration".into());
         }
+        if state.contract_profile != catalog.contract_profile() {
+            return Err("recovery contract profile differs from configuration".into());
+        }
+        if state.runtime.contract_profile != state.contract_profile
+            || state.router.contract_profile() != state.contract_profile
+        {
+            return Err(
+                "recovery runtime/router contract profiles differ from configuration".into(),
+            );
+        }
         if state.supervisor_reads.len() != configured_reads.len()
             || state.supervisor_reads.iter().any(|(id, r)| {
                 configured_reads
@@ -204,6 +247,8 @@ impl RuntimeService {
             return Err("recovery supervisor read plan differs from configuration".into());
         }
         state.router.validate_recovered()?;
+        #[cfg(feature = "device")]
+        state.receiver.validate()?;
         let offset = Self::validate_segments(&state, &configured.initial_setup, store.records())?;
         state.runtime.records = store.records()[offset..].to_vec();
         let code_files = |runtime: &Runtime| {
@@ -264,7 +309,9 @@ impl RuntimeService {
             path,
             setup,
             queue_capacity,
-            crate::TrustedExtensionCatalog::default(),
+            crate::TrustedExtensionCatalog::without_artifact(crate::ContractProfile::from_setup(
+                setup,
+            )?),
         )
     }
     pub fn open_with_catalog(
@@ -308,6 +355,9 @@ impl RuntimeService {
         gate: &dyn Fn() -> Result<u64>,
     ) -> Result<Self> {
         let catalog = std::sync::Arc::new(catalog);
+        if crate::ContractProfile::from_setup(setup)? != catalog.contract_profile() {
+            return Err("setup and catalog contract profiles differ".into());
+        }
         let mut store = DurableStore::open(path)?;
         let fresh = store.state().is_none();
         let configured = Runtime::from_fixture(setup)?;
@@ -326,11 +376,14 @@ impl RuntimeService {
             Self::restore(&store, &configured, saved, &catalog, &configured_reads)?
         } else {
             let mut state = ServiceState {
+                #[cfg(feature = "device")]
+                receiver: receiver::ReceiverState::default(),
                 managed: None,
                 catalog_pin: catalog.pin().map(str::to_owned),
+                contract_profile: catalog.contract_profile(),
                 supervisor_reads: configured_reads,
                 runtime: configured.clone(),
-                router: Router::new(queue_capacity)?,
+                router: Router::with_contract_profile(queue_capacity, catalog.contract_profile())?,
                 completed_segments: Vec::new(),
                 clock_anchor: None,
                 dispatch_order: Vec::new(),
@@ -343,7 +396,8 @@ impl RuntimeService {
                 speech_temporal: speech_temporal::SpeechTemporal::default(),
                 heard_pending: BTreeMap::new(),
             };
-            let messages = crate::boundary::inbox(&state.runtime.files)?;
+            let messages =
+                crate::boundary::inbox_with_profile(&state.runtime.files, state.contract_profile)?;
             for index in &state.runtime.inbox_wakes {
                 let message = &messages[*index as usize];
                 let seq = state.runtime.next_source_seq;
@@ -418,6 +472,10 @@ impl RuntimeService {
                     .ok()
                     .map(|()| hex::encode(bytes))
             },
+            #[cfg(feature = "native-engine")]
+            detached_execution: false,
+            #[cfg(feature = "device")]
+            debug_executing: false,
             #[cfg(test)]
             test_clock_sample: None,
             state,
@@ -472,7 +530,34 @@ impl RuntimeService {
 
     /// Gate shared by every live delivery path (ordinary and database).
     fn require_deliverable(&self) -> Result<()> {
-        self.require_managed_running()?;
+        #[cfg(feature = "native-engine")]
+        if self.detached_execution {
+            return Err("runtime execution already reserved".into());
+        }
+        self.require_deliverable_inner()
+    }
+    fn require_deliverable_inner(&self) -> Result<()> {
+        if self.code_pending() {
+            return Err("installed code application pending".into());
+        }
+        #[cfg(feature = "device")]
+        let stepping = self.receiver_step_active();
+        #[cfg(not(feature = "device"))]
+        let stepping = false;
+        if stepping {
+            if !self.managed_paused() {
+                return Err("conflict".into());
+            }
+        } else {
+            self.require_managed_running()?;
+            if self.managed_paused() {
+                return Err("runtime is paused".into());
+            }
+            #[cfg(feature = "device")]
+            if self.receiver_pending_len() != 0 {
+                return Err("back-channel boundary pending".into());
+            }
+        }
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err(
                 "unresolved engine attempt; authoritative outcome recovery required".into(),
@@ -551,6 +636,8 @@ impl RuntimeService {
         next.router.consume(events.len())?;
         next.private_events
             .retain(|_, lease| !events.iter().any(|event| event == &lease.event));
+        #[cfg(feature = "device")]
+        Self::receiver_finish_step(next, result)?;
         Ok(())
     }
 
@@ -597,7 +684,13 @@ impl RuntimeService {
     /// Atomically retain timer wake and shared source sequence before execution.
     /// A full router defers firing without discarding or reordering admitted input.
     pub fn queue_due_timers(&mut self, now: u64) -> Result<()> {
-        self.require_managed_running()?;
+        #[cfg(feature = "device")]
+        let stepping = self.receiver_step_active();
+        #[cfg(not(feature = "device"))]
+        let stepping = false;
+        if !stepping {
+            self.require_managed_running()?;
+        }
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("timers deferred until attempt reconciliation".into());
         }
@@ -663,7 +756,11 @@ impl RuntimeService {
         if self.state.runtime.unresolved_attempt.is_some() {
             return Err("unresolved attempt prevents sealing".into());
         }
-        let old_count = crate::boundary::inbox(&self.state.runtime.files)?.len();
+        let old_count = crate::boundary::inbox_with_profile(
+            &self.state.runtime.files,
+            self.state.contract_profile,
+        )?
+        .len();
         let mut next = self.state.clone();
         let staged_count = next
             .staged_boundary
@@ -684,7 +781,8 @@ impl RuntimeService {
         let record = next
             .runtime
             .seal_boundary(trace_id, logical_time, &all_changes)?;
-        let messages = crate::boundary::inbox(&next.runtime.files)?;
+        let messages =
+            crate::boundary::inbox_with_profile(&next.runtime.files, next.contract_profile)?;
         for message in &messages[old_count + staged_count..] {
             let seq = next.runtime.next_source_seq;
             next.runtime.next_source_seq =
@@ -760,6 +858,8 @@ impl Engine for MockEngine {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Runtime {
     initial_setup: Value,
+    #[serde(default)]
+    contract_profile: crate::ContractProfile,
     // Archive observation only; never authority to admit a live database.
     #[serde(default)]
     db_revision: Option<u64>,
@@ -787,12 +887,8 @@ pub struct Runtime {
 }
 impl Runtime {
     pub fn from_fixture(setup: &Value) -> Result<Self> {
-        // A database deployment pins the explicit 0.2 manifest; 0.1 is unchanged.
-        if setup["manifest"]["version"] == "0.2" {
-            validate("database::db-manifest", &setup["manifest"])?;
-        } else {
-            validate("manifest", &setup["manifest"])?;
-        }
+        let contract_profile = crate::ContractProfile::from_setup(setup)?;
+        contract_profile.validate_manifest(&setup["manifest"])?;
         let files = Snapshot::new(
             serde_json::from_value(setup["initial_files"].clone()).map_err(|e| e.to_string())?,
         )?;
@@ -833,7 +929,7 @@ impl Runtime {
             .as_array()
             .ok_or("missing initial_llm_requests")?
         {
-            validate("llm-request", request)?;
+            contract_profile.validate("llm-request", request)?;
             let id = request["id"].as_str().unwrap();
             if !ledger["llm_requests"].contains(id)
                 || pending_llm.insert(id.into(), request.clone()).is_some()
@@ -841,7 +937,7 @@ impl Runtime {
                 return Err("invalid initial LLM request ledger".into());
             }
         }
-        let inbox = crate::boundary::inbox(&files)?;
+        let inbox = crate::boundary::inbox_with_profile(&files, contract_profile)?;
         let inbox_wakes: VecDeque<u64> =
             serde_json::from_value(setup["initial_inbox_wakes"].clone())
                 .map_err(|e| e.to_string())?;
@@ -877,7 +973,7 @@ impl Runtime {
             .as_array()
             .ok_or("invalid initial_actions")?
         {
-            validate("action", action)?;
+            contract_profile.validate("action", action)?;
             let id = action["id"].as_str().unwrap();
             if action["coglet"] != setup["manifest"]["id"]
                 || !ledger["actions"].contains(id)
@@ -897,6 +993,7 @@ impl Runtime {
             .map(|value| value.as_u64().ok_or("invalid initial database revision"))
             .transpose()?;
         let mut runtime = Self {
+            contract_profile,
             db_revision,
             initial_setup: json!({"manifest":setup["manifest"],"initial_files":setup["initial_files"],
                 "initial_effect_ids":setup["initial_effect_ids"],"initial_actions":setup.get("initial_actions").unwrap_or(&empty_actions),
@@ -921,6 +1018,11 @@ impl Runtime {
         };
         if let Some(revision) = db_revision {
             runtime.initial_setup["initial_db_revision"] = json!(revision);
+        }
+        // Keep normalized setup bytes unchanged for legacy/default callers.
+        if contract_profile != crate::ContractProfile::Surface01 {
+            runtime.initial_setup["contract_profile"] =
+                serde_json::to_value(contract_profile).map_err(|e| e.to_string())?;
         }
         Ok(runtime)
     }
@@ -982,19 +1084,13 @@ impl Runtime {
             return Err("invalid event batch size".into());
         }
         for event in events {
-            validate("event", event)?;
+            self.contract_profile.validate("event", event)?;
         }
         let before_hash = self.files.tree_hash()?;
-        let mut boundary_state = self.clone();
-        boundary_state
-            .apply_boundary_changes(inputs["boundary"].as_array().ok_or("missing boundary")?)?;
-        let input = boundary_state.files;
-        let mut inbox_wakes = boundary_state.inbox_wakes;
-        let mut pending_llm = boundary_state.pending_llm;
-        let mut pending_actions = boundary_state.pending_actions;
-        let inbox = crate::boundary::inbox(&input)?;
+        let (input, mut inbox_wakes, mut pending_llm, mut pending_actions, mut next_source_seq) =
+            self.stage_boundary(inputs["boundary"].as_array().ok_or("missing boundary")?)?;
+        let inbox = crate::boundary::inbox_with_profile(&input, self.contract_profile)?;
         let mut pending_timers = self.pending_timers.clone();
-        let mut next_source_seq = boundary_state.next_source_seq;
         for event in events {
             if event["source"] == inputs["coglet"] {
                 next_source_seq = next_source_seq.max(
@@ -1035,7 +1131,12 @@ impl Runtime {
                 }
             }
         }
-        let mut host = StepHost::new(input.clone(), self.ledger.clone(), inputs);
+        let mut host = StepHost::new(
+            input.clone(),
+            self.ledger.clone(),
+            inputs,
+            self.contract_profile,
+        );
         engine.admit(inputs, &host)?;
         self.unresolved_attempt = Some(inputs.clone());
         let mut report = engine.execute(inputs, &mut host)?;
@@ -1069,9 +1170,20 @@ impl Runtime {
         } else {
             engine.database_observation(committed)?
         };
-        let code_hash = digest(
-            &hex::decode(&self.files.files()["/code/bin/step.wasm"]).map_err(|e| e.to_string())?,
-        );
+        #[cfg(feature = "native-engine")]
+        let code_hash = self
+            .files
+            .decoded_fs()?
+            .blob_hash("/code/bin/step.wasm")
+            .map_err(|e| e.to_string())?
+            .to_owned();
+        #[cfg(not(feature = "native-engine"))]
+        let code_hash = digest(&crate::filesystem::decode_hex(
+            self.files
+                .files()
+                .get("/code/bin/step.wasm")
+                .ok_or("missing /code/bin/step.wasm")?,
+        )?);
         let mut record = json!({
             "version":if observation.is_some() { "0.2" } else { "0.1" },
             "trace_id":inputs["trace_id"], "coglet":inputs["coglet"],
@@ -1118,8 +1230,11 @@ impl Runtime {
                 coglet_types::Value::Text("record_hash".into()),
                 coglet_types::Value::Text(hash),
             ));
-            let raw = coglet_types::encode("database::db-step-record", &native)?;
-            record = crate::journal::database_projection(&raw)?;
+            let raw = crate::profile_codec::encode(
+                self.contract_profile.rule("database::db-step-record"),
+                &native,
+            )?;
+            record = crate::journal::database_projection_with_profile(&raw, self.contract_profile)?;
             raw_record = Some(raw);
         } else if recorded_database {
             // Host-owned state was re-derived from the recorded ordinary calls.
@@ -1167,7 +1282,7 @@ impl Runtime {
             record = recorded.clone();
         } else {
             record["record_hash"] = Value::String(digest(&cbor(&record)?));
-            validate("step-record", &record)?;
+            self.contract_profile.validate("step-record", &record)?;
         }
         let mut result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});
         if let Some(raw) = raw_record {
@@ -1212,7 +1327,8 @@ impl Runtime {
             }
         }
         let derived = Self::reconstruct(&self.initial_setup, records)?;
-        if self.files != derived.files
+        if self.contract_profile != derived.contract_profile
+            || self.files != derived.files
             || self
                 .db_revision
                 .is_some_and(|revision| Some(revision) != derived.db_revision)
@@ -1229,7 +1345,7 @@ impl Runtime {
         // Revalidate semantic host-state constraints; a valid WAL checksum does
         // not establish that decoded pending work or pins are self-consistent.
         Self::from_fixture(
-            &json!({"manifest":self.manifest,"initial_files":self.files.files(),
+            &json!({"manifest":self.manifest,"contract_profile":self.contract_profile,"initial_files":self.files.files(),
             "initial_effect_ids":self.ledger,"initial_inbox_wakes":self.inbox_wakes,
             "initial_timers":self.pending_timers.values().collect::<Vec<_>>(),
             "initial_actions":self.pending_actions.values().collect::<Vec<_>>(),
@@ -1277,13 +1393,43 @@ impl Runtime {
         Ok(())
     }
 
+    /// Boundary-staged step inputs. An empty boundary applies nothing, so it
+    /// copies only the state a step consumes instead of cloning the whole
+    /// runtime (manifest, previous record, ledger, timers) first.
+    fn stage_boundary(&self, changes: &[Value]) -> Result<StagedBoundaryInputs> {
+        if changes.is_empty() {
+            return Ok((
+                self.files.clone(),
+                self.inbox_wakes.clone(),
+                self.pending_llm.clone(),
+                self.pending_actions.clone(),
+                self.next_source_seq,
+            ));
+        }
+        let mut staged = self.clone();
+        staged.apply_boundary_changes(changes)?;
+        Ok((
+            staged.files,
+            staged.inbox_wakes,
+            staged.pending_llm,
+            staged.pending_actions,
+            staged.next_source_seq,
+        ))
+    }
+
     // Apply only to a private candidate; callers publish it after validation and
     // persistence. This seam assumes authenticated hub/surface admission.
     fn apply_boundary_changes(&mut self, changes: &[Value]) -> Result<()> {
         for change in changes {
-            let old_count = crate::boundary::inbox(&self.files)?.len();
-            self.files = crate::boundary::apply(&self.files, change, &self.manifest["id"])?;
-            let messages = crate::boundary::inbox(&self.files)?;
+            let old_count =
+                crate::boundary::inbox_with_profile(&self.files, self.contract_profile)?.len();
+            self.files = crate::boundary::apply_with_profile(
+                &self.files,
+                change,
+                &self.manifest["id"],
+                self.contract_profile,
+            )?;
+            let messages = crate::boundary::inbox_with_profile(&self.files, self.contract_profile)?;
             for message in &messages[old_count..] {
                 let event = &message["event"];
                 if event["source"] == self.manifest["id"] {
@@ -1385,7 +1531,7 @@ impl Runtime {
         let mut hashes = Vec::new();
         for record in records {
             let is_step = record.get("step").is_some();
-            validate(
+            candidate.contract_profile.validate(
                 if is_step {
                     "step-record"
                 } else {

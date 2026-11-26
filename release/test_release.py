@@ -28,7 +28,8 @@ class InventoryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.version(invalid)
         assets = module.expected('v0.0.0-rc1')
-        self.assertEqual(len(assets), 10)
+        self.assertEqual(len(assets), 11)
+        self.assertIn('coglet-v0.0.0-rc1-linux-armv7-native.tar.gz', assets)
         self.assertEqual(len(set(assets)), len(assets))
         self.assertIn('coglet-v0.0.0-rc1-linux-armv7.tar.gz', assets)
         self.assertIn('coglet_surface-0.0.0rc1-py3-none-any.whl', assets)
@@ -95,8 +96,8 @@ class InventoryTests(unittest.TestCase):
             module.seal(root, 'v0.0.0-rc1', 'a' * 40)
             manifest = json.loads((root / 'release.json').read_text())
             self.assertEqual(manifest['commit'], 'a' * 40)
-            self.assertEqual(len(manifest['assets']), 10)
-            self.assertEqual(len((root / 'SHA256SUMS').read_text().splitlines()), 11)
+            self.assertEqual(len(manifest['assets']), 11)
+            self.assertEqual(len((root / 'SHA256SUMS').read_text().splitlines()), 12)
 
 
     def test_cli_rejects_bad_tag_before_creating_outputs(self):

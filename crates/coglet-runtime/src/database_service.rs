@@ -14,8 +14,8 @@
 //! checks and is recomputed from the bytes on open. Artifacts are the
 //! deterministic CBOR of the JSON `ServiceState`, the same value the WAL stores.
 use super::*;
-use crate::database::{DatabaseHost, Deployment, admit};
-use crate::journal::database_projection;
+use crate::database::{DatabaseHost, Deployment, admit_with_profile, database_profile};
+use crate::journal::database_projection_with_profile;
 use coglet_db::{Catalog, Database, Decision, Journal, Recovered, StepId, Unit};
 use coglet_engine::{Engine as SharedEngine, Limits, StepInput};
 use coglet_types::Value as V;
@@ -101,7 +101,15 @@ impl<E: SharedEngine> Engine for DbAttempt<'_, E> {
             .ok_or("deployment already admitted")?;
         // Admission failures happen before guest entry and before any intent
         // fence: the batch stays retryable.
-        let (unit, instance) = admit(self.engine, self.code, deployment, db, self.catalog, limits)?;
+        let (unit, instance) = admit_with_profile(
+            self.engine,
+            self.code,
+            deployment,
+            db,
+            self.catalog,
+            limits,
+            host.contract_profile,
+        )?;
         self.db_before = unit.revision();
         self.unit = Some(unit);
         self.prepared = Some((
@@ -221,7 +229,8 @@ impl Journal for WalJournal<'_, '_> {
         if self.already(id, record, Some(&digest(artifacts)))? {
             return Ok(());
         }
-        let projection = database_projection(record)?;
+        let projection =
+            database_projection_with_profile(record, self.current()?.contract_profile)?;
         if projection["status"] != "committed" {
             return Err("committed publication carries a non-committed record".into());
         }
@@ -270,7 +279,8 @@ impl Journal for WalJournal<'_, '_> {
         if self.already(id, record, None)? {
             return Ok(());
         }
-        let projection = database_projection(record)?;
+        let projection =
+            database_projection_with_profile(record, self.current()?.contract_profile)?;
         if projection["status"] != "aborted" || projection["failure"]["kind"] != "db_recovery_abort"
         {
             return Err("abort publication carries a non-recovery-abort record".into());
@@ -480,7 +490,7 @@ impl RuntimeService {
                 store: &mut self.store,
                 gate,
             };
-            db.recover(&mut journal)
+            db.recover_with_profile(&mut journal, database_profile(self.state.contract_profile))
         };
         if self.store.is_healthy() {
             let saved = self.store.state().ok_or("missing WAL state")?.clone();

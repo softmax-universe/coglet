@@ -91,6 +91,8 @@ public struct SurfaceActionRecord {
 final class SurfaceLedger {
     let store: any SurfaceLedgerStore
     let identity: String
+    let contractProfile: SurfaceContractProfile
+    let catalogPin: String?
     var epoch: UInt64 = 0
     var sequence: UInt64 = 0
     var killed = false
@@ -98,10 +100,16 @@ final class SurfaceLedger {
     // uncertain, not proof of an orderly shutdown.
     var running = false
     var records: [String: SurfaceActionRecord] = [:]
-    init(store: any SurfaceLedgerStore, identity: String) throws {
+    init(store: any SurfaceLedgerStore, identity: String, contractProfile: SurfaceContractProfile = .surface01, catalogPin: String? = nil) throws {
         self.store = store; self.identity = identity
+        self.contractProfile = contractProfile; self.catalogPin = catalogPin
         let root = try CBORCodec.decodeProfile(store.load())
         if root == .map([]) { try save(); return }
+        let savedProfile = root["contract_profile"] ?? .text(SurfaceContractProfile.surface01.rawValue)
+        let savedPin = root["catalog_pin"] ?? .null
+        guard savedProfile == .text(contractProfile.rawValue), savedPin == (catalogPin.map(CBORValue.text) ?? .null) else {
+            throw SurfaceFailure.protocolViolation("ledger catalog/profile identity mismatch")
+        }
         guard root["identity"] == .text(identity), case .unsigned(let epoch) = root["epoch"],
               case .unsigned(let sequence) = root["sequence"], case .boolean(let killed) = root["killed"],
               case .map(let rows) = root["records"] else { throw SurfaceFailure.protocolViolation("invalid/lost identity ledger") }
@@ -115,12 +123,12 @@ final class SurfaceLedger {
                 throw SurfaceFailure.protocolViolation("corrupt action ledger")
             }
             let bytes = Array(raw)
-            let envelope = try SurfaceWire.decode(bytes, from: .runtime)
+            let envelope = try SurfaceWire.decode(bytes, from: .runtime, contractProfile: contractProfile)
             guard envelope["type"] == .text("act"), let action = envelope["body"]?["action"],
                   let owner = action["coglet"]?.textValue, let id = action["id"]?.textValue,
                   row.key == owner + "/" + id, accept["id"] == action["id"],
                   accept["correlation_id"] == action["correlation_id"] else { throw SurfaceFailure.protocolViolation("corrupt ledger key") }
-            _ = try SurfaceWire.encode(.message("accept", accept), from: .surface)
+            _ = try SurfaceWire.encode(.message("accept", accept), from: .surface, contractProfile: contractProfile)
             if let outcome = outcomes.first {
                 try CBORCodec.validate("common::action-outcome", outcome)
                 guard accept["accepted"] == .boolean(true), outcome["id"] == action["id"],
@@ -138,7 +146,9 @@ final class SurfaceLedger {
                 ("accept", record.accept), ("outcome", .array(record.outcome.map { [$0] } ?? []))]))
         }
         let bytes = try CBORCodec.encodeProfile(.record([
-            ("identity", .text(identity)), ("epoch", .unsigned(epoch)), ("sequence", .unsigned(sequence)),
+            ("identity", .text(identity)), ("contract_profile", .text(contractProfile.rawValue)),
+            ("catalog_pin", catalogPin.map(CBORValue.text) ?? .null),
+            ("epoch", .unsigned(epoch)), ("sequence", .unsigned(sequence)),
             ("killed", .boolean(killed)), ("running", .boolean(running)), ("records", .map(rows))]))
         guard bytes.count <= 268_435_456 else { throw SurfaceFailure.exhausted }
         try store.save(bytes)

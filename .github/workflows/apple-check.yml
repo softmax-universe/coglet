@@ -9,6 +9,9 @@ on:
   merge_group:
 permissions:
   contents: read
+concurrency:
+  group: apple-check-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   apple-check:
     runs-on: ubuntu-24.04

@@ -1,15 +1,41 @@
 [
   {
-    "name": "ticket.target=[1]", "type": "request", "valid": false,
+    "name": "ticket.target=[1]",
+    "type": "request",
+    "valid": false,
     "value": {
-      "version": "0.1", "correlation_id": "11111111111111111111111111111111",
-      "op": "submit", "ticket": {
-        "target": [1],
-        "goal": {"description": "Fix navigation", "acceptance": ["Replay without traps"]},
+      "version": "0.1",
+      "correlation_id": "11111111111111111111111111111111",
+      "op": "submit",
+      "ticket": {
+        "target": [
+          1
+        ],
+        "goal": {
+          "description": "Fix navigation",
+          "acceptance": [
+            "Replay without traps"
+          ]
+        },
         "context": [],
-        "capabilities": {"edit_paths": ["src"], "debug_read": true, "debug_write": false},
-        "gates": {"required": ["journal_replay"], "human_approval": true},
-        "budget": {"time_ms": 600000, "spend_microunits": 1000000, "currency": "USD"}
+        "capabilities": {
+          "edit_paths": [
+            "src"
+          ],
+          "manage_read": true,
+          "manage_write": false
+        },
+        "gates": {
+          "required": [
+            "journal_replay"
+          ],
+          "human_approval": true
+        },
+        "budget": {
+          "time_ms": 600000,
+          "spend_microunits": 1000000,
+          "currency": "USD"
+        }
       }
     }
   }

@@ -46,6 +46,8 @@ struct Opts {
     barrier: bool,
     /// LD_PRELOAD WAL-write/BOOTTIME fault shim (inert until armed).
     shim: bool,
+    /// Valid receiver authority (hub.inbox grant, delegation and back-channel pin).
+    receiver: bool,
 }
 impl Daemon {
     async fn new(seed: u8) -> Self {
@@ -54,6 +56,10 @@ impl Daemon {
     async fn with(seed: u8, opts: Opts) -> Self {
         let mut options = Options::receipts();
         options.delegation_methods.push("hub.git.push");
+        if opts.receiver {
+            options.back_channel = true;
+            options.delegation_methods.push("hub.inbox");
+        }
         let mut env = Env::new(seed, options.clone()).await.unwrap();
         let device_key = key(seed, 4);
         let device = device_key.public();
@@ -78,9 +84,11 @@ impl Daemon {
             let authority = Authority::open(&authority_path).unwrap();
             authority.open_window(Duration::from_secs(60)).unwrap();
             let grants: Vec<_> = METHODS
-                .iter()
+                .into_iter()
+                .chain(opts.receiver.then_some("hub.inbox"))
                 .map(|method| Grant {
-                    method: (*method).into(),
+                    method: method.into(),
+                    // Receiver authority is valid, so only the ID can collide.
                     target: Some(env.coglet.clone()),
                     expires,
                     generation: GRANT_GEN,
@@ -208,6 +216,7 @@ impl Daemon {
             "catalog":if opts.action { act_catalog() } else { restart_adapter::catalog() },
             "grants":{"coglet":env.coglet,"operations":operations(opts.action),"resources":["audio.mic","audio.speaker"]},
             "targets":{(env.coglet.clone()):{"grant_generation":GRANT_GEN,"delegation_generation":DELEGATION_GEN,
+                "back_channel": if opts.receiver { json!({"read_paths":["/data/","@step/"],"write_paths":["/data/notes/"]}) } else { json!({}) },
                 "native_schedule":{"trace_id":"11".repeat(16),"seed":1,"runtime_bytes":8_388_608,"stack_bytes":65_536}}},
             "kill_switch":env.root.join("kill.json"),"hub_addr":env.hub.addr().ip_addrs().next().unwrap(),"invite":invite,
             "adapter":{"socket":socket,"binding":binding,"uid":unsafe {libc::geteuid()},"coglet":env.coglet},
@@ -711,4 +720,85 @@ async fn emergency_stop_reconciles_original_context_after_restart() {
         records.len(),
         "reconciliation must not execute guest steps"
     );
+}
+
+fn receiver_inbox_at(d: &mut Daemon, id: &str, tag: &str) -> Value {
+    let message = json!({"id":tag.repeat(16),"sender":d.env.actor,"event":{"source":d.env.actor,
+        "kind":"test.message","seq":1,"logical_time":0,"payload":{"note":"collision"},
+        "correlation_id":"b2".repeat(16)}});
+    let mut params = json!({"message":message});
+    params["actor"] = json!(d.env.actor);
+    params["ticket"] = json!(d.env.ticket);
+    let mut request = d.env.request_with(
+        "hub.inbox",
+        id.into(),
+        params,
+        &d.env.actor.clone(),
+        Some(d.env.ticket.clone()),
+    );
+    request.as_object_mut().unwrap().remove("context");
+    request
+}
+
+/// Receiver authority is valid (hub.inbox grant, delegation, back-channel pin), so
+/// the only reason for rejection is the retained emergency stop ID.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn receiver_cannot_consume_prearmed_emergency_stop_id() {
+    let mut d = Daemon::with(
+        0x95,
+        Opts {
+            receiver: true,
+            ..Opts::default()
+        },
+    )
+    .await;
+    let a = d.install(WASM_WAT).await;
+    let link = d.execute(&a).await; // arms the emergency obligation (0xeeee)
+    let stop_id = correlation(0xeeee);
+    let request = receiver_inbox_at(&mut d, &stop_id, "a1");
+    let reply = d.env.call(request).await;
+    assert_eq!(reply["type"], "error", "{reply}");
+    assert_eq!(reply["error"]["code"], "conflict", "{reply}");
+    // The exact original stop context survives revoke + restart.
+    let revoked = d.local("revoke_output_lease", json!({})).await;
+    assert_eq!(revoked["ok"], true, "{revoked}");
+    drop(link);
+    d.restart().await;
+    let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(reconciled["ok"], true, "{reconciled}");
+    assert_eq!(reconciled["result"]["state"], "stopped", "{reconciled}");
+    assert_eq!(reconciled["result"]["operation_id"], stop_id);
+    let receipt = receipt_of(&mut d.env, &stop_id).await;
+    assert_eq!(receipt["result"]["state"], "applied", "{receipt}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn emergency_arming_refuses_operation_id_already_owned_by_receiver() {
+    let mut d = Daemon::with(
+        0x96,
+        Opts {
+            receiver: true,
+            ..Opts::default()
+        },
+    )
+    .await;
+    let a = d.install(WASM_WAT).await;
+    applied(&d.env.simple("hub.start").await);
+    let stop_id = correlation(0xeeee);
+    let request = receiver_inbox_at(&mut d, &stop_id, "c3");
+    let admitted = d.env.call(request).await;
+    assert_eq!(admitted["type"], "reply", "{admitted}");
+    // Arming must refuse (no obligation retained) rather than strand a stop that
+    // managed_operation would later reject as receiver-owned.
+    let mut params = d.pins(&a);
+    params["daemon_instance"] = d.local("attest_applied", d.pins(&a)).await["daemon_instance"].clone();
+    let enabled = d.local("enable_output_lease", params).await;
+    assert_eq!(enabled["ok"], false, "{enabled}");
+    assert!(
+        enabled.to_string().contains("conflict"),
+        "expected collision refusal: {enabled}"
+    );
+    // Nothing was retained, so nothing is stranded; the receiver keeps its receipt.
+    let receipt = receipt_of(&mut d.env, &stop_id).await;
+    assert_ne!(receipt["type"], "error", "{receipt}");
 }

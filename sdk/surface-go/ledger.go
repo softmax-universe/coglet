@@ -1,6 +1,7 @@
 package surface
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -26,6 +27,11 @@ type durable struct {
 	Killed                      bool
 	Running                     bool
 	Actions                     map[string]*record
+	// ContractProfile and CatalogDigest are the replay identity pair (ADR-0030
+	// 1a). Records without them are exactly surface-0.1 with no catalog.
+	ContractProfile string `json:"contract_profile,omitempty"`
+	CatalogDigest   string `json:",omitempty"`
+	Catalog         []byte `json:",omitempty"`
 }
 type ledger struct {
 	path string
@@ -40,7 +46,7 @@ type sealed struct {
 // The stable side lock survives atomic snapshot replacement. All ledger files
 // live in an owned 0700 directory. Losing a ledger requires reconciliation and a
 // new surface identity; Open never silently recreates one.
-func openLedger(path, identity string, create bool) (*ledger, error) {
+func openLedger(path, identity string, create bool, profile, digest string, catalog []byte) (*ledger, error) {
 	if err := privateDir(filepath.Dir(path)); err != nil {
 		return nil, err
 	}
@@ -64,7 +70,7 @@ func openLedger(path, identity string, create bool) (*ledger, error) {
 		if e = f.Close(); e != nil {
 			return fail(e)
 		}
-		l.data = durable{Identity: identity, Actions: map[string]*record{}}
+		l.data = durable{Identity: identity, Actions: map[string]*record{}, ContractProfile: profile, CatalogDigest: digest, Catalog: append([]byte(nil), catalog...)}
 		if e = l.save(); e != nil {
 			return fail(e)
 		}
@@ -100,6 +106,19 @@ func openLedger(path, identity string, create bool) (*ledger, error) {
 		if l.data.Identity != identity || l.data.Actions == nil {
 			return fail(errors.New("lost ledger or identity mismatch; reconcile and rotate identity"))
 		}
+		// Refuse before any save: a changed pair is an explicit new ledger, never
+		// a reinterpretation of old receipts.
+		saved := l.data.ContractProfile
+		if saved == "" {
+			saved = ProfileSurface01
+		}
+		if saved != ProfileSurface01 && saved != ProfileSurface02 {
+			return fail(errors.New("unknown saved contract profile"))
+		}
+		if saved != profile || l.data.CatalogDigest != digest || !bytes.Equal(l.data.Catalog, catalog) {
+			return fail(errors.New("contract profile/catalog digest mismatch; use a new ledger"))
+		}
+		l.data.ContractProfile = saved
 	}
 	return l, nil
 }
