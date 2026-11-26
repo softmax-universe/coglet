@@ -266,7 +266,7 @@ committed. Coglets do not see any of this; their code still reads and writes
 <text x="174.0" y="272.0" text-anchor="middle" class="dg-b">object store, in process</text>
 <text x="174.0" y="288.0" text-anchor="middle" class="dg-m">git trees and commits, no git binary</text>
 <rect x="352" y="24" width="256" height="300" rx="12" class="dg-group"/>
-<text x="368" y="48" text-anchor="start" class="dg-cap">A HUB&#x27;S ROUTER</text>
+<text x="368" y="48" text-anchor="start" class="dg-cap">ANY HUB&#x27;S ROUTER</text>
 <rect x="368" y="62" width="224" height="246" rx="8" class="dg-hub"/>
 <text x="480" y="86" text-anchor="middle" class="dg-code">unforged</text>
 <text x="480" y="102" text-anchor="middle" class="dg-m">refs of the coglets it reaches</text>
@@ -315,9 +315,10 @@ committed. Coglets do not see any of this; their code still reads and writes
 <text x="592" y="444" text-anchor="start" class="dg-m">adapter events, actions</text>
 </svg>
 </figure>
-<p><em>Three places, one object format. Devices step coglets in process. The router
-is an unforged daemon. A Softmax-hosted runtime steps its coglets the same way and can
-send any step to unforged workers on CAOS.</em></p>
+<p><em>Three places, one object format. Devices step coglets in process and run a
+hub. Any hub's router keeps an unforged repository of the coglets it reaches. A
+Softmax-hosted runtime steps its coglets the same way and can send any step to
+unforged workers on CAOS.</em></p>
 <p><strong>Two speeds.</strong> unforged as it stands runs every program as a separate process
 and calls the <code>git</code> binary for most operations. That is fine for jobs and far
 too slow and too heavy for a voice turn on a phone. So the design has two

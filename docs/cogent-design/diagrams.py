@@ -753,7 +753,7 @@ def unforged_stack() -> Svg:
     svg.box(54, 254, 240, 42, "object store, in process", "dg-runtime", "git trees and commits, no git binary")
     # router
     svg.rect(352, 24, 256, 300, "dg-group", 12)
-    svg.text(368, 48, "A HUB'S ROUTER", "dg-cap", "start")
+    svg.text(368, 48, "ANY HUB'S ROUTER", "dg-cap", "start")
     svg.rect(368, 62, 224, 246, "dg-hub")
     svg.text(480, 86, "unforged", "dg-code")
     svg.text(480, 102, "refs of the coglets it reaches", "dg-m")

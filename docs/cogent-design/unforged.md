@@ -42,9 +42,10 @@ committed. Coglets do not see any of this; their code still reads and writes
 
 ![Every runtime keeps its coglets as git refs, each coglet a user with its own. Devices run steps in process and run a hub; each hub's router keeps an unforged repository of the refs of the coglets it reaches; a Softmax-hosted runtime runs steps the same way, and can hand any step to unforged workers on CAOS.](diagrams/unforged-stack.svg)
 
-*Three places, one object format. Devices step coglets in process. The router
-is an unforged daemon. A Softmax-hosted runtime steps its coglets the same way and can
-send any step to unforged workers on CAOS.*
+*Three places, one object format. Devices step coglets in process and run a
+hub. Any hub's router keeps an unforged repository of the coglets it reaches. A
+Softmax-hosted runtime steps its coglets the same way and can send any step to
+unforged workers on CAOS.*
 
 **Two speeds.** unforged as it stands runs every program as a separate process
 and calls the `git` binary for most operations. That is fine for jobs and far
