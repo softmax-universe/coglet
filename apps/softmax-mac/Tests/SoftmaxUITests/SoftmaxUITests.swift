@@ -154,6 +154,118 @@ final class SoftmaxUITests: XCTestCase {
             ["unregistered:onboarding.continue"])
     }
 
+    /// Bounded default-state census, not all presentation/state coverage. Keep
+    /// the welcome omission control above unchanged and use its SAME comparator.
+    @MainActor
+    func testCatalogCoverageDefaultOnboardingAndSettingsRoutes() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("softmax-catalog-routes-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+            attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--catalog-probe-directory", directory.path,
+            "-appearance", "Light", "-textScale", "1.0"]
+        app.launchEnvironment["TMPDIR"] = FileManager.default.temporaryDirectory.path
+        app.launch()
+        defer { app.terminate() }
+        var checkpoints: [String] = []
+
+        func capture(window: XCUIElement, owner: String, route: String, sentinel: XCUIElement) throws {
+            let checkpoint = owner + "." + route
+            // A tab remains in the sidebar on every route, so use actual body
+            // content instead. Readiness failures are not catalog mismatches.
+            guard window.waitForExistence(timeout: 10), sentinel.waitForExistence(timeout: 5) else {
+                XCTFail("native route readiness failed: " + checkpoint)
+                return
+            }
+            let nonce = UUID().uuidString
+            try Data(nonce.utf8).write(to: directory.appendingPathComponent("request"), options: .atomic)
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                guard let bytes = try? Data(contentsOf: directory.appendingPathComponent("response.json")),
+                      let probe = try? JSONDecoder().decode(CatalogProbe.self, from: bytes) else { return false }
+                return probe.request == nonce
+            }, object: nil)
+            guard XCTWaiter.wait(for: [ready], timeout: 5) == .completed else {
+                XCTFail("fresh nonce response unavailable: " + checkpoint)
+                return
+            }
+            let bytes = try Data(contentsOf: directory.appendingPathComponent("response.json"))
+            let probe = try JSONDecoder().decode(CatalogProbe.self, from: bytes)
+            let raw = XCTAttachment(data: bytes, uniformTypeIdentifier: "public.json")
+            raw.name = checkpoint + "-registry"; raw.lifetime = .keepAlways; add(raw)
+            let chrome = ["_XCUI:CloseWindow": owner + ".titlebar.close",
+                          "_XCUI:MinimizeWindow": owner + ".titlebar.minimize",
+                          "_XCUI:ZoomWindow": owner + ".titlebar.zoom"]
+            // Include disabled/offscreen controls, radio parents AND children.
+            // Text views are conservatively included, never silently excluded
+            // because they lack a registration; native classification is retained.
+            let types: [XCUIElement.ElementType] = [.button, .checkBox, .radioGroup, .radioButton,
+                .popUpButton, .comboBox, .textField, .secureTextField, .textView,
+                .slider, .stepper, .link, .disclosureTriangle]
+            var actual: [String] = []
+            var records: [[String: Any]] = []
+            for type in types {
+                for element in window.descendants(matching: type).allElementsBoundByIndex {
+                    let nativeID = element.identifier
+                    let id = chrome[nativeID] ?? nativeID
+                    let frame = element.frame
+                    actual.append(id)
+                    records.append(["type": String(describing: type), "raw_id": nativeID, "id": id,
+                        "enabled": element.isEnabled, "hittable": element.isHittable,
+                        "frame": [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height],
+                        "classification": type == .textView ? "text-view-editability-unqualified-included" : "interactive"])
+                }
+            }
+            let entries = probe.registrations.filter { $0.window == owner && $0.route == route }
+            let failures = catalogMembershipFailures(actual: actual, registered: Set(entries.filter(\.visible).map(\.id)))
+            let evidence: [String: Any] = ["checkpoint": checkpoint, "request": nonce,
+                "ax": records, "membership_failures": failures]
+            let audit = XCTAttachment(data: try JSONSerialization.data(withJSONObject: evidence, options: [.sortedKeys]),
+                uniformTypeIdentifier: "public.json")
+            audit.name = checkpoint + "-ax-membership"; audit.lifetime = .keepAlways; add(audit)
+            // Evidence precedes assertions. Nonfatal failures retain later routes.
+            checkpoints.append(checkpoint)
+            XCTAssertEqual(probe.request, nonce, checkpoint)
+            XCTAssertFalse(probe.registrationFailed, checkpoint)
+            XCTAssertEqual(Set(probe.registrations.map(\.id)).count, probe.registrations.count, checkpoint)
+            XCTAssertFalse(entries.isEmpty, "no actual route registrations: " + checkpoint)
+            XCTAssertFalse(actual.isEmpty, "no native interactive elements: " + checkpoint)
+            XCTAssertFalse(probe.registrations.contains { $0.window == owner && $0.route != route },
+                "stale same-window route mount: " + checkpoint)
+            XCTAssertEqual(failures, [], checkpoint)
+        }
+
+        let onboarding = app.windows["Welcome to Softmax"]
+        try capture(window: onboarding, owner: "onboarding", route: "welcome",
+            sentinel: onboarding.staticTexts["Speak without switching apps."])
+        onboarding.buttons["onboarding.continue"].click()
+        try capture(window: onboarding, owner: "onboarding", route: "permissions",
+            sentinel: onboarding.staticTexts["Let Softmax hear you."])
+        onboarding.buttons["onboarding.continue"].click()
+        try capture(window: onboarding, owner: "onboarding", route: "hub",
+            sentinel: onboarding.staticTexts["Voice not set up · return to Settings to review permissions and connection."])
+        // Do not Finish, enroll, change login, or grant permissions.
+        onboarding.buttons["onboarding.open_settings"].click()
+        let settings = app.windows["Softmax Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        let routes: [(String, XCUIElement)] = [
+            ("general", settings.staticTexts["Softmax lives in your menu bar. Close windows without quitting."]),
+            ("hotkey", settings.buttons["settings.hotkey.record"]),
+            ("audio", settings.staticTexts["Default system input · voice processing and echo cancellation enabled."]),
+            ("hub", settings.buttons["settings.hub.pair"]),
+            ("coglets", settings.staticTexts["runtimeStatus"]),
+            ("updates", settings.buttons["settings.updates.check"]),
+            ("privacy", settings.buttons["settings.privacy.refresh_permissions"])]
+        for (route, sentinel) in routes {
+            settings.buttons["settings.tab." + route].click()
+            try capture(window: settings, owner: "settings", route: route, sentinel: sentinel)
+        }
+        XCTAssertEqual(checkpoints, ["onboarding.welcome", "onboarding.permissions", "onboarding.hub",
+            "settings.general", "settings.hotkey", "settings.audio", "settings.hub", "settings.coglets",
+            "settings.updates", "settings.privacy"], "all ten route captures must execute")
+    }
+
     /// Native CI on macOS 26 reports two OS-owned chrome defects:
     /// its disabled empty application Touch Bar, and the Zoom button's internal
     /// disabled 14 pt group. Never exempt a product control or any contrast issue.
