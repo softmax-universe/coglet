@@ -2,9 +2,19 @@
 import json
 from pathlib import Path
 import sys
+import tempfile
 
 import pytest
 from coglet_sim.evaluation import NativeTools, evaluate
+
+
+@pytest.fixture(autouse=True)
+def native_socket_tmpdir(monkeypatch):
+    # The ordinary Python job has no TMPDIR (unlike check-native.sh). Supply a
+    # private short socket root here; do not alter evaluate's production setup.
+    with tempfile.TemporaryDirectory(prefix='nd-') as short:
+        monkeypatch.setenv('TMPDIR', short)
+        yield
 
 
 def tools(tmp_path, body):
