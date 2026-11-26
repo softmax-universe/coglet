@@ -172,7 +172,7 @@ public struct CogletRadioGroup: NSViewRepresentable {
             guard !mountFailed, parentMount == nil, let identity, let registry,
                   buttons.count == identity.choices.count, !buttons.isEmpty else { return }
             do {
-                _ = try selectedValue()
+                guard selection != nil else { throw ControlRegistryFailure.unavailable }
                 mountedWindow = native
                 // Mount the parent FIRST. ControlRegistry validates ancestry by
                 // ID; keep its exact Mount token for atomic rollback/retirement.
@@ -232,11 +232,9 @@ public struct CogletRadioGroup: NSViewRepresentable {
             // Remove our own entries before checking the global focus owner.
             publishFocus(nil)
         }
-        private func selectedValue() throws -> String {
-            guard let value = selection?.wrappedValue else { throw ControlRegistryFailure.unavailable }
-            try CBORCodec.validate("app-selection", .text(value))
-            return value
-        }
+        // Only validated choice values enter the catalog. A persisted binding
+        // outside those choices is an actual no-selection state, not a new
+        // wire selection and not grounds to disable the human repair path.
         private func nativeSelectionValue() -> CBORValue {
             // Project the actual committed native state for BOTH parent and
             // children. A model change awaiting SwiftUI update still reports
@@ -282,7 +280,7 @@ public struct CogletRadioGroup: NSViewRepresentable {
         private func emitValues() {
             guard let registry, let parentMount else { return }
             do {
-                _ = try selectedValue()
+                guard selection != nil else { throw ControlRegistryFailure.unavailable }
                 try registry.controlChanged(parentMount)
                 for mount in childMounts { try registry.controlChanged(mount) }
             } catch { retire(); report(error) }
@@ -326,6 +324,11 @@ public struct CogletRadioGroup: NSViewRepresentable {
 @MainActor
 private final class RadioButton: NSButton {
     weak var owner: CogletRadioGroup.NativeView?
+    // App-owned native radio semantics must not depend on NSButton's cell
+    // inference. AX reads the SAME live state that the target/action updates.
+    override func accessibilityRole() -> NSAccessibility.Role? { .radioButton }
+    override func isAccessibilityElement() -> Bool { true }
+    override func accessibilityValue() -> Any? { NSNumber(value: state == .on ? 1 : 0) }
     override var acceptsFirstResponder: Bool { isEnabled }
     override func performClick(_ sender: Any?) {
         guard owner?.canPress(self, in: window) == true else { return }

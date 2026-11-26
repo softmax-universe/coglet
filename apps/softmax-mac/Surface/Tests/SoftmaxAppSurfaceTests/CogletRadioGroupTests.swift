@@ -44,6 +44,13 @@ final class CogletRadioGroupTests: XCTestCase {
             return (id, control)
         })
     }
+    private func assertNativeAXValues(_ group: CogletRadioGroup.NativeView, file: StaticString = #filePath, line: UInt = #line) {
+        for button in group.buttons {
+            XCTAssertTrue(button.isAccessibilityElement(), file: file, line: line)
+            XCTAssertEqual(button.accessibilityRole(), .radioButton, file: file, line: line)
+            XCTAssertEqual(button.accessibilityValue() as? NSNumber, NSNumber(value: button.state == .on ? 1 : 0), file: file, line: line)
+        }
+    }
     func testAllSixChoicesAreActualNativeRadiosWithParentCatalogOwnership() throws {
         let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
         let window = window(); defer { window.close() }
@@ -62,6 +69,8 @@ final class CogletRadioGroupTests: XCTestCase {
         window.contentView?.addSubview(sizeGroup)
         let catalog = try controls(registry)
         XCTAssertEqual(catalog.count, 8)
+        assertNativeAXValues(group)
+        assertNativeAXValues(sizeGroup)
         for (view, choices, parent) in [(group, appearance, "settings.general.appearance"),
                                        (sizeGroup, sizes, "settings.general.text_size")] {
             XCTAssertTrue(view.window === window)
@@ -85,11 +94,13 @@ final class CogletRadioGroupTests: XCTestCase {
             try registry.perform(registry.prepare(args("settings.general.appearance", value: choice.value), sensitive: false), authorized: { true })
             XCTAssertEqual(selected, choice.value)
             XCTAssertEqual(group.buttons.filter { $0.state == .on }.count, 1)
+            assertNativeAXValues(group)
         }
         for choice in sizes {
             try registry.perform(registry.prepare(args(choice.id), sensitive: false), authorized: { true })
             XCTAssertEqual(size, choice.value)
             XCTAssertEqual(sizeGroup.buttons.filter { $0.state == .on }.count, 1)
+            assertNativeAXValues(sizeGroup)
         }
     }
     func testSharedNativeTargetActionValuesEventsAndFocus() throws {
@@ -198,10 +209,38 @@ final class CogletRadioGroupTests: XCTestCase {
         XCTAssertEqual(field(try XCTUnwrap(page["settings.general.appearance"]), "value"),
             .map([.init("kind", .text("none"))]))
         XCTAssertTrue(group.buttons.allSatisfy { $0.state == .off })
+        assertNativeAXValues(group)
         group.buttons[1].performClick(nil)
         XCTAssertEqual(selected, "Light")
         XCTAssertEqual(group.buttons[1].state, .on)
+        assertNativeAXValues(group)
+        // An already registered group must also survive a later off-grid
+        // model update, publishing none rather than leaking the unknown value.
+        selected = "unavailable"
+        configure(group, registry: registry, selection: Binding(get: { selected }, set: { selected = $0 }))
+        let updated = try controls(registry)
+        XCTAssertEqual(updated.count, 4)
+        XCTAssertEqual(field(try XCTUnwrap(updated["settings.general.appearance"]), "value"),
+            .map([.init("kind", .text("none"))]))
+        XCTAssertTrue(group.buttons.allSatisfy { $0.state == .off })
+        assertNativeAXValues(group)
         XCTAssertNoThrow(try registry.synchronizeNativeState(windows: ["settings"]))
+    }
+
+    func testInvalidChoiceStillRefusedBeforeRegistration() throws {
+        let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
+        let window = window(); defer { window.close() }
+        var selected = "System"
+        var failures: [ControlRegistryFailure] = []
+        let group = CogletRadioGroup.NativeView(frame: .zero)
+        let invalid = [CogletRadioGroup.Choice(value: "unavailable", label: "Invalid", id: "settings.general.appearance.invalid")]
+        configure(group, registry: registry, choices: invalid,
+            selection: Binding(get: { selected }, set: { selected = $0 }), failure: { failures.append($0) })
+        window.contentView?.addSubview(group)
+        XCTAssertEqual(failures, [.invalidRegistration])
+        XCTAssertTrue(group.buttons.isEmpty)
+        XCTAssertTrue(try controls(registry).isEmpty)
+        XCTAssertEqual(selected, "System")
     }
 
     func testDisabledHiddenAndWrongRouteCannotMutateOrFocus() throws {
