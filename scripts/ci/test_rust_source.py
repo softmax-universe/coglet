@@ -25,7 +25,9 @@ class SourceSelection(unittest.TestCase):
         self.git("config", "user.name", "Fixture")
         self.old = self.commit("legacy", "old", "no transform")
         self.git("switch", "-c", "modern")
-        self.contract = self.commit("contract", "crates/coglet-transform/check.py", "contract")
+        self.native_contract = self.commit("native contract", "crates/coglet-transform/check.py", "contract")
+        self.native_only = self.commit("native-only head", "native-only", "native-only")
+        self.contract = self.commit("publication contract", "crates/coglet-hub/check_r3.py", "publication")
         self.modern = self.commit("modern", "current", "current")
         self.git("switch", "-c", "legacy-pr", self.old)
         self.legacy = self.commit("legacy-pr", "legacy-pr", "change")
@@ -52,6 +54,22 @@ class SourceSelection(unittest.TestCase):
         self.assertEqual(self.git("ls-tree", self.legacy, "crates/coglet-transform"), "")
         self.assertEqual(self.choose("pull_request", self.merge, self.legacy), (self.merge, "merge-integration-only"))
 
+    def test_native_only_head_uses_publication_merge_without_relabeling(self):
+        self.git("switch", "-c", "native-only-pr", self.native_only)
+        head = self.commit("native-only change", "native-change", "change")
+        self.git("switch", "modern")
+        self.git("merge", "--no-ff", "-m", "publication synthetic merge", head)
+        merge = self.git("rev-parse", "HEAD")
+        self.assertEqual(self.choose("pull_request", merge, head), (merge, "merge-integration-only"))
+        # The old boundary reproduces the actual failed selection, despite the
+        # native component contract already being in the head's ancestry.
+        self.assertEqual(selector.select_source(self.repo, "pull_request", merge, head,
+                         contract=self.native_contract), (head, "exact-head"))
+
+    def test_production_boundary_requires_current_publication_contract(self):
+        self.assertEqual(selector.CONTRACT, "e88fc139b3fd2b43b84136f2e7a33fb8c0f33a54")
+        self.assertEqual(selector.CONTRACTS[-1], ("publication-runtime", selector.CONTRACT))
+
     def test_current_transform_bearing_head_stays_exact(self):
         self.git("switch", "-c", "current-pr", self.modern)
         head = self.commit("head", "head", "head")
@@ -67,6 +85,15 @@ class SourceSelection(unittest.TestCase):
         head = self.git("rev-parse", "HEAD")
         self.git("switch", "modern")
         self.git("merge", "--no-ff", "-m", "delete merge", head)
+        self.assertEqual(self.choose("pull_request", self.git("rev-parse", "HEAD"), head), (head, "exact-head"))
+
+    def test_publication_tool_deletion_stays_exact_and_cannot_select_merge(self):
+        self.git("switch", "-c", "delete-publication-pr", self.modern)
+        self.git("rm", "crates/coglet-hub/check_r3.py")
+        self.git("commit", "-qm", "delete publication tool")
+        head = self.git("rev-parse", "HEAD")
+        self.git("switch", "modern")
+        self.git("merge", "--no-ff", "-m", "publication deletion merge", head)
         self.assertEqual(self.choose("pull_request", self.git("rev-parse", "HEAD"), head), (head, "exact-head"))
 
     def test_push_and_merge_group_use_exact_event_sha(self):

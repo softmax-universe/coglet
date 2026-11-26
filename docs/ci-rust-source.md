@@ -7,14 +7,19 @@ missing/skipped/failed native execution fails the required aggregate.
 
 ## Two honest scopes
 
-- **exact-head**: PR heads descending from the reviewed exact-head qualification
-  contract `87341a29b3716d3e147df041cfdf4df0507a74d8` (PR159) run against that
-  unchanged head. Push and merge-group events run against their event SHA.
-- **merge-integration-only**: older PR heads, including branches created before
-  transform sources existed, run against the event's immutable synthetic merge
-  SHA. The selector verifies that this is a two-parent merge whose second parent
-  is the event's exact PR head, and that the selected tree descends from the
-  qualification contract. It never substitutes today's mutable merge ref.
+- **exact-head**: PR heads descending from the newest reviewed workflow-tooling
+  contract run against that unchanged head. `rust_source.CONTRACTS` records the
+  native-component generation `87341a29b3716d3e147df041cfdf4df0507a74d8` (PR159)
+  and the publication/runtime generation
+  `e88fc139b3fd2b43b84136f2e7a33fb8c0f33a54`. The latter introduces required
+  `check_r3.py` tooling, so native-only ancestry is no longer sufficient.
+  Push and merge-group events run against their event SHA.
+- **merge-integration-only**: heads predating the newest tooling generation,
+  including heads which already contain the first native contract, run against
+  the event's immutable synthetic merge SHA. The selector verifies that this is
+  a two-parent merge whose second parent is the event's exact PR head, and that
+  the selected tree descends from the newest qualification contract. It never
+  substitutes today's mutable merge ref.
 
 This compatibility policy applies to pre-contract history, not only one PR.
 Ancestry is intentional: inspecting file presence would let a modern PR delete
@@ -22,7 +27,16 @@ qualification files and silently switch to a different source. Modern deletions
 instead fail when their own exact source is tested. Invalid/missing objects and
 Git errors fail selection, never imply legacy compatibility. Merge-queue events
 still execute both native legs and the aggregate on the actual merged result.
-There is no routine branch catch-up requirement.
+There is no routine branch catch-up requirement. When required jobs add tooling,
+advance the immutable generation list in the same reviewed change and retain an
+intermediate-generation regression. Do not infer generations from file presence.
+
+PR180 run45780566748 exposed a second-generation mismatch: its head contained
+PR159's native tooling, but the event workflow also required publication tooling
+introduced in `e88fc13`. The old boundary selected the head, and publication
+failed opening `test_check_r3.py` before tests. The updated boundary preserves
+all required jobs on the actual selected merge and leaves exact-head publication
+qualification explicitly unproven.
 
 **Integration-only success is not exact-head transform publication qualification.**
 `check.py` continues recording `git rev-parse HEAD` as `actual_checkout` and
