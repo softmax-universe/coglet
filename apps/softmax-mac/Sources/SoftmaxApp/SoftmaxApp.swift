@@ -338,9 +338,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var orbSubscription: AnyCancellable?
     private let commands = CommandPaletteController()
     private var commandMonitor: Any?
+    #if DEBUG
+    private var catalogProbeTask: Task<Void, Never>?
+    #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         installAppSurface()
+        #if DEBUG
+        startCatalogProbe()
+        #endif
         let arguments = ProcessInfo.processInfo.arguments
         if model.testing, let index = arguments.firstIndex(of: "--design-snapshots"), arguments.count > index + 1 {
             do { try DesignSnapshots.run(to: arguments[index + 1]); exit(0) }
@@ -595,6 +601,55 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             })
         }
     }
+
+    #if DEBUG
+    /// Test-only membership evidence, never an adapter or guest observation.
+    /// Requires BOTH the isolated UI-test mode and an existing private temp dir.
+    /// Each request is a fresh UUID; no control values/labels are serialized.
+    private func startCatalogProbe() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard model.testing, let index = arguments.firstIndex(of: "--catalog-probe-directory"),
+              arguments.indices.contains(index + 1) else { return }
+        let directory = URL(fileURLWithPath: arguments[index + 1]).standardizedFileURL
+        let temporary = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().path + "/"
+        guard directory.resolvingSymlinksInPath().path.hasPrefix(temporary),
+              let attributes = try? FileManager.default.attributesOfItem(atPath: directory.path),
+              attributes[.type] as? FileAttributeType == .typeDirectory,
+              (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o700,
+              (attributes[.ownerAccountID] as? NSNumber)?.uint32Value == getuid() else { return }
+        struct Probe: Encodable {
+            let request: String
+            let revision: UInt64
+            let registrationFailed: Bool
+            let registrations: [ControlRegistry.Registration]
+        }
+        catalogProbeTask = Task { @MainActor [weak self] in
+            var lastRequest: String?
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(100)) }
+                catch { return }
+                guard let self else { return }
+                let input = directory.appendingPathComponent("request")
+                guard let metadata = try? FileManager.default.attributesOfItem(atPath: input.path),
+                      metadata[.type] as? FileAttributeType == .typeRegular,
+                      (metadata[.size] as? NSNumber)?.intValue == 36,
+                      let bytes = try? Data(contentsOf: input), bytes.count == 36,
+                      let request = String(data: bytes, encoding: .utf8), UUID(uuidString: request) != nil,
+                      request != lastRequest else { continue }
+                // Refresh the real native owner before copying actual membership.
+                self.model.synchronizeAppSurface?()
+                let probe = Probe(request: request, revision: self.model.appControls.revision,
+                    registrationFailed: self.model.appControlRegistrationFailed,
+                    registrations: self.model.appControls.registrationInventory())
+                do {
+                    let output = try JSONEncoder().encode(probe)
+                    try output.write(to: directory.appendingPathComponent("response.json"), options: .atomic)
+                    lastRequest = request
+                } catch { return } // UI test times out, never consumes a stale nonce.
+            }
+        }
+    }
+    #endif
 
     private static let appWindows = ["main", "menu_bar", "settings", "onboarding", "face", "chat", "orb", "hud",
         "command_palette", "about", "keyboard_shortcuts", "hub_pairing", "sign_out_confirmation", "quit_confirmation"]

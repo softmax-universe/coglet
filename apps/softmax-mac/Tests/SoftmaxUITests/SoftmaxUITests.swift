@@ -1,6 +1,100 @@
 import XCTest
 
 final class SoftmaxUITests: XCTestCase {
+    // Local debug-test evidence, NOT a product wire model or an observation grant.
+    private struct CatalogProbe: Decodable {
+        struct Registration: Decodable {
+            let id: String
+            let window: String
+            let route: String
+            let role: String
+            let verbs: [String]
+            let sensitive: Bool
+            let enabled: Bool
+            let visible: Bool
+        }
+        let request: String
+        let revision: UInt64
+        let registrationFailed: Bool
+        let registrations: [Registration]
+    }
+
+    private func catalogMembershipFailures(actual: [String], registered: Set<String>) -> [String] {
+        var failures: [String] = []
+        let occurrences = Dictionary(grouping: actual, by: { $0 })
+        if occurrences[""] != nil { failures.append("empty-id") }
+        for (id, instances) in occurrences where instances.count != 1 { failures.append("duplicate:" + id) }
+        for id in Set(actual).subtracting(registered) { failures.append("unregistered:" + id) }
+        for id in registered.subtracting(actual) { failures.append("missing-ax:" + id) }
+        return failures.sorted()
+    }
+
+    /// First real AX/live-registry join. This is intentionally NOT the full
+    /// softmax_app_catalog_coverage proof: all remaining states still need visits.
+    @MainActor
+    func testCatalogCoverageOnboardingWelcome() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("softmax-catalog-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+            attributes: [.posixPermissions: 0o700])
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--catalog-probe-directory", directory.path]
+        app.launchEnvironment["TMPDIR"] = FileManager.default.temporaryDirectory.path
+        app.launch()
+        defer { app.terminate() }
+        let window = app.windows["Welcome to Softmax"]
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        let nonce = UUID().uuidString
+        try Data(nonce.utf8).write(to: directory.appendingPathComponent("request"), options: .atomic)
+        let predicate = NSPredicate { _, _ in
+            guard let data = try? Data(contentsOf: directory.appendingPathComponent("response.json")),
+                  let probe = try? JSONDecoder().decode(CatalogProbe.self, from: data) else { return false }
+            return probe.request == nonce
+        }
+        let waiter = XCTNSPredicateExpectation(predicate: predicate, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [waiter], timeout: 5), .completed)
+        let probe = try JSONDecoder().decode(CatalogProbe.self,
+            from: Data(contentsOf: directory.appendingPathComponent("response.json")))
+        XCTAssertEqual(probe.request, nonce)
+        XCTAssertFalse(probe.registrationFailed, "an AX id cannot hide a refused registry mount")
+        let entries = probe.registrations.filter { $0.window == "onboarding" && $0.route == "welcome" }
+        let ids = Set(entries.map(\.id))
+        XCTAssertFalse(ids.isEmpty)
+        let chrome = ["_XCUI:CloseWindow": "onboarding.titlebar.close",
+                      "_XCUI:MinimizeWindow": "onboarding.titlebar.minimize",
+                      "_XCUI:ZoomWindow": "onboarding.titlebar.zoom"]
+        var seen: [String] = []
+        let interactive: [XCUIElement.ElementType] = [.button, .checkBox, .radioButton, .popUpButton,
+            .comboBox, .textField, .secureTextField, .textView, .slider, .stepper, .link, .disclosureTriangle]
+        for type in interactive {
+            for element in window.descendants(matching: type).allElementsBoundByIndex {
+                let id = chrome[element.identifier] ?? element.identifier
+                XCTAssertFalse(id.isEmpty, "interactive AX element lacks stable id: \(element.label)")
+                let registration = try XCTUnwrap(entries.first { $0.id == id }, "AX element not actually registered: \(id)")
+                if type == .button {
+                    XCTAssertEqual(registration.role, "button")
+                    XCTAssertTrue(registration.verbs.contains("press"))
+                }
+                seen.append(id)
+            }
+        }
+        XCTAssertTrue(seen.contains("onboarding.continue"), "must exercise a real product control")
+        let visible = Set(entries.filter(\.visible).map(\.id))
+        XCTAssertEqual(catalogMembershipFailures(actual: seen, registered: visible), [],
+            "visible registry entries and actual AX ids must agree, without duplicate collapse")
+        // Mutation of captured evidence, NOT a claim that the native mount was
+        // removed: exercise the SAME checker with a real AX id but no membership.
+        let missingRegistration = visible.subtracting(["onboarding.continue"])
+        XCTAssertEqual(catalogMembershipFailures(actual: seen, registered: missingRegistration),
+            ["unregistered:onboarding.continue"])
+        XCTAssertEqual(catalogMembershipFailures(actual: seen + ["onboarding.continue"], registered: visible),
+            ["duplicate:onboarding.continue"])
+        let attachment = XCTAttachment(data: try Data(contentsOf: directory.appendingPathComponent("response.json")),
+            uniformTypeIdentifier: "public.json")
+        attachment.name = "onboarding-welcome-live-registry"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
     /// Native CI on macOS 26 reports two OS-owned chrome defects:
     /// its disabled empty application Touch Bar, and the Zoom button's internal
     /// disabled 14 pt group. Never exempt a product control or any contrast issue.

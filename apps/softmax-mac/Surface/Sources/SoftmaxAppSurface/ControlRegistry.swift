@@ -64,6 +64,29 @@ public final class ControlRegistry {
         }
     }
 
+    /// Value-free native membership evidence for UI catalog audits. This is not
+    /// a wire model, observation channel or grant. It deliberately omits labels
+    /// and values, and never invokes value/focus/effect callbacks. Disabled and
+    /// off-route mounts remain present so an audit cannot hide missing controls.
+    public struct Registration: Codable, Equatable, Sendable {
+        public let id: String
+        public let window: String
+        public let route: String
+        public let role: String
+        public let verbs: [String]
+        public let sensitive: Bool
+        public let enabled: Bool
+        public let visible: Bool
+    }
+
+    public func registrationInventory() -> [Registration] {
+        entries.values.sorted { $0.mount.id < $1.mount.id }.map {
+            Registration(id: $0.mount.id, window: $0.window, route: $0.route,
+                role: $0.role, verbs: $0.verbs.sorted(), sensitive: $0.sensitive,
+                enabled: $0.enabled(), visible: $0.visible())
+        }
+    }
+
     public func captureDirectory() -> CapturedDirectory {
         CapturedDirectory(targets: Dictionary(uniqueKeysWithValues: entries.values.map {
             ($0.mount.id, CapturedDirectory.Target(mount: $0.mount, window: $0.window, sensitive: $0.sensitive))
