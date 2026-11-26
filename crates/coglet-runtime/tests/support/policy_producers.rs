@@ -548,11 +548,25 @@ async fn health_counters_bound_to_generation_and_reject_stale() {
     let mut forged = d.frame("observe_health", d.pins(&a));
     forged["params"]["counters"] = json!({"committed":999});
     assert_eq!(d.raw(forged).await["ok"], false);
+    // The adapter admits two events. A running observation is not a freeze:
+    // another attempt may begin or finish before SIGKILL. Stop at the actual
+    // daemon safe boundary before taking the exact persistence reference.
+    applied(&d.env.simple("hub.stop").await);
+    let stable = d.local("observe_health", d.pins(&a)).await;
+    assert_eq!(stable["ok"], true, "{stable}");
+    assert_eq!(stable["result"]["attempt_fence"], "clear", "{stable}");
+    for counter in ["attempted", "committed", "failed", "budget_exceeded"] {
+        assert!(
+            stable["result"]["counters"][counter].as_u64().unwrap()
+                >= second["result"]["counters"][counter].as_u64().unwrap(),
+            "counter {counter} regressed: {second} -> {stable}"
+        );
+    }
     drop(link);
     d.restart().await;
     let after = d.local("observe_health", d.pins(&a)).await;
     assert_eq!(after["ok"], true, "{after}");
-    assert_eq!(after["result"]["counters"], second["result"]["counters"]);
+    assert_eq!(after["result"]["counters"], stable["result"]["counters"]);
     assert_eq!(after["result"]["output_lease_state"], "closed");
     // Independent real signed activations exercise trap and budget outcomes.
     // Each is crash/reopened too; no synthetic counter injection.
@@ -578,13 +592,24 @@ async fn health_counters_bound_to_generation_and_reject_stale() {
             budget,
             "{observed}"
         );
+        applied(&failure.env.simple("hub.stop").await);
+        let stable = failure.local("observe_health", failure.pins(&bundle)).await;
+        assert_eq!(stable["ok"], true, "{stable}");
+        assert_eq!(stable["result"]["attempt_fence"], "clear", "{stable}");
+        for counter in ["attempted", "committed", "failed", "budget_exceeded"] {
+            assert!(
+                stable["result"]["counters"][counter].as_u64().unwrap()
+                    >= observed["result"]["counters"][counter].as_u64().unwrap(),
+                "counter {counter} regressed: {observed} -> {stable}"
+            );
+        }
         drop(adapter);
         failure.restart().await;
         let recovered = failure.local("observe_health", failure.pins(&bundle)).await;
         assert_eq!(recovered["ok"], true, "{recovered}");
         assert_eq!(
             recovered["result"]["counters"],
-            observed["result"]["counters"]
+            stable["result"]["counters"]
         );
     }
 }
