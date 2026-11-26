@@ -12,8 +12,32 @@ adapter or guest method is added. Not a frozen-hub conformance claim.
 - The kernel peer UID (`SO_PEERCRED` / `getpeereid`) must equal a configured
   principal `uid`; a peer whose UID matches no principal is closed without a read.
 - One JSON object per line, `\n`-terminated, at most 65536 bytes (replies too).
-  ≤16 concurrent connections, one thread each so `revoke_output_lease` never
-  queues behind another request. 3 s per-frame and 10 s idle deadlines.
+  ≤16 concurrent connections, one thread each. 3 s per-frame and 10 s idle
+  deadlines. This pool gives `revoke_output_lease` NO liveness under ordinary
+  saturation: at capacity a new connection is closed before it is parsed.
+- Reserved emergency endpoint (ADR-0043): whenever a `profile` is configured the
+  producer also binds `<socket>.revoke` (the literal suffix appended to the
+  complete `socket` path; same directory, owner, mode 0600 and UID rule; not a
+  profile field). It accepts exactly ONE request per connection and dispatches
+  only `revoke_output_lease`, with the unchanged request/reply frames and
+  binding rules. Any other authenticated method fails `invalid_argument` with
+  its nonce and is never dispatched; malformed, over-size and forged-binding
+  frames fail as on the ordinary socket. It has its own 4-connection bound and
+  workers: a fifth concurrent connection is closed without a reply, never
+  queued and never moved to the ordinary pool. Each connection has 3 s from
+  acceptance for its complete request (no idle allowance) and a 3 s reply
+  write; it is always closed after one reply attempt.
+- A consumer that needs the ADR-0019 emergency guarantee MUST send revoke to
+  `<socket>.revoke`. It must not fall back to the ordinary socket and claim
+  reserved admission when the sibling is absent or refuses; a producer without
+  the sibling is not qualified for that guarantee. Revoke on the ordinary socket
+  stays valid with identical gate semantics when it is admitted.
+- Startup binds both sockets or neither: both paths are checked (length, type,
+  owner, live listener) before either is replaced, and a failure of either bind
+  or accept worker fails daemon startup with every output gate closed. Without
+  a `profile` neither socket exists.
+- While runtime custody is busy, at most ONE deferred revoke recorder exists per
+  target across both sockets; further revokes report `durable:"pending"`.
 - Closed objects: unknown/missing fields, duplicate keys at any depth (including
   via escapes), non-UTF-8, trailing text, floats/negative integers are refused.
 
@@ -189,7 +213,8 @@ A consumer MUST reject a schema-valid reply unless all of these hold
 
 Vectors (all shared by producer, consumer and the black-box harness):
 
-- `tests/vectors/policy_local_frames.json` — request frames.
+- `tests/vectors/policy_local_frames.json` — request frames; its
+  `reserved_endpoint` list gives the `<socket>.revoke` outcome of each frame.
 - `tests/vectors/policy_local_replies.schema.json` — closed reply schema.
 - `tests/vectors/policy_local_replies.json` — reply vectors: each pairs the exact
   `request` frame with a `reply`; positives for all five operations and every

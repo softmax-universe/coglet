@@ -82,10 +82,13 @@ async fn run_async(path: &Path) -> Result<(), String> {
                 .map(|d| d.as_secs())
         }),
     )?;
+    // ADR-0043: validate and bind BOTH producer sockets before recovery can
+    // expose an adapter listener; all output gates are already closed.
+    let producers = handler.bind_producer_endpoint(tokio::runtime::Handle::current())?;
     handler.recover_running().await?;
-    // Bind the emergency revoke endpoint BEFORE contacting the hub: custody must
-    // not depend on router connectivity. All output gates are already closed.
-    handler.start_producer_endpoint(tokio::runtime::Handle::current())?;
+    // Accept on the emergency revoke endpoint BEFORE contacting the hub: custody
+    // must not depend on router connectivity.
+    producers.start()?;
     let endpoint = Endpoint::builder(presets::Minimal)
         .secret_key(key)
         .alpns(vec![ALPN.to_vec()])

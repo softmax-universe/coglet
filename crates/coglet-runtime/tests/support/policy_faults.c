@@ -5,6 +5,10 @@
 //   /proc/self/fd target is EXACTLY COGLET_FAULT_WAL allows
 //   COGLET_FAULT_LEFT bytes in total (counted per process), then fails with
 //   ENOSPC. Each injection appends one byte to COGLET_FAULT_HITS.
+// Stall: while COGLET_FAULT_STALL exists, a write to that same WAL descriptor
+//   appends one byte to COGLET_FAULT_STALLED and then WAITS (holding whatever
+//   custody the caller holds) until the file is removed; the write then
+//   proceeds unchanged. Nothing is failed, dropped or reordered.
 // Clock: while COGLET_FAULT_CLOCK exists, CLOCK_BOOTTIME is changed by its
 //   one-line contents: "sub <seconds>" or "set <seconds> <nanos>".
 #define _GNU_SOURCE
@@ -21,8 +25,7 @@
 static int exists(const char *path) {
     return path && syscall(SYS_faccessat, AT_FDCWD, path, F_OK, 0) == 0;
 }
-static int targeted(int fd) {
-    const char *arm = getenv("COGLET_FAULT_ARM");
+static int is_wal(int fd, const char *arm) {
     const char *wal = getenv("COGLET_FAULT_WAL");
     if (!arm || !wal || !exists(arm)) return 0;
     char link[64], path[4096];
@@ -32,14 +35,26 @@ static int targeted(int fd) {
     path[n] = 0;
     return strcmp(path, wal) == 0;
 }
-static void hit(void) {
-    const char *hits = getenv("COGLET_FAULT_HITS");
+static int targeted(int fd) {
+    return is_wal(fd, getenv("COGLET_FAULT_ARM"));
+}
+static void mark(const char *hits) {
     if (!hits) return;
     int fd = (int)syscall(SYS_openat, AT_FDCWD, hits, O_WRONLY | O_CREAT | O_APPEND, 0600);
     if (fd >= 0) {
         (void)!syscall(SYS_write, fd, "x", 1);
         syscall(SYS_close, fd);
     }
+}
+static void hit(void) {
+    mark(getenv("COGLET_FAULT_HITS"));
+}
+static void stall(int fd) {
+    const char *file = getenv("COGLET_FAULT_STALL");
+    if (!is_wal(fd, file)) return;
+    mark(getenv("COGLET_FAULT_STALLED"));
+    struct timespec nap = {0, 2000000};
+    while (exists(file)) syscall(SYS_nanosleep, &nap, NULL);
 }
 static size_t allowance(size_t count) {
     static long left = -1;
@@ -52,6 +67,7 @@ static size_t allowance(size_t count) {
     return take;
 }
 ssize_t write(int fd, const void *buf, size_t count) {
+    stall(fd);
     if (targeted(fd)) {
         size_t take = allowance(count);
         if (take == 0) {
@@ -64,6 +80,7 @@ ssize_t write(int fd, const void *buf, size_t count) {
     return syscall(SYS_write, fd, buf, count);
 }
 ssize_t pwrite(int fd, const void *buf, size_t count, off_t offset) {
+    stall(fd);
     if (targeted(fd)) {
         hit();
         errno = ENOSPC;
@@ -75,6 +92,7 @@ ssize_t pwrite64(int fd, const void *buf, size_t count, off_t offset) {
     return pwrite(fd, buf, count, offset);
 }
 ssize_t writev(int fd, const struct iovec *iov, int count) {
+    stall(fd);
     if (targeted(fd)) {
         hit();
         errno = ENOSPC;
