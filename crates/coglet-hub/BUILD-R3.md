@@ -84,5 +84,73 @@ and re-reading the exact original/output/index through Store. Refusal, delegatio
 race, rollback and integer regressions are in the same required workspace suite.
 Native CI independently executes and retains the production gate, both native
 architectures and the unchanged 960-case WAMR/Wasmtime/oracle comparison. Final
-H-transform/runtime qualification remains the final integration owner's gate;
-this split alone does not mark it qualified.
+H-transform/runtime qualification is completed only by the additional required
+publication/runtime jobs below; the component suite alone does not qualify it.
+
+### Required production-path/native qualification
+
+`r3-qualification` is an explicit test-only feature; it does not enable a default
+profile or add a wire method. Required `rust` CI (including merge groups and
+reusable dependency-mirror calls) depends on **all** of these nonconditional jobs:
+
+1. Existing `transform-native` x86_64/aarch64 jobs run the complete pinned
+   960-case WAMR/Wasmtime/oracle corpus and all component inventories, including
+   `unqualified_transform_publication_refused` and
+   `pinned_transform_fuzz_differential`. The existing
+   `pinned_transform_cross_arch_replay` aggregate remains unchanged.
+2. `transform-publication` on native Linux x86_64 runs **all 19** build tests,
+   with zero ignored/filtered cases. In particular,
+   `r3::live::protected_r3_configuration_publishes_from_real_ci` calls
+   `Profile::r3_wat` → `Builder::new` → `R3Config::load` and live
+   `RawCiEvidence::fetch`, not the dev-only CI envelope. It provisions a fresh
+   service-owned 0600 issuer file, refuses relative/symlink/mode/length/directory/
+   missing-file configurations before CI acquisition, and rejects wrong CI head
+   and foreign issuer. The real signed publication and every digest-addressed
+   evidence blob are exported before temporary Store custody closes.
+3. That job and `transform-runtime-arm` both run
+   `published_r3_runtime_journal_fs_trap_payload_chain` against the **same**
+   signed archive, output Wasm, manifest, provenance and initial filesystem.
+   Each native interpreter executes two commits, closes/reopens the actual WAL
+   between attempts, then executes a payload-dependent trap and independently
+   replays the complete journal. Raw NaN copies/sign operations, canonical
+   arithmetic results, immutable payload bytes, transactional log writes and
+   trap rollback are asserted without normalizing filesystem bytes.
+4. The required `rust` job rejects missing/failed/zero/skipped/filtered/renamed
+   inventories, foreign run/attempt/head, modified evidence, unsupported engine
+   identity, different raw journal inputs/calls (including trap observations),
+   different per-step filesystem hashes or replay hashes. It retains each
+   architecture's exact test executable, Cargo build messages, compiler and
+   lock identities. Only the compiler host field may differ; runtime binaries
+   are expected to differ by architecture.
+
+`tests/build/qualified-ci.json` is protected **public** provisioning, not a secret
+or a claimed current-run receipt. It pins the successful native production-tool
+run `45690352967`, attempt 1, head
+`4a0207e95d246bd3fcacdd7fc765f1d0ea8c86c6`, and exact artifact/executable/compiler/
+lock/corpus/results digests. Both historical artifacts expire
+**2027-02-23T19:58:10Z**. GitHub authentication is supplied only to the live
+producer with `actions:read`; missing/expired/changed evidence fails closed.
+Before expiry, acquire fresh real successful native evidence and review an
+explicit pin update. Never re-sign an invented run, relabel a test binary as the
+production executable, or silently fall back to fixture evidence. Retained files
+contain public signatures/evidence only; the ephemeral issuer private key is
+neither printed nor uploaded.
+
+Reproduce on the supported native host with `GH_TOKEN` provisioned through the
+normal GitHub credential mechanism and a fresh absolute output directory:
+
+```sh
+export COGLET_R3_PUBLICATION_DIR="$PWD/target/r3-publication"
+python3 crates/coglet-hub/check_r3.py --publication
+export COGLET_R3_RUNTIME_DIR="$PWD/target/r3-runtime-x86_64"
+python3 crates/coglet-hub/check_r3.py --runtime
+# Transfer the complete publication artifact unchanged to native Linux aarch64,
+# execute --runtime there, then aggregate both same-run runtime artifacts:
+python3 crates/coglet-hub/check_r3.py --aggregate "$PAIR_DIR"
+```
+
+The runner identity requires `GITHUB_RUN_ID` / `GITHUB_RUN_ATTEMPT` and binds the
+actual checked-out Git head; local probes must label themselves local, not CI.
+A Linux initial-publication proof is not Apple/iOS/EO1, arbitrary-source, AOT,
+installed hot-update, or remote deployment qualification. Cancelled optional
+Apple jobs and skipped release smoke work are not evidence for this gate.
