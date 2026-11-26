@@ -42,6 +42,7 @@ struct SettingsView: View {
                         verbs: ["type_text"], value: {
                             .map([.init("kind", .text("text")), .init("value", .text(query))])
                         }, focus: { searchFocused = true; return true }, focused: { searchFocused },
+                        focusSettles: true,
                         failure: model.appControlFailure, invoke: { args in
                             guard case .map(let fields) = args,
                                   let value = fields.first(where: { $0.key == "value" }), case .text(let text) = value.value else {

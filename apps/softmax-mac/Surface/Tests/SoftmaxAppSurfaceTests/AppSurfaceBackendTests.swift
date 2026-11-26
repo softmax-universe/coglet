@@ -498,4 +498,78 @@ final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
             grant: .init(coglet: owner, operations: [], resources: [], expires: 1000), capture: refreshed))
         try await harness.close()
     }
+
+    func testAsyncFocusTicketRunsOnceHonoursDeadlineAndCompletesOnce() async throws {
+        for reason in ["success", "deadline", "stop"] {
+            let clock = BackendClock()
+            let (host, capture, counter, suspension) = try await MainActor.run { () -> (Host, AppSurfaceCapture, FocusCounter, Suspension) in
+                let host = try Host()
+                let counter = FocusCounter()
+                let suspension = Suspension()
+                let instant = ContinuousClock.now
+                host.registry.focusSettling = .init(timeout: .seconds(2), interval: .milliseconds(10), now: { instant },
+                    sleep: { _ in
+                        counter.sleeps += 1
+                        // Deliberately ignores cancellation; only explicit resume
+                        // completes this sleep, so stop cannot win before entry.
+                        await suspension.wait()
+                    })
+                _ = try host.registry.mount(id: "settings.search", window: "settings", route: "general", role: "text_field", label: "Search",
+                    verbs: ["type_text"], value: { .map([.init("kind", .text("none"))]) },
+                    focus: { counter.calls += 1; return true }, focused: { counter.focused }, focusSettles: true, invoke: { _ in })
+                return (host, try host.adapter.capture(), counter, suspension)
+            }
+            let harness = try BackendHarness(capture: capture, clock: clock)
+            let accepted = try await harness.act("softmax.app.set_focus", args: obj(["window": .text("settings"), "control": .text("settings.search")]), deadline: 50)
+            XCTAssertEqual(accepted.count, 1)
+            XCTAssertEqual(try XCTUnwrap(accepted.first)["body"]?["accepted"], .boolean(true))
+            let ticket = try XCTUnwrap(harness.mailbox.queuedCommands().first)
+            await MainActor.run { harness.mailbox.execute(ticket, adapter: host.adapter); harness.mailbox.execute(ticket, adapter: host.adapter) }
+            await fulfillment(of: [suspension.entered], timeout: 2)
+            let tasks = harness.mailbox.runningCommandTasks()
+            XCTAssertEqual(tasks.count, 1)
+            await MainActor.run {
+                XCTAssertEqual(counter.calls, 1)
+                XCTAssertEqual(counter.sleeps, 1)
+                XCTAssertEqual(suspension.waits.count, 1)
+            }
+            let pending = try await harness.reconcile()
+            XCTAssertTrue(pending.isEmpty, "no terminal outcome before explicit resume")
+            if reason == "stop" { harness.mailbox.stop() }
+            if reason == "deadline" { clock.advance(50) }
+            await MainActor.run {
+                // A true witness after ticket expiry must still be refused;
+                // the local monotonic settling window has NOT expired.
+                counter.focused = true
+                suspension.resume()
+            }
+            for task in tasks { await task.value }
+            let done = try await harness.reconcile()
+            XCTAssertEqual(done.count, 1, reason)
+            let frame = try XCTUnwrap(done.first)
+            XCTAssertEqual(frame["body"]?["kind"], .text("action.outcome"))
+            let payload = try XCTUnwrap(frame["body"]?["payload"])
+            let status = try XCTUnwrap(payload["status"])
+            switch reason {
+            case "success":
+                XCTAssertEqual(status, .text("succeeded"))
+                XCTAssertEqual(payload["result"], .map([]))
+                XCTAssertNil(payload["error"])
+            case "deadline":
+                XCTAssertEqual(status, .text("expired"))
+                XCTAssertEqual(payload["error"]?["code"], .text("deadline_exceeded"))
+            default:
+                XCTAssertEqual(status, .text("failed"))
+                XCTAssertEqual(payload["error"]?["code"], .text("cancelled"))
+            }
+            await MainActor.run {
+                XCTAssertEqual(counter.calls, 1, reason)
+                XCTAssertEqual(counter.sleeps, 1, reason)
+                harness.mailbox.execute(ticket, adapter: host.adapter)
+            }
+            let duplicate = try await harness.reconcile()
+            XCTAssertTrue(duplicate.isEmpty, "terminal outcome must be delivered exactly once")
+            try await harness.close()
+        }
+    }
 }

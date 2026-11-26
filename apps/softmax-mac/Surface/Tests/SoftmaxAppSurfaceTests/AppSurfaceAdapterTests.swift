@@ -340,4 +340,46 @@ final class AppSurfaceAdapterTests: XCTestCase, @unchecked Sendable {
             fail(.conflict) { _ = try a.read("softmax.app.controls", args: args(after: .text(cursor), limit: 1, revision: .unsigned(rev))) }
         }
     }
+
+    func testSetFocusOptInDispatchesAsyncAndSyncPathRefusesBeforeEffect() async throws {
+        let (h, fa, fp, sp, count, state) = try await MainActor.run { () -> (Host, AppSurfaceAdapter, AppSurfaceAdapter.Prepared, AppSurfaceAdapter.Prepared, FocusCounter, FocusCounter) in
+            let h = try Host()
+            let count = FocusCounter(), state = FocusCounter()
+            let r = ControlRegistry(revision: 0, currentRoute: { h.windows[$0] })
+            r.focusSettling = .init(timeout: .seconds(2), interval: .milliseconds(10), now: { ContinuousClock.now },
+                sleep: { _ in state.focused = true })
+            _ = try r.mount(id: "settings.search", window: "settings", route: "general", role: "text_field", label: "s",
+                verbs: ["type_text"], value: { Host.obj(["kind": .text("text"), "value": .text("")]) },
+                focus: { count.calls += 1; return true }, focused: { state.focused }, focusSettles: true, invoke: { _ in })
+            _ = try r.mount(id: "settings.plain", window: "settings", route: "general", role: "text_field", label: "p",
+                verbs: ["type_text"], value: { Host.obj(["kind": .text("text"), "value": .text("")]) },
+                focus: { true }, focused: { true }, invoke: { _ in })
+            let fa = Host.makeAdapter(host: h, registry: r)
+            let args = Host.obj(["window": .text("settings"), "control": .text("settings.search")])
+            let plain = Host.obj(["window": .text("settings"), "control": .text("settings.plain")])
+            return (h, fa, try fa.prepare("softmax.app.set_focus", args: args), try fa.prepare("softmax.app.set_focus", args: plain), count, state)
+        }
+        _ = h
+        try await MainActor.run {
+            XCTAssertTrue(try fa.isAsynchronous(fp))
+            XCTAssertFalse(try fa.isAsynchronous(sp))
+            fail(.unsupported) { _ = try fa.perform(fp, authorized: { true }) }
+            XCTAssertEqual(count.calls, 0)
+            fail(.unsupported) { _ = try fa.perform(fp, authorized: { true }) }
+        }
+        let value = try await fa.performAsync(fp, authorized: { true })
+        await MainActor.run {
+            XCTAssertEqual(value, self.empty)
+            XCTAssertEqual(count.calls, 1)
+            XCTAssertTrue(state.focused)
+        }
+        do { _ = try await fa.performAsync(fp, authorized: { true }); XCTFail("single use") }
+        catch { XCTAssertEqual(error as? AppSurfaceFailure, .conflict) }
+        do { _ = try await fa.performAsync(sp, authorized: { true }); XCTFail("sync focus is not async") }
+        catch { XCTAssertEqual(error as? AppSurfaceFailure, .unsupported) }
+        await MainActor.run { XCTAssertEqual(count.calls, 1) }
+    }
 }
+
+@MainActor
+final class FocusCounter { var calls = 0; var sleeps = 0; var focused = false }

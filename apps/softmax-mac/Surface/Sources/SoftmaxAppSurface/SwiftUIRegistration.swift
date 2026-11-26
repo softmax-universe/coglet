@@ -21,6 +21,7 @@ private struct CogletRegistration: ViewModifier {
     let invokeAsync: ControlRegistry.AsyncInvocation?
     let focus: (() throws -> Bool)?
     let focused: (() -> Bool)?
+    let focusSettles: Bool
     let failure: (ControlRegistryFailure) -> Void
     @Environment(\.isEnabled) private var enabled
     @State private var mount: ControlRegistry.Mount?
@@ -47,7 +48,8 @@ private struct CogletRegistration: ViewModifier {
         do {
             mount = try registry.mount(id: id, window: window, route: route, role: role, label: label,
                 sensitive: sensitive, secure: secure, verbs: verbs, value: value,
-                enabled: { enabled }, focus: focus, focused: focused, invokeAsync: invokeAsync, invoke: invoke)
+                enabled: { enabled }, focus: focus, focused: focused, invokeAsync: invokeAsync,
+                focusSettles: focusSettles, invoke: invoke)
         } catch let error as ControlRegistryFailure { failure(error) }
         catch { failure(.invalidRegistration) }
     }
@@ -66,12 +68,13 @@ public extension View {
                 role: String, label: String, sensitive: Bool = false, secure: Bool = false,
                 verbs: Set<String>, value: @escaping () throws -> CBORValue,
                 focus: (() throws -> Bool)? = nil, focused: (() -> Bool)? = nil,
-                invokeAsync: ControlRegistry.AsyncInvocation? = nil,
+                invokeAsync: ControlRegistry.AsyncInvocation? = nil, focusSettles: Bool = false,
                 failure: @escaping (ControlRegistryFailure) -> Void,
                 invoke: @escaping (CBORValue) throws -> Void) -> some View {
         modifier(CogletRegistration(registry: registry, id: id, window: window, route: route,
             role: role, label: label, sensitive: sensitive, secure: secure, verbs: verbs,
-            value: value, invoke: invoke, invokeAsync: invokeAsync, focus: focus, focused: focused, failure: failure))
+            value: value, invoke: invoke, invokeAsync: invokeAsync, focus: focus, focused: focused,
+            focusSettles: focusSettles, failure: failure))
     }
 }
 

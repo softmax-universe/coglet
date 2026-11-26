@@ -188,6 +188,7 @@ public final class AppSurfaceAdapter {
         guard prepared.adapter == identity, !prepared.consumed else { throw AppSurfaceFailure.conflict }
         switch prepared.payload {
         case .invoke(let request), .setting(let request, _, _): return try registry.isAsynchronous(request)
+        case .focus(let mount): return registry.isAsynchronousFocus(mount)
         default: return false
         }
     }
@@ -202,6 +203,7 @@ public final class AppSurfaceAdapter {
             try await registry.performAsync(request, authorized: authorized)
             guard authorized() else { throw AppSurfaceFailure.permissionDenied }
             guard try actualSetting(key) == expected else { throw AppSurfaceFailure.conflict }
+        case .focus(let mount): try await registry.setFocusAsync(mount, authorized: authorized)
         default: throw AppSurfaceFailure.unsupported
         }
         return .map([])
