@@ -23,6 +23,10 @@ LABEL = re.compile(r'[a-z][a-z0-9_.-]*\Z')
 PROFILES = ('surface-0.1', 'surface-0.2')
 DEFAULT_PROFILE = 'surface-0.1'
 PROFILE_ENV = 'COGLET_CONFORMANCE_CONTRACT_PROFILE'
+# ADR-0041: fixed runner I/O watchdog (send/read of one full frame) for functional database cases.
+DB_WATCHDOG = 'database_functional_watchdog'
+DB_WATCHDOG_S = 5.0
+DB_WATCHDOG_FORBIDDEN = ('at_ms', 'silence_ms', 'expect_close', 'stream', 'finish')
 
 
 def profile_value(value, what):
@@ -127,7 +131,7 @@ def cases_for(root, suite):
 def validate_impl(impl):
     allowed = {'name', 'suites', 'transport', 'command', 'socket', 'framing',
                'endpoint', 'alpn', 'address', 'driver', 'connect_timeout_ms', 'fixtures', 'peer_roles', 'key_file', 'ready_line', 'fixture_clock', 'fixture_scheduler',
-               'contract_profile'}
+               'contract_profile', DB_WATCHDOG}
     if not isinstance(impl, dict) or set(impl) - allowed:
         raise ValueError('unknown implementation fields')
     if not isinstance(impl.get('name'), str) or not NAME.fullmatch(impl['name']):
@@ -169,6 +173,16 @@ def validate_impl(impl):
     roles = impl.get('peer_roles', ['runtime'])
     if not isinstance(roles, list) or not roles or any(not isinstance(s, str) or not NAME.fullmatch(s) for s in roles):
         raise ValueError('peer_roles must be a nonempty role array')
+    if DB_WATCHDOG in impl:
+        # ADR-0041: narrow test-only binding, never a generic timing escape hatch.
+        if type(impl[DB_WATCHDOG]) is not bool:
+            raise ValueError(f'{DB_WATCHDOG} must be a boolean')
+        if impl[DB_WATCHDOG] and (transport != 'stdio' or suites != ['database']
+                                  or 'peer_roles' not in impl or roles != ['guest']
+                                  or impl.get('fixture_clock') is True
+                                  or impl.get('fixture_scheduler') is True):
+            raise ValueError(f"{DB_WATCHDOG} requires stdio, suites exactly ['database'], "
+                             "peer_roles exactly ['guest'] and no fixture_clock/fixture_scheduler")
     fixtures = impl.get('fixtures', {})
     if not isinstance(fixtures, dict):
         raise ValueError('fixtures must be a label map')
@@ -204,6 +218,21 @@ def check_case_profile(impl, suite, case):
     if want != have:
         raise ValueError(f'{impl["name"]}.{suite}/{case["name"]} requires {want} but implementation '
                          f'is provisioned {have}')
+
+
+def check_case_watchdog(impl, suite, case):
+    """ADR-0041 preflight: opted-in cases must be purely functional request/response."""
+    if impl.get(DB_WATCHDOG) is not True:
+        return
+    validate_impl(impl)
+    where = f'{impl["name"]}.{suite}/{case["name"]}'
+    if case.get('peer_role', 'runtime') != 'guest':
+        raise ValueError(f'{DB_WATCHDOG}: {where} must have peer_role guest')
+    for index, step in enumerate(case['steps']):
+        bad = [key for key in DB_WATCHDOG_FORBIDDEN if key in step]
+        if bad:
+            raise ValueError(f'{DB_WATCHDOG}: {where} steps[{index}] has protocol-time/transport control '
+                             + ', '.join(bad))
 
 
 def quarantined_ids(path):
@@ -519,6 +548,8 @@ async def timeline(peer, case):
         try:
             # ADR-0021: infrastructure liveness is not protocol fixture time.
             timeout = 3.0 if fixture_clock else millis(step.get('within_ms', 1000))
+            if peer.impl.get(DB_WATCHDOG) is True:
+                timeout = DB_WATCHDOG_S
             if fixture_clock:
                 target = max(peer.fixture_time, round(millis(step.get('at_ms', 0)) * 1_000_000))
                 await asyncio.wait_for(peer.advance_clock(target), timeout)
@@ -613,6 +644,7 @@ async def run_hook(command, env):
 
 
 async def run_case(impl, suite, case):
+    check_case_watchdog(impl, suite, case)  # before any hook or peer, even on direct entry
     labels = case.get('fixtures', [])
     hooks = impl.get('fixtures', {})
     missing = [label for label in labels if label not in hooks]
@@ -708,6 +740,7 @@ async def execute(args):
                 for case in cases_for(args.cases, suite)]
         for impl, suite, case in jobs:
             check_case_profile(impl, suite, case)  # before any launch
+            check_case_watchdog(impl, suite, case)
         if not jobs:
             print('No implementations registered; no conformance claims made.')
         quarantined = quarantined_ids(args.quarantine)

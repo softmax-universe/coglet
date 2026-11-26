@@ -133,6 +133,10 @@ impl RuntimeService {
         recovered.retained_blobs = state.runtime.retained_blobs.clone();
         let mut next = state.clone();
         next.runtime = recovered;
+        if let Some(managed) = &mut next.managed {
+            // The actual begin is already durable: reconcile only its outcome.
+            managed.policy_result(record)?;
+        }
         next.staged_boundary = None;
         next.fenced_staged_prefix = None;
         next.router.consume(count)?;

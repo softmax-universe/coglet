@@ -434,6 +434,9 @@ impl RuntimeService {
         let result = next.runtime.step(&inputs, &mut attempt);
         let entered = attempt.entered;
         if let Some(inputs) = entered {
+            if let Some(saved) = self.store.state() {
+                self.state = serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            }
             self.state.runtime.unresolved_attempt = Some(inputs);
             self.state.fenced_staged_prefix = Some(
                 self.state

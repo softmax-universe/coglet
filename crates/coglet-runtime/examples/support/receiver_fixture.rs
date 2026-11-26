@@ -467,6 +467,7 @@ impl Fixture {
             kill_switch: Some(root.join("kill.json")),
             targets,
             adapter: None,
+            profile: None,
         };
         let handler = DeviceHandler::new(
             config.clone(),

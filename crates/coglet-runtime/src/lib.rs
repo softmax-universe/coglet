@@ -13,6 +13,8 @@ mod device;
 pub use device::{
     AdapterConfig, BackChannelLimits, DeviceConfig, DeviceHandler, MAX_CODE_BYTES, TargetPin,
 };
+#[cfg(feature = "device")]
+pub use policy_local::{PrincipalBinding, ProducerProfile, StopPlan};
 #[cfg(feature = "native-engine")]
 pub mod database;
 mod execution;
@@ -22,6 +24,9 @@ mod filesystem;
 mod heard;
 mod host;
 mod journal;
+mod output_lease;
+#[cfg(feature = "device")]
+mod policy_local;
 mod router;
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
 pub mod socket;
@@ -34,6 +39,7 @@ pub use execution::{Engine, EngineReport, MockEngine, Runtime, RuntimeService};
 pub use filesystem::{Snapshot, digest, valid_path};
 pub use host::{EffectLedger, StepHost};
 pub use journal::DurableStore;
+pub use output_lease::{LeaseState, OutputGate};
 pub use router::Router;
 pub use surface::{SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
 
