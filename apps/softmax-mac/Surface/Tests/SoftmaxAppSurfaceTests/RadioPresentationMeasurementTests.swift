@@ -350,6 +350,472 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         group.setAccessibilityChildren(group.buttons)
         return hosting
     }
+    // Mutable action probe is deliberately separate from the retained 36-case static probe.
+    @MainActor
+    private final class ActionModel: ObservableObject {
+        @Published private(set) var appearance = "System"
+        @Published private(set) var scale = 1.0
+        @Published private(set) var buttonCount = 0
+        private(set) var appearanceWrites = 0
+        private(set) var scaleWrites = 0
+        var appearanceBinding: Binding<String> {
+            Binding(get: { self.appearance }, set: { self.appearanceWrites += 1; self.appearance = $0 })
+        }
+        var scaleBinding: Binding<Double> {
+            Binding(get: { self.scale }, set: { self.scaleWrites += 1; self.scale = $0 })
+        }
+        func buttonPressed() { buttonCount += 1 }
+        var observation: [String: Any] {
+            ["appearance": appearance, "scale": scale, "appearanceWrites": appearanceWrites,
+             "scaleWrites": scaleWrites, "buttonCount": buttonCount]
+        }
+    }
+    @MainActor
+    private struct MutablePicker: View {
+        @ObservedObject var model: ActionModel
+        let appearance: Bool
+        var body: some View {
+            if appearance {
+                Picker("Appearance", selection: model.appearanceBinding) {
+                    ForEach(RadioPresentationMeasurementTests.appearanceChoices, id: \.value) { choice in
+                        Text(choice.label).accessibilityIdentifier(choice.id).tag(choice.value)
+                    }
+                }.pickerStyle(.radioGroup).labelsHidden()
+                    .accessibilityIdentifier("settings.general.appearance")
+            } else {
+                Picker("Text size", selection: model.scaleBinding) {
+                    Text("Standard").accessibilityIdentifier("settings.general.text_size.standard").tag(1.0)
+                    Text("Large").accessibilityIdentifier("settings.general.text_size.large").tag(1.3)
+                    Text("Largest").accessibilityIdentifier("settings.general.text_size.largest").tag(1.6)
+                }.pickerStyle(.radioGroup).labelsHidden()
+                    .accessibilityIdentifier("settings.general.text_size")
+            }
+        }
+    }
+    @MainActor
+    private struct MutableFixture: View {
+        @ObservedObject var model: ActionModel
+        let nested: Bool, disabled: Bool
+        // Use the static fixture's exact tokens; no sizing/presentation interventions.
+        let palette: Fixture
+        private func picker(_ appearance: Bool) -> some View {
+            MutablePicker(model: model, appearance: appearance).disabled(disabled)
+        }
+        private func nestedRoot(_ appearance: Bool) -> AnyView {
+            AnyView(picker(appearance).font(.system(size: 16)).foregroundColor(palette.ink)
+                .foregroundStyle(palette.ink).tint(palette.accent).environment(\.colorScheme, .light))
+        }
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Appearance").font(.system(size: 16)).accessibilityHidden(true)
+                    if nested {
+                        NestedHost(name: "appearance", root: nestedRoot(true))
+                            .background(Marker(name: "appearance.rows"))
+                    } else { picker(true).background(Marker(name: "appearance.rows")) }
+                }.background(Marker(name: "appearance.group"))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Text size").font(.system(size: 16)).accessibilityHidden(true)
+                    if nested {
+                        NestedHost(name: "text_size", root: nestedRoot(false))
+                            .background(Marker(name: "text_size.rows"))
+                    } else { picker(false).background(Marker(name: "text_size.rows")) }
+                }.background(Marker(name: "text_size.group"))
+                Text("System Standard").background(Marker(name: "reference.text"))
+            }
+            .foregroundColor(palette.ink).frame(maxWidth: .infinity, alignment: .leading).padding(16)
+            .background(palette.surface, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(palette.border, lineWidth: 1))
+            .padding(16).frame(width: 540, height: 440, alignment: .topLeading)
+            .font(.system(size: 16)).foregroundStyle(palette.ink)
+            .tint(palette.accent).background(palette.background).environment(\.colorScheme, .light)
+        }
+    }
+    @MainActor
+    private struct ActionButtonFixture: View {
+        @ObservedObject var model: ActionModel
+        var body: some View {
+            Button("Increment diagnostic counter \(model.buttonCount)") { model.buttonPressed() }
+                .accessibilityIdentifier("measurement.positive.button")
+                .frame(width: 540, height: 440)
+        }
+    }
+    private struct ActionAXNode {
+        let element: (any NSAccessibilityProtocol)?
+        let data: [String: Any]
+    }
+    private struct ActionAXTree {
+        let nodes: [ActionAXNode]
+        let limits: [String]
+        let inspected: Int
+        var observation: [String: Any] {
+            ["nodes": nodes.map(\.data), "count": nodes.count, "limits": limits,
+             "inspectedIncludingRevisits": inspected, "visitedCount": nodes.count,
+             "radioIDPlacement": nodes.filter {
+                 ($0.data["role"] as? String) == NSAccessibility.Role.radioButton.rawValue
+             }.map { radio -> [String: Any] in
+                 let path = radio.data["path"] as? String ?? ""
+                 return ["radioID": radio.data["id"] ?? "notExposed", "path": path,
+                     "children": nodes.filter {
+                         ($0.data["path"] as? String)?.hasPrefix(path + ".") == true
+                     }.map(\.data)]
+             },
+             "maxDepth": 8, "maxNodes": 512, "scope": "owned NSHostingView accessibilityChildren only"]
+        }
+    }
+    // Public protocol verified against Apple NSAccessibilityProtocol documentation:
+    // accessibilityChildren() -> [Any]?, accessibilityPerformPress() -> Bool,
+    // isAccessibilitySelectorAllowed(_:) -> Bool. No guessed action protocol or BOOL perform().
+    // https://developer.apple.com/documentation/appkit/nsaccessibilityprotocol
+    private func actionAXTree(_ host: NSView) -> ActionAXTree {
+        var nodes: [ActionAXNode] = [], limits: [String] = []
+        var visited = Set<ObjectIdentifier>()
+        var inspected = 0
+        let press = #selector(NSAccessibilityProtocol.accessibilityPerformPress)
+        func walk(_ object: AnyObject, depth: Int, path: String) {
+            guard inspected < 512 else { limits.append("nodeLimit:" + path); return }
+            inspected += 1
+            guard visited.insert(ObjectIdentifier(object)).inserted else { return }
+            let ax = object as? any NSAccessibilityProtocol
+            var row: [String: Any] = ["order": nodes.count, "path": path, "depth": depth,
+                "objectIdentity": String(describing: ObjectIdentifier(object)),
+                "isNSView": object is NSView, "protocolConformance": ax != nil,
+                "role": "notExposed", "label": "notExposed", "id": "notExposed",
+                "value": "notExposed", "enabled": "notExposed", "frame": [],
+                "respondsToPress": false, "pressAllowed": false, "childCount": 0]
+            var children: [Any] = []
+            if let ax {
+                children = ax.accessibilityChildren() ?? []
+                row["role"] = ax.accessibilityRole()?.rawValue ?? "notExposed"
+                row["label"] = ax.accessibilityLabel() ?? "notExposed"
+                row["id"] = ax.accessibilityIdentifier() ?? "notExposed"
+                row["value"] = ax.accessibilityValue().map { String(describing: $0) } ?? "notExposed"
+                row["enabled"] = ax.isAccessibilityEnabled()
+                // Public AX can expose null/infinite rectangles; keep JSON writable.
+                row["frame"] = rect(ax.accessibilityFrame()).map { value -> Any in
+                    value.isFinite ? value as Any : String(describing: value)
+                }
+                row["respondsToPress"] = ax.responds(to: press)
+                row["pressAllowed"] = ax.isAccessibilitySelectorAllowed(press)
+                row["childCount"] = children.count
+            }
+            if let button = object as? NSButton {
+                row["nativeSelected"] = button.state.rawValue
+                // Nil target and nil selector are independent observations, not an action verdict.
+                row["targetPresent"] = button.target != nil
+                row["selectorPresent"] = button.action != nil
+                row["selector"] = button.action.map(NSStringFromSelector) ?? "none"
+            }
+            nodes.append(ActionAXNode(element: ax, data: row))
+            guard depth < 8 else {
+                if !children.isEmpty { limits.append("depthLimit:" + path) }; return
+            }
+            for (i, child) in children.enumerated() {
+                guard inspected < 512 else { limits.append("nodeLimit:" + path); break }
+                walk(child as AnyObject, depth: depth + 1, path: path + "." + String(i))
+            }
+        }
+        walk(host, depth: 0, path: "root")
+        return ActionAXTree(nodes: nodes, limits: limits, inspected: inspected)
+    }
+    /// Fresh synchronous query; exact stable ID only, no cached node, label/frame/class fallback.
+    private func pressActionID(_ id: String, host: NSView) -> [String: Any] {
+        let fresh = actionAXTree(host)
+        let matches = fresh.nodes.filter { ($0.data["id"] as? String) == id }
+        let actionable = matches.filter {
+            ($0.data["respondsToPress"] as? Bool) == true && ($0.data["pressAllowed"] as? Bool) == true
+        }
+        let resolution: String
+        if !fresh.limits.isEmpty { resolution = "treeunmaterialized" }
+        else if matches.isEmpty { resolution = "ax-id-not-exposed" }
+        else if matches.count != 1 { resolution = "harnessinvalid" }
+        else if matches[0].element == nil { resolution = "ax-node-nonconforming" }
+        else if actionable.count != 1 { resolution = "nonactionable" }
+        else { resolution = "resolved" }
+        var result: [String: Any] = ["requestedID": id, "freshTree": fresh.observation,
+            "idMatches": matches.map(\.data), "actionableMatchCount": actionable.count,
+            "resolution": resolution, "attempted": false, "returned": false]
+        guard resolution == "resolved", let target = actionable[0].element else { return result }
+        result["actedNode"] = actionable[0].data
+        result["attempted"] = true
+        result["returned"] = target.accessibilityPerformPress()
+        return result
+    }
+    private enum ActionCaptureError: Error { case noBitmap, noPNG, unstable(String) }
+    // Same cache-display technique as capture(), but no XCTUnwrap assertion before evidence is saved.
+    private func actionCapture(_ host: NSView) throws -> (Data, NSBitmapImageRep) {
+        guard let bitmap = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { throw ActionCaptureError.noBitmap }
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        guard let png = bitmap.representation(using: .png, properties: [:]) else { throw ActionCaptureError.noPNG }
+        return (png, bitmap)
+    }
+    private func actionSettled(_ host: NSView, window: NSWindow, key: String) throws {
+        let start = Date(); var previous: Data?; var count = 0
+        while Date().timeIntervalSince(start) < 2 {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+            host.layoutSubtreeIfNeeded(); window.display()
+            let current = try actionCapture(host).0
+            count = current == previous ? count + 1 : 1; previous = current
+            if count >= 3 && Date().timeIntervalSince(start) >= 0.2 { return }
+        }
+        throw ActionCaptureError.unstable(key)
+    }
+    private func makeActionCase(_ key: String) -> (key: String, model: ActionModel, host: NSHostingView<AnyView>, window: NSWindow) {
+        let model = ActionModel()
+        let palette = Fixture(treatment: .pickerOriginal, dark: false, pointSize: 16,
+            registry: ControlRegistry(revision: 0, currentRoute: { _ in "general" }))
+        let content: AnyView = key == "positive-button"
+            ? AnyView(ActionButtonFixture(model: model))
+            : AnyView(MutableFixture(model: model, nested: key == "nested-original",
+                disabled: key == "disabled-picker", palette: palette))
+        let host = NSHostingView(rootView: content)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: 440),
+            styleMask: [.borderless], backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .aqua); window.isReleasedWhenClosed = false
+        window.contentView = host; host.frame = NSRect(x: 0, y: 0, width: 540, height: 440)
+        window.orderBack(nil); window.makeFirstResponder(nil)
+        return (key, model, host, window)
+    }
+    func testMutablePickerActionSubstrateOnly() throws {
+        guard let path = ProcessInfo.processInfo.environment["SOFTMAX_RADIO_MEASUREMENT_DIR"] else {
+            throw XCTSkip("Opt-in mutable action substrate diagnostic only")
+        }
+        _ = NSApplication.shared
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        var failures: [String] = []
+        var records: [[String: Any]] = []
+        var buttonValid = false
+        var disabledValid = false
+        func writeJSON(_ value: [String: Any], _ name: String) throws {
+            try JSONSerialization.data(withJSONObject: value, options: [.prettyPrinted, .sortedKeys])
+                .write(to: root.appendingPathComponent(name + ".json"))
+        }
+        // Button is an independent host; disabled Picker has an independent, retained model.
+        // No synthetic mouse phase: bounded native tracking has not been established/reviewed.
+        let controlOrder = ["positive-button", "disabled-picker", "direct-original", "nested-original"]
+        precondition(controlOrder.prefix(2).elementsEqual(["positive-button", "disabled-picker"]),
+            "Positive and disabled controls must precede all Picker result classification")
+        let ownedCases = controlOrder.map { key in makeActionCase(key) }
+        defer {
+            for item in ownedCases {
+                item.window.endEditing(for: nil); item.window.makeFirstResponder(nil)
+                item.window.contentView = nil; item.window.close()
+            }
+        }
+        // BOTH retained original hosts are rasterized before ANY action (including controls).
+        for item in ownedCases where item.key == "direct-original" || item.key == "nested-original" {
+            let name = "mutable-light-16.0-" + item.key + "-retained-unacted"
+            do {
+                try actionSettled(item.host, window: item.window, key: name)
+                let (png, bitmap) = try actionCapture(item.host)
+                try png.write(to: root.appendingPathComponent(name + ".png"))
+                try writeJSON(["model": item.model.observation,
+                    "tree": metadata(item.host, host: item.host, path: "root"),
+                    "backingScale": Double(item.window.backingScaleFactor),
+                    "rasterSize": [bitmap.pixelsWide, bitmap.pixelsHigh], "png": name + ".png",
+                    "source": ProcessInfo.processInfo.environment["GITHUB_SHA"] ?? "unrecorded"], name)
+            } catch { failures.append(name + ": " + String(describing: error)) }
+        }
+        for item in ownedCases {
+            let (key, model, host, window) = (item.key, item.model, item.host, item.window)
+            let prefix = "mutable-light-16.0-" + key
+            var checkpoints: [[String: Any]] = [], actions: [[String: Any]] = []
+            var previousPNG: Data?
+            func checkpoint(_ phase: String) throws -> [String: Any] {
+                var stable = true
+                do { try actionSettled(host, window: window, key: prefix + "-" + phase) }
+                catch { stable = false; failures.append(prefix + "-" + phase + ": " + String(describing: error)) }
+                let (png, bitmap) = try actionCapture(host)
+                let name = prefix + "-" + phase
+                try png.write(to: root.appendingPathComponent(name + ".png"))
+                let ax = actionAXTree(host)
+                let native = views(host).compactMap { $0 as? NSButton }
+                let value: [String: Any] = ["phase": phase, "stable": stable, "model": model.observation,
+                    "ax": ax.observation, "tree": metadata(host, host: host, path: "root"),
+                    "nativeButtons": native.map { metadata($0, host: host, path: $0.accessibilityIdentifier() ?? "") },
+                    "nativeSelectedCount": native.filter { $0.state == .on }.count,
+                    "nativeRawStates": native.map { button -> [String: Any] in
+                        ["objectIdentity": String(describing: ObjectIdentifier(button)),
+                         "id": button.accessibilityIdentifier() ?? "notExposed", "state": button.state.rawValue,
+                         "axValue": button.accessibilityValue().map { String(describing: $0) } ?? "notExposed"]
+                    },
+                    "png": name + ".png", "rasterChangedSincePrevious": previousPNG.map { $0 != png } ?? false,
+                    "backingScale": Double(window.backingScaleFactor), "rasterSize": [bitmap.pixelsWide, bitmap.pixelsHigh],
+                    "hostSize": size(host.bounds.size), "colorSpace": bitmap.colorSpace.description,
+                    "windowKey": window.isKeyWindow, "appActive": NSApp.isActive,
+                    "firstResponder": window.firstResponder.map { String(describing: type(of: $0)) } ?? "none"]
+                previousPNG = png
+                try writeJSON(value, name)
+                checkpoints.append(value)
+                return value
+            }
+            do {
+                // Retain unacted direct/nested rasters before any action on that host.
+                _ = try checkpoint("unacted")
+                let ids = key == "positive-button" ? ["measurement.positive.button"] : [
+                    "settings.general.appearance.light", "settings.general.text_size.large"]
+                for (index, id) in ids.enumerated() {
+                    let before = model.observation
+                    let beforePNG = try actionCapture(host).0
+                    let pressStart = Date()
+                    var action = pressActionID(id, host: host)
+                    action["modelBefore"] = before
+                    action["modelImmediatelyAfter"] = model.observation
+                    // Preserve the attempted action even if polling/readback later fails.
+                    actions.append(action)
+                    try writeJSON(action, prefix + "-action-" + String(index))
+                    var modelChangeAt: Double?, rasterChangeAt: Double?
+                    let pollStart = Date()
+                    repeat {
+                        host.layoutSubtreeIfNeeded(); window.display()
+                        let elapsed = Date().timeIntervalSince(pressStart)
+                        if modelChangeAt == nil && (model.appearance != (before["appearance"] as? String)
+                            || model.scale != (before["scale"] as? Double)
+                            || model.buttonCount != (before["buttonCount"] as? Int)) { modelChangeAt = elapsed }
+                        let currentPNG = try actionCapture(host).0
+                        if rasterChangeAt == nil && currentPNG != beforePNG { rasterChangeAt = elapsed }
+                        if modelChangeAt != nil || rasterChangeAt != nil { break }
+                        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+                    } while Date().timeIntervalSince(pollStart) < 1.0
+                    action["pollElapsedSeconds"] = Date().timeIntervalSince(pollStart)
+                    action["firstModelChangeSeconds"] = modelChangeAt.map { $0 as Any } ?? "notObserved"
+                    action["firstRasterChangeSeconds"] = rasterChangeAt.map { $0 as Any } ?? "notObserved"
+                    action["pollStopRule"] = "first model OR raster change, otherwise full 1s; then stable fresh readback"
+                    let after = try checkpoint("after-press-" + String(index))
+                    action["readback"] = after
+                    let fresh = actionAXTree(host)
+                    let expected = [model.appearance == "Light" ? "settings.general.appearance.light" : "settings.general.appearance.system",
+                        model.scale == 1.3 ? "settings.general.text_size.large" : "settings.general.text_size.standard"]
+                    let exactValues = (Self.appearanceChoices + Self.sizeChoices).allSatisfy { choice in
+                        let matches = fresh.nodes.filter { ($0.data["id"] as? String) == choice.id }
+                        return matches.count == 1 && matches[0].element != nil
+                            && (matches[0].data["role"] as? String) == NSAccessibility.Role.radioButton.rawValue
+                            && (matches[0].data["value"] as? String) == (expected.contains(choice.id) ? "1" : "0")
+                    }
+                    action["freshAXValueTree"] = fresh.observation
+                    action["freshExactRadioValuesQualified"] = fresh.limits.isEmpty && exactValues
+                    if key != "positive-button" {
+                        action["modelTransitionQualified"] = index == 0
+                            ? model.appearance == "Light" && model.appearance != (before["appearance"] as? String)
+                                && model.appearanceWrites > (before["appearanceWrites"] as? Int ?? 0)
+                                && model.scale == (before["scale"] as? Double)
+                            : model.scale == 1.3 && model.scale != (before["scale"] as? Double)
+                                && model.scaleWrites > (before["scaleWrites"] as? Int ?? 0)
+                                && model.appearance == (before["appearance"] as? String)
+                    }
+                    actions[index] = action
+                    try writeJSON(action, prefix + "-action-" + String(index))
+                }
+            } catch {
+                failures.append(prefix + ": " + String(describing: error))
+            }
+            let stable = checkpoints.count == (key == "positive-button" ? 2 : 3)
+                && checkpoints.allSatisfy { ($0["stable"] as? Bool) == true }
+            let complete = !checkpoints.isEmpty && checkpoints.allSatisfy {
+                let ax = $0["ax"] as? [String: Any]
+                return (ax?["limits"] as? [String])?.isEmpty == true
+            }
+            let finalTree = actionAXTree(host)
+            let radios = finalTree.nodes.filter { ($0.data["role"] as? String) == NSAccessibility.Role.radioButton.rawValue }
+            let initialNative = (checkpoints.first?["nativeButtons"] as? [[String: Any]]) ?? []
+            let finalNative = views(host).compactMap { $0 as? NSButton }
+            let changed = checkpoints.dropFirst().allSatisfy { ($0["rasterChangedSincePrevious"] as? Bool) == true }
+            let pressed = actions.count == (key == "positive-button" ? 1 : 2)
+                && actions.allSatisfy { ($0["attempted"] as? Bool) == true && ($0["returned"] as? Bool) == true }
+            let initialRadios = ((checkpoints.first?["ax"] as? [String: Any])?["nodes"] as? [[String: Any]] ?? [])
+                .filter { ($0["role"] as? String) == NSAccessibility.Role.radioButton.rawValue }
+            let treeMaterialized = complete && initialRadios.count == 6 && radios.count == 6
+            let unchanged = checkpoints.count == 3 && checkpoints.dropFirst().allSatisfy {
+                ($0["rasterChangedSincePrevious"] as? Bool) == false
+            }
+            let disabledActionEvidence = actions.count == 2 && actions.allSatisfy { action in
+                let matches = action["idMatches"] as? [[String: Any]] ?? []
+                let resolved = matches.count == 1 && (matches[0]["protocolConformance"] as? Bool) == true
+                    && (matches[0]["role"] as? String) == NSAccessibility.Role.radioButton.rawValue
+                let nonactionable = (action["resolution"] as? String) == "nonactionable"
+                let refused = (action["attempted"] as? Bool) == true && (action["returned"] as? Bool) == false
+                return resolved && (nonactionable || refused)
+                    && (action["pollElapsedSeconds"] as? Double ?? 0) >= 1.0
+            }
+            if key == "positive-button" {
+                buttonValid = stable && complete && pressed && changed && model.buttonCount == 1
+                    && model.appearanceWrites == 0 && model.scaleWrites == 0
+            } else if key == "disabled-picker" {
+                disabledValid = stable && treeMaterialized && disabledActionEvidence && model.appearance == "System"
+                    && model.scale == 1.0 && model.appearanceWrites == 0 && model.scaleWrites == 0
+                    && model.buttonCount == 0 && unchanged
+                    && initialNative.count == 6 && finalNative.count == 6
+                    && initialNative.map { $0["state"] as? Int } == finalNative.map { Optional($0.state.rawValue) }
+            }
+            let modelChanged = model.appearance == "Light" && model.scale == 1.3
+                && model.appearanceWrites >= 1 && model.scaleWrites >= 1 && model.buttonCount == 0
+            // Native/AX state is retained independently; don't use labels or frame to route actions.
+            let nativeSelectedIDs = finalNative.filter { $0.state == .on }.compactMap { $0.accessibilityIdentifier() }
+            let nativeSelection = finalNative.count == 6
+                && Set(finalNative.compactMap { $0.accessibilityIdentifier() })
+                    == Set((Self.appearanceChoices + Self.sizeChoices).map(\.id))
+                && Set(nativeSelectedIDs) == Set([
+                "settings.general.appearance.light", "settings.general.text_size.large"])
+                && finalNative.filter { $0.state == .on }.count == 2
+                && finalNative.allSatisfy { ($0.accessibilityValue() as? NSNumber)?.intValue == $0.state.rawValue }
+            let freshAXValues = actions.count == 2 && actions.allSatisfy {
+                ($0["freshExactRadioValuesQualified"] as? Bool) == true
+                    && ($0["modelTransitionQualified"] as? Bool) == true
+            }
+            // Public AX function and native display-button identity are independent gates.
+            // Blank display IDs cannot erase qualified public AX action/readback evidence.
+            let works = stable && treeMaterialized && pressed && modelChanged && freshAXValues && changed
+            let resolutions = actions.compactMap { $0["resolution"] as? String }
+            let outcome: String
+            if !buttonValid || (key != "positive-button" && key != "disabled-picker" && !disabledValid) || !stable || !complete {
+                outcome = "harnessinvalid"
+            } else if key == "positive-button" { outcome = "AXworks" }
+            else if !treeMaterialized { outcome = "treeunmaterialized" }
+            else if key == "disabled-picker" { outcome = disabledValid ? "nonactionable" : "harnessinvalid" }
+            else if works { outcome = "AXworks" }
+            else if resolutions.contains("treeunmaterialized") || actions.contains(where: {
+                let tree = $0["freshAXValueTree"] as? [String: Any]
+                return (tree?["limits"] as? [String])?.isEmpty == false
+            }) { outcome = "treeunmaterialized" }
+            else if resolutions.contains("harnessinvalid") { outcome = "harnessinvalid" }
+            else if resolutions.contains("ax-node-nonconforming") { outcome = "ax-node-nonconforming" }
+            else if resolutions.contains("ax-id-not-exposed") { outcome = "ax-id-not-exposed" }
+            else if resolutions.contains("nonactionable") { outcome = "nonactionable" }
+            else { outcome = "ax-no-effect" }
+            let record: [String: Any] = ["case": key, "outcome": outcome, "model": model.observation,
+                "positiveButtonValid": buttonValid, "disabledPickerValid": disabledValid,
+                "stable": stable, "treeMaterialized": treeMaterialized, "actions": actions, "checkpoints": checkpoints,
+                "modelTransitionQualified": modelChanged, "freshExactRadioValuesQualifiedEachPress": freshAXValues,
+                "publicAXFunctional": works, "nativeSelectionAndAXValue": nativeSelection,
+                "nativeSelectedIDs": nativeSelectedIDs, "disabledActionEvidenceQualified": disabledActionEvidence,
+                "nativeIdentityGate": nativeSelection,
+                "nativeIdentityGateMeaning": "separate six exact native IDs + selected IDs + state/AX values; false does not negate public AX function or waive final census",
+                "rasterChangedEachPress": changed, "mouse": "not attempted: bounded tracking unproven",
+                "source": ProcessInfo.processInfo.environment["GITHUB_SHA"] ?? "unrecorded",
+                "productBase": "bb4949eb4ec4667186478142a999cda76ba69532", "os": ProcessInfo.processInfo.operatingSystemVersionString,
+                "pointSize": 16, "theme": "light", "treatment": key,
+                "offlineGates": ["unacted direct and nested full raster/components/geometry versus retained run32 light16original",
+                    "any mismatch is negative; no offsets, tuning, adoption or visual qualification",
+                    "static nested14pt negative remains unchanged; arbitrary proposals/lifecycle not qualified",
+                    "ADR0030: test-only public AX actions do not authorize an AX-only production adapter"]]
+            try writeJSON(record, prefix)
+            records.append(record)
+            withExtendedLifetime(model) {}
+        }
+        try writeJSON(["cases": records, "errors": failures, "source": ProcessInfo.processInfo.environment["GITHUB_SHA"] ?? "unrecorded",
+            "meaning": "mutable public-AX diagnostic only, NOT visual acceptance or production authorization",
+            "outcomes": ["ax-id-not-exposed", "ax-node-nonconforming", "nonactionable", "ax-no-effect",
+                "AXworks", "harnessinvalid", "treeunmaterialized"],
+            "classificationScope": "public AX only; AXworks requires exact IDs, press, model/raster transitions and fresh radio 0/1 values, not native display IDs; ax-no-effect means no fully qualified effect",
+            "offlineFidelityMandatory": true,
+            "offlineFidelityStatus": "pending: direct/nested light16 unacted PNGs must pass retained run32 raster/components/geometry comparison; no visual or production qualification here",
+            "mousePhase": "omitted pending bounded-tracking plan amendment and independent review"], "mutable-action-cases")
+        // Only harness validity is asserted, and only after every available artifact is written.
+        XCTAssertTrue(buttonValid, "Positive SwiftUI Button AX control invalid; Picker negatives uninterpretable")
+        XCTAssertTrue(disabledValid, "Disabled Picker control invalid; Picker negatives uninterpretable")
+        XCTAssertTrue(failures.isEmpty, failures.joined(separator: "\n"))
+    }
     func testPairedNativeMeasurementsOnly() throws {
         guard let path = ProcessInfo.processInfo.environment["SOFTMAX_RADIO_MEASUREMENT_DIR"] else {
             throw XCTSkip("Opt-in measurement only, not visual acceptance")
