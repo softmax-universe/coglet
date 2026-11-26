@@ -11,11 +11,12 @@ final class RadioPresentationMeasurementTests: XCTestCase {
     // Diagnostic interventions ONLY. Replacement-control fidelity is an offline
     // interpretation gate, not implied by successfully drawing these cells.
     private enum Treatment: String, CaseIterable {
-        case original, control, ink, label, disc, combined
+        case original, passive, control, ink, label, disc, combined
         var recolor: Bool { self == .ink || self == .combined }
         var moveLabel: Bool { self == .label || self == .combined }
         var centerDisc: Bool { self == .disc || self == .combined }
     }
+    private final class PassiveCell: NSButtonCell {}
     private final class ProbeCell: NSButtonCell {
         var treatment: Treatment = .control
         var ink = NSColor.labelColor
@@ -30,10 +31,14 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                 backing.origin.x -= 1 // ONE actual raster pixel, not one point.
                 adjusted = controlView.convertFromBacking(backing)
             }
-            let text = NSMutableAttributedString(attributedString: title)
-            if treatment.recolor { text.addAttribute(.foregroundColor, value: ink, range: NSRange(location: 0, length: text.length)) }
             titleApplied = adjusted
-            titleReturned = super.drawTitle(text, withFrame: adjusted, in: controlView)
+            if treatment.recolor {
+                let text = NSMutableAttributedString(attributedString: title)
+                text.addAttribute(.foregroundColor, value: ink, range: NSRange(location: 0, length: text.length))
+                titleReturned = super.drawTitle(text, withFrame: adjusted, in: controlView)
+            } else {
+                titleReturned = super.drawTitle(title, withFrame: adjusted, in: controlView)
+            }
             return titleReturned
         }
         override func drawImage(_ image: NSImage, withFrame frame: NSRect, in controlView: NSView) {
@@ -49,29 +54,6 @@ final class RadioPresentationMeasurementTests: XCTestCase {
             } else { imageUnsnapped = adjusted }
             imageApplied = adjusted
             super.drawImage(image, withFrame: adjusted, in: controlView)
-        }
-    }
-    private func replaceCells(_ buttons: [NSButton], treatment: Treatment, dark: Bool) {
-        for button in buttons {
-            let old = button.cell as! NSButtonCell
-            let probe = ProbeCell(textCell: old.title)
-            probe.setButtonType(.radio)
-            probe.font = old.font; probe.attributedTitle = old.attributedTitle
-            probe.alternateTitle = old.alternateTitle; probe.attributedAlternateTitle = old.attributedAlternateTitle
-            probe.controlSize = old.controlSize; probe.alignment = old.alignment
-            probe.imagePosition = old.imagePosition; probe.imageScaling = old.imageScaling
-            probe.bezelStyle = old.bezelStyle; probe.isBordered = old.isBordered
-            probe.isTransparent = old.isTransparent; probe.showsBorderOnlyWhileMouseInside = old.showsBorderOnlyWhileMouseInside
-            probe.highlightsBy = old.highlightsBy; probe.showsStateBy = old.showsStateBy
-            probe.allowsMixedState = old.allowsMixedState; probe.isHighlighted = old.isHighlighted
-            probe.state = old.state; probe.isEnabled = old.isEnabled
-            probe.target = old.target; probe.action = old.action
-            probe.keyEquivalent = old.keyEquivalent; probe.keyEquivalentModifierMask = old.keyEquivalentModifierMask
-            probe.treatment = treatment
-            probe.ink = NSColor(srgbRed: dark ? 0.925490196 : 0.090196078,
-                green: dark ? 0.960784314 : 0.137254902, blue: dark ? 0.937254902 : 0.113725490, alpha: 1)
-            button.cell = probe
-            button.needsDisplay = true
         }
     }
     private struct Marker: NSViewRepresentable {
@@ -184,6 +166,16 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     "imagePassed": rect(probe.imagePassed), "imageUnsnapped": rect(probe.imageUnsnapped), "imageApplied": rect(probe.imageApplied),
                     "backingBounds": rect(b.convertToBacking(b.bounds)), "highlighted": probe.isHighlighted]
             }
+            if let cell = b.cell as? NSButtonCell {
+                d["nativeCellState"] = ["highlightsBy": cell.highlightsBy.rawValue, "showsStateBy": cell.showsStateBy.rawValue,
+                    "bezelStyle": cell.bezelStyle.rawValue, "bordered": cell.isBordered, "transparent": cell.isTransparent,
+                    "focusRingType": cell.focusRingType.rawValue, "lineBreakMode": cell.lineBreakMode.rawValue,
+                    "wraps": cell.wraps, "truncatesLastVisibleLine": cell.truncatesLastVisibleLine,
+                    "controlSize": cell.controlSize.rawValue, "alignment": cell.alignment.rawValue,
+                    "backgroundStyle": cell.backgroundStyle.rawValue, "interiorBackgroundStyle": cell.interiorBackgroundStyle.rawValue,
+                    "image": cell.image.map { ["description": $0.description, "size": size($0.size), "template": $0.isTemplate] as [String: Any] } ?? [:],
+                    "alternateImage": cell.alternateImage.map { ["description": $0.description, "size": size($0.size), "template": $0.isTemplate] as [String: Any] } ?? [:]] as [String: Any]
+            }
             if let cell = b.cell {
                 let title = cell.titleRect(forBounds: b.bounds), image = cell.imageRect(forBounds: b.bounds)
                 d["cell"] = ["class": NSStringFromClass(type(of: cell)), "size": size(cell.cellSize),
@@ -214,6 +206,17 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                 for (owned, treatment) in variants {
                     let key = "\(dark ? "dark" : "light")-\(pointSize)-\(owned ? "owned-" + treatment.rawValue : "picker")"
                     let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
+                    // MainActor serial fixture only: let native initialization own
+                    // every cell property. NEVER copy or replace an existing cell.
+                    let savedClass = NSButton.cellClass
+                    if owned && treatment != .original {
+                        NSButton.cellClass = treatment == .passive ? PassiveCell.self : ProbeCell.self
+                    }
+                    let expectedClass = NSButton.cellClass
+                    defer {
+                        NSButton.cellClass = savedClass
+                        XCTAssertEqual(NSButton.cellClass.map { ObjectIdentifier($0) }, savedClass.map { ObjectIdentifier($0) })
+                    }
                     let host = NSHostingView(rootView: Fixture(owned: owned, dark: dark, pointSize: pointSize, registry: registry))
                     let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: 440),
                         styleMask: [.borderless], backing: .buffered, defer: false)
@@ -232,7 +235,15 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     let initialStates = nativeButtons.map { $0.state }
                     let initialFrames = nativeButtons.map { $0.frame }
                     let initialIDs: [String?] = nativeButtons.map { $0.accessibilityIdentifier() }
-                    if owned { XCTAssertEqual(nativeButtons.count, 6) }
+                    let initialCells = nativeButtons.map { $0.cell.map(ObjectIdentifier.init) }
+                    if owned {
+                        XCTAssertEqual(nativeButtons.count, 6)
+                        let wanted = expectedClass ?? NSButtonCell.self
+                        for button in nativeButtons {
+                            let cell = try XCTUnwrap(button.cell)
+                            XCTAssertEqual(ObjectIdentifier(type(of: cell)), ObjectIdentifier(wanted), "Factory was not inherited: " + key)
+                        }
+                    }
                     let initialInventory = registry.registrationInventory()
                     let initialMounts = try initialIDs.compactMap { id -> ControlRegistry.Mount? in
                         guard owned, let id else { return nil }
@@ -244,7 +255,15 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         try before.0.write(to: root.appendingPathComponent(key + "-before.png"))
                         try JSONSerialization.data(withJSONObject: metadata(host, host: host, path: "root"), options: [.prettyPrinted, .sortedKeys])
                             .write(to: root.appendingPathComponent(key + "-before.json"))
-                        replaceCells(nativeButtons, treatment: treatment, dark: dark)
+                        if treatment != .passive {
+                            for button in nativeButtons {
+                                let probe = try XCTUnwrap(button.cell as? ProbeCell)
+                                probe.treatment = treatment
+                                probe.ink = NSColor(srgbRed: dark ? 0.925490196 : 0.090196078,
+                                    green: dark ? 0.960784314 : 0.137254902, blue: dark ? 0.937254902 : 0.113725490, alpha: 1)
+                                button.needsDisplay = true
+                            }
+                        }
                     }
                     let start = Date(); var previous: Data?; var count = 0
                     var stable: (Data, NSBitmapImageRep)?
@@ -310,6 +329,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         XCTAssertEqual(nativeButtons.map { $0.state }, initialStates)
                         XCTAssertEqual(nativeButtons.map { $0.frame }, initialFrames)
                         XCTAssertEqual(nativeButtons.map { $0.accessibilityIdentifier() }, initialIDs)
+                        XCTAssertEqual(nativeButtons.map { $0.cell.map(ObjectIdentifier.init) }, initialCells)
                         XCTAssertEqual(registry.registrationInventory(), initialInventory)
                         let finalMounts = try initialIDs.compactMap { id -> ControlRegistry.Mount? in
                             guard let id else { return nil }
@@ -317,7 +337,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                                 .init("window", .text("settings")), .init("control", .text(id))]))
                         }
                         XCTAssertEqual(finalMounts, initialMounts)
-                        if treatment != .original {
+                        if treatment != .original && treatment != .passive {
                             for button in nativeButtons {
                                 let probe = try XCTUnwrap(button.cell as? ProbeCell)
                                 XCTAssertGreaterThan(probe.titleCalls, 0, key + ": uncalled title hook " + button.title)
@@ -329,7 +349,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                 }
             }
         }
-        XCTAssertEqual(cases.count, 42); XCTAssertEqual(Set(cases).count, 42)
+        XCTAssertEqual(cases.count, 48); XCTAssertEqual(Set(cases).count, 48)
         try JSONSerialization.data(withJSONObject: ["cases": cases, "meaning": "measurement complete, NOT visual acceptance"], options: [.prettyPrinted])
             .write(to: root.appendingPathComponent("cases.json"))
     }
