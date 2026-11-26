@@ -15,6 +15,7 @@ use coglet_mock::engine::{ClosureGuest, Context, MockEngine, NativeModule};
 use coglet_runtime::database::{DatabaseStep, Deployment};
 use coglet_runtime::{RuntimeService, cbor, digest};
 use coglet_types::Value as V;
+use coglet_types_current as coglet_types;
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
@@ -30,6 +31,7 @@ use std::{
 mod factory;
 mod factory_dispatch_result;
 mod factory_goals;
+mod factory_research;
 use factory_dispatch_result::dispatch_result_consumed;
 #[rustfmt::skip]
 #[path = "../../../spikes/cross-engine-hash/host-wasmtime/src/nancanon.rs"]
@@ -236,7 +238,7 @@ impl Fx {
         let (code, _, max_pages) = factory_wasm().clone();
         let root = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
         let cat = catalog();
-        let manifest = json!({"version":"0.2","id":C,"subscriptions":[],
+        let manifest = json!({"version":"1.1","id":C,"subscriptions":[],
             "required_capabilities":["db.read","db.write"],
             "exclusive_outputs":[],"budgets":{"compute_mode":mode,"compute":2_000_000_000u64,
             "memory_pages":max_pages,"host_bytes":4_000_000,"wall_time_us":60_000_000,"max_events":1},
@@ -258,7 +260,7 @@ impl Fx {
                 .unwrap(),
         )
         .unwrap();
-        let mut provenance: Value = coglet_types::decode("hub-build-record", &raw)
+        let mut provenance: Value = ::coglet_types::decode("hub-build-record", &raw)
             .unwrap()
             .deserialized()
             .unwrap();
@@ -460,7 +462,7 @@ fn scenario<E: SharedEngine>(engine: E, fx: Fx) {
     let mut service = fx.service();
     service.enqueue(fx.event(0, "E1", "active")).unwrap();
     let result = fx.step(&mut service, &mut db, &engine).unwrap().unwrap();
-    assert_eq!(result["journal"]["version"], "0.2");
+    assert_eq!(result["journal"]["version"], "1.1");
     assert_eq!(result["journal"]["status"], "committed");
     db.dispatch_fence().unwrap();
     // Real DB effects of get/query/relations/update/append/enqueue in one commit.
@@ -557,7 +559,7 @@ fn scenario<E: SharedEngine>(engine: E, fx: Fx) {
     drop(service);
     let mut service = RuntimeService::open(&fx.wal, &fx.setup, 8).unwrap();
     let sealed = service.export_trace(&trace_id, 23).unwrap();
-    assert_eq!(sealed["trailing_boundary"]["version"], "0.2");
+    assert_eq!(sealed["trailing_boundary"]["version"], "1.1");
     assert_eq!(
         coglet_runtime::Runtime::import_trace(&sealed)
             .unwrap()

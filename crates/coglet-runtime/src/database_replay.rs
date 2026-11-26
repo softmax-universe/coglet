@@ -349,10 +349,12 @@ impl Runtime {
         let mut hashes = Vec::new();
         for raw in records {
             // Checks the schema and the record hash over the exact bytes.
-            let record = database_projection_with_profile(raw, candidate.contract_profile)?;
             let rule = candidate.contract_profile.rule(RECORD_RULE);
-            let native = crate::profile_codec::decode(rule, raw)?;
-            if crate::profile_codec::encode(rule, &native)? != *raw {
+            // Public replay accepts only current DB 1.1, including the selected
+            // naming profile. Historical 0.2 bytes belong to private WAL recovery.
+            let native = hash_upgrade::decode_current(rule, raw)?;
+            let record = database_projection_with_profile(raw, candidate.contract_profile)?;
+            if coglet_types::encode_profile(&native)? != *raw {
                 return Err("replay record bytes are not canonical".into());
             }
             let calls = get(&native, "calls")

@@ -84,10 +84,17 @@ impl ContractProfile {
     /// This is structural validation, not capability admission or DB authority.
     pub fn validate_manifest(self, manifest: &Value) -> Result<()> {
         let rule = match (self, manifest["version"].as_str()) {
-            (Self::Surface01, Some("0.1")) => "abi::manifest",
-            (Self::Surface01, Some("0.2")) => "database::db-manifest",
-            (Self::Surface02, Some("0.1")) => "surface02::s02-manifest",
-            (Self::Surface02, Some("0.2")) => "surface02::s02-db-manifest",
+            (Self::Surface01, Some("1.0")) => "abi::manifest",
+            (Self::Surface01, Some("1.1")) => "database::db-manifest",
+            (Self::Surface02, Some("1.0")) => "surface02::s02-manifest",
+            (Self::Surface02, Some("1.1")) => "surface02::s02-db-manifest",
+            // Private historical scope only; the projection maps the version.
+            (Self::Surface02, Some("0.1")) if crate::hash_upgrade::historical() => {
+                "surface02::s02-manifest"
+            }
+            (Self::Surface02, Some("0.2")) if crate::hash_upgrade::historical() => {
+                "surface02::s02-db-manifest"
+            }
             _ => return Err("unsupported manifest format".into()),
         };
         validate(rule, manifest)

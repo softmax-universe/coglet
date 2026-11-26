@@ -188,7 +188,9 @@ impl DurableStore {
                     return Err("WAL database frame also carries a JSON record".into());
                 }
                 let profile = crate::ContractProfile::from_setup(&transaction["state"])?;
-                let projection = database_projection_with_profile(&bytes, profile)?;
+                let projection = crate::hash_upgrade::historical_scope(true, || {
+                    database_projection_with_profile(&bytes, profile)
+                })?;
                 if db_artifacts_hash.is_some() && projection["status"] != "committed" {
                     return Err("WAL artifacts receipt on non-committed record".into());
                 }
@@ -196,10 +198,8 @@ impl DurableStore {
                 raw_records.push(Some(bytes));
                 db_artifacts_hashes.push(db_artifacts_hash);
             } else if !record.is_null() {
-                validate_record(
-                    record,
-                    crate::ContractProfile::from_setup(&transaction["state"])?,
-                )?;
+                let profile = crate::ContractProfile::from_setup(&transaction["state"])?;
+                crate::hash_upgrade::historical_scope(true, || validate_record(record, profile))?;
                 journal.push(record.clone());
                 raw_records.push(None);
                 db_artifacts_hashes.push(None);
@@ -376,7 +376,7 @@ fn validate_record(record: &Value, profile: crate::ContractProfile) -> Result<()
     profile.validate(
         if record.get("step").is_some() {
             "step-record"
-        } else if record["version"] == "0.2" {
+        } else if crate::hash_upgrade::database_version(&record["version"]) {
             "database::db-boundary-record"
         } else {
             "boundary-record"
@@ -401,7 +401,19 @@ pub(crate) fn database_projection_with_profile(
     raw: &[u8],
     profile: crate::ContractProfile,
 ) -> Result<Value> {
-    let record = crate::profile_codec::decode(profile.rule("database::db-step-record"), raw)?;
+    let record = if profile == crate::ContractProfile::Surface01 {
+        // ADR-0035: only the private historical reader may decode the frozen
+        // 0.x pins; public admission requires the current hash identity.
+        let parsed = coglet_types::decode_profile(raw)?;
+        let version = project(&parsed, 0)?["version"].clone();
+        if crate::hash_upgrade::historical() && crate::hash_upgrade::legacy_version(&version) {
+            coglet_types::decode("database::db-step-record", raw)?
+        } else {
+            crate::hash_upgrade::decode_current("database::db-step-record", raw)?
+        }
+    } else {
+        crate::profile_codec::decode(profile.rule("database::db-step-record"), raw)?
+    };
     let V::Map(entries) = &record else {
         return Err("database record is not a map".into());
     };

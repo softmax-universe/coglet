@@ -32,6 +32,8 @@ and the other ADR status decisions remain separate.
 | 0034 | [Ready-output retrieval before optional embedded runtime pumping](0034-ready-output-service.md) | Proposed; implementation qualification separate |
 | 0035 | [State hash is the git SHA-256 tree id](0035-state-hash-git-tree-id.md) | Proposed; direction decided by David 2026-11-24 (unforged staging), implementation separate |
 | 0037 | [Baby Bear iOS command disposition for the embedded cutover](0037-babybear-ios-command-disposition.md) | Proposed; status admission only, physical qualification separate |
+| 0038 | [Private observation ownership and transfer fences](0038-private-observation-ownership.md) | Accepted decision (#204); implementation qualification separate |
+| 0039 | [Fail-closed iOS process-scoped runtime clock](0039-ios-process-runtime-clock.md) | Accepted decision (#207); renumbered from duplicate 0038; implementation and physical qualification separate |
 
 0002 belongs to common conventions; the platform findings retain their evidence
 unchanged under 0008. After `spec-v0`, changes to frozen contracts require an ADR,

@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 from test_common import encode, decode
+from state_hash import snapshot_hash
 
 MAX_PATCH = 64 * 1024 * 1024
 MAX_TAIL = 65536
@@ -19,7 +20,7 @@ def normalize(method, now):
 
 def tree(files):
     """ABI snapshot hash, restricted to absolute /code paths; no new hash format."""
-    return hashlib.sha256(encode({'/code/' + p: h for p, h in files.items()})).hexdigest()
+    return snapshot_hash({'/code/' + p: h for p, h in files.items()})
 
 
 def signing(patch, hub, coglet):
@@ -29,7 +30,7 @@ def signing(patch, hub, coglet):
 
 def code_path(path):
     return (isinstance(path, str) and re.fullmatch(r'[a-zA-Z0-9_.-]{1,128}(/[a-zA-Z0-9_.-]{1,128}){0,31}', path)
-            and all(part not in {'.', '..'} for part in path.split('/')))
+            and all(part not in {'.', '..'} and part.lower() != '.git' for part in path.split('/')))
 
 
 class Rejected(ValueError):
@@ -75,7 +76,7 @@ def apply(files, generation, patch, installed=True):
 def log_bytes(path, file_offset, content):
     # Same canonical JSONL convention as ABI inbox; logs may contain arbitrary bytes.
     if (not isinstance(path, str) or not path.startswith('/logs/')
-            or any(part in {'', '.', '..'} for part in path[1:].split('/'))
+            or any(part in {'', '.', '..'} or part.lower() == '.git' for part in path[1:].split('/'))
             or any(ord(c) < 32 or ord(c) == 127 or c == '\\' for c in path)):
         raise Rejected('invalid_argument', 'log_path')
     # Python permits lone surrogates; the wire/ABI requires actual UTF-8.

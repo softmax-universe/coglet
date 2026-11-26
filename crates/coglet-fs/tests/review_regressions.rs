@@ -92,7 +92,7 @@ fn git_store_rejects_uninitialized_subdirectory_without_writing_parent() {
 }
 
 #[test]
-fn git_incompatible_log_name_refuses_projection_without_rejecting_guest_path() {
+fn git_incompatible_log_name_is_rejected_before_snapshot_or_projection() {
     let dir = tempfile::tempdir().unwrap();
     assert!(
         Command::new("git")
@@ -103,11 +103,24 @@ fn git_incompatible_log_name_refuses_projection_without_rejecting_guest_path() {
             .success()
     );
     let mut tx = Snapshot::default().transaction();
-    tx.append("/logs/.git/config", b"valid guest path").unwrap();
-    assert!(
-        GitStore::new(dir.path())
-            .flush_logs(&tx.commit(), None)
-            .is_err()
-    );
-    assert!(GitStore::new(dir.path()).logs_head().unwrap().is_none());
+    let before = tx.snapshot().tree_hash();
+    // ADR-0035 rejects these at ABI admission, before the logs-only GitStore
+    // guard is reachable. Refusal must leave the snapshot and ref untouched.
+    for path in [
+        "/logs/.git/config",
+        "/logs/.Git/config",
+        "/logs/nested/.GIT/x",
+    ] {
+        assert_eq!(
+            tx.append(path, b"invalid guest path"),
+            Err(Error::PermissionDenied)
+        );
+        assert_eq!(tx.snapshot().tree_hash(), before);
+        assert!(GitStore::new(dir.path()).logs_head().unwrap().is_none());
+    }
+    tx.append("/logs/git/config", b"valid guest path").unwrap();
+    GitStore::new(dir.path())
+        .flush_logs(&tx.commit(), None)
+        .unwrap();
+    assert!(GitStore::new(dir.path()).logs_head().unwrap().is_some());
 }

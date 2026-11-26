@@ -1,5 +1,5 @@
-//! Explicitly opt-in ABI 0.2 client. Replies are provisional until step commit.
-//! This module does not enable DB admission in a 0.1 runtime or grant authority.
+//! Explicitly opt-in ABI 1.1 client. Replies are provisional until step commit.
+//! This module does not enable DB admission in a plain ABI runtime or grant authority.
 use crate::{Context, Host, HostError};
 use coglet_types::{
     DatabaseDbEnqueue, DatabaseDbEnqueued, DatabaseDbFailed, DatabaseDbPage, DatabaseDbStatement,
@@ -10,7 +10,7 @@ use serde::Serialize;
 pub const MAX_MESSAGE: usize = 65_536;
 pub const OUTPUT_CAPACITY: usize = MAX_MESSAGE + 4;
 
-/// Synchronous, copied input/output boundary, separate from the frozen 0.1 Host.
+/// Synchronous, copied input/output boundary, separate from the plain ABI Host.
 pub trait DbHost {
     fn db(&mut self, request: &[u8], output: &mut [u8]) -> i32;
 }

@@ -1,6 +1,6 @@
 # Factory DB guest and runtime qualification — in progress
 
-ABI 0.2 is explicitly opted in. Frozen ABI 0.1 loaders still reject
+ABI 1.1 is explicitly opted in (ADR-0035). Plain ABI 1.0 loaders still reject
 `coglet_v0.db`. The borrowed runtime service path now executes DB steps, publishes
 full-state decisions through the WAL, and replays recorded DB results offline.
 **Milestone D is not yet qualified or landed:** hosted exact-head required CI,

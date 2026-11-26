@@ -104,7 +104,8 @@ class WorkflowBinding(unittest.TestCase):
             "transform-native": "source",
             "transform-publication": "source",
             "transform-runtime-arm": "source, transform-publication",
-            "rust": "source, transform-native, transform-publication, transform-runtime-arm",
+            "rust-core": "source, transform-native, transform-publication, transform-runtime-arm",
+            "factory": "source",
         }
         for name, dependencies in needs.items():
             job = jobs[name]
@@ -115,7 +116,7 @@ class WorkflowBinding(unittest.TestCase):
         self.assertNotRegex(native, r"(?m)^\s+if:")
         self.assertEqual(re.findall(r"^            arch: (\w+)$", native, re.M), ["x86_64", "aarch64"])
         self.assertIn("check.py --native-leg", native)
-        aggregate = jobs["rust"]
+        aggregate = jobs["rust-core"]
         self.assertIn("    if: always()", aggregate)
         self.assertIn("test '${{ needs.source.result }}' = 'success'", aggregate)
         self.assertIn("test '${{ needs.transform-native.result }}' = 'success'", aggregate)

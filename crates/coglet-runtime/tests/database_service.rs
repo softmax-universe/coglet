@@ -12,6 +12,7 @@ use coglet_mock::engine::{ClosureGuest, Context, MockEngine, NativeModule};
 use coglet_runtime::database::{DatabaseStep, Deployment, JournalGate, Publication};
 use coglet_runtime::{DurableStore, RuntimeService, cbor, digest};
 use coglet_types::Value as V;
+use coglet_types_current as coglet_types;
 use serde_json::{Value, json};
 use std::{
     path::PathBuf,
@@ -184,7 +185,7 @@ impl Fx {
     fn new(code: Vec<u8>, mode: &str) -> Self {
         let root = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
         let cat = catalog();
-        let manifest = json!({"version":"0.2","id":C,"subscriptions":[],
+        let manifest = json!({"version":"1.1","id":C,"subscriptions":[],
             "required_capabilities":["db.read","db.write","expression.set_expression"],
             "exclusive_outputs":[],"budgets":{"compute_mode":mode,"compute":1_000_000,"memory_pages":3,
             "host_bytes":1_000_000,"wall_time_us":30_000_000,"max_events":1},
@@ -206,7 +207,7 @@ impl Fx {
                 .unwrap(),
         )
         .unwrap();
-        let mut provenance: Value = coglet_types::decode("hub-build-record", &raw)
+        let mut provenance: Value = ::coglet_types::decode("hub-build-record", &raw)
             .unwrap()
             .deserialized()
             .unwrap();
@@ -417,7 +418,7 @@ fn commit_and_reopen<E: SharedEngine>(engine: E, fx: Fx, runs: Option<Arc<Atomic
         .step(&mut service, &mut db, &engine, None)
         .unwrap()
         .unwrap();
-    assert_eq!(result["journal"]["version"], "0.2");
+    assert_eq!(result["journal"]["version"], "1.1");
     assert_eq!(result["journal"]["status"], "committed");
     assert_eq!(service.queued(), 0);
     db.dispatch_fence().unwrap();

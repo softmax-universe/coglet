@@ -1,4 +1,4 @@
-# ADR-0038: Fail-closed iOS process-scoped runtime clock
+# ADR-0039: Fail-closed iOS process-scoped runtime clock
 
 - Status: Accepted on merge (implementation remains gated until merge)
 - Date: 2026-11-26

@@ -181,7 +181,10 @@ impl Builder {
             return Err(Error::Denied);
         }
         let parsed: Value = serde_json::from_slice(&manifest)?;
-        checked("manifest", &parsed)?;
+        // Keep router/provenance admission frozen, but publish only the current
+        // ABI manifest. The old hub codec deliberately rejects ABI 1.0.
+        let manifest_bytes = coglet_proto::wire::encode(&parsed).map_err(|_| Error::Invalid)?;
+        coglet_types_current::decode("manifest", &manifest_bytes).map_err(|_| Error::Invalid)?;
         if self.r3.is_some()
             && (parsed["budgets"]["compute_mode"] != "wamr-2.4.3-fast-cumulative-v1"
                 || parsed["budgets"]["memory_pages"]

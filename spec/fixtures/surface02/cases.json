@@ -669,7 +669,7 @@
     "name": "manifest-app-opt-in",
     "type": "s02-manifest",
     "value": {
-      "version": "0.1",
+      "version": "1.0",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -690,13 +690,13 @@
       }
     },
     "valid": true,
-    "cbor_hex": "a66269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e316d737562736372697074696f6e73817818736f66746d61782e6170702e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+    "cbor_hex": "a66269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63312e306d737562736372697074696f6e73817818736f66746d61782e6170702e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
   },
   {
     "name": "manifest-app-frozen-refused",
     "type": "manifest",
     "value": {
-      "version": "0.1",
+      "version": "1.0",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -722,7 +722,7 @@
     "name": "manifest-closed",
     "type": "s02-manifest",
     "value": {
-      "version": "0.1",
+      "version": "1.0",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -749,7 +749,7 @@
     "name": "manifest-two-component-compatible",
     "type": "s02-manifest",
     "value": {
-      "version": "0.1",
+      "version": "1.0",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "speech.view_changed"
@@ -770,13 +770,13 @@
       }
     },
     "valid": true,
-    "cbor_hex": "a66269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e316d737562736372697074696f6e7381737370656563682e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+    "cbor_hex": "a66269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63312e306d737562736372697074696f6e7381737370656563682e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
   },
   {
     "name": "db-manifest-app-opt-in",
     "type": "s02-db-manifest",
     "value": {
-      "version": "0.2",
+      "version": "1.1",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -802,13 +802,13 @@
       }
     },
     "valid": true,
-    "cbor_hex": "a76269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e32686461746162617365a36a736368656d615f6d6178016a736368656d615f6d696e006c636174616c6f675f686173687840303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030306d737562736372697074696f6e73817818736f66746d61782e6170702e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+    "cbor_hex": "a76269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63312e31686461746162617365a36a736368656d615f6d6178016a736368656d615f6d696e006c636174616c6f675f686173687840303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030306d737562736372697074696f6e73817818736f66746d61782e6170702e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
   },
   {
     "name": "db-manifest-app-frozen-refused",
     "type": "db-manifest",
     "value": {
-      "version": "0.2",
+      "version": "1.1",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -839,7 +839,7 @@
     "name": "db-manifest-closed",
     "type": "s02-db-manifest",
     "value": {
-      "version": "0.2",
+      "version": "1.1",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -871,7 +871,7 @@
     "name": "db-manifest-two-component-compatible",
     "type": "s02-db-manifest",
     "value": {
-      "version": "0.2",
+      "version": "1.1",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "speech.view_changed"
@@ -897,13 +897,13 @@
       }
     },
     "valid": true,
-    "cbor_hex": "a76269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63302e32686461746162617365a36a736368656d615f6d6178016a736368656d615f6d696e006c636174616c6f675f686173687840303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030306d737562736372697074696f6e7381737370656563682e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
+    "cbor_hex": "a76269647847636f676c65743a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626762756467657473a667636f6d70757465016a686f73745f6279746573016a6d61785f6576656e7473016c636f6d707574655f6d6f6465646675656c6c6d656d6f72795f7061676573016c77616c6c5f74696d655f7573016776657273696f6e63312e31686461746162617365a36a736368656d615f6d6178016a736368656d615f6d696e006c636174616c6f675f686173687840303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030306d737562736372697074696f6e7381737370656563682e766965775f6368616e676564716578636c75736976655f6f7574707574738173736f66746d61782e6170705f636f6e74726f6c7572657175697265645f6361706162696c6974696573816b736f66746d61782e617070"
   },
   {
     "name": "manifest-format-not-profile",
     "type": "s02-manifest",
     "value": {
-      "version": "0.2",
+      "version": "1.1",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -926,13 +926,241 @@
     "valid": false
   },
   {
+    "name": "manifest-old-version-0.1",
+    "type": "manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "s02-manifest-old-version-0.1",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "manifest-old-version-0.2",
+    "type": "manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "s02-manifest-old-version-0.2",
+    "type": "s02-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      }
+    },
+    "valid": false
+  },
+  {
     "name": "db-manifest-format-not-profile",
+    "type": "s02-db-manifest",
+    "value": {
+      "version": "1.0",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "softmax.app.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "db-manifest-old-version-0.1",
+    "type": "db-manifest",
+    "value": {
+      "version": "0.1",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "s02-db-manifest-old-version-0.1",
     "type": "s02-db-manifest",
     "value": {
       "version": "0.1",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
-        "softmax.app.view_changed"
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "db-manifest-old-version-0.2",
+    "type": "db-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
+      ],
+      "required_capabilities": [
+        "softmax.app"
+      ],
+      "exclusive_outputs": [
+        "softmax.app_control"
+      ],
+      "budgets": {
+        "compute": 1,
+        "compute_mode": "fuel",
+        "memory_pages": 1,
+        "wall_time_us": 1,
+        "max_events": 1,
+        "host_bytes": 1
+      },
+      "database": {
+        "schema_min": 0,
+        "schema_max": 1,
+        "catalog_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "s02-db-manifest-old-version-0.2",
+    "type": "s02-db-manifest",
+    "value": {
+      "version": "0.2",
+      "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "subscriptions": [
+        "speech.view_changed"
       ],
       "required_capabilities": [
         "softmax.app"
@@ -960,7 +1188,7 @@
     "name": "manifest-subscriptions-namespace-refused",
     "type": "s02-manifest",
     "value": {
-      "version": "0.1",
+      "version": "1.0",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "other.app.state"
@@ -986,7 +1214,7 @@
     "name": "manifest-required_capabilities-namespace-refused",
     "type": "s02-manifest",
     "value": {
-      "version": "0.1",
+      "version": "1.0",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"
@@ -1012,7 +1240,7 @@
     "name": "manifest-exclusive_outputs-namespace-refused",
     "type": "s02-manifest",
     "value": {
-      "version": "0.1",
+      "version": "1.0",
       "id": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "subscriptions": [
         "softmax.app.view_changed"

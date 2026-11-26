@@ -9,17 +9,61 @@ fn profile(json: &serde_json::Value) -> Value {
 }
 
 #[test]
-fn shared_database_schema_is_identical() {
+fn database_schema_changes_only_its_explicit_record_versions() {
     let old: serde_json::Value = serde_json::from_str(coglet_types_hub0::SCHEMA_JSON).unwrap();
     let current: serde_json::Value = serde_json::from_str(current_types::SCHEMA_JSON).unwrap();
+    let versioned = [
+        "database::db-manifest",
+        "database::db-step-record",
+        "database::db-trace",
+        "database::db-boundary-record",
+    ];
     let mut count = 0;
+    let mut changed = 0;
     for (rule, shape) in old.as_object().unwrap() {
         if rule.starts_with("database::") {
-            assert_eq!(Some(shape), current.get(rule), "shared rule {rule}");
+            let mut expected = shape.clone();
+            if versioned.contains(&rule.as_str()) {
+                fn bump_version(shape: &mut serde_json::Value) -> usize {
+                    if let Some(fields) = shape.get_mut("fields").and_then(|f| f.as_array_mut()) {
+                        let Some(version) = fields.iter_mut().find(|f| f["name"] == "version")
+                        else {
+                            return 0;
+                        };
+                        assert_eq!(version["type"], json!({"op":"literal", "value":"0.2"}));
+                        version["type"]["value"] = json!("1.1");
+                        1
+                    } else {
+                        // Step records are intersections of record groups.
+                        shape["items"]
+                            .as_array_mut()
+                            .unwrap()
+                            .iter_mut()
+                            .map(bump_version)
+                            .sum()
+                    }
+                }
+                assert!(bump_version(&mut expected) > 0);
+                changed += 1;
+            }
+            assert_eq!(Some(&expected), current.get(rule), "shared rule {rule}");
             count += 1;
         }
     }
-    assert!(count > 0, "database namespace must not be silently omitted");
+    assert_eq!(changed, versioned.len());
+    assert_eq!(
+        count,
+        current
+            .as_object()
+            .unwrap()
+            .keys()
+            .filter(|r| r.starts_with("database::"))
+            .count()
+    );
+    assert!(
+        count > changed,
+        "non-versioned database rules must remain shared"
+    );
 }
 
 #[test]
@@ -55,9 +99,14 @@ fn provenance_revisions_do_not_cross_validate() {
     assert!(current_types::validate("hub-build-record", &value).is_err());
     let mut new = old.clone();
     new.as_object_mut().unwrap().remove("source_commit");
-    new["version"] = json!("1.0");
+    // ADR-0035 preserves the already-published CBOR manage 1.0 contract;
+    // git tree identities therefore arrive in router major 2.0.
+    new["version"] = json!("2.0");
     new["source_tree"] = json!("ab".repeat(32));
     let value = profile(&new);
     current_types::validate("hub-build-record", &value).unwrap();
     assert!(validate("hub-build-record", &value).is_err());
+    new["version"] = json!("1.0");
+    assert!(current_types::validate("hub-build-record", &profile(&new)).is_err());
+    assert!(validate("hub-build-record", &profile(&new)).is_err());
 }

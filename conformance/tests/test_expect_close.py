@@ -72,7 +72,7 @@ class CloseValidation(unittest.TestCase):
         for path in (CONF / 'surface02-runtime-fixtures').glob('*-setup.json'):
             provisioned = json.loads(path.read_text())
             self.assertEqual(provisioned['contract_profile'], 'surface-0.2')
-            self.assertEqual(provisioned['manifest']['version'], '0.1')
+            self.assertEqual(provisioned['manifest']['version'], '1.0')
             self.assertNotIn('native_schedule', provisioned)  # no guest execution claim
 
 

@@ -322,7 +322,7 @@ impl RuntimeService {
             return Err("invalid_argument".into());
         }
         Ok(
-            json!({"step":Self::last_step(&self.state),"snapshot_hash":runtime.files.tree_hash()?,
+            json!({"step":Self::last_step(&self.state),"snapshot_hash":runtime.files.frozen_hub0_hash()?,
             "text":&text[start..end],"next_offset":end,"eof":end==raw.len()}),
         )
     }
@@ -398,7 +398,7 @@ impl RuntimeService {
                     return Err("resource_exhausted".into());
                 }
                 if request["params"]["expected_hash"]
-                    != self.receiver_snapshot().files.tree_hash()?
+                    != self.receiver_snapshot().files.frozen_hub0_hash()?
                 {
                     return Err("conflict".into());
                 }
@@ -454,7 +454,7 @@ impl RuntimeService {
         );
         next.receiver.pending.push(id.into());
         let scope = receiver_scope(request);
-        let hash = self.receiver_snapshot().files.tree_hash()?;
+        let hash = self.receiver_snapshot().files.frozen_hub0_hash()?;
         next.receiver.audit.push(json!({"operation_id":id,"actor":scope.actor,"ticket":scope.ticket,
             "method":method,"target":request["target"],"step":Self::last_step(&next),"before_hash":hash,"after_hash":hash,"outcome":"queued"}));
         self.commit_receiver(next)?;
@@ -494,7 +494,7 @@ impl RuntimeService {
             return Err("unavailable".into());
         }
         let request = self.state.receiver.operations[id].request.clone();
-        let before = self.receiver_snapshot().files.tree_hash()?;
+        let before = self.receiver_snapshot().files.frozen_hub0_hash()?;
         let mut next = self.state.clone();
         let outcome = authorized()
             .and_then(|()| Self::receiver_stage(&mut next, &request))
@@ -514,7 +514,7 @@ impl RuntimeService {
             .map(|s| &s.runtime)
             .unwrap_or(&next.runtime)
             .files
-            .tree_hash()?;
+            .frozen_hub0_hash()?;
         next.receiver.pending.remove(0);
         let step = Self::last_step(&next);
         let saved = next.receiver.operations.get_mut(id).unwrap();
@@ -614,7 +614,7 @@ impl RuntimeService {
                 Some(json!({"step":Self::last_step(&next),"receipt":receipt}));
         }
         next.receiver.pending.retain(|pending| pending != id);
-        let hash = self.receiver_snapshot().files.tree_hash()?;
+        let hash = self.receiver_snapshot().files.frozen_hub0_hash()?;
         next.receiver.audit.push(json!({"operation_id":id,"actor":actor,"ticket":ticket,"method":saved.scope.method,
             "target":saved.request["target"],"step":Self::last_step(&next),"before_hash":hash,"after_hash":hash,"outcome":"cancelled"}));
         Self::receiver_retire_step(&mut next, id)?;
@@ -643,7 +643,7 @@ impl RuntimeService {
         let scope = receiver_scope(request);
         let method = scope.method.as_str();
         let (path, after, wake) = if method == "debug.write" {
-            if request["params"]["expected_hash"] != runtime.files.tree_hash()? {
+            if request["params"]["expected_hash"] != runtime.files.frozen_hub0_hash()? {
                 return Err("conflict".into());
             }
             (

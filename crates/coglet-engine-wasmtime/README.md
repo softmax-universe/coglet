@@ -54,8 +54,8 @@ WAMR, without fixture-name dispatch. Workspace CI also executes the named
 
 The differential test executes identical core-Wasm bytes and inputs in both
 engines, with fresh instances each step and prior raw state as the next input.
-It compares raw bytes and the actual `coglet_fs::Snapshot::tree_hash()` (CBOR paths
-to lowercase hex, no float normalization), including code and state files. Four
+It compares raw bytes and the actual `coglet_fs::Snapshot::tree_hash()` (Git
+SHA-256 tree id, no float normalization), including code and state files. Four
 guest programs cover evolving integers, every R3 scalar f32/f64 operation,
 promote/demote, and bit-exact sign/payload operations; adversarial inputs include
 zeros, subnormals, infinities and NaN payloads. Unrewritten arithmetic is refused
