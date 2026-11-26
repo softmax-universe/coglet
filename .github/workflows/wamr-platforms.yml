@@ -71,13 +71,14 @@ jobs:
       - name: iOS interpreter archive and SDK link probe (not a device run)
         run: bash crates/coglet-runtime/tools/apple-link-probe.sh
   # Main's 19-test inventory overflowed a 25m shard: comparison alone took
-  # 16m11s. Isolate that outlier, preserving the other three partitions and caps.
+  # 16m11s. Isolate that outlier; split only original shard 0 after its main
+  # run also exceeded the cap. Preserve other memberships and all caps.
   apple-factory:
     needs: apple-runtime
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4]
     runs-on: [self-hosted, macOS, coglet-mac]
     timeout-minutes: 25
     env:

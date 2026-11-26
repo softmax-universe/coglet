@@ -71,14 +71,25 @@ class Partitions(unittest.TestCase):
         self.assertEqual(commands[3], native.BASE + ["--doc", "--", "--test-threads=1"])
 
     def test_factory_command_uses_all_exact_selected_names(self):
-        names = sorted(["a", "b", "c", "d", native.ISOLATED])
-        inventory = "\n".join(f"{name}: test" for name in names) + "\n5 tests, 0 benchmarks\n"
+        names = sorted(["a", "b", "c", "d", "e", "f", native.ISOLATED])
+        inventory = "\n".join(f"{name}: test" for name in names) + "\n7 tests, 0 benchmarks\n"
         with patch.object(native, "run", side_effect=[inventory, None]) as run, \
                 patch("sys.argv", ["apple-native-tests.py", "factory", "--shard", "0"]):
             native.main()
         self.assertEqual(run.call_args_list[1].args[0], native.BASE +
                          ["--test", "factory_database", "--", "--exact", "--test-threads=1"] +
                          native.partition(names, 0))
+
+    def test_new_split_shard_command_and_empty_selection(self):
+        names = sorted(["a", "b", "c", "d", "e", "f", native.ISOLATED])
+        inventory = "\n".join(f"{name}: test" for name in names) + "\n7 tests, 0 benchmarks\n"
+        with patch.object(native, "run", side_effect=[inventory, None]) as run, \
+                patch("sys.argv", ["apple-native-tests.py", "factory", "--shard", "4"]):
+            native.main()
+        self.assertEqual(run.call_args_list[1].args[0], native.BASE +
+                         ["--test", "factory_database", "--", "--exact", "--test-threads=1", "d"])
+        with self.assertRaises(ValueError):
+            native.partition(["a", "b", "c", native.ISOLATED, "x"], 4)
 
     def test_isolated_command_and_execution_failure_propagate(self):
         names = sorted(["a", "b", "c", "d", native.ISOLATED])
@@ -96,7 +107,7 @@ class Partitions(unittest.TestCase):
             native.run([sys.executable, "-m", "sys"])
 
     def test_every_discovered_name_runs_exactly_once_including_future_tests(self):
-        for count in (5, 14, 19, 31):
+        for count in (7, 14, 19, 31):
             fixture = [native.ISOLATED] + [f"module::test_{i:02}" for i in range(count - 1)]
             names = native.factory_names("\n".join(f"{name}: test" for name in fixture)
                                          + f"\n\n{count} tests, 0 benchmarks\n")
@@ -104,9 +115,13 @@ class Partitions(unittest.TestCase):
             self.assertEqual(sorted(selected), names)
             self.assertEqual(len(set(selected)), count)
             self.assertEqual(native.partition(names, 3), [native.ISOLATED])
-            for shard in range(native.ROUND_ROBIN_SHARDS):
+            for shard in (1, 2):
                 self.assertEqual(native.partition(names, shard),
                                  [name for name in names[shard::3] if name != native.ISOLATED])
+            self.assertEqual(native.partition(names, 0),
+                             [name for name in names[0::6] if name != native.ISOLATED])
+            self.assertEqual(native.partition(names, 4),
+                             [name for name in names[3::6] if name != native.ISOLATED])
 
     def test_missing_outlier_or_empty_partition_refused(self):
         for shard in range(native.SHARDS):
