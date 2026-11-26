@@ -4,6 +4,9 @@
 use super::*;
 use coglet_hub::build::R3Profile;
 use coglet_transform::qualification::test_fixtures::evidence_with_tools;
+#[cfg(feature = "r3-qualification")]
+#[path = "r3_live.rs"]
+mod live;
 
 fn tool_named(name: &str) -> Vec<u8> {
     let exe = std::env::current_exe().unwrap();
