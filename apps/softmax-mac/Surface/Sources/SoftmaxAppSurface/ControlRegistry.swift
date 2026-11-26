@@ -136,8 +136,13 @@ public final class ControlRegistry {
                     sleep: @escaping @MainActor (Duration) async throws -> Void) {
             self.timeout = timeout; self.interval = interval; self.now = now; self.sleep = sleep
         }
-        public static let live = FocusSettling(timeout: .seconds(2), interval: .milliseconds(10),
-            now: { ContinuousClock.now }, sleep: { try await Task.sleep(for: $0, clock: .continuous) })
+        /// Computed (not a stored `static let`) so the value is built inside the type's
+        /// MainActor isolation; a stored static initializer is a default-value context
+        /// that Swift 6 rejects as both main-actor-isolated and nonisolated.
+        public static var live: FocusSettling {
+            FocusSettling(timeout: .seconds(2), interval: .milliseconds(10),
+                now: { ContinuousClock.now }, sleep: { try await Task.sleep(for: $0, clock: .continuous) })
+        }
     }
     public var focusSettling = FocusSettling.live
     /// Returns the ACTUAL open route, not adapter-owned shadow navigation.
