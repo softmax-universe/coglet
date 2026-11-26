@@ -313,20 +313,21 @@ struct Retained {
     retries: u32,
     accepts: u32,
     finals: u32,
+    required_finals: u32,
     sent_at: Instant,
     accepted: Option<bool>,
     accept_body: Option<Json>,
     first_final: Option<Json>,
 }
 impl Retained {
-    /// Answered = every send (original + retries) has its accept/outcome (or read_reply);
-    /// a rejected act gets no outcome.
+    /// Pending duplicate actions repeat acceptance but share one eventual outcome.
+    /// Only a retry issued after observing completion requires a replayed outcome.
     fn answered(&self) -> bool {
         let sends = self.retries + 1;
         if self.is_read {
             return self.finals >= 1;
         }
-        self.accepts >= sends && (self.accepted == Some(false) || self.finals >= sends)
+        self.accepts >= sends && (self.accepted == Some(false) || self.finals >= self.required_finals)
     }
 }
 struct Incoming {
@@ -567,6 +568,7 @@ impl Peer {
             Cmd::Retry { id } => {
                 let r = self.retained.get_mut(&id).filter(|r| !r.is_read).ok_or("retry of an unknown act")?;
                 r.retries += 1;
+                if r.first_final.is_some() { r.required_finals += 1; }
                 r.sent_at = Instant::now();
                 return Ok(r.raw.clone());
             }
@@ -599,7 +601,7 @@ impl Peer {
                    "args": args, "deadline": deadline, "correlation_id": id}})
         };
         let raw = encode_msg(S02, &json!({"type": if is_read { "read" } else { "act" }, "body": body}))?;
-        self.retained.insert(id, Retained { op, is_read, negative, raw: raw.clone(), retries: 0, accepts: 0, finals: 0, sent_at: Instant::now(), accepted: None, accept_body: None, first_final: None });
+        self.retained.insert(id, Retained { op, is_read, negative, raw: raw.clone(), retries: 0, accepts: 0, finals: 0, required_finals: 1, sent_at: Instant::now(), accepted: None, accept_body: None, first_final: None });
         Ok(raw)
     }
 
@@ -1177,6 +1179,44 @@ mod tests {
             std::thread::sleep(Duration::from_millis(20));
         }
         h.is_finished()
+    }
+
+    #[test]
+    fn pending_retry_shares_one_terminal_but_completed_retry_requires_replay() {
+        let mut peer = ready_peer();
+        let raw = peer.command(act(&full("navigate"), nav(), ID1)).unwrap();
+        peer.on_frame(&accept_frame(ID1, true)).unwrap();
+        assert_eq!(peer.command(Cmd::Retry { id: ID1.into() }).unwrap(), raw);
+        peer.on_frame(&accept_frame(ID1, true)).unwrap();
+        assert!(!peer.unanswered().is_empty());
+        peer.on_frame(&outcome_event(1, ID1, "succeeded")).unwrap();
+        assert!(peer.unanswered().is_empty());
+        peer.command(Cmd::Retry { id: ID1.into() }).unwrap();
+        peer.on_frame(&accept_frame(ID1, true)).unwrap();
+        assert!(!peer.unanswered().is_empty(), "post-completion retry must replay terminal bytes");
+        assert!(peer.check_pending(Instant::now() + WINDOW + Duration::from_secs(1)).is_err());
+        peer.on_frame(&outcome_event(2, ID1, "succeeded")).unwrap();
+        assert!(peer.unanswered().is_empty());
+    }
+
+    #[test]
+    fn real_socket_pending_retry_two_accepts_one_outcome_closes_successfully() {
+        let (h, mut srv, _orx, ctx, _d) = socket_pair();
+        handshake(&mut srv);
+        ctx.send(Ok(act(&full("navigate"), nav(), ID1))).unwrap();
+        let read_act = |srv: &mut UnixStream| loop {
+            let raw = read_frame(srv).unwrap().unwrap();
+            if decode_s02(&raw)["type"] == "act" { break raw; }
+        };
+        let original = read_act(&mut srv);
+        write_frame(&mut srv, &accept_frame(ID1, true)).unwrap();
+        ctx.send(Ok(Cmd::Retry { id: ID1.into() })).unwrap();
+        assert_eq!(read_act(&mut srv), original);
+        write_frame(&mut srv, &accept_frame(ID1, true)).unwrap();
+        write_frame(&mut srv, &outcome_event(1, ID1, "succeeded")).unwrap();
+        ctx.send(Ok(Cmd::Close)).unwrap();
+        assert!(finished_within(&h, 2));
+        assert!(h.join().unwrap().is_ok());
     }
 
     #[test]
