@@ -1331,7 +1331,7 @@ impl Runtime {
             }
             record = recorded.clone();
         } else {
-            record["record_hash"] = Value::String(digest(&cbor(&record)?));
+            record["record_hash"] = Value::String(crate::cbor_digest(&record)?);
             self.contract_profile.validate("step-record", &record)?;
         }
         let mut result = json!({"state_hash":record["output_hash"],"record_hash":record["record_hash"],"journal":record});

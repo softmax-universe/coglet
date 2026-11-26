@@ -38,6 +38,7 @@ pub use router::Router;
 pub use surface::{SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
 
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 pub type Result<T> = std::result::Result<T, String>;
 
@@ -79,7 +80,43 @@ fn profile_value(value: &Value, depth: usize) -> Result<coglet_types::Value> {
 
 /// Convert a JSON fixture/debug view without losing the profile's uint64 range.
 pub fn cbor(value: &Value) -> Result<Vec<u8>> {
-    fn head(out: &mut Vec<u8>, major: u8, value: u64) {
+    let mut out = Vec::new();
+    put_json_cbor(&mut out, value)?;
+    Ok(out)
+}
+
+trait CborSink {
+    fn extend_from_slice(&mut self, bytes: &[u8]);
+    fn push(&mut self, byte: u8) {
+        self.extend_from_slice(&[byte]);
+    }
+    fn reserve(&mut self, _additional: usize) {}
+}
+
+impl CborSink for Vec<u8> {
+    fn extend_from_slice(&mut self, bytes: &[u8]) {
+        Vec::extend_from_slice(self, bytes);
+    }
+    fn reserve(&mut self, additional: usize) {
+        Vec::reserve(self, additional);
+    }
+}
+
+impl CborSink for Sha256 {
+    fn extend_from_slice(&mut self, bytes: &[u8]) {
+        self.update(bytes);
+    }
+}
+
+/// Same canonical emitter, without allocating the bytes used only for hashing.
+fn cbor_digest(value: &Value) -> Result<String> {
+    let mut out = Sha256::new();
+    put_json_cbor(&mut out, value)?;
+    Ok(hex::encode(out.finalize()))
+}
+
+fn put_json_cbor(out: &mut impl CborSink, value: &Value) -> Result<()> {
+    fn head(out: &mut impl CborSink, major: u8, value: u64) {
         let major = major << 5;
         match value {
             0..=23 => out.push(major | value as u8),
@@ -99,7 +136,7 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
         }
     }
 
-    fn text(out: &mut Vec<u8>, value: &str) {
+    fn text(out: &mut impl CborSink, value: &str) {
         // Reserve payload and the largest possible header together, so a large
         // borrowed string needs only one output allocation, not a temporary.
         out.reserve(value.len() + 9);
@@ -107,7 +144,7 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
         out.extend_from_slice(value.as_bytes());
     }
 
-    fn put(out: &mut Vec<u8>, value: &Value, depth: usize) -> Result<()> {
+    fn put(out: &mut impl CborSink, value: &Value, depth: usize) -> Result<()> {
         if depth > coglet_types::MAX_DEPTH {
             return Err("profile nesting too deep".into());
         }
@@ -160,12 +197,17 @@ pub fn cbor(value: &Value) -> Result<Vec<u8>> {
         Ok(())
     }
 
-    let mut out = Vec::new();
-    put(&mut out, value, 0)?;
-    Ok(out)
+    put(out, value, 0)
 }
 
 mod profile_codec;
+
+fn validate_current_json(rule: &str, value: &Value) -> Result<()> {
+    // Both schema crates re-export the same ciborium::Value. JSON's map keys
+    // are unique text; profile_value preserves integer/depth rejection and the
+    // selected schema validator still checks the full profile and shape.
+    coglet_types_current::validate(rule, &profile_value(value, 0)?)
+}
 
 pub fn validate(rule: &str, value: &Value) -> Result<()> {
     let abi = matches!(
@@ -180,11 +222,90 @@ pub fn validate(rule: &str, value: &Value) -> Result<()> {
             | "abi::boundary-record"
     ) || rule.starts_with("database::");
     if abi && !(hash_upgrade::historical() && hash_upgrade::legacy_version(&value["version"])) {
-        coglet_types_current::decode(rule, &cbor(value)?).map(|_| ())
+        validate_current_json(rule, value)
     } else {
         // Selected surface02 roots route to the current types; every other
         // legacy/historical or frozen hub rule stays on the pinned hub0 types.
         profile_codec::validate(rule, &profile_value(value, 0)?)
+    }
+}
+
+#[cfg(test)]
+mod direct_profile_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn direct_current_validation_matches_strict_wire_acceptance() {
+        let fixtures: Value =
+            serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
+        fn collect(value: &Value, values: &mut Vec<Value>) {
+            match value {
+                Value::Object(map) => {
+                    if map.contains_key("version") {
+                        values.push(value.clone());
+                    }
+                    for child in map.values() {
+                        collect(child, values);
+                    }
+                }
+                Value::Array(array) => {
+                    for child in array {
+                        collect(child, values);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mut values = vec![
+            json!(null),
+            json!([]),
+            json!({"version":"1.0"}),
+            json!({"version":"0.1"}),
+            json!(1.5),
+            json!(u64::MAX),
+            json!(i64::MIN),
+        ];
+        collect(&fixtures, &mut values);
+        let mut accepted = 0;
+        for rule in [
+            "manifest",
+            "step-record",
+            "boundary-record",
+            "trace",
+            "database::db-step-record",
+        ] {
+            for value in &values {
+                let old = cbor(value)
+                    .and_then(|raw| coglet_types_current::decode(rule, &raw).map(|_| ()));
+                let direct = validate_current_json(rule, value);
+                assert_eq!(direct.is_ok(), old.is_ok(), "{rule}");
+                accepted += usize::from(direct.is_ok());
+            }
+        }
+        assert!(
+            accepted > 0,
+            "differential corpus must exercise valid current roots"
+        );
+    }
+
+    #[test]
+    fn streamed_cbor_hash_matches_independent_profile_encoder() {
+        for value in [
+            json!(null),
+            json!({"é":u64::MAX,"z":i64::MIN,"a":[true,false,null,"x".repeat(100000)]}),
+            json!({"files":{"/code/bin/step.wasm":"ab".repeat(1000000)}}),
+        ] {
+            let reference =
+                coglet_types::encode_profile(&profile_value(&value, 0).unwrap()).unwrap();
+            assert_eq!(cbor_digest(&value).unwrap(), digest(&reference));
+        }
+        assert!(cbor_digest(&json!(1.5)).is_err());
+        let mut nested = json!(null);
+        for _ in 0..=coglet_types::MAX_DEPTH {
+            nested = json!([nested]);
+        }
+        assert!(cbor_digest(&nested).is_err());
     }
 }
 
@@ -196,6 +317,7 @@ mod cbor_tests {
     fn differential(value: &Value) {
         let reference = profile_value(value, 0).and_then(|v| coglet_types::encode_profile(&v));
         assert_eq!(cbor(value), reference);
+        assert_eq!(cbor_digest(value), reference.map(|bytes| digest(&bytes)));
     }
 
     #[test]
