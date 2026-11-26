@@ -525,11 +525,12 @@ class DescendantTeardown(Base):
 
     @staticmethod
     def alive(pid):
-        try:
-            with open(f"/proc/{pid}/stat") as f:
-                return f.read().rsplit(")", 1)[1].split()[0] != "Z"
-        except (FileNotFoundError, ProcessLookupError):
-            return False
+        status = subprocess.run(["ps", "-p", str(pid), "-o", "stat="],
+                                capture_output=True, text=True, check=False)
+        if status.returncode not in (0, 1):
+            raise AssertionError(f"cannot inspect descendant {pid}: {status.stderr}")
+        state = status.stdout.strip()
+        return bool(state) and not state.startswith("Z")
 
     def test_sigterm_ignoring_grandchild_is_killed_after_case_timeout(self):
         pid_file = self.dir / "grandchild.pid"

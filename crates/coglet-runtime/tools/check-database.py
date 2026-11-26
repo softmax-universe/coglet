@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -32,12 +33,30 @@ def registry_text(engine):
     ])
 
 
+def check_watchdog():
+    """Qualification controls shared by the required DB entrypoint and focused local runs."""
+    # Keep registry/prelaunch/transport negatives in the existing required DB lane.
+    run(sys.executable, "crates/coglet-runtime/tools/test_database_watchdog.py")
+    with tempfile.TemporaryDirectory(prefix="coglet-db-watchdog-") as temporary:
+        evidence = Path(temporary) / "proof"
+        try:
+            run(sys.executable, "crates/coglet-runtime/tools/prove_database_watchdog.py",
+                "--evidence", str(evidence))
+        finally:
+            # Temporary proof bytes are not an uploaded artifact; retain raw diagnostics in CI stdout.
+            for name in ("metadata.json", "red.log", "green.log", "results.json"):
+                path = evidence / name
+                if path.exists():
+                    print(f"database watchdog {name}:\n{path.read_text()}", flush=True)
+
+
 def main():
     run("rustup", "target", "add", "wasm32-unknown-unknown")
     run("cargo", "test", "--locked", "-p", "coglet-db")
     run("cargo", "test", "--locked", "-p", "coglet-runtime", "--features", "native-engine", "--", "--test-threads=1")
     run("cargo", "clippy", "--locked", "-p", "coglet-runtime", "--features", "native-engine", "--all-targets", "--", "-D", "warnings")
     run("cargo", "build", "--locked", "-p", "coglet-runtime", "--features", "native-engine", "--example", "database_adapter")
+    check_watchdog()
     cases = json.loads((ROOT / "conformance/database/cases.json").read_text())
     expected = {case["name"] for case in cases}
     assert len(expected) == len(cases), "duplicate database case names"
