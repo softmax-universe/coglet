@@ -29,10 +29,10 @@ final class SoftmaxUITests: XCTestCase {
         return failures.sorted()
     }
 
-    /// First real AX/live-registry join. This is intentionally NOT the full
-    /// softmax_app_catalog_coverage proof: all remaining states still need visits.
+    /// Capture a fresh native presentation, never a mutation of prior evidence.
     @MainActor
-    func testCatalogCoverageOnboardingWelcome() throws {
+    private func captureWelcomeCatalog(omitContinueRegistration: Bool = false) throws
+        -> (probe: CatalogProbe, actual: [String]) {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("softmax-catalog-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
@@ -40,11 +40,20 @@ final class SoftmaxUITests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: directory) }
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--catalog-probe-directory", directory.path]
+        if omitContinueRegistration {
+            app.launchArguments.append("--catalog-omit-welcome-continue-registration")
+        }
         app.launchEnvironment["TMPDIR"] = FileManager.default.temporaryDirectory.path
         app.launch()
         defer { app.terminate() }
         let window = app.windows["Welcome to Softmax"]
         XCTAssertTrue(window.waitForExistence(timeout: 10))
+        let continueButton = window.buttons["onboarding.continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
+        XCTAssertEqual(window.buttons.matching(identifier: "onboarding.continue").count, 1)
+        XCTAssertEqual(continueButton.label, "Continue")
+        XCTAssertTrue(continueButton.isEnabled)
+        XCTAssertTrue(continueButton.isHittable)
         let nonce = UUID().uuidString
         try Data(nonce.utf8).write(to: directory.appendingPathComponent("request"), options: .atomic)
         let predicate = NSPredicate { _, _ in
@@ -71,8 +80,9 @@ final class SoftmaxUITests: XCTestCase {
             for element in window.descendants(matching: type).allElementsBoundByIndex {
                 let id = chrome[element.identifier] ?? element.identifier
                 XCTAssertFalse(id.isEmpty, "interactive AX element lacks stable id: \(element.label)")
-                let registration = try XCTUnwrap(entries.first { $0.id == id }, "AX element not actually registered: \(id)")
-                if type == .button {
+                // Missing native membership is diagnosed by the shared comparator,
+                // not an early unwrap that would bypass the negative control.
+                if type == .button, let registration = entries.first(where: { $0.id == id }) {
                     XCTAssertEqual(registration.role, "button")
                     XCTAssertTrue(registration.verbs.contains("press"))
                 }
@@ -80,6 +90,22 @@ final class SoftmaxUITests: XCTestCase {
             }
         }
         XCTAssertTrue(seen.contains("onboarding.continue"), "must exercise a real product control")
+        let attachment = XCTAttachment(data: try Data(contentsOf: directory.appendingPathComponent("response.json")),
+            uniformTypeIdentifier: "public.json")
+        attachment.name = omitContinueRegistration ? "onboarding-welcome-omitted-registry" : "onboarding-welcome-live-registry"
+        attachment.lifetime = .keepAlways; add(attachment)
+        // Even with registration omitted, the SAME native user button must work.
+        window.buttons["onboarding.continue"].click()
+        XCTAssertTrue(window.staticTexts["Let Softmax hear you."].waitForExistence(timeout: 5))
+        return (probe, seen)
+    }
+
+    /// First real AX/live-registry join, not full all-state catalog coverage.
+    @MainActor
+    func testCatalogCoverageOnboardingWelcome() throws {
+        let capture = try captureWelcomeCatalog()
+        let entries = capture.probe.registrations.filter { $0.window == "onboarding" && $0.route == "welcome" }
+        let seen = capture.actual
         let visible = Set(entries.filter(\.visible).map(\.id))
         XCTAssertEqual(catalogMembershipFailures(actual: seen, registered: visible), [],
             "visible registry entries and actual AX ids must agree, without duplicate collapse")
@@ -90,9 +116,24 @@ final class SoftmaxUITests: XCTestCase {
             ["unregistered:onboarding.continue"])
         XCTAssertEqual(catalogMembershipFailures(actual: seen + ["onboarding.continue"], registered: visible),
             ["duplicate:onboarding.continue"])
-        let attachment = XCTAttachment(data: try Data(contentsOf: directory.appendingPathComponent("response.json")),
-            uniformTypeIdentifier: "public.json")
-        attachment.name = "onboarding-welcome-live-registry"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
+    /// A real omitted mount must fail the exact checker used by the positive case.
+    /// The fresh app still exposes and operates the native button; only membership differs.
+    @MainActor
+    func testCatalogCoverageDetectsNativeOmittedRegistration() throws {
+        let normal = try captureWelcomeCatalog()
+        let omitted = try captureWelcomeCatalog(omitContinueRegistration: true)
+        func visible(_ probe: CatalogProbe) -> Set<String> {
+            Set(probe.registrations.filter {
+                $0.window == "onboarding" && $0.route == "welcome" && $0.visible
+            }.map(\.id))
+        }
+        XCTAssertEqual(normal.actual.sorted(), omitted.actual.sorted(), "omission must preserve the complete AX multiset")
+        XCTAssertEqual(catalogMembershipFailures(actual: normal.actual, registered: visible(normal.probe)), [])
+        XCTAssertEqual(visible(omitted.probe), visible(normal.probe).subtracting(["onboarding.continue"]))
+        XCTAssertEqual(catalogMembershipFailures(actual: omitted.actual, registered: visible(omitted.probe)),
+            ["unregistered:onboarding.continue"])
     }
 
     /// Native CI on macOS 26 reports two OS-owned chrome defects:
