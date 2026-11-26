@@ -54,6 +54,95 @@ final class CogletRadioGroupTests: XCTestCase {
             XCTAssertEqual(button.accessibilityValue() as? NSNumber, NSNumber(value: button.state == .on ? 1 : 0), file: file, line: line)
         }
     }
+    func testNativeRadioGeometryMatchesVerticalBaseline() throws {
+        let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
+        let window = window(); defer { window.close() }
+        for (id, choices) in [("settings.general.appearance", appearance),
+            ("settings.general.text_size", ["standard", "large", "largest"].map {
+                CogletRadioGroup.Choice(value: $0, label: $0.capitalized, id: "settings.general.text_size.\($0)")
+            })] {
+            let group = CogletRadioGroup.NativeView(frame: NSRect(x: 0, y: 0, width: 160, height: 90))
+            configure(group, registry: registry, choices: choices, id: id, selection: .constant(choices[0].value))
+            window.contentView?.addSubview(group)
+            group.layoutSubtreeIfNeeded()
+            XCTAssertEqual(group.orientation, .vertical)
+            XCTAssertEqual(group.alignment, .leading)
+            XCTAssertEqual(group.spacing, 4)
+            for (first, second) in zip(group.buttons, group.buttons.dropFirst()) {
+                XCTAssertEqual(first.frame.minX, second.frame.minX, accuracy: 0.01)
+                XCTAssertGreaterThan(first.frame.height, 0)
+                XCTAssertGreaterThan(second.frame.height, 0)
+                XCTAssertFalse(first.frame.intersects(second.frame))
+                XCTAssertGreaterThan(group.isFlipped ? second.frame.minY - first.frame.minY : first.frame.minY - second.frame.minY, 0)
+            }
+            group.dismantle(); group.removeFromSuperview()
+        }
+    }
+
+    func testFontUpdatePreservesNativeButtonsFocusAndMounts() throws {
+        let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
+        let window = window(); defer { window.close() }
+        var selected = "System", writes = 0
+        let binding = Binding(get: { selected }, set: { selected = $0; writes += 1 })
+        let group = CogletRadioGroup.NativeView(frame: NSRect(x: 0, y: 0, width: 180, height: 110))
+        configure(group, registry: registry, selection: binding)
+        window.contentView?.addSubview(group)
+        let original = group.buttons
+        XCTAssertTrue(window.makeFirstResponder(original[1]))
+        let prepared = try registry.prepare(args(appearance[2].id), sensitive: false)
+        for scale in [1.0, 1.3, 1.6, 1.0] {
+            group.configure(title: "Appearance", id: "settings.general.appearance", registry: registry,
+                window: "settings", route: "general", choices: appearance, selection: binding,
+                enabled: true, fontSize: 14 * scale, failure: { XCTFail("Registration failed: \($0)") })
+            for (button, old) in zip(group.buttons, original) {
+                XCTAssertTrue(button === old)
+                XCTAssertEqual(try XCTUnwrap(button.font).pointSize, 14 * scale, accuracy: 0.001)
+            }
+            XCTAssertTrue(window.firstResponder === original[1])
+            XCTAssertEqual(try controls(registry).count, 4)
+            XCTAssertEqual(writes, 0)
+            assertNativeAXValues(group)
+        }
+        // The pre-update native action must still own the same mount.
+        try registry.perform(prepared, authorized: { true })
+        XCTAssertEqual(selected, "Dark")
+        XCTAssertEqual(writes, 1)
+    }
+
+    func testRepresentableForwardsFontOnInitialRenderAndUpdate() throws {
+        let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
+        let window = window(); defer { window.close() }
+        func content(_ font: CGFloat) -> CogletRadioGroup {
+            CogletRadioGroup("Appearance", id: "settings.general.appearance", registry: registry,
+                window: "settings", route: "general", choices: appearance, selection: .constant("System"),
+                fontSize: font, failure: { XCTFail("Registration failed: \($0)") })
+        }
+        func findGroup(_ view: NSView) -> CogletRadioGroup.NativeView? {
+            if let group = view as? CogletRadioGroup.NativeView { return group }
+            for child in view.subviews { if let group = findGroup(child) { return group } }
+            return nil
+        }
+        let hosting = NSHostingView(rootView: content(14))
+        window.contentView = hosting
+        hosting.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        let group = try XCTUnwrap(findGroup(hosting))
+        let original = group.buttons
+        XCTAssertEqual(original.count, 3)
+        for button in original { XCTAssertEqual(button.font?.pointSize, 14) }
+        hosting.rootView = content(22.4)
+        hosting.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        let updated = try XCTUnwrap(findGroup(hosting))
+        XCTAssertTrue(updated === group)
+        XCTAssertEqual(updated.buttons.count, 3)
+        for (button, old) in zip(updated.buttons, original) {
+            XCTAssertTrue(button === old)
+            XCTAssertEqual(try XCTUnwrap(button.font).pointSize, 22.4, accuracy: 0.001)
+        }
+        XCTAssertEqual(try controls(registry).count, 4)
+    }
+
     func testAllSixChoicesAreActualNativeRadiosWithParentCatalogOwnership() throws {
         let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
         let window = window(); defer { window.close() }

@@ -18,7 +18,16 @@ import SoftmaxCore
                 guard let executable = Bundle.main.executableURL else { throw CocoaError(.fileNoSuchFile) }
                 let process = Process()
                 process.executableURL = executable
-                process.arguments = Array(arguments.dropFirst()) + [scaleFlag, scale]
+                // Read-only snapshot children must not inherit settings written
+                // by the mutable UI test. Never change persistent defaults here.
+                var childArguments = Array(arguments.dropFirst())
+                for key in ["-appearance", "-textScale"] {
+                    while let index = childArguments.firstIndex(of: key) {
+                        childArguments.remove(at: index)
+                        if index < childArguments.count { childArguments.remove(at: index) }
+                    }
+                }
+                process.arguments = childArguments + ["-appearance", "System", "-textScale", "1.0", scaleFlag, scale]
                 try process.run()
                 process.waitUntilExit()
                 guard process.terminationReason == .exit, process.terminationStatus == 0 else {

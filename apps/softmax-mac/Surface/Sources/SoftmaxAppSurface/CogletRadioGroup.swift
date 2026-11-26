@@ -20,15 +20,17 @@ public struct CogletRadioGroup: NSViewRepresentable {
     private let title: String, id: String, window: String, route: String
     private let registry: ControlRegistry
     private let choices: [Choice]
+    private let fontSize: CGFloat
     @Binding private var selection: String
     private let failure: (ControlRegistryFailure) -> Void
     @Environment(\.isEnabled) private var enabled
 
     public init(_ title: String, id: String, registry: ControlRegistry, window: String, route: String,
-                choices: [Choice], selection: Binding<String>,
+                choices: [Choice], selection: Binding<String>, fontSize: CGFloat = 14,
                 failure: @escaping (ControlRegistryFailure) -> Void) {
         self.title = title; self.id = id; self.registry = registry; self.window = window; self.route = route
         self.choices = choices; self._selection = selection; self.failure = failure
+        self.fontSize = fontSize
     }
     public func makeNSView(context: Context) -> NativeView {
         let view = NativeView(frame: .zero)
@@ -37,7 +39,7 @@ public struct CogletRadioGroup: NSViewRepresentable {
     }
     public func updateNSView(_ view: NativeView, context: Context) {
         view.configure(title: title, id: id, registry: registry, window: window, route: route,
-            choices: choices, selection: $selection, enabled: enabled, failure: failure)
+            choices: choices, selection: $selection, enabled: enabled, fontSize: fontSize, failure: failure)
     }
     public static func dismantleNSView(_ view: NativeView, coordinator: ()) { view.dismantle() }
 
@@ -66,16 +68,16 @@ public struct CogletRadioGroup: NSViewRepresentable {
 
         public override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
-            orientation = .horizontal
-            alignment = .centerY
-            spacing = 12
+            orientation = .vertical
+            alignment = .leading
+            spacing = 4
             setAccessibilityElement(true)
             setAccessibilityRole(.radioGroup)
         }
         public required init?(coder: NSCoder) { fatalError("Use init(frame:)") }
 
         func configure(title: String, id: String, registry: ControlRegistry, window: String, route: String,
-                       choices: [Choice], selection: Binding<String>, enabled: Bool,
+                       choices: [Choice], selection: Binding<String>, enabled: Bool, fontSize: CGFloat = 14,
                        failure: @escaping (ControlRegistryFailure) -> Void) {
             let next = Identity(title: title, id: id, window: window, route: route, choices: choices)
             let replaced = identity != next || self.registry !== registry
@@ -102,7 +104,6 @@ public struct CogletRadioGroup: NSViewRepresentable {
                     for choice in choices {
                         let button = RadioButton(title: choice.label, target: self, action: #selector(choose(_:)))
                         button.setButtonType(.radio)
-                        button.font = .systemFont(ofSize: 14)
                         button.setAccessibilityIdentifier(choice.id)
                         button.setAccessibilityLabel(choice.label)
                         button.owner = self
@@ -112,6 +113,10 @@ public struct CogletRadioGroup: NSViewRepresentable {
                 } catch { report(error) }
                 setAccessibilityChildren(buttons)
             }
+            // Presentation changes retain native controls, focus and mounts.
+            let pointSize = fontSize.isFinite && fontSize > 0 ? fontSize : 14
+            for button in buttons { button.font = .systemFont(ofSize: pointSize) }
+            invalidateIntrinsicContentSize()
             refreshButtons()
             synchronizePresentation()
             emitValues()

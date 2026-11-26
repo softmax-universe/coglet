@@ -23,6 +23,7 @@ struct SettingsView: View {
     @ObservedObject var model: ShellModel
     @AppStorage("appearance") private var appearance = "System"
     @AppStorage("textScale") private var textScale = 1.0
+    @Environment(\.softmaxTextScale) private var controlTextScale
     @State private var query = ""
     @FocusState private var searchFocused: Bool
     @Environment(\.colorScheme) private var scheme
@@ -105,7 +106,8 @@ struct SettingsView: View {
                                         .init(value: "System", label: "System", id: "settings.general.appearance.system"),
                                         .init(value: "Light", label: "Light", id: "settings.general.appearance.light"),
                                         .init(value: "Dark", label: "Dark", id: "settings.general.appearance.dark")],
-                                    selection: $appearance, failure: model.appControlFailure)
+                                    selection: $appearance, fontSize: SoftmaxDesignTokens.fontBody * controlTextScale,
+                                    failure: model.appControlFailure)
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Text size").softmaxFont(SoftmaxDesignTokens.fontBody).accessibilityHidden(true)
@@ -128,7 +130,8 @@ struct SettingsView: View {
                                         case "largest": textScale = 1.6
                                         default: break
                                         }
-                                    }), failure: model.appControlFailure)
+                                    }), fontSize: SoftmaxDesignTokens.fontBody * controlTextScale,
+                                    failure: model.appControlFailure)
                             }
                             CogletToggle("Show floating orb", id: "floatingOrbToggle", registry: model.appControls,
                                 window: "settings", route: "general", isOn: $model.orbEnabled, failure: model.appControlFailure)
