@@ -1,6 +1,5 @@
-# DISPOSABLE DIAGNOSTIC BRANCH ONLY. NEVER MERGE OR CHERRY-PICK THIS FILE.
-# This job measures radio presentation; it is NOT softmax-mac-gate or acceptance.
-name: Softmax radio presentation measurement ONLY
+# DISPOSABLE DIAGNOSTIC ONLY. NEVER MERGE OR CHERRY-PICK.
+name: Softmax external Picker identity measurement ONLY
 on:
   workflow_dispatch:
 permissions:
@@ -11,12 +10,10 @@ concurrency:
 jobs:
   radio-measurement:
     runs-on: macos-latest
-    timeout-minutes: 15
-    env:
-      SOFTMAX_RADIO_MEASUREMENT_DIR: ${{ github.workspace }}/radio-measurement
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Record exact source and native environment
+      - name: Record exact source and environment
         run: |
           mkdir -p radio-measurement
           git rev-parse HEAD > radio-measurement/head.txt
@@ -24,15 +21,37 @@ jobs:
           sw_vers > radio-measurement/os.txt
           xcodebuild -version > radio-measurement/xcode.txt
           swift --version > radio-measurement/swift.txt
-      - name: Measure only paired original and actual native radios
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - name: Install pinned header generator and build unchanged native runtime dependency
+        run: |
+          cargo install cbindgen --version 0.29.2 --locked
+          bash scripts/build-runtime-xcframework.sh
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: apps/softmax-mac
+        run: xcodegen generate
+      - name: Measure ONLY external original-Picker identity and lifecycle
+        working-directory: apps/softmax-mac
         run: |
           set -o pipefail
-          swift test --package-path apps/softmax-mac/Surface --filter 'RadioPresentationMeasurementTests/testButtonAXMaterializationOnly' 2>&1 | tee radio-measurement/test.log
-      - name: Hash retained measurements
+          xcodebuild test -project Softmax.xcodeproj -scheme Softmax \
+            -destination 'platform=macOS' -derivedDataPath build \
+            -resultBundlePath PickerIdentity.xcresult CODE_SIGNING_ALLOWED=NO \
+            -only-testing:SoftmaxUITests/SoftmaxUITests/testOriginalPickerChoiceIdentityMeasurementOnly \
+            2>&1 | tee ../../radio-measurement/test.log
+      - name: Export exact-test retained evidence
+        if: always()
+        working-directory: apps/softmax-mac
+        run: xcrun xcresulttool export attachments --path PickerIdentity.xcresult --output-path ../../radio-measurement/attachments
+      - name: Hash retained evidence
         if: always()
         run: |
           cd radio-measurement
-          shasum -a 256 *.json *.png *.txt *.log > SHA256SUMS
+          find . -type f ! -name SHA256SUMS -exec shasum -a 256 {} \; > SHA256SUMS
       - uses: actions/upload-artifact@v4
         if: always()
         with:

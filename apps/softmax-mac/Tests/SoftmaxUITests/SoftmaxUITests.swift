@@ -266,6 +266,99 @@ final class SoftmaxUITests: XCTestCase {
             "settings.updates", "settings.privacy"], "all ten route captures must execute")
     }
 
+    /// DISPOSABLE external AX identity/lifecycle diagnostic. No choice actions.
+    @MainActor
+    func testOriginalPickerChoiceIdentityMeasurementOnly() throws {
+        let parents = ["settings.general.appearance", "settings.general.text_size"]
+        let expected = Set(["system", "light", "dark"].map { parents[0] + "." + $0 }
+            + ["standard", "large", "largest"].map { parents[1] + "." + $0 })
+        for mode in ["original", "id-only", "registered"] {
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("softmax-radio-identity-" + UUID().uuidString)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+                attributes: [.posixPermissions: 0o700])
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing", "--catalog-probe-directory", directory.path,
+                "-appearance", "Light", "-textScale", "1.0"]
+            if mode != "original" { app.launchArguments.append("--radio-choice-" + mode) }
+            app.launchEnvironment["TMPDIR"] = FileManager.default.temporaryDirectory.path
+            app.launch()
+            defer { app.terminate() }
+            let welcome = app.windows["Welcome to Softmax"]
+            let positive = welcome.buttons["onboarding.open_settings"]
+            guard positive.waitForExistence(timeout: 10), positive.isEnabled, positive.isHittable else {
+                XCTFail("external AX harness positive invalid: " + mode); continue
+            }
+            let positiveEvidence: [String: Any] = ["id": positive.identifier, "label": positive.label,
+                "enabled": positive.isEnabled, "hittable": positive.isHittable,
+                "frame": [positive.frame.origin.x, positive.frame.origin.y, positive.frame.width, positive.frame.height]]
+            let positiveRaw = XCTAttachment(data: try JSONSerialization.data(withJSONObject: positiveEvidence, options: [.sortedKeys]),
+                uniformTypeIdentifier: "public.json")
+            positiveRaw.name = "picker-choice-" + mode + "-positive-button"
+            positiveRaw.lifetime = .keepAlways; add(positiveRaw)
+            positive.click()
+            let window = app.windows["Softmax Settings"]
+            guard window.waitForExistence(timeout: 10),
+                  window.checkBoxes["floatingOrbToggle"].waitForExistence(timeout: 5) else {
+                XCTFail("General presentation readiness failed: " + mode); continue
+            }
+            let nonce = UUID().uuidString
+            try Data(nonce.utf8).write(to: directory.appendingPathComponent("request"), options: .atomic)
+            let fresh = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                guard let bytes = try? Data(contentsOf: directory.appendingPathComponent("response.json")),
+                      let probe = try? JSONDecoder().decode(CatalogProbe.self, from: bytes) else { return false }
+                return probe.request == nonce
+            }, object: nil)
+            guard XCTWaiter.wait(for: [fresh], timeout: 5) == .completed else {
+                XCTFail("fresh registry unavailable: " + mode); continue
+            }
+            let bytes = try Data(contentsOf: directory.appendingPathComponent("response.json"))
+            let probe = try JSONDecoder().decode(CatalogProbe.self, from: bytes)
+            var records: [[String: Any]] = []
+            let types: [XCUIElement.ElementType] = [.radioButton, .radioGroup, .staticText]
+            for type in types {
+                for e in window.descendants(matching: type).allElementsBoundByIndex {
+                    records.append(["type": String(describing: type), "id": e.identifier,
+                        "label": e.label, "value": String(describing: e.value), "enabled": e.isEnabled,
+                        "hittable": e.isHittable,
+                        "frame": [e.frame.origin.x, e.frame.origin.y, e.frame.width, e.frame.height]])
+                }
+            }
+            let radioElements = window.radioButtons.allElementsBoundByIndex
+            let radios = radioElements.map(\.identifier)
+            let live = probe.registrations.filter { expected.contains($0.id) }
+            let joined = radios.count == 6 && Set(radios) == expected
+                && live.count == 6 && Set(live.map(\.id)) == expected
+                && radioElements.allSatisfy { $0.isEnabled && $0.isHittable }
+                && live.allSatisfy { $0.window == "settings" && $0.route == "general"
+                    && $0.visible && $0.enabled && $0.role == "button" && $0.verbs.contains("press") }
+                && !probe.registrationFailed
+            let evidence: [String: Any] = ["mode": mode, "request": nonce, "ax": records,
+                "radio_ids": radios, "registered_choice_ids": live.map(\.id),
+                "registration_failed": probe.registrationFailed, "identity_and_mount_gate": joined]
+            for (name, data) in [("ax", try JSONSerialization.data(withJSONObject: evidence, options: [.sortedKeys])),
+                                 ("registry", bytes)] {
+                let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+                attachment.name = "picker-choice-" + mode + "-" + name
+                attachment.lifetime = .keepAlways; add(attachment)
+            }
+            let screenshot = XCTAttachment(screenshot: window.screenshot())
+            screenshot.name = "picker-choice-" + mode; screenshot.lifetime = .keepAlways; add(screenshot)
+            let tree = XCTAttachment(string: window.debugDescription)
+            tree.name = "picker-choice-" + mode + "-tree"; tree.lifetime = .keepAlways; add(tree)
+            // Measurement succeeds even if the candidate is negative; raw evidence
+            // distinguishes identifier propagation from lifecycle registration.
+            XCTAssertEqual(probe.request, nonce)
+            // Refused choice mounts are retained candidate negatives, not an
+            // external harness failure or permission to waive catalog coverage.
+            XCTAssertEqual(radios.count, 6, "original real interactive radios must exist")
+            XCTAssertEqual(window.radioGroups.count, 2)
+            XCTAssertEqual(Set(probe.registrations.map(\.id)).count, probe.registrations.count)
+            app.terminate()
+        }
+    }
+
     @MainActor
     func testGeneralNativeRadioChoicesAndRouteRemount() throws {
         let app = XCUIApplication()
