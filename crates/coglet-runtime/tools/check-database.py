@@ -6,7 +6,6 @@ ALL cases, including any added case; missing/skipped cases never count as green.
 """
 import json
 from pathlib import Path
-import shlex
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -16,6 +15,21 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def run(*args):
     subprocess.run(args, cwd=ROOT, check=True)
+
+
+def registry_text(engine):
+    """Generated ADR-0041 registry: real/mock adapter, functional watchdog opted in."""
+    command = [sys.executable, "conformance/engine/adapter.py", "target/debug/examples/database_adapter", engine]
+    return "\n".join([
+        "[[implementations]]",
+        f"name = {json.dumps(f'database-{engine}')}",
+        'suites = ["database"]',
+        'transport = "stdio"',
+        f"command = {json.dumps(command)}",
+        'peer_roles = ["guest"]',
+        "database_functional_watchdog = true",
+        "",
+    ])
 
 
 def main():
@@ -30,8 +44,9 @@ def main():
     for engine in ("real", "mock"):
         report = ROOT / f"target/database-{engine}.xml"
         report.unlink(missing_ok=True)
-        command = shlex.join([sys.executable, "conformance/engine/adapter.py", "target/debug/examples/database_adapter", engine])
-        run(sys.executable, "conformance/run", "--impl", command, "--suite", "database", "--peer-role", "guest", "--junit", str(report))
+        registry = ROOT / f"target/database-{engine}-impls.toml"
+        registry.write_text(registry_text(engine))
+        run(sys.executable, "conformance/run", "--registry", str(registry), "--junit", str(report))
         suite = ET.parse(report).getroot()
         names = [c.attrib["name"] for c in suite.findall("testcase")]
         assert len(names) == len(expected) and set(names) == expected, names
