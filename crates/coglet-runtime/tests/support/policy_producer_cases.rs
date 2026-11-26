@@ -99,7 +99,7 @@ async fn failed_revoke_wal_write_leaves_original_stop_unresolved_until_reconcile
     assert!(!hits.exists(), "shim fired before it was armed");
     // Arm the exact WAL-file write shim: the stop-pending frame cannot land.
     std::fs::write(&arm, b"armed").unwrap();
-    let revoked = d.local("revoke_output_lease", json!({})).await;
+    let revoked = d.reserved("revoke_output_lease", json!({})).await;
     assert_eq!(revoked["ok"], true, "{revoked}");
     assert_eq!(revoked["result"]["gate"], "closed");
     assert!(

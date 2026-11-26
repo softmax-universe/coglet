@@ -559,17 +559,21 @@ impl DeviceHandler {
 /// ADR-0043 bounded deferred recording, shared by both listeners: the gate's
 /// single recorder slot is reserved atomically BEFORE any spawn. While a
 /// recorder is queued or running, further revokes report `pending` without
-/// another worker. The slot is released after completion, error or panic; a
-/// failed spawn marks the gate uncertain and releases it. Nothing here can
-/// reopen the gate or clear uncertainty.
+/// another worker. The slot is released after completion, error or panic (a
+/// panic also marks the gate uncertain); a failed spawn marks the gate
+/// uncertain and releases it. Nothing here can reopen the gate or clear
+/// uncertainty.
 fn defer_record(
     gate: &Arc<OutputGate>,
     spawn: impl FnOnce(Box<dyn FnOnce() + Send>) -> std::io::Result<()>,
     record: impl FnOnce(&OutputGate) -> &'static str + Send + 'static,
 ) -> &'static str {
-    struct Release(Arc<OutputGate>);
+    struct Release(Arc<OutputGate>, bool);
     impl Drop for Release {
         fn drop(&mut self) {
+            if !self.1 {
+                self.0.mark_uncertain();
+            }
             self.0.release_recorder();
         }
     }
@@ -578,10 +582,8 @@ fn defer_record(
     }
     let worker = gate.clone();
     let work = Box::new(move || {
-        let slot = Release(worker);
-        if record(&slot.0) == "uncertain" {
-            slot.0.mark_uncertain();
-        }
+        let mut slot = Release(worker, false);
+        slot.1 = record(&slot.0) != "uncertain";
     });
     if spawn(work).is_err() {
         gate.mark_uncertain();
@@ -589,6 +591,23 @@ fn defer_record(
         return "uncertain";
     }
     "pending"
+}
+
+pub(super) fn random_hex32() -> Result<String> {
+    let mut bytes = [0u8; 32];
+    #[cfg(unix)]
+    {
+        // SAFETY: writable buffer of the stated length (<= 256).
+        if unsafe { libc::getentropy(bytes.as_mut_ptr().cast(), bytes.len()) } != 0 {
+            return Err("daemon instance entropy unavailable".into());
+        }
+        Ok(hex::encode(bytes))
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = &mut bytes;
+        Err("daemon instance entropy unavailable".into())
+    }
 }
 
 #[cfg(test)]
@@ -677,26 +696,10 @@ mod recorder_tests {
         );
         let work = queued.try_recv().unwrap();
         assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)).is_err());
+        assert_eq!(gate.state(), LeaseState::Uncertain, "unrecorded revoke");
         assert!(
             gate.reserve_recorder(),
             "slot leaked by a panicking recorder"
         );
-    }
-}
-
-pub(super) fn random_hex32() -> Result<String> {
-    let mut bytes = [0u8; 32];
-    #[cfg(unix)]
-    {
-        // SAFETY: writable buffer of the stated length (<= 256).
-        if unsafe { libc::getentropy(bytes.as_mut_ptr().cast(), bytes.len()) } != 0 {
-            return Err("daemon instance entropy unavailable".into());
-        }
-        Ok(hex::encode(bytes))
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = &mut bytes;
-        Err("daemon instance entropy unavailable".into())
     }
 }

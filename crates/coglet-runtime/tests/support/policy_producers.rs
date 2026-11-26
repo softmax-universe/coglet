@@ -834,7 +834,7 @@ async fn emergency_output_revoke_is_synchronous_without_router() {
     let db = rusqlite::Connection::open(d.root.join("authority.sqlite")).unwrap();
     db.execute_batch("BEGIN EXCLUSIVE;").unwrap();
     let start = tokio::time::Instant::now();
-    let revoked = d.local("revoke_output_lease", json!({})).await;
+    let revoked = d.reserved("revoke_output_lease", json!({})).await;
     assert!(
         start.elapsed() < Duration::from_secs(2),
         "revoke waited for SQL: {revoked}"
@@ -880,7 +880,7 @@ async fn emergency_stop_reconciles_original_context_after_restart() {
     let mut d = Daemon::new(0x94).await;
     let a = d.install(WASM_WAT).await;
     let link = d.execute(&a).await;
-    let revoked = d.local("revoke_output_lease", json!({})).await;
+    let revoked = d.reserved("revoke_output_lease", json!({})).await;
     assert_eq!(revoked["ok"], true, "{revoked}");
     drop(link);
     let records = d.restart().await;
