@@ -460,14 +460,14 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                          ($0.data["path"] as? String)?.hasPrefix(path + ".") == true
                      }.map(\.data)]
              },
-             "maxDepth": 8, "maxNodes": 512, "scope": "owned NSHostingView accessibilityChildren only"]
+             "maxDepth": 8, "maxNodes": 512, "scope": "supplied exact owned host or its exact owning window accessibilityChildren only"]
         }
     }
     // Public protocol verified against Apple NSAccessibilityProtocol documentation:
     // accessibilityChildren() -> [Any]?, accessibilityPerformPress() -> Bool,
     // isAccessibilitySelectorAllowed(_:) -> Bool. No guessed action protocol or BOOL perform().
     // https://developer.apple.com/documentation/appkit/nsaccessibilityprotocol
-    private func actionAXTree(_ host: NSView) -> ActionAXTree {
+    private func actionAXTree(_ host: AnyObject) -> ActionAXTree {
         var nodes: [ActionAXNode] = [], limits: [String] = []
         var visited = Set<ObjectIdentifier>()
         var inspected = 0
@@ -575,6 +575,85 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         window.contentView = host; host.frame = NSRect(x: 0, y: 0, width: 540, height: 440)
         window.orderBack(nil); window.makeFirstResponder(nil)
         return (key, model, host, window)
+    }
+    // Read-only materialization gate after run33's independent Button tree was empty.
+    // No Picker, AX press, synthetic input, system AX client or permission changes.
+    func testButtonAXMaterializationOnly() throws {
+        guard let path = ProcessInfo.processInfo.environment["SOFTMAX_RADIO_MEASUREMENT_DIR"] else {
+            throw XCTSkip("Opt-in Button AX substrate diagnostic only")
+        }
+        _ = NSApplication.shared
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let item = makeActionCase("positive-button")
+        defer {
+            item.window.endEditing(for: nil); item.window.makeFirstResponder(nil)
+            item.window.contentView = nil; item.window.close()
+        }
+        var records: [[String: Any]] = []
+        var captureErrors: [String] = []
+        let expectedID = "measurement.positive.button"
+        func checkpoint(_ phase: String, hit: AnyObject? = nil) throws {
+            do { try actionSettled(item.host, window: item.window, key: phase) }
+            catch { captureErrors.append(phase + ": " + String(describing: error)) }
+            let (png, bitmap) = try actionCapture(item.host)
+            let hostTree = actionAXTree(item.host)
+            let windowTree = actionAXTree(item.window)
+            let name = "button-materialization-" + phase
+            try png.write(to: root.appendingPathComponent(name + ".png"))
+            // A hit-test result is observed separately, NEVER used for action routing.
+            let hitTree = hit.map { actionAXTree($0) }
+            let row: [String: Any] = ["phase": phase, "hostAX": hostTree.observation,
+                "windowAX": windowTree.observation,
+                "hitAX": hitTree?.observation as Any? ?? "notQueried",
+                "hitExactIDCount": hitTree?.nodes.filter { ($0.data["id"] as? String) == expectedID }.count ?? 0,
+                "limits": hostTree.limits + windowTree.limits + (hitTree?.limits ?? []),
+                "hostExactIDCount": hostTree.nodes.filter { ($0.data["id"] as? String) == expectedID }.count,
+                "windowExactIDCount": windowTree.nodes.filter { ($0.data["id"] as? String) == expectedID }.count,
+                "model": item.model.observation, "windowKey": item.window.isKeyWindow,
+                "appActive": NSApp.isActive, "styleMask": item.window.styleMask.rawValue,
+                "hostFrame": rect(item.host.frame), "hostBounds": rect(item.host.bounds),
+                "backingScale": Double(item.window.backingScaleFactor),
+                "rasterSize": [bitmap.pixelsWide, bitmap.pixelsHigh], "png": name + ".png",
+                "nativeTree": metadata(item.host, host: item.host, path: "root")]
+            records.append(row)
+            try JSONSerialization.data(withJSONObject: row, options: [.prettyPrinted, .sortedKeys])
+                .write(to: root.appendingPathComponent(name + ".json"))
+        }
+        try checkpoint("borderless-back")
+        item.window.orderFront(nil)
+        try checkpoint("borderless-front")
+        // Diagnostic presentation change only: borderless windows may refuse key status.
+        item.window.styleMask.insert(.titled)
+        item.window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        try checkpoint("titled-key-request")
+        let center = NSPoint(x: item.host.bounds.midX, y: item.host.bounds.midY)
+        let screenPoint = item.window.convertPoint(toScreen: item.host.convert(center, to: nil))
+        let hit = item.host.accessibilityHitTest(screenPoint) as AnyObject?
+        try checkpoint("after-owned-host-hit-test", hit: hit)
+        let idCounts = records.flatMap { row in
+            ["hostExactIDCount", "windowExactIDCount", "hitExactIDCount"].map { row[$0] as? Int ?? 0 }
+        }
+        let exposed = idCounts.contains(1)
+        let inconclusive = !captureErrors.isEmpty || records.count != 4 || idCounts.contains { $0 > 1 }
+            || records.contains { !(($0["limits"] as? [String]) ?? []).isEmpty }
+        let outcome = inconclusive ? "inconclusive-limits-duplicates-or-capture"
+            : exposed ? "exact-button-id-exposed" : "in-process-AX-route-unavailable"
+        let result: [String: Any] = ["source": ProcessInfo.processInfo.environment["GITHUB_SHA"] ?? "unrecorded",
+            "cases": records, "outcome": outcome, "captureErrors": captureErrors,
+            "meaning": "read-only feasibility ONLY; no Picker or action inference; negative closes this tested route",
+            "noActionsAttempted": true, "model": item.model.observation,
+            "scope": "one exact owned host and its exact owning window; no app/global window enumeration",
+            "qualification": "not product, stable-id census, visual, focus, lifecycle or shared-command acceptance"]
+        try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
+            .write(to: root.appendingPathComponent("button-materialization-cases.json"))
+        // Exposure may legitimately remain absent. A successful run means evidence retained.
+        XCTAssertEqual(records.count, 4)
+        XCTAssertTrue(captureErrors.isEmpty, captureErrors.joined(separator: "\n"))
+        XCTAssertEqual(item.model.buttonCount, 0)
+        XCTAssertEqual(item.model.appearanceWrites, 0)
+        XCTAssertEqual(item.model.scaleWrites, 0)
     }
     func testMutablePickerActionSubstrateOnly() throws {
         guard let path = ProcessInfo.processInfo.environment["SOFTMAX_RADIO_MEASUREMENT_DIR"] else {

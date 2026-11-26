@@ -27,7 +27,7 @@ jobs:
       - name: Measure only paired original and actual native radios
         run: |
           set -o pipefail
-          swift test --package-path apps/softmax-mac/Surface --filter 'RadioPresentationMeasurementTests/testMutablePickerActionSubstrateOnly' 2>&1 | tee radio-measurement/test.log
+          swift test --package-path apps/softmax-mac/Surface --filter 'RadioPresentationMeasurementTests/testButtonAXMaterializationOnly' 2>&1 | tee radio-measurement/test.log
       - name: Hash retained measurements
         if: always()
         run: |
