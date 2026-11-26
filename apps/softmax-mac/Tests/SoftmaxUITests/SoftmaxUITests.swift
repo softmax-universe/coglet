@@ -266,6 +266,51 @@ final class SoftmaxUITests: XCTestCase {
             "settings.updates", "settings.privacy"], "all ten route captures must execute")
     }
 
+    @MainActor
+    func testGeneralNativeRadioChoicesAndRouteRemount() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
+        app.launch()
+        defer { app.terminate() }
+        let welcome = app.windows["Welcome to Softmax"]
+        XCTAssertTrue(welcome.waitForExistence(timeout: 5))
+        welcome.buttons["onboarding.open_settings"].click()
+        let settings = app.windows["Softmax Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        let groups = [("settings.general.appearance", ["system", "light", "dark"]),
+                      ("settings.general.text_size", ["standard", "large", "largest"])]
+        func assertSelection(_ parent: String, _ choices: [String], selected: String) {
+            XCTAssertEqual(settings.radioGroups.matching(identifier: parent).count, 1)
+            for choice in choices {
+                let buttons = settings.radioButtons.matching(identifier: parent + "." + choice)
+                XCTAssertEqual(buttons.count, 1)
+                XCTAssertTrue(buttons.element.isEnabled)
+                XCTAssertEqual((buttons.element.value as? NSNumber)?.intValue,
+                    choice == selected ? 1 : 0, parent + "." + choice)
+            }
+        }
+        for (parent, choices) in groups {
+            for choice in choices {
+                let button = settings.radioButtons[parent + "." + choice]
+                XCTAssertTrue(button.waitForExistence(timeout: 5))
+                button.click()
+                assertSelection(parent, choices, selected: choice)
+            }
+        }
+        // Route teardown and reconstruction must preserve the real model value
+        // while returning exactly one native child per semantic identity.
+        settings.buttons["settings.tab.audio"].click()
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+            object: settings.radioGroups["settings.general.appearance"])
+        XCTAssertEqual(XCTWaiter.wait(for: [gone], timeout: 5), .completed)
+        settings.buttons["settings.tab.general"].click()
+        XCTAssertTrue(settings.radioGroups["settings.general.appearance"].waitForExistence(timeout: 5))
+        assertSelection(groups[0].0, groups[0].1, selected: "dark")
+        assertSelection(groups[1].0, groups[1].1, selected: "largest")
+        settings.radioButtons["settings.general.appearance.light"].click()
+        settings.radioButtons["settings.general.text_size.standard"].click()
+    }
+
     /// Native CI on macOS 26 reports two OS-owned chrome defects:
     /// its disabled empty application Touch Bar, and the Zoom button's internal
     /// disabled 14 pt group. Never exempt a product control or any contrast issue.

@@ -100,49 +100,35 @@ struct SettingsView: View {
                             // audit rejects on this surface; draw the title with the 14 pt body token.
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Appearance").softmaxFont(SoftmaxDesignTokens.fontBody).accessibilityHidden(true)
-                                Picker("Appearance", selection: $appearance) { ForEach(["System", "Light", "Dark"], id: \.self) { Text($0) } }
-                                    .pickerStyle(.radioGroup).labelsHidden()
-                                    .coglet(id: "settings.general.appearance", registry: model.appControls,
-                                        window: "settings", route: "general", role: "picker", label: "Appearance",
-                                        verbs: ["select"], value: {
-                                            .map([.init("kind", .text("selection")), .init("value", .text(appearance))])
-                                        }, failure: model.appControlFailure, invoke: { args in
-                                            guard case .map(let fields) = args,
-                                                  let value = fields.first(where: { $0.key == "value" }), case .text(let text) = value.value,
-                                                  ["System", "Light", "Dark"].contains(text) else {
-                                                throw ControlRegistryFailure.unsupported
-                                            }
-                                            appearance = text
-                                        })
+                                CogletRadioGroup("Appearance", id: "settings.general.appearance", registry: model.appControls,
+                                    window: "settings", route: "general", choices: [
+                                        .init(value: "System", label: "System", id: "settings.general.appearance.system"),
+                                        .init(value: "Light", label: "Light", id: "settings.general.appearance.light"),
+                                        .init(value: "Dark", label: "Dark", id: "settings.general.appearance.dark")],
+                                    selection: $appearance, failure: model.appControlFailure)
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Text size").softmaxFont(SoftmaxDesignTokens.fontBody).accessibilityHidden(true)
-                                Picker("Text size", selection: $textScale) {
-                                    Text("Standard").tag(1.0); Text("Large").tag(1.3); Text("Largest").tag(1.6)
-                                }.pickerStyle(.radioGroup).labelsHidden()
-                                    .coglet(id: "settings.general.text_size", registry: model.appControls,
-                                        window: "settings", route: "general", role: "picker", label: "Text size",
-                                        verbs: ["select"], value: {
-                                            let choice: String
-                                            switch textScale {
-                                            case 1.0: choice = "standard"
-                                            case 1.3: choice = "large"
-                                            case 1.6: choice = "largest"
-                                            default: throw ControlRegistryFailure.unavailable
-                                            }
-                                            return .map([.init("kind", .text("selection")), .init("value", .text(choice))])
-                                        }, failure: model.appControlFailure, invoke: { args in
-                                            guard case .map(let fields) = args,
-                                                  let value = fields.first(where: { $0.key == "value" }), case .text(let choice) = value.value else {
-                                                throw ControlRegistryFailure.unsupported
-                                            }
-                                            switch choice {
-                                            case "standard": textScale = 1.0
-                                            case "large": textScale = 1.3
-                                            case "largest": textScale = 1.6
-                                            default: throw ControlRegistryFailure.unsupported
-                                            }
-                                        })
+                                CogletRadioGroup("Text size", id: "settings.general.text_size", registry: model.appControls,
+                                    window: "settings", route: "general", choices: [
+                                        .init(value: "standard", label: "Standard", id: "settings.general.text_size.standard"),
+                                        .init(value: "large", label: "Large", id: "settings.general.text_size.large"),
+                                        .init(value: "largest", label: "Largest", id: "settings.general.text_size.largest")],
+                                    selection: Binding(get: {
+                                        switch textScale {
+                                        case 1.0: "standard"
+                                        case 1.3: "large"
+                                        case 1.6: "largest"
+                                        default: "unavailable"
+                                        }
+                                    }, set: { choice in
+                                        switch choice {
+                                        case "standard": textScale = 1.0
+                                        case "large": textScale = 1.3
+                                        case "largest": textScale = 1.6
+                                        default: break
+                                        }
+                                    }), failure: model.appControlFailure)
                             }
                             CogletToggle("Show floating orb", id: "floatingOrbToggle", registry: model.appControls,
                                 window: "settings", route: "general", isOn: $model.orbEnabled, failure: model.appControlFailure)
