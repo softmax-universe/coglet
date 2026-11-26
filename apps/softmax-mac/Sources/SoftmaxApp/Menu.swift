@@ -72,7 +72,9 @@ struct SoftmaxMenuView: View {
             Divider()
             CogletButton("Commands…  ⌘K", id: "menu.commands", registry: model.appControls, window: "menu_bar", route: "menu", failure: model.appControlFailure) { dismiss(); searchCommands() }
             CogletButton("Settings…", id: "menu.settings", registry: model.appControls, window: "menu_bar", route: "menu", failure: model.appControlFailure) { dismiss(); settings() }.keyboardShortcut(",")
-            CogletButton("Check for Updates…", id: "menu.check_updates", registry: model.appControls, window: "menu_bar", route: "menu", sensitive: true, adapterSynchronous: false, failure: model.appControlFailure) { model.updates.checkForUpdates() }.disabled(!model.updates.enabled)
+            CogletAsyncButton("Check for Updates…", id: "menu.check_updates", registry: model.appControls, window: "menu_bar", route: "menu", sensitive: true, failure: model.appControlFailure) { context in
+                try await model.updates.checkForUpdates(context: context)
+            }.disabled(!model.updates.enabled)
             CogletButton("About Softmax", id: "menu.about", registry: model.appControls, window: "menu_bar", route: "menu", failure: model.appControlFailure) { dismiss(); about() }
             Divider()
             CogletButton("Quit Softmax", id: "menu.quit", registry: model.appControls, window: "menu_bar", route: "menu", sensitive: true, adapterSynchronous: false, failure: model.appControlFailure, action: quit).keyboardShortcut("q")
