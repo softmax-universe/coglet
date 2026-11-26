@@ -19,41 +19,37 @@ final class RadioPresentationMeasurementTests: XCTestCase {
     private final class PassiveCell: NSButtonCell {}
     private final class ProbeCell: NSButtonCell {
         var treatment: Treatment = .control
-        var ink = NSColor.labelColor
-        var titleCalls = 0, imageCalls = 0
-        var titlePassed = NSRect.zero, titleApplied = NSRect.zero, titleReturned = NSRect.zero
-        var imagePassed = NSRect.zero, imageUnsnapped = NSRect.zero, imageApplied = NSRect.zero
-        override func drawTitle(_ title: NSAttributedString, withFrame frame: NSRect, in controlView: NSView) -> NSRect {
-            titleCalls += 1; titlePassed = frame
-            var adjusted = frame
-            if treatment.moveLabel {
-                var backing = controlView.convertToBacking(adjusted)
-                backing.origin.x -= 1 // ONE actual raster pixel, not one point.
-                adjusted = controlView.convertFromBacking(backing)
+        weak var owner: NSButton?
+        var measuringRender = false
+        var renderCalls: [[String: Any]] = []
+        // NO drawTitle/drawImage overrides: their mere presence changed rasterization.
+        override func titleRect(forBounds bounds: NSRect) -> NSRect {
+            let native = super.titleRect(forBounds: bounds)
+            var applied = native
+            if treatment.moveLabel, let owner {
+                var backing = owner.convertToBacking(native); backing.origin.x -= 1
+                applied = owner.convertFromBacking(backing)
             }
-            titleApplied = adjusted
-            if treatment.recolor {
-                let text = NSMutableAttributedString(attributedString: title)
-                text.addAttribute(.foregroundColor, value: ink, range: NSRange(location: 0, length: text.length))
-                titleReturned = super.drawTitle(text, withFrame: adjusted, in: controlView)
-            } else {
-                titleReturned = super.drawTitle(title, withFrame: adjusted, in: controlView)
-            }
-            return titleReturned
+            record("title", bounds: bounds, native: native, applied: applied)
+            return applied
         }
-        override func drawImage(_ image: NSImage, withFrame frame: NSRect, in controlView: NSView) {
-            imageCalls += 1; imagePassed = frame
-            var adjusted = frame
-            if treatment.centerDisc {
-                adjusted.origin.y = controlView.bounds.midY - frame.height / 2
-                imageUnsnapped = adjusted
-                var backing = controlView.convertToBacking(adjusted)
-                // Fixed hypothesis: nearest pixel; half ties away from zero.
-                backing.origin.y = backing.origin.y.rounded(.toNearestOrAwayFromZero)
-                adjusted = controlView.convertFromBacking(backing)
-            } else { imageUnsnapped = adjusted }
-            imageApplied = adjusted
-            super.drawImage(image, withFrame: adjusted, in: controlView)
+        override func imageRect(forBounds bounds: NSRect) -> NSRect {
+            let native = super.imageRect(forBounds: bounds)
+            var applied = native
+            if treatment.centerDisc, let owner {
+                // Feasibility probe ONLY: fixed one-pixel upward translation.
+                // Not a fitted center formula or a proposed product geometry.
+                var backing = owner.convertToBacking(native)
+                backing.origin.y += owner.isFlipped ? -1 : 1
+                applied = owner.convertFromBacking(backing)
+            }
+            record("image", bounds: bounds, native: native, applied: applied)
+            return applied
+        }
+        private func record(_ kind: String, bounds: NSRect, native: NSRect, applied: NSRect) {
+            guard measuringRender else { return }
+            func values(_ r: NSRect) -> [Double] { [r.origin.x, r.origin.y, r.width, r.height].map(Double.init) }
+            renderCalls.append(["kind": kind, "bounds": values(bounds), "native": values(native), "applied": values(applied)])
         }
     }
     private struct Marker: NSViewRepresentable {
@@ -161,9 +157,8 @@ final class RadioPresentationMeasurementTests: XCTestCase {
             }
             d["titleAttributeRuns"] = runs
             if let probe = b.cell as? ProbeCell {
-                d["probe"] = ["treatment": probe.treatment.rawValue, "titleCalls": probe.titleCalls, "imageCalls": probe.imageCalls,
-                    "titlePassed": rect(probe.titlePassed), "titleApplied": rect(probe.titleApplied), "titleReturned": rect(probe.titleReturned),
-                    "imagePassed": rect(probe.imagePassed), "imageUnsnapped": rect(probe.imageUnsnapped), "imageApplied": rect(probe.imageApplied),
+                d["probe"] = ["treatment": probe.treatment.rawValue,
+                    "renderCalls": probe.renderCalls, "ownerMatches": probe.owner === b,
                     "backingBounds": rect(b.convertToBacking(b.bounds)), "highlighted": probe.isHighlighted]
             }
             if let cell = b.cell as? NSButtonCell {
@@ -187,9 +182,12 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         return d
     }
     private func views(_ v: NSView) -> [NSView] { [v] + v.subviews.flatMap { views($0) } }
-    private func capture(_ host: NSView) throws -> (Data, NSBitmapImageRep) {
+    private func capture(_ host: NSView, measure: [ProbeCell] = []) throws -> (Data, NSBitmapImageRep) {
         let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        // Allocate/layout FIRST, count ONLY cacheDisplay, never metadata/crops.
+        for cell in measure { cell.renderCalls = []; cell.measuringRender = true }
         host.cacheDisplay(in: host.bounds, to: bitmap)
+        for cell in measure { cell.measuringRender = false }
         return (try XCTUnwrap(bitmap.representation(using: .png, properties: [:])), bitmap)
     }
     func testPairedNativeMeasurementsOnly() throws {
@@ -250,17 +248,36 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         return try registry.captureDirectory().prepareFocus(.map([
                             .init("window", .text("settings")), .init("control", .text(id))]))
                     }
+                    // Bind geometry conversions to the actual existing owner.
+                    for button in nativeButtons { (button.cell as? ProbeCell)?.owner = button }
                     if owned && treatment != .original {
                         let before = try capture(host)
                         try before.0.write(to: root.appendingPathComponent(key + "-before.png"))
                         try JSONSerialization.data(withJSONObject: metadata(host, host: host, path: "root"), options: [.prettyPrinted, .sortedKeys])
                             .write(to: root.appendingPathComponent(key + "-before.json"))
                         if treatment != .passive {
+                            // All rect-cell variants get the SAME unchanged setter
+                            // checkpoint. Offline equality is mandatory before ink
+                            // attribution; preserve all original non-colour attrs.
+                            for button in nativeButtons {
+                                button.attributedTitle = NSAttributedString(attributedString: button.attributedTitle)
+                                button.needsDisplay = true
+                            }
+                            let noop = try capture(host)
+                            try noop.0.write(to: root.appendingPathComponent(key + "-noop.png"))
+                            try JSONSerialization.data(withJSONObject: metadata(host, host: host, path: "root"), options: [.prettyPrinted, .sortedKeys])
+                                .write(to: root.appendingPathComponent(key + "-noop.json"))
                             for button in nativeButtons {
                                 let probe = try XCTUnwrap(button.cell as? ProbeCell)
+                                XCTAssertTrue(probe.owner === button)
                                 probe.treatment = treatment
-                                probe.ink = NSColor(srgbRed: dark ? 0.925490196 : 0.090196078,
-                                    green: dark ? 0.960784314 : 0.137254902, blue: dark ? 0.937254902 : 0.113725490, alpha: 1)
+                                if treatment.recolor {
+                                    let text = NSMutableAttributedString(attributedString: button.attributedTitle)
+                                    let ink = NSColor(srgbRed: dark ? 0.925490196 : 0.090196078,
+                                        green: dark ? 0.960784314 : 0.137254902, blue: dark ? 0.937254902 : 0.113725490, alpha: 1)
+                                    text.addAttribute(.foregroundColor, value: ink, range: NSRange(location: 0, length: text.length))
+                                    button.attributedTitle = text
+                                }
                                 button.needsDisplay = true
                             }
                         }
@@ -275,12 +292,9 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         if count >= 3 && Date().timeIntervalSince(start) >= 0.2 { stable = current; break }
                     }
                     _ = try XCTUnwrap(stable, "Unstable fixture: \(key)")
-                    for button in nativeButtons {
-                        if let probe = button.cell as? ProbeCell { probe.titleCalls = 0; probe.imageCalls = 0 }
-                        button.needsDisplay = true
-                    }
+                    for button in nativeButtons { button.needsDisplay = true }
                     host.needsDisplay = true
-                    let (png, bitmap) = try capture(host)
+                    let (png, bitmap) = try capture(host, measure: nativeButtons.compactMap { $0.cell as? ProbeCell })
                     XCTAssertEqual(png, stable?.0, "Forced capture changed stable pixels: " + key)
                     // Retain the pixels/metadata even if an invariant or hook fails.
                     try png.write(to: root.appendingPathComponent(key + ".png"))
@@ -340,9 +354,12 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         if treatment != .original && treatment != .passive {
                             for button in nativeButtons {
                                 let probe = try XCTUnwrap(button.cell as? ProbeCell)
-                                XCTAssertGreaterThan(probe.titleCalls, 0, key + ": uncalled title hook " + button.title)
-                                XCTAssertGreaterThan(probe.imageCalls, 0, key + ": uncalled image hook " + button.title)
-                                XCTAssertEqual(probe.imagePassed.size, NSSize(width: 16, height: 16))
+                                XCTAssertTrue(probe.owner === button)
+                                XCTAssertFalse(probe.measuringRender)
+                                // A zero-call hook is a measured negative result,
+                                // not a test failure to be retried or restored to
+                                // the confounded drawing override. Offline pixel
+                                // translation AND render calls are needed for use.
                             }
                         }
                     }
