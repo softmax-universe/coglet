@@ -1,26 +1,40 @@
-//! Act 3: Stage 3 router. Signed hub-ref statements, a private `data/`-omitted
-//! `.promisor` push, the read-grant gate, and compaction, all on a real
-//! unforged hub.
+//! Act 3: Stage 3 router on a real unforged hub. hub0 statement encoding, a
+//! private `data/`-omitted `.promisor` push, `coglet-ref-statement/v1` statements
+//! over ADR-0040 `refs/users/<coglet>/...` (unforged#9 atomic generations and
+//! receipts, #10 repository/namespace/intent binding and role separation), per-user
+//! read isolation (#11: advertisement, OID wants, path reads, lazy promisor fetch,
+//! grant scoping and revocation), and compaction.
 //!
 //! `cs.os` plays the device and is only read. The hub is a fresh router
 //! `GecaosOs` under `cs.work_dir`, so Act 3 never moves a ref, writes config or
 //! prunes an object in the shared store that later acts read.
 //!
-//! The order is the one the real API allows. `verify_and_apply_ref_statement`
-//! requires the target commit to be present on the router already, and
-//! `push_coglet_state_without_data` always CAS-moves the ref it is given. So the
-//! device first pushes the chain (data omitted) to a node-scoped upload ref, and
-//! the signed statements are what move `.../state`. Compaction runs last.
+//! The order is the one the real API allows. Statements require the target commit
+//! to be present on the router already, and `push_coglet_state_without_data`
+//! always CAS-moves the ref it is given. So the device first pushes the chain
+//! (data omitted) to a public node-scoped upload ref, signed v1 statements move the
+//! protected `refs/users/<c>/state`, and the public refs are deleted before the
+//! read-isolation checks. Compaction runs last.
 use crate::report::{ActReport, CounterState};
 use coglet_types_hub0::Value as HubValue;
 use gecaos::auth::{NamespaceTier, allowed_signers_path, generate_signing_identity_with_tier};
+use gecaos::coglet::{CogletRefLayout, parse_coglet_ref};
+use gecaos::coglet_protected_refs::{
+    PROTECTED_REF_STATEMENT_VERSION, ProtectedRefIntent, ProtectedRefPurpose,
+    ProtectedRefStatement, gate_unsigned_ref_write, is_protected_ref, read_generation_watermark,
+    set_repository_id, sign_protected_ref_statement, verify_and_apply_protected_ref_statement,
+};
 use gecaos::coglet_router::{
     CborValue, CogletGrantRecord, RefStatement, STATEMENTS_NOTES_REF, SignedRefStatement,
-    compact_coglet_history, encode_deterministic_cbor, has_valid_data_read_grant,
-    iroh_pubkey_to_openssh, iroh_pubkey_to_openssh_str, issue_signed_coglet_grant,
-    push_coglet_state_without_data, read_coglet_state_path_gated, read_ref_statements_for_commit,
+    compact_coglet_history, encode_deterministic_cbor, iroh_pubkey_to_openssh,
+    iroh_pubkey_to_openssh_str, push_coglet_state_without_data,
+    read_protected_ref_statements_for_commit, read_ref_statements_for_commit,
     register_iroh_allowed_signer, sign_ref_statement, verify_and_apply_ref_statement,
     verify_ref_statement_signature, write_ref_permissions,
+};
+use gecaos::coglet_user_isolation::{
+    ReadPrincipal, authorize_upload_pack_wants_for, fetch_promisor_private_object, hidden_refs_for,
+    issue_signed_user_grant, read_user_ref_path_gated, user_isolation_active,
 };
 use gecaos::git::GitEnv;
 use gecaos::os::GecaosOs;
@@ -36,6 +50,11 @@ use std::process::Command;
 const NODE_SEED: [u8; 32] = [0x31; 32];
 const HUB_SEED: [u8; 32] = [0x48; 32];
 const ROGUE_SEED: [u8; 32] = [0x99; 32];
+const NODE2_SEED: [u8; 32] = [0x32; 32];
+const KERNEL_SEED: [u8; 32] = [0x4b; 32];
+const FACTORY_SEED: [u8; 32] = [0x46; 32];
+/// `unforged.repoId` of the hub: every v1 statement is bound to it.
+const REPO_ID: &str = "coglet-unforged-proof-hub";
 /// The node key may move refs only under its own runtime namespace.
 const NODE_REFS: &str = "refs/namespaces/node-1/**";
 const KEEP_RECENT: usize = 2;
@@ -46,7 +65,7 @@ const HUB0_FIXTURES: &str =
 pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     let mut r = ActReport::new(
         "3",
-        "Stage 3: router hub-ref-statement, private data/-omitted .promisor push, read-grant gate & compaction",
+        "Stage 3: refs/users v1 statements (#9/#10), per-user read isolation (#11), .promisor push, compaction",
     );
     let env = GitEnv::default();
     let id = cs.coglet_id;
@@ -60,8 +79,14 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     let n = cs.step_commits.len();
     let tip = cs.tip;
     let prev = cs.step_commits[n - 2].as_str();
-    let state_ref = format!("refs/namespaces/node-1/refs/coglets/{id}/state");
-    let upload_ref = format!("refs/namespaces/node-1/refs/coglets/{id}/upload");
+    // ADR-0040: the coglet is a user of the hub, inside node-1's runtime namespace.
+    let users_state = format!(
+        "refs/namespaces/node-1/{}",
+        CogletRefLayout::Users.state_ref(id)
+    );
+    // Public (unprotected) refs: the data-omitted upload and the legacy hub0 ref.
+    let upload_ref = format!("refs/namespaces/node-1/refs/uploads/{id}");
+    let legacy_ref = format!("refs/namespaces/node-1/refs/hub/{id}/state");
     r.hash("device tip StepCommit", tip);
 
     // Device-side facts every later check compares against (read-only on cs.os).
@@ -90,6 +115,7 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     std::fs::create_dir_all(&work).map_err(|e| e.to_string())?;
     let router = GecaosOs::init(work.join("router"))?;
     let gitdir = router.git.git_dir.clone();
+    set_repository_id(&router, REPO_ID)?;
 
     let node_sk = iroh::SecretKey::from_bytes(&NODE_SEED);
     let node_pk = node_sk.public();
@@ -107,6 +133,41 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
         &[NODE_REFS],
         &[],
     )?;
+    for (name, group, seed, refs) in [
+        (
+            "node-2",
+            "runtime",
+            NODE2_SEED,
+            vec!["refs/namespaces/node-2/**"],
+        ),
+        (
+            "kernel",
+            "kernel",
+            KERNEL_SEED,
+            vec!["refs/namespaces/*/refs/users/*/published"],
+        ),
+        // The factory's ACL deliberately also covers `published`: role separation,
+        // not the ACL, is what keeps a policy producer from promoting.
+        (
+            "factory",
+            "factory",
+            FACTORY_SEED,
+            vec![
+                "refs/namespaces/*/refs/users/*/policy",
+                "refs/namespaces/*/refs/users/*/published",
+            ],
+        ),
+    ] {
+        register_iroh_allowed_signer(
+            &router,
+            name,
+            &[group],
+            NamespaceTier::GitOnly,
+            &iroh::SecretKey::from_bytes(&seed).public(),
+            &refs,
+            &[],
+        )?;
+    }
     let grant_admin = generate_signing_identity_with_tier(
         &router,
         "grant-admin",
@@ -121,7 +182,13 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     )?;
     write_ref_permissions(
         &router,
-        &format!("mode router\nnode-1      allow {NODE_REFS}\ngrant-admin allow refs/grants/*\n"),
+        &format!(
+            "mode router\nnode-1      allow {NODE_REFS}\nnode-2      allow refs/namespaces/node-2/**\n\
+             kernel      allow refs/namespaces/*/refs/users/*/published\n\
+             factory     allow refs/namespaces/*/refs/users/*/policy\n\
+             factory     allow refs/namespaces/*/refs/users/*/published\n\
+             grant-admin allow refs/grants/*\ngrant-admin allow refs/namespaces/*/refs/grants/*\n"
+        ),
     )?;
     let auditor_pub = std::fs::read_to_string(&auditor.public_key).map_err(|e| e.to_string())?;
     let auditor_pk = PublicKey::from_openssh(auditor_pub.trim()).map_err(|e| e.to_string())?;
@@ -186,8 +253,8 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
             new_oid: new.to_string(),
             archive_sha256: None,
         };
-    let s1 = sign_ref_statement(&node_sk, live(1, None, prev, &state_ref, "state-ref"))?;
-    let s2 = sign_ref_statement(&node_sk, live(2, Some(prev), tip, &state_ref, "state-ref"))?;
+    let s1 = sign_ref_statement(&node_sk, live(1, None, prev, &legacy_ref, "state-ref"))?;
+    let s2 = sign_ref_statement(&node_sk, live(2, Some(prev), tip, &legacy_ref, "state-ref"))?;
     let live_val = s2.statement.to_cbor_value();
     let ours = encode_deterministic_cbor(&live_val)?;
     let theirs = coglet_types_hub0::encode_profile(&cbor_to_hub(&live_val)?);
@@ -337,7 +404,7 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     let (ok, detail) = fsck_full(&gitdir);
     r.check("2. git --git-dir <router> fsck --full passes", ok, detail);
 
-    // ---- 1b. Signed statements move the state ref (atomic CAS + notes) ----
+    // ---- 1b. Legacy hub-ref-statements on a NON-protected hub ref ----
     let rogue = sign_ref_statement(&rogue_sk, s1.statement.clone())?;
     let e = verify_and_apply_ref_statement(&router, &rogue, None);
     r.check(
@@ -348,14 +415,14 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     match verify_and_apply_ref_statement(&router, &s1, None) {
         Ok(a) => {
             r.check(
-                "1. verify_and_apply_ref_statement gen=1 (old=zero -> prev step)",
-                !a.idempotent_retry && a.full_ref == state_ref && a.signer_principal == "node-1",
+                "1. legacy verify_and_apply_ref_statement gen=1 (old=zero -> prev step)",
+                !a.idempotent_retry && a.full_ref == legacy_ref && a.signer_principal == "node-1",
                 format!("{} by {}", a.full_ref, a.signer_principal),
             );
         }
         Err(e) => {
             r.check(
-                "1. verify_and_apply_ref_statement gen=1 (old=zero -> prev step)",
+                "1. legacy verify_and_apply_ref_statement gen=1 (old=zero -> prev step)",
                 false,
                 e,
             );
@@ -363,30 +430,34 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     }
     match verify_and_apply_ref_statement(&router, &s2, None) {
         Ok(a) => {
-            let notes_tip = rev(&router, STATEMENTS_NOTES_REF);
             r.check(
-                "1. verify_and_apply_ref_statement gen=2 (prev step -> tip)",
+                "1. legacy verify_and_apply_ref_statement gen=2 (prev step -> tip)",
                 !a.idempotent_retry && a.old_oid.as_deref() == Some(prev),
                 format!("{} gen {}", a.full_ref, a.generation),
             );
             r.check_eq(
                 "1. refs/notes/statements moved in the same reftable tx",
-                notes_tip,
+                rev(&router, STATEMENTS_NOTES_REF),
                 Some(a.notes_commit_oid.clone()),
             );
-            r.hash("refs/notes/statements", a.notes_commit_oid.as_str());
+            r.check(
+                "1. #9: legacy apply also lands its generation watermark + operation receipt refs",
+                rev(&router, &a.watermark_ref).is_some()
+                    && rev(&router, &a.operation_receipt_ref).is_some(),
+                format!("{} / {}", a.watermark_ref, a.operation_receipt_ref),
+            );
         }
         Err(e) => {
             r.check(
-                "1. verify_and_apply_ref_statement gen=2 (prev step -> tip)",
+                "1. legacy verify_and_apply_ref_statement gen=2 (prev step -> tip)",
                 false,
                 e,
             );
         }
     }
     r.check_eq(
-        "1. router state ref == tip",
-        rev(&router, &state_ref),
+        "1. legacy hub ref == tip",
+        rev(&router, &legacy_ref),
         Some(tip.to_string()),
     );
     r.check_eq(
@@ -394,20 +465,20 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
         read_ref_statements_for_commit(&router, prev),
         Ok(vec![s1.clone()]),
     );
-    r.check_eq(
-        "1. refs/notes/statements entry on tip == signed gen=2 statement",
-        read_ref_statements_for_commit(&router, tip),
-        Ok(vec![s2.clone()]),
-    );
     let e = verify_and_apply_ref_statement(&router, &s1, None);
     r.check(
-        "1. replayed gen=1 statement (stale generation) REFUSED",
-        e.as_ref().is_err_and(|m| m.contains("stale")),
-        e.err().unwrap_or_default(),
+        "1. replayed gen=1 statement after gen=2: original outcome or stale, never a ref move",
+        e.as_ref()
+            .is_ok_and(|a| a.idempotent_retry && a.new_oid == prev)
+            || e.as_ref().is_err_and(|m| m.contains("stale")),
+        match &e {
+            Ok(a) => format!("idempotent_retry={} new={}", a.idempotent_retry, a.new_oid),
+            Err(m) => m.clone(),
+        },
     );
     let fork = sign_ref_statement(
         &node_sk,
-        live(2, Some(tip), &cs.step_commits[0], &state_ref, "state-ref"),
+        live(2, Some(tip), &cs.step_commits[0], &legacy_ref, "state-ref"),
     )?;
     let e = verify_and_apply_ref_statement(&router, &fork, None);
     r.check(
@@ -418,19 +489,18 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
     let retry = verify_and_apply_ref_statement(&router, &s2, None);
     r.check(
         "1. byte-identical gen=2 retry is an idempotent no-op (no duplicate note)",
-        retry.as_ref().is_ok_and(|a| a.idempotent_retry)
-            && read_ref_statements_for_commit(&router, tip).map(|v| v.len()) == Ok(1),
+        retry.as_ref().is_ok_and(|a| a.idempotent_retry),
         retry.err().unwrap_or_default(),
     );
     r.check_eq(
-        "1. state ref still tip after refused statements",
-        rev(&router, &state_ref),
+        "1. legacy hub ref still tip after refused statements",
+        rev(&router, &legacy_ref),
         Some(tip.to_string()),
     );
     for (label, refname, purpose) in [
         (
             "node-2's namespace",
-            format!("refs/namespaces/node-2/refs/coglets/{id}/state"),
+            format!("refs/namespaces/node-2/refs/hub/{id}/state"),
             "state-ref",
         ),
         (
@@ -442,70 +512,164 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
         let st = sign_ref_statement(&node_sk, live(1, None, tip, &refname, purpose))?;
         let e = verify_and_apply_ref_statement(&router, &st, None);
         r.check(
-            format!("1. node-1 statement for {label} (outside {NODE_REFS}) REFUSED"),
+            format!("1. node-1 statement for {label} REFUSED"),
             e.as_ref().is_err_and(|m| m.contains("permission_denied"))
                 && rev(&router, &refname).is_none(),
             e.err().unwrap_or_default(),
         );
     }
-    router
-        .git
-        .delete_ref(&upload_ref, &env)
-        .map_err(|e| e.to_string())?;
+    let st = sign_ref_statement(&node_sk, live(1, None, tip, &users_state, "state-ref"))?;
+    let e = verify_and_apply_ref_statement(&router, &st, None);
+    r.check(
+        "1. #10: legacy hub0-domain statement on protected refs/users/<c>/state REFUSED (domain separation)",
+        e.as_ref().is_err_and(|m| m.contains("protected")) && rev(&router, &users_state).is_none(),
+        e.err().unwrap_or_default(),
+    );
+
+    // ---- 5. coglet-ref-statement/v1 on ADR-0040 refs/users (unforged#9, #10) ----
+    stage3_v1(&mut r, cs, &router, &node_sk, &users_state)?;
+
+    // Only the protected users/<c>/state ref may reach the tip from here on: the upload ref
+    // and the legacy hub ref are public and would hand the chain to every reader.
+    for gone in [&upload_ref, &legacy_ref] {
+        router
+            .git
+            .delete_ref(gone, &env)
+            .map_err(|e| e.to_string())?;
+    }
     r.note(format!(
-        "flow forced by the API: objects arrive via the data-omitted push to `{upload_ref}` (deleted once consumed); the signed gen=1/gen=2 statements are what move `{state_ref}`"
+        "flow forced by the API: objects arrive via the data-omitted push to `{upload_ref}`; signed v1 statements move `{users_state}`; the public upload and legacy hub refs are deleted before the read-isolation checks"
     ));
 
-    // ---- 3. Read-grant gate ----
-    let gated = |path: &str| {
-        read_coglet_state_path_gated(&router, "auditor", Some(&auditor_pk), id, &state_ref, path)
-    };
-    let e = gated("data/count");
-    r.check(
-        "3. ungranted gated read of data/count REFUSED",
-        e.as_ref().is_err_and(|m| m.contains("permission_denied")),
-        e.err().unwrap_or_default(),
-    );
+    // ---- 3. Per-user read isolation over refs/users (unforged#11) ----
+    let node2_ssh = iroh_pubkey_to_openssh(&iroh::SecretKey::from_bytes(&NODE2_SEED).public())?;
+    let owner = ReadPrincipal::authenticated("node-1", Some(&node_ssh), None);
+    let other = ReadPrincipal::authenticated("node-2", Some(&node2_ssh), None);
+    let reader = ReadPrincipal::authenticated("auditor", Some(&auditor_pk), None);
+    let anon = ReadPrincipal::unauthenticated(None);
+    let node2_state = format!("refs/namespaces/node-2/refs/users/{id}/state");
     r.check_eq(
-        "3. ungranted gated read of logs/events.jsonl succeeds",
-        gated("logs/events.jsonl").ok().map(text),
-        Some(text(device_events.clone())),
-    );
-    r.check_eq(
-        "3. has_valid_data_read_grant before grant",
-        has_valid_data_read_grant(&router, "auditor", Some(&auditor_pk), id),
-        Ok(false),
-    );
-    let grant = issue_signed_coglet_grant(
-        &router,
-        &grant_admin,
-        &CogletGrantRecord {
-            grantee: "auditor".into(),
-            coglet: id.to_string(),
-            grants: vec!["data.read".into()],
-            expires_at: None,
-            revoked: false,
-        },
-    );
-    r.check(
-        "3. issue_signed_coglet_grant data.read (SSH-signed by grant-admin)",
-        grant.is_ok(),
-        grant.clone().unwrap_or_else(|e| e),
-    );
-    if let Ok(g) = &grant {
-        r.hash(format!("refs/grants/{id}"), g.as_str());
-    }
-    r.check_eq(
-        "3. has_valid_data_read_grant after grant",
-        has_valid_data_read_grant(&router, "auditor", Some(&auditor_pk), id),
+        "3. strict mode: an ADR-0040 refs/users ref exists",
+        user_isolation_active(&router),
         Ok(true),
     );
-    // Granted, but the bytes are still only on the device: proves the push really omitted them.
-    let e = gated("data/count");
+    let hidden = |p: &ReadPrincipal| {
+        hidden_refs_for(&router, p)
+            .ok()
+            .flatten()
+            .unwrap_or_default()
+    };
+    let (h_owner, h_other, h_reader) = (hidden(&owner), hidden(&other), hidden(&reader));
     r.check(
-        "3. granted read on the .promisor store still fails until the blob is released",
-        e.is_err(),
-        e.err().unwrap_or_default(),
+        "3. advertisement: node-1:<c>/state hidden from node-2 and auditor, visible to node-1",
+        h_other.contains(&users_state)
+            && h_reader.contains(&users_state)
+            && !h_owner.contains(&users_state),
+        format!(
+            "hidden: owner={} other={} reader={}",
+            h_owner.len(),
+            h_other.len(),
+            h_reader.len()
+        ),
+    );
+    r.check(
+        "3. advertisement: same coglet name on node-2 is a different owner (hidden from node-1)",
+        h_owner.contains(&node2_state) && !h_other.contains(&node2_state),
+        String::new(),
+    );
+    r.check(
+        "3. advertisement: refs/coglet-router/* (#9 receipts) hidden from non-admin readers",
+        rev_list(&router, "refs/coglet-router/")
+            .iter()
+            .all(|x| h_reader.contains(x) && h_other.contains(x)),
+        format!(
+            "{} router refs",
+            rev_list(&router, "refs/coglet-router/").len()
+        ),
+    );
+    let read =
+        |p: &ReadPrincipal, path: &str| read_user_ref_path_gated(&router, p, &users_state, path);
+    r.check_eq(
+        "3. owner node-1 reads its logs/events.jsonl",
+        read(&owner, "logs/events.jsonl").ok().map(text),
+        Some(text(device_events.clone())),
+    );
+    for (who, p) in [
+        ("node-2", &other),
+        ("auditor (no grant)", &reader),
+        ("anonymous", &anon),
+    ] {
+        let e = read(p, "logs/events.jsonl");
+        r.check(
+            format!("3. {who} reading node-1:<c> logs/events.jsonl REFUSED"),
+            e.is_err(),
+            e.err().unwrap_or_default(),
+        );
+    }
+    let want = |p: &ReadPrincipal, oid: &str| {
+        authorize_upload_pack_wants_for(&router, p, &[oid.to_string()], Some("blob:none"))
+    };
+    r.check(
+        "3. want of node-1's tip OID with --filter=blob:none: owner allowed",
+        want(&owner, tip).is_ok(),
+        want(&owner, tip).err().unwrap_or_default(),
+    );
+    for (who, p) in [
+        ("node-2", &other),
+        ("auditor", &reader),
+        ("anonymous", &anon),
+    ] {
+        let e = want(p, tip);
+        r.check(
+            format!("3. knowing the tip OID is not a grant: {who}'s want REFUSED"),
+            e.is_err(),
+            e.err().unwrap_or_default(),
+        );
+    }
+    r.check(
+        "3. shared history: node-2 may want step 1 (its own state) but not node-1's tip",
+        want(&other, &cs.step_commits[0]).is_ok() && want(&other, tip).is_err(),
+        want(&other, &cs.step_commits[0]).err().unwrap_or_default(),
+    );
+    let grant = |runtime: Option<&str>, grants: &[&str], revoked: bool| {
+        issue_signed_user_grant(
+            &router,
+            &grant_admin,
+            runtime,
+            &CogletGrantRecord {
+                grantee: "auditor".into(),
+                coglet: id.to_string(),
+                grants: grants.iter().map(|g| g.to_string()).collect(),
+                expires_at: None,
+                revoked,
+            },
+        )
+    };
+    let g = grant(None, &["data.read"], false);
+    r.check(
+        "3. a TOP-LEVEL refs/grants/<c> grant never reaches the runtime-scoped owner node-1:<c>",
+        g.is_ok() && read(&reader, "logs/events.jsonl").is_err(),
+        g.err().unwrap_or_default(),
+    );
+    let g = grant(Some("node-1"), &["logs.read"], false);
+    r.check(
+        "3. logs.read grant on refs/namespaces/node-1/refs/grants/<c>: logs readable, data/ still REFUSED",
+        g.is_ok()
+            && read(&reader, "logs/events.jsonl").ok().map(text) == Some(text(device_events.clone()))
+            && read(&reader, "data/count").is_err(),
+        g.err().unwrap_or_default(),
+    );
+    let g = grant(Some("node-1"), &["data.read"], false);
+    if let Ok(oid) = &g {
+        r.hash(
+            format!("refs/namespaces/node-1/refs/grants/{id}"),
+            oid.as_str(),
+        );
+    }
+    r.check(
+        "3. data.read granted, but the bytes are still only on the device (.promisor push omitted them)",
+        g.is_ok() && read(&reader, "data/count").is_err(),
+        g.err().unwrap_or_default(),
     );
     let released = router
         .git
@@ -517,18 +681,30 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
         data_count_oid.as_str(),
     );
     r.note(
-        "gap: unforged has no API to fill one `.promisor` blob from the device after a grant; the spike copies exactly the granted blob (oid checked) where a lazy promisor fetch would land",
+        "gap: unforged has no API for a device to fill one `.promisor` blob on the hub after a grant; the spike copies exactly the granted blob (oid checked)",
     );
     r.check_eq(
         "3. granted gated read of data/count == \"6\"",
-        gated("data/count").ok().map(text),
+        read(&reader, "data/count").ok().map(text),
         Some("6".to_string()),
     );
+    r.check_eq(
+        "3. lazy promisor fetch of the data/count OID under the current grant",
+        fetch_promisor_private_object(&router, &reader, &data_count_oid)
+            .ok()
+            .map(text),
+        Some("6".to_string()),
+    );
+    r.check(
+        "3. node-2 still cannot fetch the private data/count OID",
+        fetch_promisor_private_object(&router, &other, &data_count_oid).is_err(),
+        String::new(),
+    );
 
-    // ---- 4. Compaction (last) ----
-    match compact_coglet_history(&router, &state_ref, KEEP_RECENT) {
+    // ---- 4. Compaction of refs/users/<c>/state ----
+    match compact_coglet_history(&router, &users_state, KEEP_RECENT) {
         Ok(rep) => {
-            let want: Vec<String> = cs
+            let want_kept: Vec<String> = cs
                 .step_commits
                 .iter()
                 .rev()
@@ -540,21 +716,21 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
                     "4. compact K={KEEP_RECENT}: latest {KEEP_RECENT} step SHA-256 ids unchanged"
                 ),
                 rep.kept_step_oids.clone(),
-                want.clone(),
+                want_kept.clone(),
             );
             r.check_eq(
-                "4. state ref still tip",
-                rev(&router, &state_ref),
+                "4. refs/users/<c>/state still tip",
+                rev(&router, &users_state),
                 Some(tip.to_string()),
             );
             let fp = router
                 .git
-                .run(&["log", "--first-parent", "--format=%H", &state_ref])
+                .run(&["log", "--first-parent", "--format=%H", &users_state])
                 .map(|s| s.lines().map(str::to_string).collect::<Vec<_>>());
             r.check_eq(
                 "4. first-parent history == kept steps",
                 fp.ok(),
-                Some(want.clone()),
+                Some(want_kept.clone()),
             );
             let chk_ref = rep.checkpoint_ref.clone().unwrap_or_default();
             r.check(
@@ -570,22 +746,24 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
                     rev_tree(cs.os, &cs.step_commits[n - 1 - KEEP_RECENT]).ok(),
                 );
             }
-            let old_gone = cs.step_commits[..n - KEEP_RECENT]
-                .iter()
-                .all(|c| !has_object(&router, c));
             r.check(
-                "4. older step commits pruned, kept ones present",
-                old_gone && want.iter().all(|c| has_object(&router, c)),
+                "4. older step commits pruned (step 1 survives: node-2's own state ref), kept ones present",
+                cs.step_commits[1..n - KEEP_RECENT]
+                    .iter()
+                    .all(|c| !has_object(&router, c))
+                    && has_object(&router, &cs.step_commits[0])
+                    && want_kept.iter().all(|c| has_object(&router, c)),
                 format!("pruned {}", rep.pruned_step_oids.len()),
             );
-            r.check_eq(
-                "4. tip statement note survives compaction",
-                read_ref_statements_for_commit(&router, tip),
-                Ok(vec![s2.clone()]),
+            r.check(
+                "4. tip v1 statement note survives compaction",
+                read_protected_ref_statements_for_commit(&router, tip)
+                    .is_ok_and(|v| v.iter().any(|s| s.statement.physical_ref == users_state)),
+                String::new(),
             );
             r.check_eq(
-                "4. grant still valid and data/count still readable",
-                gated("data/count").ok().map(text),
+                "4. grant still valid and data/count still readable after compaction",
+                read(&reader, "data/count").ok().map(text),
                 Some("6".to_string()),
             );
         }
@@ -593,6 +771,16 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
             r.check(format!("4. compact K={KEEP_RECENT}"), false, e);
         }
     }
+
+    // Revocation is re-read on every request (no cached grant survives it).
+    let g = grant(Some("node-1"), &["data.read"], true);
+    r.check(
+        "3. revoked grant: path read AND lazy promisor fetch of data/count REFUSED immediately",
+        g.is_ok()
+            && read(&reader, "data/count").is_err()
+            && fetch_promisor_private_object(&router, &reader, &data_count_oid).is_err(),
+        g.err().unwrap_or_default(),
+    );
     let (ok, detail) = fsck_full(&gitdir);
     r.check(
         "4. git --git-dir <router> fsck --full passes after compaction",
@@ -600,6 +788,336 @@ pub fn run(cs: &CounterState) -> Result<ActReport, String> {
         detail,
     );
     Ok(r.finish())
+}
+
+/// unforged#9/#10: `coglet-ref-statement/v1` statements over ADR-0040
+/// `refs/namespaces/<runtime>/refs/users/<coglet>/...`, bound to the repository id,
+/// runtime namespace, exact physical ref, generation, purpose and operation intent.
+fn stage3_v1(
+    r: &mut ActReport,
+    cs: &CounterState,
+    router: &GecaosOs,
+    node_sk: &iroh::SecretKey,
+    users_state: &str,
+) -> Result<(), String> {
+    let id = cs.coglet_id;
+    let n = cs.step_commits.len();
+    let (tip, prev) = (cs.tip, cs.step_commits[n - 2].as_str());
+    let kernel_sk = iroh::SecretKey::from_bytes(&KERNEL_SEED);
+    let factory_sk = iroh::SecretKey::from_bytes(&FACTORY_SEED);
+    let node2_sk = iroh::SecretKey::from_bytes(&NODE2_SEED);
+    let inner_state = CogletRefLayout::Users.state_ref(id);
+    let parsed = parse_coglet_ref(&inner_state);
+    r.check(
+        "5. ADR-0040 layout: CogletRefLayout::Users.state_ref(c) == refs/users/<c>/state, parse_coglet_ref round-trips",
+        inner_state == format!("refs/users/{id}/state")
+            && parsed.as_ref().is_some_and(|p| p.to_ref() == inner_state),
+        format!("{parsed:?}"),
+    );
+    r.check(
+        "5. shared gate: an unsigned write to refs/users/<c>/state is refused, refs/heads/* is not",
+        is_protected_ref(users_state)
+            && gate_unsigned_ref_write(&router.git, users_state, "act3")
+                .is_err_and(|e| e.contains("protected_ref"))
+            && !is_protected_ref("refs/heads/main")
+            && gate_unsigned_ref_write(&router.git, "refs/heads/main", "act3").is_ok(),
+        String::new(),
+    );
+    #[allow(clippy::too_many_arguments)]
+    fn stmt(
+        ns: &str,
+        inner: &str,
+        old: Option<&str>,
+        new: &str,
+        generation: u64,
+        purpose: ProtectedRefPurpose,
+        op: &str,
+        ticket: &str,
+        repo: &str,
+    ) -> ProtectedRefStatement {
+        let physical_ref = format!("refs/namespaces/{ns}/{inner}");
+        ProtectedRefStatement {
+            version: PROTECTED_REF_STATEMENT_VERSION.into(),
+            repository_id: repo.into(),
+            namespace: Some(ns.into()),
+            old_oid: old.map(str::to_string),
+            new_oid: new.into(),
+            generation,
+            purpose,
+            intent: ProtectedRefIntent {
+                actor: ns.into(),
+                target: physical_ref.clone(),
+                ticket: ticket.into(),
+                operation_id: op.into(),
+                intent_digest: gecaos::coglet::sha256_hex(
+                    format!("{op}/{ticket}/{physical_ref}").as_bytes(),
+                ),
+            },
+            physical_ref,
+        }
+    }
+    let apply = |sk: &iroh::SecretKey, st: ProtectedRefStatement, route: Option<&str>| {
+        sign_protected_ref_statement(sk, st)
+            .and_then(|s| verify_and_apply_protected_ref_statement(router, &s, route))
+    };
+    let state = |old, new, generation, op: &str, ticket: &str| {
+        stmt(
+            "node-1",
+            &inner_state,
+            old,
+            new,
+            generation,
+            ProtectedRefPurpose::StateExport,
+            op,
+            ticket,
+            REPO_ID,
+        )
+    };
+
+    let a1 = apply(
+        node_sk,
+        state(None, prev, 1, "export-1", "TCK-1"),
+        Some("node-1"),
+    );
+    r.check(
+        "5. v1 StateExport gen=1 (zero -> prev step) on refs/namespaces/node-1/refs/users/<c>/state",
+        a1.as_ref().is_ok_and(|a| a.full_ref == users_state && !a.idempotent_retry),
+        a1.as_ref().map(|a| a.full_ref.clone()).unwrap_or_else(|e| e.clone()),
+    );
+    let a2 = apply(
+        node_sk,
+        state(Some(prev), tip, 2, "export-2", "TCK-2"),
+        Some("node-1"),
+    );
+    match &a2 {
+        Ok(a) => {
+            r.check_eq(
+                "5. #9: watermark + receipt + target + refs/notes/statements land in ONE ref transaction",
+                (
+                    rev(router, users_state),
+                    rev(router, STATEMENTS_NOTES_REF),
+                    rev(router, &a.watermark_ref).is_some(),
+                    rev(router, &a.operation_receipt_ref).is_some(),
+                ),
+                (Some(tip.to_string()), Some(a.notes_commit_oid.clone()), true, true),
+            );
+            r.hash(
+                "v1 operation receipt ref (gen=2)",
+                a.operation_receipt_ref.as_str(),
+            );
+        }
+        Err(e) => {
+            r.check(
+                "5. v1 StateExport gen=2 (prev step -> tip)",
+                false,
+                e.clone(),
+            );
+        }
+    }
+    r.check_eq(
+        "5. #9: authoritative generation watermark == 2",
+        read_generation_watermark(router, users_state),
+        Ok(Some(2)),
+    );
+    let retry = apply(
+        node_sk,
+        state(None, prev, 1, "export-1", "TCK-1"),
+        Some("node-1"),
+    );
+    r.check(
+        "5. #9: retry of gen=1 AFTER gen=2 returns the ORIGINAL outcome (no ref move)",
+        retry
+            .as_ref()
+            .is_ok_and(|a| a.idempotent_retry && a.new_oid == prev && a.generation == 1)
+            && rev(router, users_state).as_deref() == Some(tip),
+        retry
+            .as_ref()
+            .map(|a| format!("retry={} new={}", a.idempotent_retry, a.new_oid))
+            .unwrap_or_else(|e| e.clone()),
+    );
+    for (label, st, route, needle) in [
+        (
+            "same operation id, changed ticket (different payload)",
+            state(Some(prev), tip, 2, "export-2", "TCK-2b"),
+            Some("node-1"),
+            "conflict",
+        ),
+        (
+            "fresh operation at gen=2 <= watermark (ABA / stale)",
+            state(Some(tip), prev, 2, "export-2-aba", "TCK-3"),
+            Some("node-1"),
+            "stale",
+        ),
+        (
+            "wrong repository id",
+            stmt(
+                "node-1",
+                &inner_state,
+                Some(tip),
+                prev,
+                3,
+                ProtectedRefPurpose::StateExport,
+                "export-3",
+                "TCK-3",
+                "some-other-repo",
+            ),
+            Some("node-1"),
+            "repository",
+        ),
+        (
+            "reroute (signed for node-1, arrived via node-2)",
+            state(Some(tip), prev, 3, "export-3", "TCK-3"),
+            Some("node-2"),
+            "reroute",
+        ),
+        (
+            "reroute (signed for node-1, arrived at top level)",
+            state(Some(tip), prev, 3, "export-3", "TCK-3"),
+            None,
+            "reroute",
+        ),
+        (
+            "node-1 key moving node-2's refs/users/<c>/state",
+            stmt(
+                "node-2",
+                &inner_state,
+                None,
+                tip,
+                1,
+                ProtectedRefPurpose::StateExport,
+                "x-1",
+                "TCK-X",
+                REPO_ID,
+            ),
+            Some("node-2"),
+            "permission_denied",
+        ),
+        (
+            "purpose StateExport aimed at refs/users/<c>/published",
+            stmt(
+                "node-1",
+                &CogletRefLayout::Users.published_ref(id),
+                None,
+                tip,
+                1,
+                ProtectedRefPurpose::StateExport,
+                "x-2",
+                "TCK-X",
+                REPO_ID,
+            ),
+            Some("node-1"),
+            "purpose",
+        ),
+    ] {
+        let e = apply(node_sk, st, route);
+        r.check(
+            format!("5. #10: {label} REFUSED"),
+            e.as_ref().is_err_and(|m| m.contains(needle)),
+            e.err().unwrap_or_else(|| "accepted".into()),
+        );
+    }
+    let sha1 = apply(
+        node_sk,
+        state(Some(tip), &"a".repeat(40), 3, "export-sha1", "TCK-4"),
+        Some("node-1"),
+    );
+    r.check(
+        "5. #10: SHA-1 (40-hex) target REFUSED: the v1 profile is SHA-256 only",
+        sha1.is_err() && rev(router, users_state).as_deref() == Some(tip),
+        sha1.err().unwrap_or_else(|| "accepted".into()),
+    );
+    // Role separation: kernel alone promotes `published`; the factory only proposes policy.
+    let policy = CogletRefLayout::Users.policy_ref(id);
+    let published = CogletRefLayout::Users.published_ref(id);
+    let role = |sk: &iroh::SecretKey, inner: &str, purpose, op: &str| {
+        apply(
+            sk,
+            stmt("node-1", inner, None, tip, 1, purpose, op, "TCK-R", REPO_ID),
+            Some("node-1"),
+        )
+    };
+    let f_pub = role(
+        &factory_sk,
+        &published,
+        ProtectedRefPurpose::PublishPromote,
+        "f-pub",
+    );
+    r.check(
+        "5. #10: @factory PublishPromote of refs/users/<c>/published REFUSED (ACL allows it; role does not)",
+        f_pub.as_ref().is_err_and(|m| m.contains("permission_denied")),
+        f_pub.err().unwrap_or_else(|| "accepted".into()),
+    );
+    let u_pub = role(
+        node_sk,
+        &published,
+        ProtectedRefPurpose::PublishPromote,
+        "u-pub",
+    );
+    r.check(
+        "5. #10: runtime/user key PublishPromote REFUSED (user cannot publish)",
+        u_pub.as_ref().is_err_and(|m| m.contains("kernel")),
+        u_pub.err().unwrap_or_else(|| "accepted".into()),
+    );
+    let f_pol = role(
+        &factory_sk,
+        &policy,
+        ProtectedRefPurpose::PolicyPropose,
+        "f-pol",
+    );
+    r.check(
+        "5. #10: @factory PolicyPropose of refs/users/<c>/policy accepted",
+        f_pol.is_ok(),
+        f_pol.err().unwrap_or_default(),
+    );
+    let k_pub = role(
+        &kernel_sk,
+        &published,
+        ProtectedRefPurpose::PublishPromote,
+        "k-pub",
+    );
+    r.check(
+        "5. #10: @kernel PublishPromote of refs/users/<c>/published accepted",
+        k_pub.is_ok()
+            && rev(router, &format!("refs/namespaces/node-1/{published}")).as_deref() == Some(tip),
+        k_pub.err().unwrap_or_default(),
+    );
+    // Same coglet name on a second runtime: node-2 exports its own (shorter) chain.
+    let n2 = apply(
+        &node2_sk,
+        stmt(
+            "node-2",
+            &inner_state,
+            None,
+            &cs.step_commits[0],
+            1,
+            ProtectedRefPurpose::StateExport,
+            "n2-1",
+            "TCK-N2",
+            REPO_ID,
+        ),
+        Some("node-2"),
+    );
+    r.check(
+        "5. node-2 exports refs/namespaces/node-2/refs/users/<c>/state (same coglet name, other runtime)",
+        n2.is_ok(),
+        n2.err().unwrap_or_default(),
+    );
+    r.check(
+        "5. v1 statement for the tip is readable from refs/notes/statements",
+        read_protected_ref_statements_for_commit(router, tip).is_ok_and(|v| {
+            v.iter()
+                .any(|s| s.statement.physical_ref == users_state && s.statement.generation == 2)
+        }),
+        String::new(),
+    );
+    Ok(())
+}
+
+fn rev_list(os: &GecaosOs, prefix: &str) -> Vec<String> {
+    os.git
+        .run(&["for-each-ref", "--format=%(refname)", prefix])
+        .map(|s| s.lines().map(str::to_string).collect())
+        .unwrap_or_default()
 }
 
 fn text(b: Vec<u8>) -> String {

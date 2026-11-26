@@ -14,7 +14,7 @@
 #   SPIKE_TARGET   disposable build root (default /tmp/coglet-spike-target).
 set -euo pipefail
 
-UNFORGED_REV="${UNFORGED_REV:-5c1b48aa52a697885812c4ae4d5d73ae6ea94ad1}"
+UNFORGED_REV="${UNFORGED_REV:-1b5db9cc2c39059e58020fc2a1a254e6353c465a}"
 UNFORGED_URL="https://github.com/softmax-universe/unforged"
 SPIKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COGLET_DIR="$(cd "$SPIKE_DIR/../.." && pwd)"
