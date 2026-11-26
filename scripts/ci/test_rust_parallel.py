@@ -17,9 +17,9 @@ def jobs():
 class ParallelQualification(unittest.TestCase):
     def test_exact_source_and_independent_runner_dag(self):
         workflow = jobs()
-        self.assertEqual(set(workflow), {'source', 'transform-native', 'factory', 'rust-core', 'rust'})
+        self.assertEqual(set(workflow), {'source', 'transform-native', 'transform-publication', 'transform-runtime-arm', 'factory', 'rust-core', 'rust'})
         self.assertIn('    needs: [source]\n', workflow['factory'])
-        self.assertIn('    needs: [source, transform-native]\n', workflow['rust-core'])
+        self.assertIn('    needs: [source, transform-native, transform-publication, transform-runtime-arm]\n', workflow['rust-core'])
         for name in ('factory', 'rust-core'):
             job = workflow[name]
             self.assertIn('    runs-on: ubuntu-24.04\n', job)
@@ -27,14 +27,14 @@ class ParallelQualification(unittest.TestCase):
             self.assertIn('ref: ${{ needs.source.outputs.sha }}', job)
             self.assertNotIn('continue-on-error', job)
         aggregate = workflow['rust']
-        self.assertIn('    needs: [source, transform-native, rust-core, factory]\n', aggregate)
+        self.assertIn('    needs: [source, transform-native, transform-publication, transform-runtime-arm, rust-core, factory]\n', aggregate)
         self.assertIn('    if: always()\n', aggregate)
         self.assertNotIn('actions/checkout', aggregate)
 
     def test_required_aggregate_executes_and_rejects_every_non_success(self):
         aggregate = jobs()['rust']
         shell = aggregate.split('        run: |\n', 1)[1]
-        dependencies = ('source', 'transform-native', 'rust-core', 'factory')
+        dependencies = ('source', 'transform-native', 'transform-publication', 'transform-runtime-arm', 'rust-core', 'factory')
         def run(values):
             script = shell
             for dep in dependencies:
