@@ -98,11 +98,14 @@ A stale candidate has no effect on live state.
 
 For current hub 1.0 devices, the router projects the verified code candidate
 into **the existing ADR-0031 signed Patch**, retaining its base code-tree hash,
-revision, generation and original receipt scope. For the Patch hash, wrap the
+revision, generation and original receipt scope. For nonempty code, wrap the
 policy root as the Git tree entry `40000 code <policy-root-OID>`: Patch.base and
 Patch.revision hash the restricted snapshot with the outer `code` directory,
-not the unwrapped policy commit root. Derive the base from the retained prior
-code snapshot by the same rule. The router node remains its signer. The device
+not the unwrapped policy commit root. For empty code, the restricted snapshot
+has no entries and hashes to the empty root tree: do not create an empty `code`
+directory. Derive the base from the retained prior code snapshot by the same
+piecewise rule; an unborn/missing base is still null, not an empty snapshot.
+The router node remains its signer. The device
 has no obligation to verify a manager's ref statement or
 learn Git. This adapter is a compatibility boundary, not two competing stores.
 Build and retain the exact patch once, before dispatch; retry its original
@@ -271,8 +274,10 @@ must cover the following before the stage-3 backend is enabled. New wire fixture
 must validate through CDDL and JSON Schema; unit mocks alone do not qualify it:
 
 - `router_policy_tree_projection_preserves_patch_hash`: empty, binary and nested
-  code snapshots match the core's wrapped restricted-snapshot hash, never the
-  policy commit/root ID; wrong-root negative control fails.
+  code snapshots match the core's restricted-snapshot hash. Empty code uses the
+  empty tree ID (also the empty policy root ID); nonempty code uses the wrapped
+  tree, never the policy commit/root ID. Distinguish null/unborn bases, and
+  require wrong-root negative controls for nonempty code.
 - `router_policy_ref_push_preserves_manage_patch_boundary`: real iroh, valid
   code plus stale base, wrong signer, replay, oversize/path/manifest/R3 negatives;
   current core patch conflict/replay/path/oversize/tail-restart cases still pass.
