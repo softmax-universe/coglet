@@ -328,6 +328,9 @@ private final class RadioButton: NSButton {
     // inference. AX reads the SAME live state that the target/action updates.
     override func accessibilityRole() -> NSAccessibility.Role? { .radioButton }
     override func isAccessibilityElement() -> Bool { true }
+    // The NSButton owns this complete semantic control. Its AppKit cell is
+    // implementation detail, not a second independently actionable radio.
+    override func accessibilityChildren() -> [Any]? { [] }
     override func accessibilityValue() -> Any? { NSNumber(value: state == .on ? 1 : 0) }
     override var acceptsFirstResponder: Bool { isEnabled }
     override func performClick(_ sender: Any?) {

@@ -269,7 +269,10 @@ final class SoftmaxUITests: XCTestCase {
     @MainActor
     func testGeneralNativeRadioChoicesAndRouteRemount() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
+        // Do not pin mutable AppStorage keys in NSArgumentDomain: those
+        // launch overrides outrank writes to the application's defaults.
+        // The first real click establishes each group's starting selection.
+        app.launchArguments = ["--ui-testing"]
         app.launch()
         defer { app.terminate() }
         let welcome = app.windows["Welcome to Softmax"]
@@ -280,6 +283,7 @@ final class SoftmaxUITests: XCTestCase {
         let groups = [("settings.general.appearance", ["system", "light", "dark"]),
                       ("settings.general.text_size", ["standard", "large", "largest"])]
         func assertSelection(_ parent: String, _ choices: [String], selected: String) {
+            XCTAssertEqual(settings.radioButtons.count, 6, "Each actual radio is exactly one AX leaf; no cell duplicates")
             XCTAssertEqual(settings.radioGroups.matching(identifier: parent).count, 1)
             for choice in choices {
                 let buttons = settings.radioButtons.matching(identifier: parent + "." + choice)

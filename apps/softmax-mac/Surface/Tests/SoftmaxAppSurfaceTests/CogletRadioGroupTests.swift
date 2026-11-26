@@ -48,6 +48,9 @@ final class CogletRadioGroupTests: XCTestCase {
         for button in group.buttons {
             XCTAssertTrue(button.isAccessibilityElement(), file: file, line: line)
             XCTAssertEqual(button.accessibilityRole(), .radioButton, file: file, line: line)
+            let children = button.accessibilityChildren()
+            XCTAssertNotNil(children, file: file, line: line)
+            XCTAssertEqual(children?.count, 0, "A radio must be one semantic AX leaf, not a control plus its cell", file: file, line: line)
             XCTAssertEqual(button.accessibilityValue() as? NSNumber, NSNumber(value: button.state == .on ? 1 : 0), file: file, line: line)
         }
     }
