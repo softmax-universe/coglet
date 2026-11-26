@@ -30,6 +30,17 @@ async fn guest_action_output_races_revoke_without_exposure_after_return() {
         write
     });
     restart_adapter::step_at_least(&mut d.env, running + 1).await;
+    // A committed step can precede its socket publication. Require queued
+    // physical output without consuming it before racing the revoke; otherwise
+    // a correct revoke can win before ANY second action reaches this socket.
+    // The final whole-frame/nonempty-act checks still validate these bytes.
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while queued_bytes(read.as_ref() as &UnixStream) == 0 {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("no post-first guest output was physically queued before revoke");
     let started = tokio::time::Instant::now();
     let revoked = d.local("revoke_output_lease", json!({})).await;
     assert!(
