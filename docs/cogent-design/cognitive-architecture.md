@@ -461,5 +461,5 @@ manage port, so it can be patched and watched the same way. What passes
 between it and a runtime is listed under
 [Runtime and router](coglets-and-runtime.md#runtime-and-router).
 
-Messages between two coglets on the same runtime do not go through the router;
-their runtime delivers them.
+Messages between two coglets on the same runtime go through that runtime's own
+router too, as an in-process hop; the runtime checks the grant first.

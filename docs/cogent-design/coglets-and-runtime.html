@@ -672,7 +672,7 @@ whoever provides it.</p>
 </tr>
 <tr>
 <td>A message to a coglet in the same runtime</td>
-<td>That coglet's inbox, directly</td>
+<td>Its hub's router, in process, which puts it in that coglet's inbox</td>
 <td>The outcome, as soon as it is delivered</td>
 </tr>
 <tr>
@@ -697,8 +697,8 @@ whoever provides it.</p>
 <p>A message is an <code>Action</code> whose <code>capability</code> is a message name such as
 <code>intent.request</code>. The coglet does not need to know where the other coglet runs.</p>
 <ul>
-<li><strong>Same runtime.</strong> The runtime checks the grant and puts the message straight
-  into the other coglet's inbox.</li>
+<li><strong>Same runtime.</strong> The runtime checks the grant and hands the message to its
+  hub's router, in process, which puts it into the other coglet's inbox.</li>
 <li><strong>Different runtimes.</strong> The runtime hands the message to the router, which
   checks the grant and delivers it to the other runtime.</li>
 </ul>

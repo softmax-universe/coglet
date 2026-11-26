@@ -220,8 +220,10 @@ coglets it runs: for example a database, a key-value store, a random number
 generator, an LLM and a GPU. Like engines, these can differ from one runtime to the
 next.
 
-**Routing.** A message between two coglets in the same runtime is delivered
-inside it. A message to a coglet in another runtime goes over the network.
+**Routing.** Every message goes through the runtime's own router, part of its
+[hub](#hub). Between two coglets on the same runtime that is an in-process hop;
+to a coglet on another runtime, the router passes it to that runtime's router
+over the network.
 Either way the coglets see the same thing.
 
 **Interfaces.**
@@ -255,8 +257,8 @@ Detail: [Coglets and runtime](coglets-and-runtime.md#runtime).
 
 **Rules.**
 
-- Coglets never connect to each other directly; the runtime carries every
-  message.
+- Coglets never connect to each other directly; the runtime and its router carry
+  every message.
 - Nothing returns a value in place; a result arrives later as a new event.
 - An adapter has the final say over its own app or hardware.
 - Latency-sensitive work, such as voice, stays on the local runtime.

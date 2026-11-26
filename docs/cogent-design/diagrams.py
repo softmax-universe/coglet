@@ -589,7 +589,7 @@ def runtime() -> Svg:
             svg.arrow(xs[i] + 52, 70, xs[i] + 52, 144, "warm", both=True)
             svg.text(xs[i] + 60, 92, "mounted", "dg-m", "start")
         svg.arrow(xs[0] + 106, 174, xs[1] - 2, 174, "teal", both=True)
-        svg.text(xs[0] + 122, 164, "local", "dg-m")
+        svg.text(xs[0] + 122, 164, "router", "dg-m")
         # capabilities the runtime provides, along the bottom, with the label underneath
         svg.rect(ax, 276, 384, 82, "dg-bg", 10)
         cw = (384 - 28 - 6 * (len(caps) - 1)) / len(caps)

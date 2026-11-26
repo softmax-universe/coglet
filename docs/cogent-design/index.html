@@ -841,7 +841,7 @@ infrastructure.</p>
 <line x1="486" y1="70" x2="486" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
 <text x="494" y="92" text-anchor="start" class="dg-m">mounted</text>
 <line x1="260" y1="174" x2="292" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
-<text x="276" y="164" text-anchor="middle" class="dg-m">local</text>
+<text x="276" y="164" text-anchor="middle" class="dg-m">router</text>
 <rect x="154" y="276" width="384" height="82" rx="10" class="dg-bg"/>
 <rect x="168.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
 <text x="210.25" y="309" text-anchor="middle" class="dg-t">Database</text>
@@ -881,7 +881,7 @@ infrastructure.</p>
 <line x1="694" y1="70" x2="694" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
 <text x="702" y="92" text-anchor="start" class="dg-m">mounted</text>
 <line x1="748" y1="174" x2="780" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
-<text x="764" y="164" text-anchor="middle" class="dg-m">local</text>
+<text x="764" y="164" text-anchor="middle" class="dg-m">router</text>
 <rect x="642" y="276" width="384" height="82" rx="10" class="dg-bg"/>
 <rect x="656.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
 <text x="698.25" y="309" text-anchor="middle" class="dg-t">KV store</text>
@@ -914,8 +914,10 @@ and skills runs on one of these engines and calls the LLM capability.</p>
 coglets it runs: for example a database, a key-value store, a random number
 generator, an LLM and a GPU. Like engines, these can differ from one runtime to the
 next.</p>
-<p><strong>Routing.</strong> A message between two coglets in the same runtime is delivered
-inside it. A message to a coglet in another runtime goes over the network.
+<p><strong>Routing.</strong> Every message goes through the runtime's own router, part of its
+<a href="#hub">hub</a>. Between two coglets on the same runtime that is an in-process hop;
+to a coglet on another runtime, the router passes it to that runtime's router
+over the network.
 Either way the coglets see the same thing.</p>
 <p><strong>Interfaces.</strong></p>
 <div class="codehilite idl"><pre><span class="nc">Runtime</span>
@@ -957,8 +959,8 @@ messages to the right place, in order.</p>
 <p>Detail: <a href="coglets-and-runtime.html#runtime">Coglets and runtime</a>.</p>
 <p><strong>Rules.</strong></p>
 <ul>
-<li>Coglets never connect to each other directly; the runtime carries every
-  message.</li>
+<li>Coglets never connect to each other directly; the runtime and its router carry
+  every message.</li>
 <li>Nothing returns a value in place; a result arrives later as a new event.</li>
 <li>An adapter has the final say over its own app or hardware.</li>
 <li>Latency-sensitive work, such as voice, stays on the local runtime.</li>

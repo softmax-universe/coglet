@@ -827,8 +827,8 @@ messages, so one can replace another by patch.</p>
 manage port, so it can be patched and watched the same way. What passes
 between it and a runtime is listed under
 <a href="coglets-and-runtime.html#runtime-and-router">Runtime and router</a>.</p>
-<p>Messages between two coglets on the same runtime do not go through the router;
-their runtime delivers them.</p>
+<p>Messages between two coglets on the same runtime go through that runtime's own
+router too, as an in-process hop; the runtime checks the grant first.</p>
 </main>
 </div>
 <script>

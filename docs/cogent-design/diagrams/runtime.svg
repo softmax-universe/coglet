@@ -79,7 +79,7 @@
 <line x1="486" y1="70" x2="486" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
 <text x="494" y="92" text-anchor="start" class="dg-m">mounted</text>
 <line x1="260" y1="174" x2="292" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
-<text x="276" y="164" text-anchor="middle" class="dg-m">local</text>
+<text x="276" y="164" text-anchor="middle" class="dg-m">router</text>
 <rect x="154" y="276" width="384" height="82" rx="10" class="dg-bg"/>
 <rect x="168.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
 <text x="210.25" y="309" text-anchor="middle" class="dg-t">Database</text>
@@ -119,7 +119,7 @@
 <line x1="694" y1="70" x2="694" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
 <text x="702" y="92" text-anchor="start" class="dg-m">mounted</text>
 <line x1="748" y1="174" x2="780" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
-<text x="764" y="164" text-anchor="middle" class="dg-m">local</text>
+<text x="764" y="164" text-anchor="middle" class="dg-m">router</text>
 <rect x="642" y="276" width="384" height="82" rx="10" class="dg-bg"/>
 <rect x="656.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
 <text x="698.25" y="309" text-anchor="middle" class="dg-t">KV store</text>

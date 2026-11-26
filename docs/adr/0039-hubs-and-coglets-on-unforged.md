@@ -76,8 +76,11 @@ back in the next input. (Not `/dev`: in unforged `/dev` is the git directory.)
 
 ### 5. The router is smart, and it is the fast loop
 
-The **router** carries messages and patches between coglets and runtimes, and it
-is also the cogent's **attention**: what ADR-0036 gave to the fast loop. It
+The **router** carries messages and patches between coglets and runtimes,
+including between the coglets on its own runtime: a hub's router routes every
+message among its local coglets (an in-process hop; the runtime still checks
+the grant) and to the routers of other hubs. It is also the cogent's
+**attention**: what ADR-0036 gave to the fast loop. It
 answers present coglets, decides what to forward, files tickets, applies
 patches, sets presence and reads check-ins. There is no separate fast loop
 coglet.

@@ -292,7 +292,7 @@ whoever provides it.
 | The coglet asked for | The runtime sends it to | The coglet later sees |
 |---|---|---|
 | An action on an adapter | That adapter | The adapter's outcome |
-| A message to a coglet in the same runtime | That coglet's inbox, directly | The outcome, as soon as it is delivered |
+| A message to a coglet in the same runtime | Its hub's router, in process, which puts it in that coglet's inbox | The outcome, as soon as it is delivered |
 | A message to a coglet in another runtime | Its hub's router, which passes it to the router of the other runtime's hub | The outcome, as soon as the router accepts it |
 | A model call | The LLM capability | An `llm.reply` |
 | A timer, a log line, a database query | Itself | A timer wake; nothing; the query's rows |
@@ -304,8 +304,8 @@ A refusal from any of them becomes a `runtime.action_rejected` in the inbox.
 A message is an `Action` whose `capability` is a message name such as
 `intent.request`. The coglet does not need to know where the other coglet runs.
 
-- **Same runtime.** The runtime checks the grant and puts the message straight
-  into the other coglet's inbox.
+- **Same runtime.** The runtime checks the grant and hands the message to its
+  hub's router, in process, which puts it into the other coglet's inbox.
 - **Different runtimes.** The runtime hands the message to the router, which
   checks the grant and delivers it to the other runtime.
 
