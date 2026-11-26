@@ -222,6 +222,11 @@ impl Snapshot {
         let hash = if self.2 {
             digest(&crate::cbor(&serde_json::json!(self.files()))?)
         } else {
+            #[cfg(feature = "native-engine")]
+            {
+                self.decoded_fs()?.tree_hash()
+            }
+            #[cfg(not(feature = "native-engine"))]
             coglet_fs::snapshot_tree_hash(&self.0).map_err(|e| e.to_string())?
         };
         // Another reader can only compute the same hash from immutable bytes.

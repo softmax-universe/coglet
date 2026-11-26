@@ -106,12 +106,16 @@ fn reserved_alias(path: &str) -> bool {
 struct Blob {
     bytes: Arc<[u8]>,
     hash: String,
+    // Git object identity differs from the raw content digest above. Shared
+    // across COW tree copies, but replaced whenever this blob's bytes change.
+    git_id: Arc<std::sync::OnceLock<[u8; 32]>>,
 }
 impl Blob {
     fn new(bytes: &[u8]) -> Self {
         Self {
             bytes: bytes.into(),
             hash: digest(bytes),
+            git_id: Arc::new(std::sync::OnceLock::new()),
         }
     }
 }
@@ -154,7 +158,7 @@ impl Snapshot {
         self.files().map(|(p, b)| (p.to_owned(), hex(b))).collect()
     }
     pub fn tree_hash(&self) -> String {
-        snapshot_tree_hash(&self.export()).expect("validated filesystem snapshot")
+        state_hash::decoded_tree_hash(self)
     }
     pub fn cbor(&self) -> Vec<u8> {
         let mut entries: Vec<_> = self

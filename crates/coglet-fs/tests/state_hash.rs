@@ -78,6 +78,8 @@ fn state_hash_matches_git_sha256_tree() {
 fn invalid_snapshot_is_not_hashed() {
     for files in [
         BTreeMap::from([("/data/a".into(), "GG".into())]),
+        BTreeMap::from([("/data/a".into(), "aB".into())]),
+        BTreeMap::from([("/data/a".into(), "0".into())]),
         BTreeMap::from([("data/a".into(), "00".into())]),
         BTreeMap::from([
             ("/data/a".into(), "00".into()),
