@@ -8,8 +8,10 @@
   no longer only the old word for the router; in prose it now names a router
   plus an optimizer (the `hub.*` identifiers in `spec/` still mean the router
   protocol). Supersedes in part [ADR-0036](0036-distributed-cogent-and-presence.md):
-  the split between the router and the fast loop, the single router of §1, and
-  "the router" as the one holder in §2, now the attending router (§5 below).
+  the split between the router and the fast loop, the single router of §1 and
+  its "or through their own runtime" (local messages now go through the local
+  router too), and "the router" as the one holder in §2, now the attending
+  router (§5 below).
   Supersedes the direction of
   [ADR-0031](0031-manage-port-and-filesystem-patches.md) §2–§5 (no Git inside a
   coglet). The implementation order of

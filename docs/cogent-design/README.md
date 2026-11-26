@@ -247,7 +247,7 @@ Runtime
 | It generates | It processes |
 |---|---|
 | Timer wakes | Everything passing between its coglets and its adapters |
-| A notice to a coglet when something it asked for was refused | Messages between two of its own coglets, which it delivers itself |
+| A notice to a coglet when something it asked for was refused | Messages between two of its own coglets, which it hands to its hub's router, in process |
 | Health reports to its hub's router | From the router: install, start, stop, patch and read requests, and messages for its coglets |
 
 A runtime writes almost nothing of its own. Its work is carrying other parts'

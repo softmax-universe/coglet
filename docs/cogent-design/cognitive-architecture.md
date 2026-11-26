@@ -18,10 +18,10 @@ the table below.*
 
 | From | Message | Payload | To | Carried by |
 |---|---|---|---|---|
-| Face | `intent.request` | `UserIntent` | an app coglet | their runtime |
-| app coglet | `intent.report` | `IntentReport` | Face | their runtime |
-| Face | `feature.request` | `FeatureRequest` | router | their runtime |
-| router | `feature.update` | `FeatureUpdate` | Face | their runtime |
+| Face | `intent.request` | `UserIntent` | an app coglet | their runtime's router |
+| app coglet | `intent.report` | `IntentReport` | Face | their runtime's router |
+| Face | `feature.request` | `FeatureRequest` | router | their runtime's router |
+| router | `feature.update` | `FeatureUpdate` | Face | their runtime's router |
 | router | `ticket.submit`, `.answer`, `.amend`, `.cancel`, `.replay` | ticket requests | factory | the routers of their hubs |
 | optimizer | `ticket.submit`, `.replay` | ticket requests | factory | the routers of their hubs |
 | factory | `ticket.receipt`, `.update`, `.result` | ticket reports | the submitter | the routers of their hubs |
