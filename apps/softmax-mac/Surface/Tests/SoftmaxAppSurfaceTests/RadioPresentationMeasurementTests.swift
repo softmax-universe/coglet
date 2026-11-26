@@ -15,6 +15,10 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         case ownedStructural = "owned-structural"
         case ownedBaselineGap5 = "owned-baseline-gap5"
         case ownedCenteredDefaultGap = "owned-centered-default-gap", ownedCentered = "owned-centered"
+        case nestedOriginal = "nested-original"
+        // Staged feasibility probe: only these three run (3 x 6 sizes x 2 themes = 36 cases).
+        static let probeCases: [Treatment] = [.pickerOriginal, .pickerMarked, .nestedOriginal]
+        var nested: Bool { self == .nestedOriginal }
         var structural: Bool {
             self == .ownedStructural || self == .ownedBaselineGap5 || self == .ownedCenteredDefaultGap || self == .ownedCentered
         }
@@ -39,6 +43,39 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         func updateNSView(_ v: NSView, context: Context) {}
     }
     @MainActor
+    private final class NestedContainer: NSView {
+        /// Measurement-only container owning an NSHostingView of the ORIGINAL Picker.
+        /// No stack view, offsets or frame formulas; native sizing forwarded, layout fills bounds.
+        let hostingView: NSHostingView<AnyView>
+        init(root: AnyView, name: String) {
+            hostingView = NSHostingView(rootView: root)
+            super.init(frame: .zero)
+            identifier = NSUserInterfaceItemIdentifier("nestedhost." + name)
+            addSubview(hostingView)
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) not used") }
+        override var intrinsicContentSize: NSSize { hostingView.intrinsicContentSize }
+        override func layout() {
+            super.layout()
+            hostingView.frame = bounds
+        }
+    }
+    @MainActor
+    private struct NestedHost: NSViewRepresentable {
+        let name: String
+        let root: AnyView
+        func makeNSView(context: Context) -> NestedContainer { NestedContainer(root: root, name: name) }
+        func updateNSView(_ view: NestedContainer, context: Context) {} // No mutation, no rootView replacement.
+        // This FIRST static feasibility probe uses the original Picker's ideal size,
+        // not a claimed arbitrary-proposal bridge. Any resulting mismatch is negative.
+        func sizeThatFits(_ proposal: ProposedViewSize, nsView: NestedContainer, context: Context) -> CGSize? {
+            let ideal = nsView.hostingView.intrinsicContentSize
+            guard ideal.width >= 0, ideal.height >= 0,
+                  ideal.width.isFinite, ideal.height.isFinite else { return nil }
+            return ideal
+        }
+    }
+    @MainActor
     private struct Fixture: View {
         let treatment: Treatment, dark: Bool, pointSize: CGFloat
         var owned: Bool { treatment.owned }
@@ -48,6 +85,24 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         // Immutable bindings: no SwiftUI updates may reconfigure the installed graph.
         private let appearance = Binding.constant("System")
         private let scale = Binding.constant(1.0)
+        // Original Picker bodies, shared verbatim by the direct and nested-host paths.
+        @ViewBuilder private var originalAppearancePicker: some View {
+            Picker("Appearance", selection: appearance) {
+                ForEach(appearanceChoices, id: \.value) { option($0.label, id: $0.id) }
+            }.pickerStyle(.radioGroup).labelsHidden()
+        }
+        @ViewBuilder private var originalSizePicker: some View {
+            Picker("Text size", selection: scale) {
+                option("Standard", id: sizeChoices[0].id).tag(1.0)
+                option("Large", id: sizeChoices[1].id).tag(1.3)
+                option("Largest", id: sizeChoices[2].id).tag(1.6)
+            }.pickerStyle(.radioGroup).labelsHidden()
+        }
+        // Nested NSHostingView root: explicit font/foreground/tint/colorScheme, nothing inherited.
+        private func nestedRoot<V: View>(_ picker: V) -> AnyView {
+            AnyView(picker.font(.system(size: pointSize)).foregroundColor(ink).foregroundStyle(ink).tint(accent)
+                .environment(\.colorScheme, dark ? .dark : .light))
+        }
         @ViewBuilder private func option(_ label: String, id: String) -> some View {
             if treatment == .pickerMarked {
                 Text(label).background(Marker(name: "label." + id))
@@ -68,11 +123,11 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                             window: "settings", route: "general", choices: appearanceChoices,
                             selection: appearance, fontSize: pointSize, failure: { XCTFail("\($0)") })
                             .background(Marker(name: "appearance.rows"))
-                    } else {
-                        Picker("Appearance", selection: appearance) {
-                            ForEach(appearanceChoices, id: \.value) { option($0.label, id: $0.id) }
-                        }.pickerStyle(.radioGroup).labelsHidden()
+                    } else if treatment.nested {
+                        NestedHost(name: "appearance", root: nestedRoot(originalAppearancePicker))
                             .background(Marker(name: "appearance.rows"))
+                    } else {
+                        originalAppearancePicker.background(Marker(name: "appearance.rows"))
                     }
                 }.background(Marker(name: "appearance.group"))
                 VStack(alignment: .leading, spacing: 4) {
@@ -83,13 +138,11 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                             selection: .constant("standard"),
                             fontSize: pointSize, failure: { XCTFail("\($0)") })
                             .background(Marker(name: "text_size.rows"))
-                    } else {
-                        Picker("Text size", selection: scale) {
-                            option("Standard", id: sizeChoices[0].id).tag(1.0)
-                            option("Large", id: sizeChoices[1].id).tag(1.3)
-                            option("Largest", id: sizeChoices[2].id).tag(1.6)
-                        }.pickerStyle(.radioGroup).labelsHidden()
+                    } else if treatment.nested {
+                        NestedHost(name: "text_size", root: nestedRoot(originalSizePicker))
                             .background(Marker(name: "text_size.rows"))
+                    } else {
+                        originalSizePicker.background(Marker(name: "text_size.rows"))
                     }
                 }.background(Marker(name: "text_size.group"))
                 Text("System Standard").background(Marker(name: "reference.text"))
@@ -172,6 +225,51 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         }
         d["children"] = v.subviews.enumerated().map { metadata($0.element, host: host, path: path + "." + String($0.offset)) }
         return d
+    }
+    /// Observational only: strictly the subtree of each owned NestedContainer; never mutates.
+    private func nestedProbe(_ host: NSView) -> [String: Any] {
+        let containers = views(host).compactMap { $0 as? NestedContainer }
+        var groups: [[String: Any]] = []
+        var allButtons: [NSButton] = []
+        for c in containers {
+            let buttons = views(c.hostingView).compactMap { $0 as? NSButton }
+            allButtons += buttons
+            var entries: [[String: Any]] = []
+            for (i, b) in buttons.enumerated() {
+                var e = metadata(b, host: host, path: (c.identifier?.rawValue ?? "") + "#" + String(i))
+                let cellClass = b.cell.map { NSStringFromClass(type(of: $0)) } ?? "none"
+                e["order"] = i; e["cellClass"] = cellClass
+                e["radioRoleObserved"] = b.accessibilityRole() == .radioButton
+                e["inOwnedScope"] = b.isDescendant(of: c)
+                e["targetPresent"] = b.target != nil; e["actionPresent"] = b.action != nil
+                e["targetClass"] = b.target.map { String(describing: type(of: $0)) } ?? "none"
+                entries.append(e)
+            }
+            let ideal = c.hostingView.intrinsicContentSize
+            groups.append(["container": c.identifier?.rawValue ?? "",
+                "containerObject": String(describing: ObjectIdentifier(c)),
+                "containerFrame_host": rect(c.convert(c.bounds, to: host)),
+                "containerIntrinsic": size(c.intrinsicContentSize), "containerFitting": size(c.fittingSize),
+                "hostingObject": String(describing: ObjectIdentifier(c.hostingView)),
+                "hostingFrame_parent": rect(c.hostingView.frame),
+                "hostingIntrinsic": size(c.hostingView.intrinsicContentSize),
+                "hostingFitting": size(c.hostingView.fittingSize),
+                "hostingIdealSize": [Double(ideal.width), Double(ideal.height)],
+                "hostingFillsBounds": c.hostingView.frame == c.bounds,
+                "hostingIsDescendant": c.hostingView.isDescendant(of: host),
+                "buttonCount": buttons.count,
+                "radioRoleCount": entries.filter { ($0["radioRoleObserved"] as? Bool) == true }.count,
+                "selectedCount": buttons.filter { $0.state == .on }.count, "buttons": entries])
+        }
+        return ["containerCount": containers.count, "totalButtons": allButtons.count,
+            "totalSelected": allButtons.filter { $0.state == .on }.count,
+            "allTargetsPresent": allButtons.allSatisfy { $0.target != nil },
+            "allActionsPresent": allButtons.allSatisfy { $0.action != nil },
+            "buttonIdentities": allButtons.map { String(describing: ObjectIdentifier($0)) },
+            "buttonTargets": allButtons.map { $0.target.map { String(describing: ObjectIdentifier($0)) } ?? "none" },
+            "buttonActions": allButtons.map { $0.action.map(NSStringFromSelector) ?? "none" },
+            "buttonStates": allButtons.map { $0.state.rawValue },
+            "groups": groups]
     }
     private func views(_ v: NSView) -> [NSView] { [v] + v.subviews.flatMap { views($0) } }
     private func capture(_ host: NSView) throws -> (Data, NSBitmapImageRep) {
@@ -262,7 +360,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         var cases: [String] = []
         for dark in [false, true] {
             for pointSize in [CGFloat(14), CGFloat(18.2), CGFloat(22.4), CGFloat(16), CGFloat(20), CGFloat(26)] {
-                for treatment in Treatment.allCases {
+                for treatment in Treatment.probeCases {
                     let owned = treatment.owned
                     let key = "\(dark ? "dark" : "light")-\(pointSize)-\(treatment.rawValue)"
                     let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
@@ -291,6 +389,7 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     let initialLabels = nativeButtons.map { $0.accessibilityLabel() }
                     let initialCells = nativeButtons.map { $0.cell.map(ObjectIdentifier.init) }
                     let initialInventory = registry.registrationInventory()
+                    let nestedInitial: [String: Any]? = treatment.nested ? nestedProbe(host) : nil
                     // Inventory includes BOTH parent groups and every child. prepareFocus only reads tokens.
                     let mountIDs = initialInventory.map(\.id)
                     @MainActor func mounts() throws -> [ControlRegistry.Mount] {
@@ -397,12 +496,29 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         colors = ["labelColor": color(.labelColor), "tokenInk": color(NSColor(srgbRed: dark ? 0.925490196 : 0.090196078,
                             green: dark ? 0.960784314 : 0.137254902, blue: dark ? 0.937254902 : 0.113725490, alpha: 1))]
                     }
-                    let result: [String: Any] = ["case": key, "kind": owned ? "owned" : "picker", "pointSize": Double(pointSize),
+                    let nestedFinal: [String: Any]? = treatment.nested ? nestedProbe(host) : nil
+                    var nestedEvidence: [String: Any] = [:]
+                    if let a = nestedInitial, let b = nestedFinal {
+                        func same(_ k: String) -> Bool { String(describing: a[k] ?? "") == String(describing: b[k] ?? "") }
+                        let groups = b["groups"] as? [[String: Any]] ?? []
+                        let assumptions: [String: Bool] = [
+                            "containerCount2": (b["containerCount"] as? Int) == 2,
+                            "eachGroup3Buttons": groups.allSatisfy { ($0["buttonCount"] as? Int) == 3 },
+                            "totalSelected2": (b["totalSelected"] as? Int) == 2,
+                            "targetsActionsPresent": (b["allTargetsPresent"] as? Bool) == true && (b["allActionsPresent"] as? Bool) == true,
+                            "identitiesStable": same("buttonIdentities"), "targetsStable": same("buttonTargets"),
+                            "actionsStable": same("buttonActions"), "statesStable": same("buttonStates")]
+                        nestedEvidence = ["initial": a, "final": b, "assumptions": assumptions,
+                            "meaning": "feasibility evidence only; nesting fidelity is judged offline, never asserted"]
+                    }
+                    let result: [String: Any] = ["case": key, "kind": owned ? "owned" : (treatment.nested ? "nested" : "picker"),
+                        "nestedProbe": nestedEvidence, "pointSize": Double(pointSize),
                         "treatment": treatment.rawValue,
-                        "offlineGates": ["full-raster picker-original == picker-marked EXACT before marker geometry is trusted",
-                            "full-raster owned-original == owned-control EXACT; all owned before/noop checkpoints EXACT",
-                            "full-raster owned-structural == retained run30 owned-structural EXACT after passive wrapper markers; mismatch is marker-confound negative",
-                            "compare untranslated label/disc pixels and full scene; mismatch is a valid negative, never fit offsets"],
+                        "offlineGates": ["current picker-original == retained run31 picker-original EXACT across all themes/sizes before interpreting nesting",
+                            "full-raster picker-original == picker-marked EXACT before marker geometry is trusted",
+                            "nested-original == current picker-original EXACT full scene AND untranslated label/disc components, group/rows/reference geometry",
+                            "any mismatch is a valid negative; no shift/offset tuning, no adoption or automatic product qualification",
+                            "static ideal-size host ONLY; arbitrary proposals, stable ids, actions, focus, updates and lifecycle UNQUALIFIED"],
                         "scaleCoverage": window.backingScaleFactor == 1 ? "1x observed; 2x UNTESTED" : "only actual backingScale observed",
                         "nativeBefore": nativeBefore,
                         "labelFrames": labelMarkers.map { metadata($0, host: host, path: $0.identifier!.rawValue) },
@@ -423,6 +539,10 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys])
                         .write(to: root.appendingPathComponent(key + ".json"))
                     cases.append(key)
+                    // Asserted only AFTER pixels/metadata are retained; fidelity is never asserted.
+                    if treatment.nested, let ev = nestedEvidence["assumptions"] as? [String: Bool] {
+                        for (name, ok) in ev.sorted(by: { $0.key < $1.key }) { XCTAssertTrue(ok, "nested probe assumption \(name): " + key) }
+                    }
                     if owned {
                         XCTAssertEqual(views(host).compactMap { $0 as? CogletRadioGroup.NativeView }.map(ObjectIdentifier.init), initialGroups)
                         XCTAssertEqual(groups.map { $0.accessibilityIdentifier() }, initialGroupIDs)
@@ -446,8 +566,8 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                 }
             }
         }
-        // Eight variants × two themes × six sizes; measurement, NOT visual acceptance.
-        XCTAssertEqual(cases.count, 96); XCTAssertEqual(Set(cases).count, 96)
+        // Three probe treatments × two themes × six sizes; measurement, NOT visual acceptance.
+        XCTAssertEqual(cases.count, 36); XCTAssertEqual(Set(cases).count, 36)
         try JSONSerialization.data(withJSONObject: ["cases": cases, "meaning": "measurement complete, NOT visual acceptance"], options: [.prettyPrinted])
             .write(to: root.appendingPathComponent("cases.json"))
     }
