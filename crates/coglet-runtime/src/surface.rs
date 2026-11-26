@@ -46,6 +46,7 @@ impl SurfaceBinding {
 }
 
 pub struct SurfaceSession {
+    phase: Option<crate::phase_evidence::Sink>,
     catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     /// Trusted local ceiling (what this runtime can validate), never peer input.
     ceiling: crate::ContractProfile,
@@ -79,6 +80,9 @@ pub struct SurfaceSession {
     sent_dispatches: BTreeSet<String>,
 }
 impl SurfaceSession {
+    pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
+        self.phase.clone()
+    }
     pub(crate) fn transport_now(&self, probe_clock: std::time::Instant) -> Result<u64> {
         if let Some(service) = &self.service {
             service
@@ -92,6 +96,7 @@ impl SurfaceSession {
     }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
+            phase: None,
             catalog: std::sync::Arc::new(crate::TrustedExtensionCatalog::default()),
             ceiling: crate::ContractProfile::Surface01,
             wire: crate::ContractProfile::Surface01,
@@ -150,7 +155,9 @@ impl SurfaceSession {
         let Some(service) = self.service.clone() else {
             return Ok(());
         };
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::SupervisorEnter);
         self.pump_supervisor_reads(now)?;
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::SupervisorReturn);
         #[cfg(feature = "native-engine")]
         crate::RuntimeService::run_native(&service, self, now)?;
         while self.output.len() < SURFACE_QUEUE {
@@ -166,10 +173,12 @@ impl SurfaceSession {
                     now
                 }
             };
+            crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DispatchEnter);
             let next = service
                 .lock()
                 .map_err(|_| "runtime service poisoned")?
                 .next_dispatch(self, &self.sent_dispatches, now)?;
+            crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DispatchReturn);
             let Some((id, bytes)) = next else {
                 break;
             };
@@ -205,6 +214,7 @@ impl SurfaceSession {
         self.output.pop_front()
     }
     pub fn disconnect(&mut self) {
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DisconnectEnter);
         if let Some(service) = &self.service
             && let Ok(mut service) = service.lock()
         {
@@ -221,6 +231,7 @@ impl SurfaceSession {
         self.read_results.clear();
         self.read_result_authority.clear();
         self.heard_reads.clear();
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DisconnectReturn);
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
         self.wire.validate("surface-message", &message)?;

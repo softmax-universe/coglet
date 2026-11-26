@@ -2,6 +2,7 @@
 //! The original worker's returned journal is reconciled into current host state,
 //! never a stale preguest clone that could erase concurrent inbox admission.
 use super::*;
+use crate::phase_evidence::{Phase, Sink, mark};
 use std::sync::{Arc, Mutex};
 
 type EntryGate<'a> = dyn Fn(&dyn Fn() -> Result<()>) -> Result<()> + 'a;
@@ -17,6 +18,7 @@ struct DetachedBasis {
 }
 
 struct SharedAttempt<'a, E> {
+    phase: &'a Option<Sink>,
     service: &'a Arc<Mutex<RuntimeService>>,
     engine: &'a mut E,
     authorized: &'a EntryGate<'a>,
@@ -33,6 +35,7 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
         // Authority providers acquire SQL first and invoke this WAL callback
         // under that guard. Neither guard survives into actual guest execution.
+        mark(self.phase, Phase::FenceEnter);
         (self.authorized)(&|| {
             let mut service = self
                 .service
@@ -51,7 +54,11 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
             service.state = next;
             Ok(())
         })?;
-        self.engine.execute(inputs, host)
+        mark(self.phase, Phase::FenceReturn);
+        mark(self.phase, Phase::EngineEnter);
+        let result = self.engine.execute(inputs, host);
+        mark(self.phase, Phase::EngineReturn);
+        result
     }
     fn database_observation(&mut self, committed: bool) -> Result<Option<DatabaseObservation>> {
         self.engine.database_observation(committed)
@@ -59,6 +66,7 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
 }
 
 pub(crate) struct DetachedRun {
+    phase: Option<Sink>,
     inputs: Value,
     runtime: Runtime,
     basis: DetachedBasis,
@@ -92,8 +100,11 @@ impl RuntimeService {
         Ok(())
     }
     pub(super) fn prepare_detached(&mut self, context: &Value) -> Result<Option<DetachedRun>> {
+        let phase = self.store.phase_sink();
+        mark(&phase, Phase::PrepareEnter);
         self.require_deliverable()?;
         let Some((inputs, _, next)) = self.begin_attempt(context)? else {
+            mark(&phase, Phase::PrepareReturn);
             return Ok(None);
         };
         let basis = DetachedBasis {
@@ -107,7 +118,9 @@ impl RuntimeService {
                 .unwrap_or_default(),
         };
         self.detached_execution = true;
+        mark(&phase, Phase::PrepareReturn);
         Ok(Some(DetachedRun {
+            phase,
             basis,
             inputs,
             runtime: next.runtime,
@@ -121,13 +134,16 @@ impl RuntimeService {
         live: &LiveGate<'_>,
     ) -> Result<()> {
         let mut attempt = SharedAttempt {
+            phase: &run.phase,
             service,
             engine,
             authorized,
             live,
             basis: &run.basis,
         };
+        mark(&run.phase, Phase::StepEnter);
         let result = run.runtime.step(&run.inputs, &mut attempt);
+        mark(&run.phase, Phase::StepReturn);
         let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
         // A failed admission has no fence; an unknown entered outcome retains
         // its durable fence even after dropping the in-process reservation.

@@ -1,5 +1,6 @@
 //! Queue-side recovery constraints in addition to journal host reconstruction.
 use super::*;
+use crate::phase_evidence::{Phase, mark};
 use std::collections::BTreeSet;
 
 impl RuntimeService {
@@ -85,15 +86,19 @@ impl RuntimeService {
         if !self.store.is_healthy() {
             return Err("WAL must be reopened before attempt reconciliation".into());
         }
+        let phase = self.store.phase_sink();
+        mark(&phase, Phase::ReconcileEnter);
         let next = Self::reconcile_attempt_inner(&self.state, self.store.records(), record, true)?;
+        mark(&phase, Phase::ReconcileReturn);
         self.publish_recovered_attempt(next, record)
     }
 
     fn publish_recovered_attempt(&mut self, next: ServiceState, record: &Value) -> Result<()> {
-        self.store.commit(
-            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
-            Some(record),
-        )?;
+        let phase = self.store.phase_sink();
+        mark(&phase, Phase::SerdeEnter);
+        let value = serde_json::to_value(&next).map_err(|e| e.to_string())?;
+        mark(&phase, Phase::SerdeReturn);
+        self.store.commit(&value, Some(record))?;
         self.state = next;
         Ok(())
     }

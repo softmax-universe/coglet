@@ -21,6 +21,7 @@ mod filesystem;
 mod heard;
 mod host;
 mod journal;
+mod phase_evidence;
 mod router;
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
 pub mod socket;

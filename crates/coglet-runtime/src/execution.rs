@@ -202,6 +202,12 @@ pub struct RuntimeService {
     native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
+    pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
+        self.store.phase_sink()
+    }
+    pub(crate) fn enable_phase_sink(&mut self) {
+        self.store.enable_phase_sink();
+    }
     /// Trusted local provisioning identity, already fenced against the WAL on open.
     pub fn contract_profile(&self) -> crate::ContractProfile {
         self.state.contract_profile

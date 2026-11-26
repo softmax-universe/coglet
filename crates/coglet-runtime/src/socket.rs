@@ -1,6 +1,10 @@
 //! Linux/Apple authenticated local transport, optionally attached to the durable
 //! coordinator. Probe-only callers retain the same negotiation shell.
+use crate::phase_evidence::{Phase, mark};
 use crate::{Result, SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
+#[cfg(test)]
+#[path = "phase_socket_tests.rs"]
+mod phase_tests;
 use std::{
     fs,
     io::{Read, Write},
@@ -74,10 +78,11 @@ impl SurfaceListener {
         mut self,
         service: std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>,
     ) -> Result<Self> {
-        service
-            .lock()
-            .map_err(|_| "runtime service poisoned")?
-            .supervised_now()?;
+        {
+            let mut guard = service.lock().map_err(|_| "runtime service poisoned")?;
+            guard.supervised_now()?;
+            guard.enable_phase_sink();
+        }
         self.service = Some(service);
         Ok(self)
     }
@@ -101,9 +106,24 @@ fn serve_with_service(
     binding: SurfaceBinding,
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
 ) -> Result<()> {
+    serve_with_service_to(
+        &mut stream,
+        peer_uid,
+        binding,
+        service,
+        &mut std::io::stderr(),
+    )
+}
+fn serve_with_service_to(
+    stream: &mut UnixStream,
+    peer_uid: u32,
+    binding: SurfaceBinding,
+    service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
+    writer: &mut dyn Write,
+) -> Result<()> {
     // Authenticate kernel-supplied credentials, not a claimed hello identity.
     #[cfg(target_os = "linux")]
-    let uid = peer_uid_linux(&stream)?;
+    let uid = peer_uid_linux(stream)?;
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     let uid = {
         let (mut uid, mut gid) = (0, 0);
@@ -125,9 +145,21 @@ fn serve_with_service(
     } else {
         SurfaceSession::new(binding)
     };
-    let result = serve_session(&mut stream, &mut session, clock);
+    let phase = session.phase_sink();
+    mark(&phase, Phase::SessionStart);
+    let result = serve_session(stream, &mut session, clock);
+    let terminal = matches!(result, Ok(ServeEnd::Closed));
+    mark(
+        &phase,
+        match &result {
+            Err(_) => Phase::ReturnError,
+            Ok(ServeEnd::Closed) => Phase::ReturnClosed,
+            Ok(ServeEnd::Eof) => Phase::ReturnEof,
+        },
+    );
+    let snapshot = phase.as_ref().map(|s| s.snapshot());
     session.disconnect();
-    result
+    crate::phase_evidence::report(result.map(|_| ()), snapshot, terminal, writer)
 }
 #[cfg(target_os = "linux")]
 fn peer_uid_linux(stream: &UnixStream) -> Result<u32> {
@@ -149,40 +181,58 @@ fn peer_uid_linux(stream: &UnixStream) -> Result<u32> {
     // SAFETY: successful getsockopt returned the complete credential object.
     Ok(unsafe { cred.assume_init() }.uid)
 }
+enum ServeEnd {
+    Eof,
+    Closed,
+}
 fn serve_session(
     stream: &mut UnixStream,
     session: &mut SurfaceSession,
     clock: Instant,
-) -> Result<()> {
+) -> Result<ServeEnd> {
+    let phase = session.phase_sink();
     loop {
         // One absolute deadline for the entire frame, not a renewed timeout for
         // each fragmented byte (a slow sender cannot hold this channel forever).
         let deadline = Instant::now() + Duration::from_secs(3);
         let mut header = [0; 4];
+        mark(&phase, Phase::HeaderEnter);
         if !read_exact_until(stream, &mut header, deadline, true, session, clock)? {
             session.disconnect();
-            return Ok(());
+            return Ok(ServeEnd::Eof);
         }
+        mark(&phase, Phase::HeaderReturn);
         let n = u32::from_be_bytes(header) as usize;
         if n == 0 || n > SURFACE_MAX_FRAME {
             session.disconnect();
             return Err("invalid surface frame length".into());
         }
         let mut raw = vec![0; n];
+        mark(&phase, Phase::BodyEnter);
         read_exact_until(stream, &mut raw, deadline, false, session, clock)?;
+        mark(&phase, Phase::BodyReturn);
+        mark(&phase, Phase::ClockEnter);
         let now = session.transport_now(clock)?;
-        if session.send(&raw, now) != 0 {
+        mark(&phase, Phase::ClockReturn);
+        mark(&phase, Phase::SendEnter);
+        let status = session.send(&raw, now);
+        mark(&phase, Phase::SendReturn);
+        if status != 0 {
             return Err("fatal surface message".into());
         }
+        mark(&phase, Phase::PumpEnter);
         session.pump_dispatch(now)?;
+        mark(&phase, Phase::PumpReturn);
         while let Some(response) = session.pop() {
+            mark(&phase, Phase::WireEnter);
             stream
                 .write_all(&(response.len() as u32).to_be_bytes())
                 .and_then(|_| stream.write_all(&response))
                 .map_err(|e| e.to_string())?;
+            mark(&phase, Phase::WireReturn);
         }
         if session.is_closed() {
-            return Ok(());
+            return Ok(ServeEnd::Closed);
         }
     }
 }
@@ -194,19 +244,28 @@ fn read_exact_until(
     session: &mut SurfaceSession,
     clock: Instant,
 ) -> Result<bool> {
+    let phase = session.phase_sink();
     let mut first = true;
     while !out.is_empty() {
+        mark(&phase, Phase::ClockEnter);
         let now = session.transport_now(clock)?;
+        mark(&phase, Phase::ClockReturn);
+        mark(&phase, Phase::TickEnter);
         session.tick(now);
+        mark(&phase, Phase::TickReturn);
+        mark(&phase, Phase::PumpEnter);
         session.pump_dispatch(now)?;
+        mark(&phase, Phase::PumpReturn);
         if session.is_closed() {
             return Err("surface inactivity timeout".into());
         }
         while let Some(response) = session.pop() {
+            mark(&phase, Phase::WireEnter);
             stream
                 .write_all(&(response.len() as u32).to_be_bytes())
                 .and_then(|_| stream.write_all(&response))
                 .map_err(|e| e.to_string())?;
+            mark(&phase, Phase::WireReturn);
         }
         let remaining = deadline
             .checked_duration_since(Instant::now())
@@ -217,7 +276,10 @@ fn read_exact_until(
         stream
             .set_read_timeout(Some(remaining.min(Duration::from_millis(50))))
             .map_err(|e| e.to_string())?;
-        match stream.read(out) {
+        mark(&phase, Phase::ReadEnter);
+        let received = stream.read(out);
+        mark(&phase, Phase::ReadReturn);
+        match received {
             Ok(0) if clean_eof && first => return Ok(false),
             Ok(0) => return Err("EOF mid-frame".into()),
             Ok(n) => {

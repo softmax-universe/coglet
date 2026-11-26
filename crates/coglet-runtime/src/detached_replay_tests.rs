@@ -1,6 +1,66 @@
 //! Algorithmic regression: live reconciliation must not replay its entire prefix.
 use super::*;
 
+#[test]
+fn phase_detached_ownership_spans_engine_reconciliation_and_wal() {
+    use crate::phase_evidence::Phase;
+    let dir = tempfile::tempdir().unwrap();
+    let setup = fixture();
+    let mut service = RuntimeService::open(&dir.path().join("phases.wal"), &setup, 32).unwrap();
+    service
+        .enqueue(setup["inputs"]["events"][0].clone())
+        .unwrap();
+    service.enable_phase_sink();
+    let sink = service.phase_sink().unwrap();
+    let run = service.prepare_detached(&setup["inputs"]).unwrap().unwrap();
+    let shared = Arc::new(Mutex::new(service));
+    RuntimeService::execute_detached(
+        &shared,
+        run,
+        &mut MockEngine::new(setup["guest_script"].clone()),
+        &|f| f(),
+        &|_, _| Ok(()),
+    )
+    .unwrap();
+    assert!(Arc::ptr_eq(
+        &sink,
+        &shared.lock().unwrap().phase_sink().unwrap()
+    ));
+    let snap = sink.snapshot();
+    let phases: Vec<_> = snap.entries[..snap.count].iter().map(|e| e.phase).collect();
+    let expected = [
+        Phase::PrepareEnter,
+        Phase::PrepareReturn,
+        Phase::StepEnter,
+        Phase::EngineEnter,
+        Phase::EngineReturn,
+        Phase::StepReturn,
+        Phase::ReconcileEnter,
+        Phase::ReconcileReturn,
+        Phase::SerdeEnter,
+        Phase::SerdeReturn,
+        Phase::EncodeEnter,
+        Phase::EncodeReturn,
+        Phase::WalWriteEnter,
+        Phase::WalWriteDone,
+        Phase::WalSyncEnter,
+        Phase::WalSyncDone,
+        Phase::CacheEnter,
+        Phase::CacheReturn,
+    ];
+    let mut cursor = 0;
+    for phase in phases {
+        if expected.get(cursor) == Some(&phase) {
+            cursor += 1;
+        }
+    }
+    assert_eq!(
+        cursor,
+        expected.len(),
+        "missing detached ownership phase evidence"
+    );
+}
+
 fn fixture() -> Value {
     let cases: Value =
         serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
