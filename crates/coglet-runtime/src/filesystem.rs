@@ -113,6 +113,17 @@ pub(crate) fn reserved_collision(path: &str) -> bool {
     })
 }
 
+// A fixed-size reduction permits vectorization without short-circuiting each
+// byte. Every byte is still checked; chunks bound work before early rejection.
+fn valid_hex(text: &str) -> bool {
+    text.len().is_multiple_of(2)
+        && text.as_bytes().chunks(64).all(|chunk| {
+            chunk.iter().fold(0u8, |bad, &b| {
+                bad | u8::from(!((b.wrapping_sub(b'0') <= 9) | (b.wrapping_sub(b'a') <= 5)))
+            }) == 0
+        })
+}
+
 impl Snapshot {
     pub fn new(files: BTreeMap<String, String>) -> Result<Self> {
         for (path, bytes) in &files {
@@ -127,11 +138,7 @@ impl Snapshot {
             {
                 return Err("file/directory collision with reserved host file".into());
             }
-            if bytes
-                .bytes()
-                .any(|b| !b.is_ascii_digit() && !(b'a'..=b'f').contains(&b))
-                || bytes.len() % 2 != 0
-            {
+            if !valid_hex(bytes) {
                 return Err("snapshot requires lowercase even-length hex".into());
             }
             // Regular files cannot be ancestors of other files.
@@ -262,6 +269,26 @@ impl Snapshot {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn chunked_hex_validation_matches_scalar_at_every_boundary_and_byte() {
+        for len in 0..130 {
+            assert_eq!(valid_hex(&"a".repeat(len)), len % 2 == 0);
+            for pos in 0..len {
+                for byte in 0..=255u8 {
+                    let mut bytes = vec![b'a'; len];
+                    bytes[pos] = byte;
+                    if let Ok(text) = std::str::from_utf8(&bytes) {
+                        let expected = len % 2 == 0
+                            && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+                        assert_eq!(valid_hex(text), expected, "{len}/{pos}/{byte}");
+                    }
+                }
+            }
+        }
+        assert!(!valid_hex("é"));
+        assert!(!valid_hex("🦀"));
+    }
 
     #[test]
     fn strict_hex_matches_reference_and_rejects_every_non_lowercase_byte() {
