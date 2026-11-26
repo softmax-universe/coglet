@@ -88,6 +88,7 @@ final class FaceHost: ObservableObject {
 
 @MainActor
 final class FacePanelController: NSObject, NSWindowDelegate {
+    var onChange: (() -> Void)?
     let host: FaceHost
     private let panel: NSPanel
     private var localEscape: Any?
@@ -99,11 +100,12 @@ final class FacePanelController: NSObject, NSWindowDelegate {
                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init()
         panel.title = "Softmax Face"; panel.level = .floating
+        panel.identifier = NSUserInterfaceItemIdentifier("softmax.face")
         panel.isReleasedWhenClosed = false; panel.isMovableByWindowBackground = true
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self
-        panel.contentView = NSHostingView(rootView: SoftmaxWindowRoot { FacePanelView(host: host, hide: { [weak self] in self?.hide() }, resize: { [weak self] in self?.resize() }) })
+        panel.contentView = NSHostingView(rootView: SoftmaxWindowRoot { FacePanelView(host: host, hide: { [weak self] in self?.hide() }, resize: { [weak self] in self?.resize() }, model: shell) })
         if !persist || !panel.setFrameUsingName("SoftmaxFace") {
             if let frame = NSScreen.main?.visibleFrame {
                 panel.setFrameOrigin(CGPoint(x: frame.maxX - 300, y: frame.minY + 20))
@@ -114,6 +116,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
     }
     func show() {
         clampToScreen(); host.setVisible(true); panel.orderFrontRegardless()
+        onChange?()
         guard localEscape == nil else { return }
         localEscape = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { self?.hide(); return nil }; return event
@@ -129,6 +132,7 @@ final class FacePanelController: NSObject, NSWindowDelegate {
         if let localEscape { NSEvent.removeMonitor(localEscape) }
         if let globalEscape { NSEvent.removeMonitor(globalEscape) }
         localEscape = nil; globalEscape = nil
+        onChange?()
     }
     func windowDidMove(_ notification: Notification) { if persist { panel.saveFrame(usingName: "SoftmaxFace") } }
     private func resize() {
@@ -157,6 +161,8 @@ struct FacePanelView: View {
     @Environment(\.softmaxFreezeMotion) private var freezeMotion
     var hide: () -> Void
     var resize: () -> Void
+    /// nil only for design snapshots, which have no registry to register with.
+    var model: ShellModel? = nil
     var body: some View {
         VStack(spacing: SoftmaxDesignTokens.spacing[0]) {
             FaceArtwork(parameters: host.driver.parameters(reduceMotion: reduceMotion || freezeMotion))
@@ -165,15 +171,18 @@ struct FacePanelView: View {
             if !host.compact {
                 Text(host.demo ? "Simulated demo · no audio" : host.driver.state.label)
                 HStack {
-                    Button(host.demo ? "Stop demo" : "Start simulated demo") {
+                    OptionalCogletButton(host.demo ? "Stop demo" : "Start simulated demo", id: "face.demo_toggle", model: model,
+                        window: "face", route: "face") {
                         if host.demo { host.stopDemo() } else { host.startDemo() }
                     }
-                    Button("Stop") { host.cancel() }
+                    OptionalCogletButton("Stop", id: "face.stop", model: model, window: "face", route: "face") { host.cancel() }
                 }
             }
             HStack {
-                Button(host.compact ? "Expand Face" : "Compact Face") { host.compact.toggle(); resize() }
-                Button("Hide Face", action: hide).keyboardShortcut(.escape, modifiers: [])
+                OptionalCogletButton(host.compact ? "Expand Face" : "Compact Face", id: "face.compact_toggle", model: model,
+                    window: "face", route: "face") { host.compact.toggle(); resize() }
+                OptionalCogletButton("Hide Face", id: "face.hide", model: model, window: "face", route: "face", action: hide)
+                    .keyboardShortcut(.escape, modifiers: [])
             }.softmaxFont(SoftmaxDesignTokens.fontCaption)
         }.padding(SoftmaxDesignTokens.spacing[1]).modifier(SoftmaxTheme())
     }

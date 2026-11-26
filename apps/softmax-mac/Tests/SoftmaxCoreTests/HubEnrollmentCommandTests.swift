@@ -1,0 +1,196 @@
+import XCTest
+@testable import SoftmaxCore
+
+@MainActor
+final class HubEnrollmentCommandTests: XCTestCase {
+    private func invitation(device: String? = nil) throws -> HubPairing {
+        let deviceField = device.map { ",\"device\":\"\($0)\"" } ?? ""
+        return try HubPairing.parse("{\"name\":\"Router\",\"hub\":\"\(String(repeating: "b", count: 64))\",\"addresses\":[\"127.0.0.1:1234\"],\"invite\":\"\(String(repeating: "c", count: 64))\"\(deviceField)}")
+    }
+    private func ready() -> (HubConnection, MemoryHubStore, FakeHubLink) {
+        let store = MemoryHubStore(), link = FakeHubLink()
+        store.key = Data(repeating: 8, count: 32)
+        let hub = HubConnection(account: HubAccount(store: store), link: link)
+        hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+        return (hub, store, link)
+    }
+    func testEnrollmentRechecksCustodyAfterIdentityStorageBeforeStartingHelper() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        var authorized = true
+        store.didLoadKey = { authorized = false }
+        // On the unfenced implementation, a started helper's ready callback
+        // terminates the operation so this negative control fails, not hangs.
+        link.didStart = { link.emit(.ready(device: String(repeating: "a", count: 64))) }
+        do {
+            try await hub.enrollOnce(invitation()) { guard authorized else { throw HubError.unavailable } }
+            XCTFail("Expired storage-bound command succeeded")
+        } catch {}
+        XCTAssertEqual(link.starts, 1, "Original pairing helper only; expired command must not launch a fresh helper")
+        XCTAssertEqual(link.connects, 0)
+        XCTAssertNil(try store.loadHub())
+        XCTAssertEqual(hub.state, .offline)
+    }
+    func testSignOutCommandPropagatesStorageFailureAndCanRetry() throws {
+        let (hub, store, link) = ready()
+        let stale = link.callback
+        store.fail = true
+        XCTAssertThrowsError(try hub.signOutOnce())
+        XCTAssertTrue(hub.canSignOut)
+        XCTAssertEqual(hub.state, .offline)
+        stale?(.connected)
+        store.fail = false
+        try hub.signOutOnce()
+        XCTAssertFalse(hub.canSignOut)
+        XCTAssertNil(try store.loadKey())
+        XCTAssertNil(try store.loadHub())
+    }
+    func testEnrollmentWaitsForFreshConnectionAndDurableSave() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        let target = try invitation(device: String(repeating: "a", count: 64))
+        let stale = link.callback
+        let started = expectation(description: "fresh enrollment channel")
+        link.didStart = { started.fulfill() }
+        var done = false
+        let task = Task { try await hub.enrollOnce(target); done = true }
+        await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
+        XCTAssertFalse(done); XCTAssertNil(try store.loadHub())
+        stale?(.connected)
+        XCTAssertNil(try store.loadHub())
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertEqual(link.lastPairing?.invite, target.invite)
+        XCTAssertFalse(done, "Queued enrollment is not completed enrollment")
+        link.emit(.connected)
+        try await task.value
+        XCTAssertTrue(done); XCTAssertEqual(hub.state, .connected)
+        XCTAssertEqual(try store.loadHub()?.hub, target.hub)
+        XCTAssertNil(try store.loadHub()?.invite)
+        XCTAssertNil(hub.pairing?.invite)
+        link.emit(.offline)
+        XCTAssertEqual(hub.state, .offline, "Successful command retains normal live callbacks")
+    }
+    func testEnrollmentAuthorityLossRefusesDeferredConnectAndOldCallback() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        let started = expectation(description: "fresh enrollment channel")
+        link.didStart = { started.fulfill() }
+        var authorized = true
+        let target = try invitation()
+        let task = Task { try await hub.enrollOnce(target) { guard authorized else { throw HubError.unavailable } } }
+        await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
+        let stale = link.callback
+        authorized = false
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        do { try await task.value; XCTFail("revoked enrollment succeeded") } catch {}
+        XCTAssertEqual(link.connects, 0); XCTAssertEqual(hub.state, .offline)
+        stale?(.connected)
+        XCTAssertNil(try store.loadHub())
+        hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+        hub.retryNow()
+        XCTAssertEqual(link.connects, 0, "Revoked invitation must not become independent recovery work")
+    }
+    func testEnrollmentSaveFailureIsNotSuccessAndDoesNotRetainInvitation() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        let started = expectation(description: "fresh enrollment channel")
+        link.didStart = { started.fulfill() }
+        let target = try invitation()
+        let task = Task { try await hub.enrollOnce(target) }
+        await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
+        let stale = link.callback
+        link.emit(.ready(device: String(repeating: "a", count: 64)))
+        store.failHubSave = true
+        link.emit(.connected)
+        do { try await task.value; XCTFail("failed save succeeded") } catch {}
+        store.failHubSave = false
+        stale?(.connected)
+        XCTAssertNil(try store.loadHub()); XCTAssertNil(hub.pairing)
+        hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+        XCTAssertEqual(link.connects, 1, "Failed invitation cannot retry under retired command authority")
+    }
+    func testEnrollmentCancellationAndReplacementHaveSeparateCustody() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        let target = try invitation()
+        let started = expectation(description: "first enrollment")
+        link.didStart = { started.fulfill() }
+        let first = Task { try await hub.enrollOnce(target) }
+        await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
+        let stale = link.callback
+        first.cancel()
+        do { try await first.value; XCTFail("cancelled enrollment succeeded") } catch {}
+        hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+        let successorStarted = expectation(description: "successor enrollment")
+        link.didStart = { successorStarted.fulfill() }
+        let successor = Task { try await hub.enrollOnce(target) }
+        await fulfillment(of: [successorStarted], timeout: 2)
+        stale?(.connected); stale?(.failed)
+        XCTAssertNil(try store.loadHub()); XCTAssertEqual(hub.state, .connecting)
+        link.emit(.ready(device: String(repeating: "a", count: 64))); link.emit(.connected)
+        try await successor.value
+        XCTAssertEqual(hub.state, .connected)
+    }
+    func testDismissedPairingLifetimeRefusesNotYetStartedNativeTask() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        let lifetime = HubEnrollmentLifetime()
+        lifetime.cancel()
+        do { try await hub.enrollOnce(invitation(), lifetime: lifetime); XCTFail("Dismissed sheet started enrollment") } catch {}
+        XCTAssertEqual(link.starts, 1)
+        XCTAssertEqual(link.connects, 0)
+        XCTAssertNil(try store.loadHub())
+    }
+    func testPairingDismissalSynchronouslyRetiresExactAttemptAndLateCallbacks() async throws {
+        for dismissAfterReady in [false, true] {
+            let (hub, store, link) = ready()
+            defer { hub.stop() }
+            let lifetime = HubEnrollmentLifetime()
+            let target = try invitation()
+            let started = expectation(description: "sheet enrollment started")
+            link.didStart = { started.fulfill() }
+            let task = Task { try await hub.enrollOnce(target, lifetime: lifetime) }
+            await fulfillment(of: [started], timeout: 2)
+            link.didStart = nil
+            let stale = link.callback
+            if dismissAfterReady { link.emit(.ready(device: String(repeating: "a", count: 64))) }
+            lifetime.cancel()
+            XCTAssertEqual(hub.state, .offline, "Cancel must fence synchronously, before awaiting the task")
+            stale?(.ready(device: String(repeating: "a", count: 64)))
+            stale?(.connected)
+            do { try await task.value; XCTFail("Dismissed enrollment succeeded") } catch {}
+            XCTAssertEqual(link.connects, dismissAfterReady ? 1 : 0)
+            XCTAssertNil(try store.loadHub())
+            hub.start(); link.emit(.ready(device: String(repeating: "a", count: 64)))
+            let successorLifetime = HubEnrollmentLifetime()
+            let successorStarted = expectation(description: "new sheet enrollment")
+            link.didStart = { successorStarted.fulfill() }
+            let successor = Task { try await hub.enrollOnce(target, lifetime: successorLifetime) }
+            await fulfillment(of: [successorStarted], timeout: 2)
+            link.didStart = nil
+            lifetime.cancel(); stale?(.connected)
+            XCTAssertEqual(hub.state, .connecting)
+            XCTAssertNil(try store.loadHub())
+            link.emit(.ready(device: String(repeating: "a", count: 64))); link.emit(.connected)
+            try await successor.value
+            XCTAssertEqual(hub.state, .connected)
+        }
+    }
+    func testEnrollmentRechecksDeviceOnFreshHelper() async throws {
+        let (hub, store, link) = ready()
+        defer { hub.stop() }
+        let started = expectation(description: "fresh enrollment channel")
+        link.didStart = { started.fulfill() }
+        let target = try invitation(device: String(repeating: "a", count: 64))
+        let task = Task { try await hub.enrollOnce(target) }
+        await fulfillment(of: [started], timeout: 2)
+        link.didStart = nil
+        link.emit(.ready(device: String(repeating: "d", count: 64)))
+        do { try await task.value; XCTFail("wrong device enrollment succeeded") } catch {}
+        XCTAssertEqual(link.connects, 0); XCTAssertNil(try store.loadHub())
+    }
+}

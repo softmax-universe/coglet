@@ -1,0 +1,3598 @@
+{
+  "entries": {
+    "softmax.app": [
+      "softmax.app_control"
+    ],
+    "softmax.app_sensitive": [
+      "softmax.app_sensitive_control"
+    ]
+  },
+  "namespace": "softmax",
+  "operations": {
+    "softmax.app.close_window": {
+      "direction": "action",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-window-args",
+      "output": "https://softmax.com/schemas/app/v1/app-empty",
+      "resources": [
+        "softmax.app_control"
+      ],
+      "single_owner": true
+    },
+    "softmax.app.control_changed": {
+      "direction": "event",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-control-changed",
+      "resources": [],
+      "single_owner": true
+    },
+    "softmax.app.controls": {
+      "direction": "read",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-controls-args",
+      "output": "https://softmax.com/schemas/app/v1/app-controls-result",
+      "resources": [],
+      "single_owner": true
+    },
+    "softmax.app.focus_changed": {
+      "direction": "event",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-focus-changed",
+      "resources": [],
+      "single_owner": true
+    },
+    "softmax.app.invoke": {
+      "direction": "action",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-invoke-args",
+      "output": "https://softmax.com/schemas/app/v1/app-empty",
+      "resources": [
+        "softmax.app_control"
+      ],
+      "single_owner": true
+    },
+    "softmax.app.invoke_sensitive": {
+      "direction": "action",
+      "entry": "softmax.app_sensitive",
+      "input": "https://softmax.com/schemas/app/v1/app-invoke-args",
+      "output": "https://softmax.com/schemas/app/v1/app-empty",
+      "resources": [
+        "softmax.app_sensitive_control"
+      ],
+      "single_owner": true
+    },
+    "softmax.app.navigate": {
+      "direction": "action",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-location",
+      "output": "https://softmax.com/schemas/app/v1/app-empty",
+      "resources": [
+        "softmax.app_control"
+      ],
+      "single_owner": true
+    },
+    "softmax.app.open_window": {
+      "direction": "action",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-window-args",
+      "output": "https://softmax.com/schemas/app/v1/app-empty",
+      "resources": [
+        "softmax.app_control"
+      ],
+      "single_owner": true
+    },
+    "softmax.app.set_focus": {
+      "direction": "action",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-focus-args",
+      "output": "https://softmax.com/schemas/app/v1/app-empty",
+      "resources": [
+        "softmax.app_control"
+      ],
+      "single_owner": true
+    },
+    "softmax.app.set_setting": {
+      "direction": "action",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-setting-args",
+      "output": "https://softmax.com/schemas/app/v1/app-empty",
+      "resources": [
+        "softmax.app_control"
+      ],
+      "single_owner": true
+    },
+    "softmax.app.state": {
+      "direction": "read",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-empty",
+      "output": "https://softmax.com/schemas/app/v1/app-state-result",
+      "resources": [],
+      "single_owner": true
+    },
+    "softmax.app.view_changed": {
+      "direction": "event",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-view-changed",
+      "resources": [],
+      "single_owner": true
+    },
+    "softmax.app.window_changed": {
+      "direction": "event",
+      "entry": "softmax.app",
+      "input": "https://softmax.com/schemas/app/v1/app-window-changed",
+      "resources": [],
+      "single_owner": true
+    }
+  },
+  "rules": {
+    "app-appearance": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "System"
+        },
+        {
+          "op": "literal",
+          "value": "Light"
+        },
+        {
+          "op": "literal",
+          "value": "Dark"
+        }
+      ],
+      "op": "union"
+    },
+    "app-control": {
+      "fields": [
+        {
+          "name": "id",
+          "optional": false,
+          "type": {
+            "name": "app-id",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "parent",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "name": "app-id",
+                "op": "ref"
+              },
+              {
+                "op": "literal",
+                "value": null
+              }
+            ],
+            "op": "union"
+          }
+        },
+        {
+          "name": "window",
+          "optional": false,
+          "type": {
+            "name": "app-window",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "role",
+          "optional": false,
+          "type": {
+            "name": "app-role",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "label",
+          "optional": false,
+          "type": {
+            "name": "app-label",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "value",
+          "optional": false,
+          "type": {
+            "name": "app-value",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "enabled",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        },
+        {
+          "name": "visible",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        },
+        {
+          "name": "sensitive",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-control-changed": {
+      "fields": [
+        {
+          "name": "revision",
+          "optional": false,
+          "type": {
+            "name": "app-revision",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "window",
+          "optional": false,
+          "type": {
+            "name": "app-window",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "control",
+          "optional": false,
+          "type": {
+            "name": "app-id",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "value",
+          "optional": false,
+          "type": {
+            "name": "app-value",
+            "op": "ref"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-controls-args": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "after",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": null
+              }
+            },
+            {
+              "name": "limit",
+              "optional": false,
+              "type": {
+                "max": 128,
+                "min": 1,
+                "op": "range"
+              }
+            },
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": null
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "after",
+              "optional": false,
+              "type": {
+                "name": "app-cursor",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "limit",
+              "optional": false,
+              "type": {
+                "max": 128,
+                "min": 1,
+                "op": "range"
+              }
+            },
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-controls-result": {
+      "fields": [
+        {
+          "name": "revision",
+          "optional": false,
+          "type": {
+            "name": "app-revision",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "window",
+          "optional": false,
+          "type": {
+            "name": "app-window",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "controls",
+          "optional": false,
+          "type": {
+            "item": {
+              "name": "app-control",
+              "op": "ref"
+            },
+            "max": 128,
+            "min": 0,
+            "op": "array"
+          }
+        },
+        {
+          "name": "next",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "name": "app-cursor",
+                "op": "ref"
+              },
+              {
+                "op": "literal",
+                "value": null
+              }
+            ],
+            "op": "union"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-cursor": {
+      "items": [
+        {
+          "name": "tstr",
+          "op": "primitive"
+        },
+        {
+          "max": 128,
+          "min": 1,
+          "op": "size"
+        }
+      ],
+      "op": "intersection"
+    },
+    "app-empty": {
+      "fields": [],
+      "op": "record"
+    },
+    "app-face": {
+      "fields": [
+        {
+          "name": "visible",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        },
+        {
+          "name": "mode",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "op": "literal",
+                "value": "full"
+              },
+              {
+                "op": "literal",
+                "value": "compact"
+              }
+            ],
+            "op": "union"
+          }
+        },
+        {
+          "name": "expression",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "op": "literal",
+                "value": "neutral"
+              },
+              {
+                "op": "literal",
+                "value": "listening"
+              },
+              {
+                "op": "literal",
+                "value": "thinking"
+              },
+              {
+                "op": "literal",
+                "value": "speaking"
+              },
+              {
+                "op": "literal",
+                "value": "happy"
+              },
+              {
+                "op": "literal",
+                "value": "concerned"
+              }
+            ],
+            "op": "union"
+          }
+        },
+        {
+          "name": "status",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "op": "literal",
+                "value": "idle"
+              },
+              {
+                "op": "literal",
+                "value": "listening"
+              },
+              {
+                "op": "literal",
+                "value": "thinking"
+              },
+              {
+                "op": "literal",
+                "value": "speaking"
+              }
+            ],
+            "op": "union"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-focus-args": {
+      "fields": [
+        {
+          "name": "window",
+          "optional": false,
+          "type": {
+            "name": "app-window",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "control",
+          "optional": false,
+          "type": {
+            "name": "app-id",
+            "op": "ref"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-focus-changed": {
+      "fields": [
+        {
+          "name": "revision",
+          "optional": false,
+          "type": {
+            "name": "app-revision",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "window",
+          "optional": false,
+          "type": {
+            "name": "app-window",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "control",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "name": "app-id",
+                "op": "ref"
+              },
+              {
+                "op": "literal",
+                "value": null
+              }
+            ],
+            "op": "union"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-hotkey": {
+      "fields": [
+        {
+          "name": "key_code",
+          "optional": false,
+          "type": {
+            "max": 127,
+            "min": 0,
+            "op": "range"
+          }
+        },
+        {
+          "name": "modifiers",
+          "optional": false,
+          "type": {
+            "item": {
+              "name": "app-modifier",
+              "op": "ref"
+            },
+            "max": 4,
+            "min": 0,
+            "op": "array"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-hud": {
+      "fields": [
+        {
+          "name": "state",
+          "optional": false,
+          "type": {
+            "name": "app-hud-state",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "visible",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        },
+        {
+          "name": "elapsed_ms",
+          "optional": false,
+          "type": {
+            "max": 120000,
+            "min": 0,
+            "op": "range"
+          }
+        },
+        {
+          "name": "level",
+          "optional": false,
+          "type": {
+            "max": 1000,
+            "min": 0,
+            "op": "range"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-hud-state": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "idle"
+        },
+        {
+          "op": "literal",
+          "value": "listening"
+        },
+        {
+          "op": "literal",
+          "value": "thinking"
+        },
+        {
+          "op": "literal",
+          "value": "speaking"
+        },
+        {
+          "op": "literal",
+          "value": "cancelled"
+        },
+        {
+          "op": "literal",
+          "value": "microphone-denied"
+        },
+        {
+          "op": "literal",
+          "value": "offline"
+        },
+        {
+          "op": "literal",
+          "value": "error"
+        }
+      ],
+      "op": "union"
+    },
+    "app-id": {
+      "items": [
+        {
+          "name": "tstr",
+          "op": "primitive"
+        },
+        {
+          "max": 128,
+          "min": 1,
+          "op": "size"
+        }
+      ],
+      "op": "intersection"
+    },
+    "app-invoke-args": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "verb",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "press"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "control",
+              "optional": false,
+              "type": {
+                "name": "app-id",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "verb",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "toggle"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "control",
+              "optional": false,
+              "type": {
+                "name": "app-id",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "bool",
+                "op": "primitive"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "verb",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "select"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "control",
+              "optional": false,
+              "type": {
+                "name": "app-id",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-selection",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "verb",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "set_value"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "control",
+              "optional": false,
+              "type": {
+                "name": "app-id",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-settable-value",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "verb",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "type_text"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "control",
+              "optional": false,
+              "type": {
+                "name": "app-id",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-text",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-label": {
+      "items": [
+        {
+          "name": "tstr",
+          "op": "primitive"
+        },
+        {
+          "max": 256,
+          "min": 0,
+          "op": "size"
+        }
+      ],
+      "op": "intersection"
+    },
+    "app-location": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu_bar"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "settings"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-settings-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "onboarding"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-onboarding-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "chat"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "chat"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "voice"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "command_palette"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "commands"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "keyboard_shortcuts"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "shortcuts"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hub_pairing"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "code"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "manual"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit"
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-login-status": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "disabled"
+        },
+        {
+          "op": "literal",
+          "value": "enabled"
+        },
+        {
+          "op": "literal",
+          "value": "requiresApproval"
+        },
+        {
+          "op": "literal",
+          "value": "unavailable"
+        },
+        {
+          "op": "literal",
+          "value": "unknown"
+        }
+      ],
+      "op": "union"
+    },
+    "app-modifier": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "command"
+        },
+        {
+          "op": "literal",
+          "value": "control"
+        },
+        {
+          "op": "literal",
+          "value": "option"
+        },
+        {
+          "op": "literal",
+          "value": "shift"
+        }
+      ],
+      "op": "union"
+    },
+    "app-onboarding-route": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "welcome"
+        },
+        {
+          "op": "literal",
+          "value": "permissions"
+        },
+        {
+          "op": "literal",
+          "value": "hub"
+        }
+      ],
+      "op": "union"
+    },
+    "app-ptt": {
+      "fields": [
+        {
+          "name": "state",
+          "optional": false,
+          "type": {
+            "name": "app-talk-state",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "visible",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        },
+        {
+          "name": "elapsed_ms",
+          "optional": false,
+          "type": {
+            "max": 120000,
+            "min": 0,
+            "op": "range"
+          }
+        },
+        {
+          "name": "level",
+          "optional": false,
+          "type": {
+            "max": 1000,
+            "min": 0,
+            "op": "range"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-revision": {
+      "max": 18446744073709551615,
+      "min": 0,
+      "op": "range"
+    },
+    "app-role": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "button"
+        },
+        {
+          "op": "literal",
+          "value": "toggle"
+        },
+        {
+          "op": "literal",
+          "value": "picker"
+        },
+        {
+          "op": "literal",
+          "value": "text_field"
+        },
+        {
+          "op": "literal",
+          "value": "secure_field"
+        },
+        {
+          "op": "literal",
+          "value": "text_editor"
+        },
+        {
+          "op": "literal",
+          "value": "slider"
+        },
+        {
+          "op": "literal",
+          "value": "menu"
+        },
+        {
+          "op": "literal",
+          "value": "menu_item"
+        },
+        {
+          "op": "literal",
+          "value": "tab"
+        },
+        {
+          "op": "literal",
+          "value": "disclosure"
+        },
+        {
+          "op": "literal",
+          "value": "group"
+        },
+        {
+          "op": "literal",
+          "value": "label"
+        },
+        {
+          "op": "literal",
+          "value": "window"
+        },
+        {
+          "op": "literal",
+          "value": "gesture"
+        }
+      ],
+      "op": "union"
+    },
+    "app-selection": {
+      "items": [
+        {
+          "name": "app-appearance",
+          "op": "ref"
+        },
+        {
+          "name": "app-text-size",
+          "op": "ref"
+        },
+        {
+          "name": "app-talk-mode",
+          "op": "ref"
+        },
+        {
+          "op": "literal",
+          "value": "chat"
+        },
+        {
+          "op": "literal",
+          "value": "voice"
+        },
+        {
+          "name": "app-settings-route",
+          "op": "ref"
+        },
+        {
+          "name": "app-onboarding-route",
+          "op": "ref"
+        }
+      ],
+      "op": "union"
+    },
+    "app-settable-value": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "boolean"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "bool",
+                "op": "primitive"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "integer"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "max": 9223372036854775807,
+                "min": -9223372036854775808,
+                "op": "range"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "text"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-text",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "selection"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-selection",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-setting-args": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "appearance"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-appearance",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "text_size"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-text-size",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "floating_orb"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "bool",
+                "op": "primitive"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "talk_mode"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-talk-mode",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sound_cues"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "bool",
+                "op": "primitive"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hotkey"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-hotkey",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "key",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "launch_at_login"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "bool",
+                "op": "primitive"
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-settings": {
+      "fields": [
+        {
+          "name": "appearance",
+          "optional": false,
+          "type": {
+            "name": "app-appearance",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "text_size",
+          "optional": false,
+          "type": {
+            "name": "app-text-size",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "floating_orb",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        },
+        {
+          "name": "talk_mode",
+          "optional": false,
+          "type": {
+            "name": "app-talk-mode",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "sound_cues",
+          "optional": false,
+          "type": {
+            "name": "bool",
+            "op": "primitive"
+          }
+        },
+        {
+          "name": "hotkey",
+          "optional": false,
+          "type": {
+            "name": "app-hotkey",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "launch_at_login",
+          "optional": false,
+          "type": {
+            "name": "app-login-status",
+            "op": "ref"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-settings-route": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "general"
+        },
+        {
+          "op": "literal",
+          "value": "hotkey"
+        },
+        {
+          "op": "literal",
+          "value": "audio"
+        },
+        {
+          "op": "literal",
+          "value": "hub"
+        },
+        {
+          "op": "literal",
+          "value": "coglets"
+        },
+        {
+          "op": "literal",
+          "value": "updates"
+        },
+        {
+          "op": "literal",
+          "value": "privacy"
+        }
+      ],
+      "op": "union"
+    },
+    "app-state-result": {
+      "fields": [
+        {
+          "name": "revision",
+          "optional": false,
+          "type": {
+            "name": "app-revision",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "windows",
+          "optional": false,
+          "type": {
+            "item": {
+              "name": "app-window-state",
+              "op": "ref"
+            },
+            "max": 64,
+            "min": 0,
+            "op": "array"
+          }
+        },
+        {
+          "name": "focus",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "fields": [
+                  {
+                    "name": "window",
+                    "optional": false,
+                    "type": {
+                      "name": "app-window",
+                      "op": "ref"
+                    }
+                  },
+                  {
+                    "name": "control",
+                    "optional": false,
+                    "type": {
+                      "name": "app-id",
+                      "op": "ref"
+                    }
+                  }
+                ],
+                "op": "record"
+              },
+              {
+                "op": "literal",
+                "value": null
+              }
+            ],
+            "op": "union"
+          }
+        },
+        {
+          "name": "settings",
+          "optional": false,
+          "type": {
+            "name": "app-settings",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "ptt",
+          "optional": false,
+          "type": {
+            "name": "app-ptt",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "hud",
+          "optional": false,
+          "type": {
+            "name": "app-hud",
+            "op": "ref"
+          }
+        },
+        {
+          "name": "hub",
+          "optional": false,
+          "type": {
+            "items": [
+              {
+                "op": "literal",
+                "value": "offline"
+              },
+              {
+                "op": "literal",
+                "value": "connecting"
+              },
+              {
+                "op": "literal",
+                "value": "connected"
+              }
+            ],
+            "op": "union"
+          }
+        },
+        {
+          "name": "face",
+          "optional": false,
+          "type": {
+            "name": "app-face",
+            "op": "ref"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-talk-mode": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "hold"
+        },
+        {
+          "op": "literal",
+          "value": "toggle"
+        }
+      ],
+      "op": "union"
+    },
+    "app-talk-state": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "onboarding"
+        },
+        {
+          "op": "literal",
+          "value": "offline"
+        },
+        {
+          "op": "literal",
+          "value": "idle"
+        },
+        {
+          "op": "literal",
+          "value": "listening"
+        },
+        {
+          "op": "literal",
+          "value": "thinking"
+        },
+        {
+          "op": "literal",
+          "value": "speaking"
+        },
+        {
+          "op": "literal",
+          "value": "error"
+        }
+      ],
+      "op": "union"
+    },
+    "app-text": {
+      "items": [
+        {
+          "name": "tstr",
+          "op": "primitive"
+        },
+        {
+          "max": 4096,
+          "min": 0,
+          "op": "size"
+        }
+      ],
+      "op": "intersection"
+    },
+    "app-text-size": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "standard"
+        },
+        {
+          "op": "literal",
+          "value": "large"
+        },
+        {
+          "op": "literal",
+          "value": "largest"
+        }
+      ],
+      "op": "union"
+    },
+    "app-value": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "none"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "boolean"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "bool",
+                "op": "primitive"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "integer"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "max": 9223372036854775807,
+                "min": -9223372036854775808,
+                "op": "range"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "text"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-text",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "selection"
+              }
+            },
+            {
+              "name": "value",
+              "optional": false,
+              "type": {
+                "name": "app-selection",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "kind",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "redacted"
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-view-changed": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu_bar"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "settings"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-settings-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "onboarding"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-onboarding-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "chat"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "chat"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "voice"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "command_palette"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "commands"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "keyboard_shortcuts"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "shortcuts"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hub_pairing"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "code"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "manual"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit"
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-window": {
+      "items": [
+        {
+          "op": "literal",
+          "value": "main"
+        },
+        {
+          "op": "literal",
+          "value": "menu_bar"
+        },
+        {
+          "op": "literal",
+          "value": "settings"
+        },
+        {
+          "op": "literal",
+          "value": "onboarding"
+        },
+        {
+          "op": "literal",
+          "value": "face"
+        },
+        {
+          "op": "literal",
+          "value": "chat"
+        },
+        {
+          "op": "literal",
+          "value": "orb"
+        },
+        {
+          "op": "literal",
+          "value": "hud"
+        },
+        {
+          "op": "literal",
+          "value": "command_palette"
+        },
+        {
+          "op": "literal",
+          "value": "about"
+        },
+        {
+          "op": "literal",
+          "value": "keyboard_shortcuts"
+        },
+        {
+          "op": "literal",
+          "value": "hub_pairing"
+        },
+        {
+          "op": "literal",
+          "value": "sign_out_confirmation"
+        },
+        {
+          "op": "literal",
+          "value": "quit_confirmation"
+        }
+      ],
+      "op": "union"
+    },
+    "app-window-args": {
+      "fields": [
+        {
+          "name": "window",
+          "optional": false,
+          "type": {
+            "name": "app-window",
+            "op": "ref"
+          }
+        }
+      ],
+      "op": "record"
+    },
+    "app-window-changed": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu_bar"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "settings"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-settings-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "onboarding"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-onboarding-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "chat"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "chat"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "voice"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "command_palette"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "commands"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "keyboard_shortcuts"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "shortcuts"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hub_pairing"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "code"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "manual"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "revision",
+              "optional": false,
+              "type": {
+                "name": "app-revision",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": false
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": null
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    },
+    "app-window-state": {
+      "items": [
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "main"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu_bar"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "menu"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "settings"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-settings-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "onboarding"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "name": "app-onboarding-route",
+                "op": "ref"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "face"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "chat"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "chat"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "voice"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "orb"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hud"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "command_palette"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "commands"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "about"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "keyboard_shortcuts"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "shortcuts"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "hub_pairing"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "items": [
+                  {
+                    "op": "literal",
+                    "value": "code"
+                  },
+                  {
+                    "op": "literal",
+                    "value": "manual"
+                  }
+                ],
+                "op": "union"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "sign_out"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": true
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit_confirmation"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": "quit"
+              }
+            }
+          ],
+          "op": "record"
+        },
+        {
+          "fields": [
+            {
+              "name": "open",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": false
+              }
+            },
+            {
+              "name": "window",
+              "optional": false,
+              "type": {
+                "name": "app-window",
+                "op": "ref"
+              }
+            },
+            {
+              "name": "route",
+              "optional": false,
+              "type": {
+                "op": "literal",
+                "value": null
+              }
+            }
+          ],
+          "op": "record"
+        }
+      ],
+      "op": "union"
+    }
+  },
+  "schemas": {
+    "https://softmax.com/schemas/app/v1/app-control-changed": "app-control-changed",
+    "https://softmax.com/schemas/app/v1/app-controls-args": "app-controls-args",
+    "https://softmax.com/schemas/app/v1/app-controls-result": "app-controls-result",
+    "https://softmax.com/schemas/app/v1/app-empty": "app-empty",
+    "https://softmax.com/schemas/app/v1/app-focus-args": "app-focus-args",
+    "https://softmax.com/schemas/app/v1/app-focus-changed": "app-focus-changed",
+    "https://softmax.com/schemas/app/v1/app-invoke-args": "app-invoke-args",
+    "https://softmax.com/schemas/app/v1/app-location": "app-location",
+    "https://softmax.com/schemas/app/v1/app-setting-args": "app-setting-args",
+    "https://softmax.com/schemas/app/v1/app-state-result": "app-state-result",
+    "https://softmax.com/schemas/app/v1/app-view-changed": "app-view-changed",
+    "https://softmax.com/schemas/app/v1/app-window-args": "app-window-args",
+    "https://softmax.com/schemas/app/v1/app-window-changed": "app-window-changed"
+  },
+  "version": 1
+}

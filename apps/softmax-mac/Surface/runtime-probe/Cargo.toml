@@ -1,0 +1,13 @@
+[package]
+name = "softmax-app-catalog-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+coglet-runtime = { path = "../../../../crates/coglet-runtime" }
+coglet-types = { path = "../../../../crates/coglet-types" }
+serde_json = "1"
+sha2 = "0.10"

@@ -101,6 +101,46 @@ fn receiver_inbox_preserves_selected_profile_across_stage_and_reopen() {
 }
 
 #[test]
+fn receiver_append_preserves_selected_app_inbox_history() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.wal");
+    let mut setup = setup();
+    setup["contract_profile"] = json!("surface-0.2");
+    let mut historical = inbox(&setup, 1, 100)["params"]["message"].clone();
+    historical["index"] = json!(0);
+    historical["event"]["kind"] = json!("softmax.app.view_changed");
+    let mut raw = serde_json::to_vec(&historical).unwrap();
+    raw.push(b'\n');
+    setup["initial_files"]["/data/inbox.jsonl"] = json!(hex::encode(raw));
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    // The hub request remains frozen/two-component. Only retained local inbox
+    // parsing uses the independently provisioned runtime profile.
+    let append = inbox(&setup, 2, 101);
+    service.receiver_admit(&append).unwrap();
+    service
+        .receiver_apply(append["correlation_id"].as_str().unwrap(), &|| Ok(()))
+        .unwrap();
+    assert_eq!(service.receiver_admit(&append).unwrap()["state"], "applied");
+    let runtime = service.receiver_snapshot();
+    let messages =
+        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile).unwrap();
+    assert_eq!(messages.len(), 2);
+    assert_eq!(messages[0], historical);
+    assert_eq!(messages[1]["event"], append["params"]["message"]["event"]);
+    assert!(
+        crate::boundary::inbox_with_profile(&runtime.files, crate::ContractProfile::Surface01)
+            .is_err()
+    );
+    drop(service);
+    let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+    let runtime = reopened.receiver_snapshot();
+    assert_eq!(
+        crate::boundary::inbox_with_profile(&runtime.files, runtime.contract_profile).unwrap(),
+        messages
+    );
+}
+
+#[test]
 fn debug_write_queued_then_committed_snapshot_survives_reopen() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.wal");

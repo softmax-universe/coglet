@@ -142,6 +142,9 @@ impl Drop for ContractKanbanServer {
     }
 }
 fn handle(mut stream: TcpStream, shared: &Mutex<State>) -> std::io::Result<()> {
+    // Accepted sockets may inherit the listener's O_NONBLOCK on BSD/macOS.
+    // This single-request worker uses bounded blocking reads, not a poll loop.
+    stream.set_nonblocking(false)?;
     stream.set_read_timeout(Some(Duration::from_secs(3)))?;
     let mut raw = Vec::new();
     let end;
@@ -342,4 +345,49 @@ fn current_lease(row: &Value) -> Value {
     lease["holder"] = row["lease_holder"].clone();
     lease["expires"] = row["lease_expires"].clone();
     lease
+}
+
+#[cfg(test)]
+mod transport_tests {
+    use super::*;
+    use std::sync::mpsc;
+
+    #[test]
+    fn accepted_nonblocking_stream_waits_for_fragmented_request() {
+        // BSD may inherit O_NONBLOCK from the fixture's listening socket.
+        // Force that flag here so this regression is deterministic on Linux too.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (stream, _) = listener.accept().unwrap();
+        stream.set_nonblocking(true).unwrap();
+        let (done, result) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            done.send(handle(stream, &Mutex::new(State::default())))
+                .unwrap();
+        });
+        // No bytes yet: a blocking handler must wait, not drop this connection
+        // as uncertain before the Board can commit the request.
+        let waiting = result.recv_timeout(Duration::from_millis(50));
+        if !matches!(waiting, Err(mpsc::RecvTimeoutError::Timeout)) {
+            worker.join().unwrap();
+            panic!("fixture returned before request bytes: {waiting:?}");
+        }
+        client.write_all(b"GET /unknown HTTP/1.1\r\n").unwrap();
+        assert!(
+            matches!(
+                result.recv_timeout(Duration::from_millis(50)),
+                Err(mpsc::RecvTimeoutError::Timeout)
+            ),
+            "fixture must also wait for the remaining HTTP header"
+        );
+        client.write_all(b"Host: fixture\r\n\r\n").unwrap();
+        result
+            .recv_timeout(Duration::from_secs(3))
+            .unwrap()
+            .unwrap();
+        let mut response = String::new();
+        client.read_to_string(&mut response).unwrap();
+        assert!(response.starts_with("HTTP/1.1 401"), "{response}");
+        worker.join().unwrap();
+    }
 }

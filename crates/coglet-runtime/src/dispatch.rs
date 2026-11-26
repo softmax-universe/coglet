@@ -471,10 +471,12 @@ impl RuntimeService {
         Ok(true)
     }
     fn commit_dispatch(&mut self, next: ServiceState) -> Result<()> {
-        self.store.commit(
-            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
-            None,
-        )?;
+        timing_span!("dispatch.commit");
+        let value = {
+            timing_span!("dispatch.serialize");
+            serde_json::to_value(&next).map_err(|e| e.to_string())?
+        };
+        self.store.commit(&value, None)?;
         self.state = next;
         Ok(())
     }

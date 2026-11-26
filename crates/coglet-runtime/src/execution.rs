@@ -48,6 +48,9 @@ mod detached;
 #[cfg(feature = "native-engine")]
 #[path = "native_engine.rs"]
 pub mod native_engine;
+#[cfg(all(test, feature = "ffi-test-hooks"))]
+#[path = "offline_profile_tests.rs"]
+mod offline_profile_tests;
 #[path = "playback.rs"]
 mod playback;
 #[cfg(feature = "device")]

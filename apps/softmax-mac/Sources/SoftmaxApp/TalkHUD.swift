@@ -31,11 +31,16 @@ enum HUDPresentation: String, CaseIterable {
 }
 
 @MainActor final class TalkHUD {
+    var onChange: (() -> Void)?
     private var panel: NSPanel?
     private var last: AppState = .idle
     private var hideTask: Task<Void, Never>?
     private var cancelledUntil = 0.0
     private let presentation = HUDModel()
+    var surfaceVisible: Bool { panel?.isVisible == true }
+    var surfaceState: String { presentation.state.rawValue }
+    var surfaceElapsed: TimeInterval { presentation.elapsed }
+    var surfaceLevel: Float { presentation.level }
     func update(model: ShellModel) {
         let state: HUDPresentation
         switch model.talkState {
@@ -48,7 +53,7 @@ enum HUDPresentation: String, CaseIterable {
             if last == .listening { state = .cancelled }
             else {
                 if ProcessInfo.processInfo.systemUptime < cancelledUntil { return }
-                panel?.orderOut(nil); last = model.talkState; return
+                panel?.orderOut(nil); last = model.talkState; onChange?(); return
             }
         }
         let changed = last != model.talkState
@@ -58,6 +63,7 @@ enum HUDPresentation: String, CaseIterable {
             let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 320, height: 88),
                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             panel.level = .statusBar; panel.hidesOnDeactivate = false
+            panel.identifier = NSUserInterfaceItemIdentifier("softmax.hud")
             panel.isReleasedWhenClosed = false; panel.ignoresMouseEvents = true
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = NSHostingView(rootView: SoftmaxWindowRoot { LiveTalkHUDView(model: presentation) })
@@ -84,6 +90,7 @@ enum HUDPresentation: String, CaseIterable {
                 try? await Task.sleep(for: .seconds(1.5))
                 guard !Task.isCancelled else { return }
                 self?.panel?.orderOut(nil)
+                self?.onChange?()
             }
         }
         if changed {

@@ -17,6 +17,8 @@ packages:
     path: ../../surfaces/face-mac
   SoftmaxRuntime:
     path: Runtime
+  SoftmaxAppSurface:
+    path: Surface
 targets:
   SoftmaxCore:
     type: framework
@@ -39,6 +41,7 @@ targets:
       - package: FaceMac
       - package: Sparkle
       - package: SoftmaxRuntime
+      - package: SoftmaxAppSurface
     postBuildScripts:
       - name: Bundle universal hub transport
         script: bash "$SRCROOT/scripts/build-hub-helper.sh" "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/softmax-hub-link"

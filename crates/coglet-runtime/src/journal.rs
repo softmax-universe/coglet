@@ -223,10 +223,17 @@ impl DurableStore {
         if let Some(record) = record {
             validate_record(record, crate::ContractProfile::from_setup(state)?)?;
         }
+        timing_span!("journal.commit");
         let mut transaction = json!({"state":state, "journal":record, "previous":self.previous});
-        let hash = digest(&cbor(&transaction)?);
+        let hash = {
+            timing_span!("journal.cbor_digest");
+            digest(&cbor(&transaction)?)
+        };
         transaction["hash"] = Value::String(hash.clone());
-        let raw = cbor(&transaction)?;
+        let raw = {
+            timing_span!("journal.cbor_final");
+            cbor(&transaction)?
+        };
         self.append(&raw, hash, state)?;
         if let Some(record) = record {
             self.journal.push(record.clone());
@@ -260,6 +267,7 @@ impl DurableStore {
         record: &[u8],
         artifacts_hash: Option<String>,
     ) -> Result<()> {
+        timing_span!("journal.commit_database", record.len());
         let projection =
             database_projection_with_profile(record, crate::ContractProfile::from_setup(state)?)?;
         if artifacts_hash.is_some() && projection["status"] != "committed" {
@@ -295,11 +303,17 @@ impl DurableStore {
             return Err("resource_exhausted: transaction too large".into());
         }
         self.poisoned = true;
-        self.file
-            .write_all(&(raw.len() as u32).to_be_bytes())
-            .and_then(|_| self.file.write_all(raw))
-            .and_then(|_| self.file.sync_all())
-            .map_err(|e| e.to_string())?;
+        {
+            timing_span!("journal.write", raw.len());
+            self.file
+                .write_all(&(raw.len() as u32).to_be_bytes())
+                .and_then(|_| self.file.write_all(raw))
+                .map_err(|e| e.to_string())?;
+        }
+        {
+            timing_span!("journal.sync", raw.len());
+            self.file.sync_all().map_err(|e| e.to_string())?;
+        }
         self.state = Some(state.clone());
         self.previous = Value::String(hash);
         self.poisoned = false;

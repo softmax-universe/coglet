@@ -162,7 +162,7 @@ pub unsafe extern "C" fn coglet_runtime_start(config: *const u8, n: usize) -> i3
 /// Poisoned service state is discarded, NEVER unpoisoned for continued execution.
 #[unsafe(no_mangle)]
 pub extern "C" fn coglet_runtime_stop() -> i32 {
-    guarded(|| {
+    let status = guarded(|| {
         // Only stop may recover the outer ownership slot: it never executes the
         // possibly poisoned RuntimeService and drops it before clearing poison.
         let mut runtime = RUNTIME.lock().unwrap_or_else(|e| e.into_inner());
@@ -174,7 +174,11 @@ pub extern "C" fn coglet_runtime_stop() -> i32 {
         GENERATION.fetch_add(1, Ordering::SeqCst);
         FENCED.store(false, Ordering::SeqCst);
         0
-    })
+    });
+    // All runtime guards have dropped. Diagnostics never change the ABI result.
+    #[cfg(feature = "ffi-test-hooks")]
+    let status = crate::timing_summary::export_after_stop(status);
+    status
 }
 
 #[repr(C)]
@@ -276,6 +280,7 @@ pub unsafe extern "C" fn coglet_surface_send(
         if link.is_null() || cbor.is_null() || n == 0 || n > SURFACE_MAX_FRAME {
             return -1;
         }
+        timing_span!("ffi.send", n);
         let link = unsafe { &mut *link };
         if link.fenced() {
             return -2;
@@ -314,20 +319,35 @@ pub unsafe extern "C" fn coglet_surface_recv(
         unsafe {
             n.write(0);
         }
+        timing_span!("ffi.recv", cap);
         let link = unsafe { &mut *link };
         if link.fenced() {
+            #[cfg(feature = "ffi-test-hooks")]
+            link.session.diagnose_abi_refusal("recv-fenced", None);
             return -2;
         }
         let Ok(now) = link.session.transport_now(link.clock) else {
+            #[cfg(feature = "ffi-test-hooks")]
+            link.session.diagnose_abi_refusal("recv-clock", None);
             link.session.disconnect();
             return -2;
         };
-        link.session.tick(now);
+        {
+            timing_span!("recv.tick");
+            link.session.tick(now);
+        }
         if link.session.pump_dispatch(now).is_err() {
+            #[cfg(feature = "ffi-test-hooks")]
+            link.session
+                .diagnose_abi_refusal("recv-dispatch", Some(now));
             link.session.disconnect();
             return -2;
         }
         let Some(bytes) = link.session.front() else {
+            #[cfg(feature = "ffi-test-hooks")]
+            if link.session.is_closed() {
+                link.session.diagnose_abi_refusal("recv-closed", Some(now));
+            }
             return if link.session.is_closed() { -2 } else { 1 };
         };
         unsafe {

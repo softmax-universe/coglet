@@ -4,6 +4,12 @@ import Darwin
 import CogletSurface
 import CogletTypes
 import CogletRuntime
+import class SoftmaxAppSurface.AppSurfaceAdapter
+import class SoftmaxAppSurface.AppSurfaceMailbox
+import class SoftmaxAppSurface.AppSurfaceConnection
+import struct SoftmaxAppSurface.AppSurfaceCapture
+import struct SoftmaxAppSurface.AppSurfaceProvisioning
+import typealias SoftmaxAppSurface.AppSurfaceEventHandler
 
 public enum RuntimeState: String, Sendable { case running, stopped, error }
 public struct InstalledCoglet: Identifiable, Sendable {
@@ -55,12 +61,29 @@ private actor RuntimeExecutor {
     private var link: EmbeddedSurfaceTransport?
     private var session: SurfaceSession?
     private let sink: PendingFaceSink
+    private var backend: RuntimeSurfaceBackend?
+    private var appConnection: AppSurfaceConnection?
     private var owner: String?
     private var token: NativeObservationToken?
     private var queued: [[UInt8]] = []
     private var lockFD: Int32 = -1
     private var active = false
     private var generation: UInt64?
+    #if COGLET_RUNTIME_TEST_HOOKS
+    private var pumpDiagnostics: [String] = []
+    private func tracePump(_ value: String) {
+        if pumpDiagnostics.count == 4096 { pumpDiagnostics.removeFirst() }
+        pumpDiagnostics.append("t=\(now()) " + value)
+    }
+    private func traceFrame(_ prefix: String, _ bytes: [UInt8]) {
+        guard let value = try? CBORCodec.decodeProfile(bytes) else { tracePump(prefix + " invalid"); return }
+        let body = value["body"]
+        let id = body?["action"]?["id"]?.hostText ?? body?["id"]?.hostText ?? "-"
+        let accepted = body?["accepted"].map { String(describing: $0) } ?? "-"
+        tracePump(prefix + " " + (value["type"]?.hostText ?? "?") + " id=" + id + " accepted=" + accepted)
+    }
+    func diagnosticsForTesting() -> [String] { pumpDiagnostics }
+    #endif
     init(root: URL, output: RuntimeFaceOutput) { self.root = root; sink = PendingFaceSink(output: output) }
     private func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds / 1_000 }
     private func log(_ message: String) {
@@ -73,13 +96,20 @@ private actor RuntimeExecutor {
         if let file = try? FileHandle(forWritingTo: url) { defer { try? file.close() }; try? file.seekToEnd(); try? file.write(contentsOf: raw) }
     }
     private func check(_ result: Int32, _ operation: String) throws {
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("ABI \(operation) result=\(result)")
+        #endif
         guard result == 0 else { throw HostFailure("\(operation) failed (\(result)); see runtime log") }
     }
     private func sendJSON(_ data: Data, _ call: (UnsafePointer<UInt8>?, Int) -> Int32) -> Int32 {
         data.withUnsafeBytes { call($0.bindMemory(to: UInt8.self).baseAddress, data.count) }
     }
-    func start(localReset: Bool, generation: UInt64) throws -> [InstalledCoglet] {
+    func start(localReset: Bool, generation: UInt64, appMailbox: AppSurfaceMailbox? = nil,
+               appCapture: AppSurfaceCapture? = nil) throws -> [InstalledCoglet] {
         guard !active else { throw HostFailure("Runtime already running") }
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("start begin generation=\(generation) localReset=\(localReset)")
+        #endif
         let fm = FileManager.default
         try fm.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         try fm.createDirectory(at: root.appendingPathComponent("logs"), withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -98,11 +128,13 @@ private actor RuntimeExecutor {
                   bindingValue["permitted_coglets"] as? [String] == [id] else {
                 throw HostFailure("Invalid installed runtime configuration (one pinned coglet per coordinator)")
             }
-            let names = Set((manifest["subscriptions"] as? [String] ?? []) + (manifest["required_capabilities"] as? [String] ?? []))
-            let supported = Set(["speech.start", "speech.end", "speech.speak_chunk", "expression.set_expression"])
-            guard names.isSubset(of: supported) else { throw HostFailure("Installed coglet requires unavailable surface operations") }
-            let operationNames = names.union(["speech.start", "speech.end"])
-            let operations = SurfaceOperation.builtins.filter { operationNames.contains($0.name) }
+            let provision = try AppSurfaceProvisioning(configuration: configuration)
+            guard !provision.enablesApp || (appMailbox != nil && appCapture != nil) else {
+                throw HostFailure("App surface native owner not installed")
+            }
+            let operationNames = provision.operationNames, operations = provision.operations
+            let composite = RuntimeSurfaceBackend(face: sink, mailbox: provision.enablesApp ? appMailbox : nil)
+            backend = composite
             try check(sendJSON(binding, coglet_runtime_configure), "configure")
             try check(sendJSON(configuration, coglet_runtime_start), "start")
             active = true
@@ -110,11 +142,13 @@ private actor RuntimeExecutor {
             // Provisioning is an explicit installer operation, never inferred from
             // missing history at launch (including loss of the whole directory).
             let store = try FileSurfaceLedger(directory: ledgerDir, newIdentity: false)
-            let resources = Set(manifest["exclusive_outputs"] as? [String] ?? []).union(["audio.mic", "audio.speaker"])
+            let resources = provision.resources
             let clock: () -> UInt64 = { DispatchTime.now().uptimeNanoseconds / 1_000 }
+            let grant = EffectiveSurfaceGrant(coglet: id, operations: operationNames, resources: resources, expires: now() + 86_400_000_000)
             func makeSession() throws -> SurfaceSession {
                 try SurfaceSession(identity: identity, boundCoglets: [id], operations: operations, store: store,
-                    backend: sink, initialGrants: [.init(coglet: id, operations: operationNames, resources: resources, expires: now() + 86_400_000_000)], clock: clock)
+                    backend: composite, contractProfile: provision.profile, trustedCatalog: provision.catalog,
+                    initialGrants: [grant], clock: clock)
             }
             var surface = try makeSession()
             if surface.isKilled {
@@ -124,32 +158,91 @@ private actor RuntimeExecutor {
                 surface = try makeSession()
             }
             owner = id; session = surface
-            link = try EmbeddedSurfaceTransport(abi: .init(open: coglet_surface_open, send: coglet_surface_send, recv: coglet_surface_recv, close: coglet_surface_close))
-            try surface.start(); try pump()
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("open begin")
+            #endif
+            link = try EmbeddedSurfaceTransport(abi: .init(open: coglet_surface_open, send: coglet_surface_send, recv: coglet_surface_recv, close: coglet_surface_close), contractProfile: provision.profile)
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("open complete; hello/selection begin")
+            #endif
+            // Bootstrap sends ONLY hello, then consumes its selection. Caps and
+            // grants stay in the SDK until all native/token custody is installed.
+            try surface.start()
+            guard let link, let hello = surface.drain().first, try link.send(hello), let selection = try link.receive() else {
+                throw HostFailure("Embedded surface negotiation unavailable")
+            }
+            try surface.receive(selection)
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("selection complete")
+            #endif
             token = try surface.openNativeObservationSession(owner: id, epoch: surface.grantEpoch)
+            if provision.enablesApp, let appMailbox, let appCapture {
+                appConnection = try AppSurfaceConnection(session: surface, mailbox: appMailbox, grant: grant,
+                    operations: operations, capture: appCapture)
+            }
             sink.output.resume()
             self.generation = generation
+            // An app-enabled guest must not see caps/grants or copied private
+            // state before MainActor attaches this exact native listener and
+            // publishes its post-attachment baseline. Legacy speech is unchanged.
+            if appConnection == nil {
+                #if COGLET_RUNTIME_TEST_HOOKS
+                tracePump("startup pump begin")
+                #endif
+                try pump()
+                #if COGLET_RUNTIME_TEST_HOOKS
+                tracePump("startup pump complete")
+                #endif
+            }
             log("runtime started")
             return [.init(id: id, version: manifest["version"] as? String ?? "unknown", status: .running)]
         } catch {
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("start failure generation=\(generation) error=\(error)")
+            #endif
             cleanup(); log("runtime startup failed"); throw error
         }
     }
     func pump() throws {
         guard let surface = session, let link else { return }
-        try sink.reconcile(surface)
-        for _ in 0..<128 {
+        try appConnection?.validate(surface)
+        try backend?.reconcile(surface)
+        try appConnection?.publishEvents(surface)
+        for iteration in 0..<128 {
+            try appConnection?.validate(surface)
             let generated = surface.drain()
             guard queued.count + generated.count <= 128 else { throw HostFailure("Surface control queue exhausted") }
             queued += generated
             while let first = queued.first {
                 // A full runtime outbound queue causes send=would-block. Keep
                 // identical bytes, but drain inbound frames before retrying.
-                guard try link.send(first) else { break }
+                let sent: Bool
+                if let appConnection { sent = try appConnection.emit(session: surface) { try link.send(first) } }
+                else { sent = try link.send(first) }
+                guard sent else { break }
+                #if COGLET_RUNTIME_TEST_HOOKS
+                traceFrame("sent", first)
+                #endif
                 queued.removeFirst()
             }
-            if let raw = try link.receive() { try surface.receive(raw) }
-            else { break }
+            try appConnection?.validate(surface)
+            if let raw = try link.receive() {
+                #if COGLET_RUNTIME_TEST_HOOKS
+                traceFrame("received", raw)
+                #endif
+                try appConnection?.validate(surface)
+                try surface.receive(raw)
+                try appConnection?.validate(surface)
+            }
+            else {
+                #if COGLET_RUNTIME_TEST_HOOKS
+                tracePump("pump nil iteration=\(iteration) queued=\(queued.count) actions=\(sink.actions.map(\.id))")
+                #endif
+                break
+            }
+            #if COGLET_RUNTIME_TEST_HOOKS
+            if iteration == 127 { tracePump("pump capped queued=\(queued.count) actions=\(sink.actions.map(\.id))") }
+            #endif
         }
         try check(coglet_runtime_status(), "runtime/guest")
     }
@@ -163,13 +256,26 @@ private actor RuntimeExecutor {
             let result = sink.actions; sink.actions = []; return result
         } catch { cleanup(); log("runtime fault; restart required"); throw error }
     }
+    func appSource(generation expected: UInt64) -> (incarnation: UInt64, epoch: UInt64)? {
+        guard generation == expected, let appConnection else { return nil }
+        return (appConnection.incarnation, appConnection.epoch)
+    }
+    func finishAppStartup(generation expected: UInt64) throws {
+        guard generation == expected else { throw HostFailure("Stale app startup") }
+        do { try pump() }
+        catch { cleanup(); throw error }
+    }
     func transcript(_ text: String, generation expected: UInt64, outputEpoch: UInt64) throws -> [RuntimeAction] {
         guard generation == expected else { return [] }
         guard let session, let token else { throw HostFailure("Runtime not connected") }
         do {
             // Drain old guest output while reflex cancellation is still fenced.
             try pump()
-            guard sink.output.resume(ifCurrent: outputEpoch) else { return [] }
+            let resumed = sink.output.resume(ifCurrent: outputEpoch)
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("transcript resume=\(resumed) requested=\(outputEpoch) actual=\(sink.output.epoch)")
+            #endif
+            guard resumed else { return [] }
             let utterance = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
             guard try session.publishObservation(token, kind: "speech.start", payload: .record([("utterance", .text(utterance)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
             guard try session.publishObservation(token, kind: "speech.end", payload: .record([("utterance", .text(utterance)), ("revision", .unsigned(1)), ("text", .text(text)), ("position_ms", .unsigned(0))])) else { throw HostFailure("Speech grant expired or revoked") }
@@ -183,17 +289,29 @@ private actor RuntimeExecutor {
         log("runtime stopped")
     }
     private func cleanup() {
-        sink.stop(owner: nil); generation = nil; sink.actions = []
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("cleanup begin active=\(active) generation=\(String(describing: generation)) status=\(coglet_runtime_status())")
+        #endif
+        backend?.stop(owner: nil); sink.stop(owner: nil); generation = nil; sink.actions = []
         // Fence native effects first, then persist settled BACK CHANNEL receipts
         // while the ADAPTER session is connected. close() cancels pending actions.
         // SDK completion failures kill the session; teardown must still finish.
         if let session {
-            do { try sink.reconcile(session) }
+            do { try backend?.reconcile(session) }
             catch { log("runtime output reconciliation failed; restart required") }
         }
         try? session?.close(); session = nil; token = nil; owner = nil; queued = []
         link?.close(); link = nil
-        if active { _ = coglet_runtime_stop() }; active = false
+        appConnection = nil; backend = nil
+        if active {
+            let result = coglet_runtime_stop()
+            #if COGLET_RUNTIME_TEST_HOOKS
+            tracePump("ABI stop result=\(result)")
+            #endif
+        }; active = false
+        #if COGLET_RUNTIME_TEST_HOOKS
+        tracePump("cleanup end status=\(coglet_runtime_status())")
+        #endif
         if lockFD >= 0 { _ = flock(lockFD, LOCK_UN); _ = Darwin.close(lockFD); lockFD = -1 }
     }
     #if COGLET_RUNTIME_TEST_HOOKS
@@ -227,6 +345,29 @@ private actor RuntimeExecutor {
     // Deterministic cancellation at the submission/actor handoff boundary.
     var beforeTranscriptHandoff: (() -> Void)?
     private var busy = false
+    private var appAdapter: AppSurfaceAdapter?
+    private var refreshApp: (() throws -> Void)?
+    private var setAppEvents: ((AppSurfaceEventHandler?) -> Void)?
+    private var appMailbox: AppSurfaceMailbox?
+    private var appIncarnation: UInt64?
+    /// Install before startup. Replacing the native owner retires its whole old
+    /// stream, never lends an old callback the successor's observation token.
+    public func installAppSurface(_ adapter: AppSurfaceAdapter, refresh: @escaping () throws -> Void,
+        events: @escaping (AppSurfaceEventHandler?) -> Void) {
+        detachAppSurface()
+        appAdapter = adapter; refreshApp = refresh; setAppEvents = events
+    }
+    private func detachAppSurface() {
+        appMailbox?.retire(); setAppEvents?(nil); appMailbox = nil; appIncarnation = nil
+    }
+    private func refreshAppSurface() throws {
+        guard let appMailbox, let appIncarnation, let appAdapter else { return }
+        for ticket in appMailbox.queuedCommands() { appMailbox.execute(ticket, adapter: appAdapter) }
+        // Commands may synchronously mutate the actual UI. Refresh before the
+        // actor reconciles their receipts or services another immutable read.
+        try refreshApp?()
+        try appMailbox.publish(appAdapter.capture(), incarnation: appIncarnation)
+    }
     public init(directory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Softmax/runtime", isDirectory: true)) {
         self.directory = directory
         let stop = RuntimeOutputStop(); outputStop = stop
@@ -237,6 +378,7 @@ private actor RuntimeExecutor {
     public func restart() async {
         guard !busy else { return }
         busy = true; generation &+= 1; state = .stopped
+        detachAppSurface()
         cancelOutput()
         polling?.cancel(); polling = nil
         try? await executor.stop()
@@ -247,7 +389,24 @@ private actor RuntimeExecutor {
         guard !busy else { return }; busy = true; defer { busy = false }
         generation &+= 1
         do {
-            coglets = try await executor.start(localReset: localReset, generation: generation)
+            let mailbox = appAdapter.map { _ in AppSurfaceMailbox() }
+            appMailbox = mailbox
+            // Native capture failures do not break legacy built-in-only hosts;
+            // the control owner refuses app-required startup without a capture.
+            let capture: AppSurfaceCapture?
+            do { try refreshApp?(); capture = try appAdapter?.capture() } catch { capture = nil }
+            coglets = try await executor.start(localReset: localReset, generation: generation, appMailbox: mailbox, appCapture: capture)
+            if let source = await executor.appSource(generation: generation), let mailbox {
+                appIncarnation = source.incarnation
+                // The synchronous native subscription captures this incarnation's
+                // mailbox only. Encoding/copy failure permanently fences it.
+                setAppEvents?({ [mailbox] operation, payload in
+                    do { try mailbox.observe(operation: operation, payload: payload) }
+                    catch { mailbox.retire() }
+                })
+                try refreshAppSurface()
+                try await executor.finishAppStartup(generation: generation)
+            } else { appMailbox = nil }
             state = .running; errorMessage = nil
             if automaticallyPolls {
                 polling = Task { [weak self] in
@@ -258,9 +417,14 @@ private actor RuntimeExecutor {
                     }
                 }
             }
-        } catch { fail(error) }
+        } catch {
+            detachAppSurface()
+            try? await executor.stop()
+            fail(error)
+        }
     }
     public func stop() async {
+        detachAppSurface() // even while an asynchronous boot still owns `busy`
         guard !busy else { return }; busy = true; defer { busy = false }
         generation &+= 1
         polling?.cancel(); polling = nil
@@ -273,17 +437,19 @@ private actor RuntimeExecutor {
         let outputEpoch = output.epoch
         beforeTranscriptHandoff?()
         do {
+            try refreshAppSurface()
             let received = try await executor.transcript(text, generation: expected, outputEpoch: outputEpoch)
             if generation == expected { deliver(received) }
-        } catch { if generation == expected { fail(error) } }
+        } catch { if generation == expected { detachAppSurface(); try? await executor.stop(); fail(error) } }
     }
     public func poll() async {
         guard state == .running, !busy else { return }
         let expected = generation
         do {
+            try refreshAppSurface()
             let received = try await executor.tick(generation: expected)
             if generation == expected { deliver(received) }
-        } catch { if generation == expected { fail(error) } }
+        } catch { if generation == expected { detachAppSurface(); try? await executor.stop(); fail(error) } }
     }
     private func deliver(_ received: [RuntimeAction]) {
         for action in received where output.isLive(action) {
@@ -299,12 +465,14 @@ private actor RuntimeExecutor {
     /// Synchronous local off-switch; SDK reconciliation follows on its actor.
     public func cancelOutput() { output.suspend() }
     private func fail(_ error: any Swift.Error) {
+        detachAppSurface()
         cancelOutput()
         state = .error; errorMessage = String(describing: error)
         coglets = coglets.map { .init(id: $0.id, version: $0.version, status: .error) }
         polling?.cancel(); polling = nil
     }
     #if COGLET_RUNTIME_TEST_HOOKS
+    public func diagnosticsForTesting() async -> [String] { await executor.diagnosticsForTesting() }
     public func injectCaughtPanicForTesting() async {
         do { try await executor.injectPanic() } catch { fail(error) }
     }

@@ -72,9 +72,28 @@ final class HubNativeConnectionTests: XCTestCase {
         var envelope = try XCTUnwrap(JSONSerialization.jsonObject(with: bootstrap) as? [String: Any])
         envelope["name"] = "Native mock hub"
         let pairing = try HubPairing.parse(String(decoding: JSONSerialization.data(withJSONObject: envelope), as: UTF8.self))
-        try hub.enroll(pairing)
-        try await eventually { hub.state == .connected }
+        let enrollment = Task { try await hub.enrollOnce(pairing) }
+        let enrollmentWatchdog = Task {
+            try await Task.sleep(for: .seconds(30))
+            enrollment.cancel()
+        }
+        defer { enrollmentWatchdog.cancel() }
+        try await enrollment.value
+        enrollmentWatchdog.cancel()
+        XCTAssertEqual(hub.state, .connected, "Awaited command requires actual native connection and persisted completion")
+        XCTAssertEqual(try store.loadHub()?.hub, pairing.hub)
         XCTAssertNil(try store.loadHub()?.invite)
+        // Exercise the same explicit reconnect command used by the native UI,
+        // not only its historical fire-and-forget retry wrapper.
+        let reconnect = Task { try await hub.reconnectOnce() }
+        let reconnectWatchdog = Task {
+            try await Task.sleep(for: .seconds(30))
+            reconnect.cancel()
+        }
+        defer { reconnectWatchdog.cancel() }
+        try await reconnect.value
+        reconnectWatchdog.cancel()
+        XCTAssertEqual(hub.state, .connected)
         states.removeAll()
         try link.disconnect()
         try await eventually { states.contains(.offline) }

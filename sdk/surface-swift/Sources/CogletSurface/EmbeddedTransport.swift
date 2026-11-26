@@ -22,9 +22,11 @@ public struct SurfaceRuntimeABI {
 /// Binding MUST be installed in the runtime before constructing this adapter.
 public final class EmbeddedSurfaceTransport {
     private let abi: SurfaceRuntimeABI
+    private var version: SurfaceTransportVersion
     private var handle: OpaquePointer?
-    public init(abi: SurfaceRuntimeABI) throws {
+    public init(abi: SurfaceRuntimeABI, contractProfile: SurfaceContractProfile = .surface01) throws {
         self.abi = abi
+        self.version = SurfaceTransportVersion(contractProfile)
         var link: OpaquePointer?
         let result = abi.open(1, &link)
         guard result == 0, let link else { throw SurfaceFailure.protocolViolation("ABI open failed: \(result)") }
@@ -37,7 +39,7 @@ public final class EmbeddedSurfaceTransport {
     /// false means would-block: the runtime copied nothing. Retry identical bytes.
     public func send(_ bytes: [UInt8]) throws -> Bool {
         guard let link = handle else { throw SurfaceFailure.closed }
-        _ = try SurfaceWire.decode(bytes, from: .surface)
+        try version.validateOutgoing(bytes)
         let result = bytes.withUnsafeBufferPointer { abi.send(link, $0.baseAddress, $0.count) }
         switch result {
         case 0: return true
@@ -53,15 +55,15 @@ public final class EmbeddedSurfaceTransport {
         let query = abi.recv(link, nil, 0, &count)
         if query == 1, count == 0 { return nil }
         guard query == 2, count > 0, count <= SurfaceWire.maximumFrame else {
-            close(); throw SurfaceFailure.protocolViolation("invalid ABI size query")
+            close(); throw SurfaceFailure.protocolViolation("invalid ABI size query: status=\(query) count=\(count) (before close)")
         }
         var bytes = [UInt8](repeating: 0, count: count)
         let capacity = count
         let result = bytes.withUnsafeMutableBufferPointer { abi.recv(link, $0.baseAddress, capacity, &count) }
         guard result == 0, count == capacity else {
-            close(); throw SurfaceFailure.protocolViolation("invalid ABI exact read")
+            close(); throw SurfaceFailure.protocolViolation("invalid ABI exact read: status=\(result) count=\(count) capacity=\(capacity) (before close)")
         }
-        do { _ = try SurfaceWire.decode(bytes, from: .runtime) }
+        do { try version.validateIncoming(bytes) }
         catch { close(); throw error }
         return bytes
     }

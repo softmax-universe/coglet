@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import SoftmaxAppSurface
 
 /// This app has no Touch Bar controls. Do not expose an empty generated bar.
 final class SoftmaxHostingView<Content: View>: NSHostingView<Content> {
@@ -107,11 +108,56 @@ struct SoftmaxWindowRoot<Content: View>: View {
     }
 }
 
+/// Links remain native OpenURLAction commands, not an adapter-only actuator.
+private struct AboutLink: View {
+    let title: String, id: String
+    let url: URL
+    let model: ShellModel?
+    @Environment(\.openURL) private var openURL
+    private func open(_ context: ControlRegistry.EffectContext?) async throws {
+        try await URLOpenCommand(url: url, open: { url, completion in
+            openURL(url, completion: completion)
+        }).run(context: context)
+    }
+    var body: some View {
+        if let model {
+            CogletAsyncButton(title, id: id, registry: model.appControls, window: "about", route: "about",
+                failure: model.appControlFailure,
+                userFailure: { model.message = "The link could not be opened." }, action: open)
+                .buttonStyle(.link)
+        } else {
+            Link(title, destination: url)
+        }
+    }
+}
+
+private struct AboutControlRegistration: ViewModifier {
+    let model: ShellModel?
+    let id: String, role: String, label: String
+    let verbs: Set<String>
+    let value: () -> CBORValue
+    let invoke: (CBORValue) throws -> Void
+    func body(content: Content) -> some View {
+        if let model {
+            content.coglet(id: id, registry: model.appControls, window: "about", route: "about",
+                role: role, label: label, verbs: verbs, value: value,
+                failure: model.appControlFailure, invoke: invoke)
+        } else { content }
+    }
+}
+
 struct AboutView: View {
     @State var licenses = false
+    var model: ShellModel? = nil
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development" }
     private var build: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unversioned" }
     private var information: String { "Softmax \(version) (\(build)) · \(Bundle.main.object(forInfoDictionaryKey: "SoftmaxReleaseChannel") as? String ?? "development")\nRuntime: not connected" }
+    private func copyInformation() throws {
+        NSPasteboard.general.clearContents()
+        guard NSPasteboard.general.setString(information, forType: .string) else {
+            throw ControlRegistryFailure.unavailable
+        }
+    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[3]) {
@@ -119,19 +165,35 @@ struct AboutView: View {
                 Text("Softmax for Mac").softmaxFont(SoftmaxDesignTokens.fontTitle, weight: .semibold)
                 Text(information).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 Button("Copy version information") {
-                    NSPasteboard.general.clearContents(); NSPasteboard.general.setString(information, forType: .string)
-                }
+                    do { try copyInformation() } catch { model?.message = "Version information could not be copied." }
+                }.modifier(AboutControlRegistration(model: model, id: "about.copy_version", role: "button",
+                    label: "Copy version information", verbs: ["press"],
+                    value: { .map([.init("kind", .text("none"))]) }, invoke: { _ in try copyInformation() }))
                 HStack {
-                    Link("Support", destination: URL(string: "https://github.com/softmax-universe/coglet/issues")!)
-                    Link("Source", destination: URL(string: "https://github.com/softmax-universe/coglet")!)
+                    AboutLink(title: "Support", id: "about.support", url: URL(string: "https://github.com/softmax-universe/coglet/issues")!, model: model)
+                    AboutLink(title: "Source", id: "about.source", url: URL(string: "https://github.com/softmax-universe/coglet")!, model: model)
                 }
                 DisclosureGroup("Licences and acknowledgements", isExpanded: $licenses) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Sparkle — MIT licence and third-party notices. Full Sparkle licence texts ship with this app. Softmax and Coglet source is available from the repository.")
-                        Link("Sparkle licence", destination: URL(string: "https://github.com/sparkle-project/Sparkle/blob/2.10.1/LICENSE")!)
-                        if let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt") { Link("Read bundled licences", destination: url) }
-                    }.padding(.top, 8)
-                }
+                    // Do not retain actionable mounted children while collapsed.
+                    if licenses {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Sparkle — MIT licence and third-party notices. Full Sparkle licence texts ship with this app. Softmax and Coglet source is available from the repository.")
+                            AboutLink(title: "Sparkle licence", id: "about.sparkle_license", url: URL(string: "https://github.com/sparkle-project/Sparkle/blob/2.10.1/LICENSE")!, model: model)
+                            if let url = Bundle.main.url(forResource: "ThirdPartyNotices", withExtension: "txt") {
+                                AboutLink(title: "Read bundled licences", id: "about.bundled_licenses", url: url, model: model)
+                            }
+                        }.padding(.top, 8)
+                    }
+                }.modifier(AboutControlRegistration(model: model, id: "about.licenses", role: "disclosure",
+                    label: "Licences and acknowledgements", verbs: ["toggle"],
+                    value: { .map([.init("kind", .text("boolean")), .init("value", .boolean(licenses))]) },
+                    invoke: { args in
+                        guard case .map(let fields) = args,
+                              let field = fields.first(where: { $0.key == "value" }), case .boolean(let expanded) = field.value else {
+                            throw ControlRegistryFailure.unsupported
+                        }
+                        licenses = expanded
+                    }))
             }.padding(SoftmaxDesignTokens.spacing[4])
         }.frame(minWidth: 420, minHeight: 380).modifier(SoftmaxTheme())
     }

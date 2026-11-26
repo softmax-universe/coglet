@@ -10,9 +10,14 @@ from pathlib import Path
 import re
 import subprocess
 
-# First reviewed exact-head qualification contract (PR159). This is an ancestry
-# boundary, not a moving branch name or an existence probe of PR-controlled files.
-CONTRACT = "87341a29b3716d3e147df041cfdf4df0507a74d8"
+# Reviewed workflow-tooling generations, in introduction order. Required jobs
+# must use one checkout compatible with the newest generation, not merely the
+# first native component contract. Advance this list when workflow tools change.
+CONTRACTS = (
+    ("native-components", "87341a29b3716d3e147df041cfdf4df0507a74d8"),
+    ("publication-runtime", "e88fc139b3fd2b43b84136f2e7a33fb8c0f33a54"),
+)
+CONTRACT = CONTRACTS[-1][1]
 
 
 def git(repo, *args):

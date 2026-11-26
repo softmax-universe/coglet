@@ -7,6 +7,7 @@ import SoftmaxCore
 import FaceMac
 import Combine
 import SoftmaxRuntime
+import SoftmaxAppSurface
 
 @main
 struct SoftmaxApp: App {
@@ -19,6 +20,8 @@ struct SoftmaxApp: App {
                     showChat: { delegate.showConversation(voice: $0) }, settings: { delegate.showSettings() },
                     about: { delegate.showAbout() }, quit: { delegate.quit() }, searchCommands: { delegate.showCommands() })
             }
+            .onAppear { delegate.model.menuBarOpen = true }
+            .onDisappear { delegate.model.menuBarOpen = false }
         } label: {
             StatusLabel(model: delegate.model)
         }.menuBarExtraStyle(.window)
@@ -48,6 +51,45 @@ struct StatusLabel: View {
 
 @MainActor
 final class ShellModel: ObservableObject {
+    /// Actual window visibility and existing Settings selection, not shadow state.
+    lazy var appControls = ControlRegistry(revision: 0, interactionAllowed: { [weak self] window in
+        self?.appInteractionAllowed?(window) ?? false
+    }) { [weak self] window in
+        self?.appSurfaceRoute?(window)
+    }
+    // Installed by the actual window owner; absent ownership is unavailable.
+    var appSurfaceRoute: ((String) -> String?)?
+    var appInteractionAllowed: ((String) -> Bool)?
+    var appSurface: AppSurfaceAdapter?
+    var synchronizeAppSurface: (() -> Void)?
+    var hubPairingRoute: String? {
+        didSet { if hubPairingRoute != oldValue { synchronizeAppSurface?() } }
+    }
+    var signOutConfirmationOpen = false {
+        didSet { if signOutConfirmationOpen != oldValue { synchronizeAppSurface?() } }
+    }
+    @Published var keyboardShortcutsOpen = false {
+        didSet { if keyboardShortcutsOpen != oldValue { synchronizeAppSurface?() } }
+    }
+    weak var keyboardShortcutsNativeWindow: NSWindow?
+    weak var hubPairingNativeWindow: NSWindow?
+    weak var signOutNativeWindow: NSWindow?
+    @Published var onboardingStep = 0 {
+        didSet {
+            guard onboardingStep != oldValue else { return }
+            do { try appControls.nativeStateChanged() }
+            catch { appControlFailure(.exhausted) }
+            synchronizeAppSurface?()
+        }
+    }
+    var menuBarOpen = false {
+        didSet { if menuBarOpen != oldValue { synchronizeAppSurface?() } }
+    }
+    @Published private(set) var appControlRegistrationFailed = false
+    func appControlFailure(_ failure: ControlRegistryFailure) {
+        // Never log native values, errors, tokens or text-field input.
+        appControlRegistrationFailed = true
+    }
     let updates = UpdateController()
     let runtime = RuntimeHost()
     lazy var faceHost = FaceHost(shell: self)
@@ -111,7 +153,14 @@ final class ShellModel: ObservableObject {
     @Published var permissions = PermissionSnapshot(microphone: .unknown, inputMonitoring: .unknown)
     @Published var loginItem: LoginItemStatus = .unknown
     @Published var message: String?
-    @Published var selectedTab: SettingsTab = .general
+    @Published var selectedTab: SettingsTab = .general {
+        didSet {
+            guard selectedTab != oldValue else { return }
+            do { try appControls.nativeStateChanged() }
+            catch { appControlFailure(.exhausted) }
+            synchronizeAppSurface?()
+        }
+    }
     @Published var talkState: AppState = .idle
     @Published var level: Float = 0
     @Published var elapsed: TimeInterval = 0
@@ -196,7 +245,9 @@ final class ShellModel: ObservableObject {
         hotkeyName = keySource.keyCode == 61 && keySource.modifiers == 0 ? "Right Option" :
             "Key \(keySource.keyCode) · modifiers \(keySource.modifiers)"
     }
-    @Published var voicePanelSelected = false
+    @Published var voicePanelSelected = false {
+        didSet { if voicePanelSelected != oldValue { synchronizeAppSurface?() } }
+    }
     @Published var orbEnabled: Bool = false {
         didSet { if !testing { orbPreferences.isEnabled = orbEnabled } }
     }
@@ -221,11 +272,27 @@ final class ShellModel: ObservableObject {
     }
 
     func requestMicrophone() async {
-        guard !testing else { return }
+        try? await requestMicrophone(context: nil)
+    }
+    /// Same completion-bearing command for user and adapter. Entering an OS
+    /// prompt is irreversible; revocation fences later effects, not that prompt.
+    func requestMicrophone(context: ControlRegistry.EffectContext?) async throws {
+        guard !testing else { throw ControlRegistryFailure.unavailable }
         if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-            _ = await AVCaptureDevice.requestAccess(for: .audio)
+            let granted: Bool = try await withCheckedThrowingContinuation { continuation in
+                let request = {
+                    AVCaptureDevice.requestAccess(for: .audio) { allowed in continuation.resume(returning: allowed) }
+                }
+                do {
+                    if let context { try context.perform(request) } else { request() }
+                } catch { continuation.resume(throwing: error) }
+            }
+            if let context { try context.perform { refreshPermissions() } } else { refreshPermissions() }
+            guard granted else { throw ControlRegistryFailure.permissionDenied }
+        } else {
+            if let context { try context.perform { refreshPermissions() } } else { refreshPermissions() }
+            guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { throw ControlRegistryFailure.permissionDenied }
         }
-        refreshPermissions()
     }
 
     func requestInputMonitoring() {
@@ -264,14 +331,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private var aboutWindow: NSWindow?
+    private var nativeWindowControls: [String: NativeWindowControlRegistration] = [:]
     private lazy var face = FacePanelController(shell: model)
     private let talkHUD = TalkHUD()
     private lazy var orbOverlay = OrbOverlay(model: model)
     private var orbSubscription: AnyCancellable?
     private let commands = CommandPaletteController()
     private var commandMonitor: Any?
+    #if DEBUG
+    private var catalogProbeTask: Task<Void, Never>?
+    #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        installAppSurface()
+        #if DEBUG
+        startCatalogProbe()
+        #endif
         let arguments = ProcessInfo.processInfo.arguments
         if model.testing, let index = arguments.firstIndex(of: "--design-snapshots"), arguments.count > index + 1 {
             do { try DesignSnapshots.run(to: arguments[index + 1]); exit(0) }
@@ -306,11 +381,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         orbSubscription = model.$orbEnabled.removeDuplicates().sink { [weak self] enabled in
             self?.orbOverlay.setVisible(enabled)
+            self?.invalidateAppControlSnapshots()
         }
         model.onTalkChange = { [weak self] in
             guard let self else { return }
             talkHUD.update(model: model)
             face.host.updateFromShell()
+            invalidateAppControlSnapshots()
         }
         model.configureHub()
         model.routePermissions = { [weak self] in self?.showSettings(tab: .privacy) }
@@ -334,21 +411,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func showSettings(tab: SettingsTab? = nil) {
         // Preserve the unfinished chapter, but never leave it occluded behind Settings.
+        do { try nativeWindowControls["onboarding"]?.invalidate() }
+        catch { model.appControlFailure(.exhausted) }
         onboardingWindow?.orderOut(nil)
         if let tab { model.selectedTab = tab }
         if settingsWindow == nil {
             settingsWindow = window(title: "Softmax Settings", size: NSSize(width: 760, height: 540),
                                     view: SettingsView(model: model))
+            settingsWindow?.identifier = NSUserInterfaceItemIdentifier("softmax.settings")
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+        invalidateAppControlSnapshots()
     }
 
     func windowWillClose(_ notification: Notification) {
+        let closing = notification.object as? NSWindow
         if let closed = notification.object as? NSWindow, closed === settingsWindow,
            model.state == .onboarding {
             onboardingWindow?.makeKeyAndOrderFront(nil)
         }
+        Task { @MainActor [weak self, weak closing] in
+            guard let self, let closing, !closing.isVisible else { return }
+            self.invalidateAppControlSnapshots()
+        }
+    }
+
+    func windowDidMiniaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
+    func windowDidDeminiaturize(_ notification: Notification) { invalidateAppControlSnapshots() }
+    private func synchronizeNativeWindowControls() throws {
+        orbOverlay.synchronizeControls()
+        for id in ["settings", "onboarding", "about", "command_palette"] {
+            let owner = nativeWindowControls[id] ?? NativeWindowControlRegistration(registry: model.appControls)
+            nativeWindowControls[id] = owner
+            try owner.synchronize(window: appWindow(id), id: id, route: appRoute(id))
+        }
+    }
+
+    private func invalidateAppControlSnapshots() {
+        do {
+            try synchronizeNativeWindowControls()
+            try model.appControls.nativeStateChanged()
+            try model.appControls.synchronizeNativeState(windows: Self.appWindows)
+        }
+        catch { model.appControlFailure(.exhausted) }
     }
 
     func showOnboarding() {
@@ -358,28 +464,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     self?.model.finishOnboarding()
                     self?.onboardingWindow?.close()
                 }))
+        onboardingWindow?.identifier = NSUserInterfaceItemIdentifier("softmax.onboarding")
         NSApp.activate(ignoringOtherApps: true)
         onboardingWindow?.makeKeyAndOrderFront(nil)
+        invalidateAppControlSnapshots()
     }
 
     func showFace() {
         face.show()
+        invalidateAppControlSnapshots()
     }
 
-    func showConversation(voice: Bool = false) { orbOverlay.showChat(voice: voice) }
+    func showConversation(voice: Bool = false) {
+        orbOverlay.showChat(voice: voice)
+        invalidateAppControlSnapshots()
+    }
 
     func showCommands() {
         commands.show(commands: SoftmaxCommand.catalog(
             settings: { [weak self] in self?.showSettings(tab: $0) },
             face: { [weak self] in self?.showFace() },
             chat: { [weak self] in self?.showConversation(voice: $0) },
-            about: { [weak self] in self?.showAbout() }))
+            about: { [weak self] in self?.showAbout() }), model: model)
+        invalidateAppControlSnapshots()
     }
 
     func showAbout() {
-        if aboutWindow == nil { aboutWindow = window(title: "About Softmax", size: NSSize(width: 420, height: 420), view: AboutView()) }
+        if aboutWindow == nil {
+            aboutWindow = window(title: "About Softmax", size: NSSize(width: 420, height: 420), view: AboutView(model: model))
+            aboutWindow?.identifier = NSUserInterfaceItemIdentifier("softmax.about")
+        }
         NSApp.activate(ignoringOtherApps: true)
         aboutWindow?.makeKeyAndOrderFront(nil)
+        invalidateAppControlSnapshots()
     }
 
     func quit() {
@@ -392,6 +509,242 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         model.ptt.cancel()
         Task { await model.runtime.stop(); NSApp.terminate(nil) }
+    }
+
+    // Product native dispatch; the runtime actor owns transport, SDK admission
+    // and durable sequencing. These closures neither grant authority nor run a guest.
+    private func installAppSurface() {
+        orbOverlay.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
+        commands.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
+        talkHUD.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
+        face.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
+        model.appSurfaceRoute = { [weak self] in self?.appRoute($0) }
+        model.appInteractionAllowed = { [weak self] window in
+            guard let self, !self.hasUnqualifiedAppModal else { return false }
+            if self.model.keyboardShortcutsOpen { return window == "keyboard_shortcuts" }
+            if self.model.signOutConfirmationOpen { return window == "sign_out_confirmation" }
+            return self.model.hubPairingRoute == nil || window == "hub_pairing"
+        }
+        model.synchronizeAppSurface = { [weak self] in
+            guard let self else { return }
+            do {
+                try self.synchronizeNativeWindowControls()
+                try self.model.appControls.synchronizeNativeState(windows: Self.appWindows)
+            }
+            catch { self.model.appControlFailure(.invalidRegistration) }
+        }
+        model.appSurface = AppSurfaceAdapter(registry: model.appControls,
+            captureState: { [weak self] in
+                guard let self else { throw AppSurfaceFailure.unavailable }
+                return try self.appSnapshot()
+            }, currentRoute: { [weak self] in self?.appRoute($0) },
+            navigate: { [weak self] window, route in
+                guard let self else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
+                      !self.model.signOutConfirmationOpen, !self.model.keyboardShortcutsOpen else { throw AppSurfaceFailure.unavailable }
+                switch window {
+                case "settings":
+                    guard let tab = SettingsTab.allCases.first(where: { $0.rawValue.lowercased() == route }) else {
+                        throw AppSurfaceFailure.unsupported
+                    }
+                    self.showSettings(tab: tab)
+                case "onboarding":
+                    guard let index = ["welcome", "permissions", "hub"].firstIndex(of: route) else {
+                        throw AppSurfaceFailure.unsupported
+                    }
+                    self.model.onboardingStep = index
+                case "chat": self.showConversation(voice: route == "voice")
+                default:
+                    guard self.appRoute(window) == route else { throw AppSurfaceFailure.unsupported }
+                }
+            }, open: { [weak self] window in
+                guard let self else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
+                      !self.model.signOutConfirmationOpen, !self.model.keyboardShortcutsOpen else { throw AppSurfaceFailure.unavailable }
+                switch window {
+                case "settings": self.showSettings()
+                case "about": self.showAbout()
+                case "face": self.showFace()
+                case "chat": self.showConversation()
+                case "command_palette": self.showCommands()
+                case "orb": self.model.orbEnabled = true
+                // There is no main window, and native onboarding/confirmations
+                // cannot be fabricated or skip their own entry preconditions.
+                default: throw AppSurfaceFailure.unsupported
+                }
+            }, close: { [weak self] window in
+                guard let self else { throw AppSurfaceFailure.unavailable }
+                guard !self.hasUnqualifiedAppModal, self.model.hubPairingRoute == nil,
+                      !self.model.signOutConfirmationOpen, !self.model.keyboardShortcutsOpen else { throw AppSurfaceFailure.unavailable }
+                switch window {
+                case "face": self.face.hide()
+                case "orb": self.model.orbEnabled = false
+                case "command_palette": self.commands.close()
+                case "settings", "about", "chat", "onboarding":
+                    guard let native = self.appWindow(window) else { throw AppSurfaceFailure.unavailable }
+                    native.performClose(nil)
+                // Permission/identity confirmation and quit are not ordinary
+                // close aliases. No keyboard injection or other-app control.
+                default: throw AppSurfaceFailure.unsupported
+                }
+            })
+        if let adapter = model.appSurface {
+            model.runtime.installAppSurface(adapter, refresh: { [weak self] in
+                guard let self else { throw AppSurfaceFailure.unavailable }
+                // A fresh sampled native revision includes transient meters and
+                // hub status too, not only SwiftUI control binding mutations.
+                try self.synchronizeNativeWindowControls()
+                try self.model.appControls.nativeStateChanged()
+                try self.model.appControls.synchronizeNativeState(windows: Self.appWindows)
+            }, events: { [weak self] handler in
+                self?.model.appControls.onChange = handler
+            })
+        }
+    }
+
+    #if DEBUG
+    /// Test-only membership evidence, never an adapter or guest observation.
+    /// Requires BOTH the isolated UI-test mode and an existing private temp dir.
+    /// Each request is a fresh UUID; no control values/labels are serialized.
+    private func startCatalogProbe() {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard model.testing, let index = arguments.firstIndex(of: "--catalog-probe-directory"),
+              arguments.indices.contains(index + 1) else { return }
+        let directory = URL(fileURLWithPath: arguments[index + 1]).standardizedFileURL
+        let temporary = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().path + "/"
+        guard directory.resolvingSymlinksInPath().path.hasPrefix(temporary),
+              let attributes = try? FileManager.default.attributesOfItem(atPath: directory.path),
+              attributes[.type] as? FileAttributeType == .typeDirectory,
+              (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o700,
+              (attributes[.ownerAccountID] as? NSNumber)?.uint32Value == getuid() else { return }
+        struct Probe: Encodable {
+            let request: String
+            let revision: UInt64
+            let registrationFailed: Bool
+            let registrations: [ControlRegistry.Registration]
+        }
+        catalogProbeTask = Task { @MainActor [weak self] in
+            var lastRequest: String?
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(100)) }
+                catch { return }
+                guard let self else { return }
+                let input = directory.appendingPathComponent("request")
+                guard let metadata = try? FileManager.default.attributesOfItem(atPath: input.path),
+                      metadata[.type] as? FileAttributeType == .typeRegular,
+                      (metadata[.size] as? NSNumber)?.intValue == 36,
+                      let bytes = try? Data(contentsOf: input), bytes.count == 36,
+                      let request = String(data: bytes, encoding: .utf8), UUID(uuidString: request) != nil,
+                      request != lastRequest else { continue }
+                // Refresh the real native owner before copying actual membership.
+                self.model.synchronizeAppSurface?()
+                let probe = Probe(request: request, revision: self.model.appControls.revision,
+                    registrationFailed: self.model.appControlRegistrationFailed,
+                    registrations: self.model.appControls.registrationInventory())
+                do {
+                    let output = try JSONEncoder().encode(probe)
+                    try output.write(to: directory.appendingPathComponent("response.json"), options: .atomic)
+                    lastRequest = request
+                } catch { return } // UI test times out, never consumes a stale nonce.
+            }
+        }
+    }
+    #endif
+
+    private static let appWindows = ["main", "menu_bar", "settings", "onboarding", "face", "chat", "orb", "hud",
+        "command_palette", "about", "keyboard_shortcuts", "hub_pairing", "sign_out_confirmation", "quit_confirmation"]
+    private func appWindow(_ id: String) -> NSWindow? {
+        NSApp.windows.first { $0.identifier?.rawValue == "softmax." + id }
+    }
+    private var hasUnqualifiedAppModal: Bool {
+        // Until every native confirmation/sheet has its own qualified owner,
+        // refuse an incomplete snapshot rather than claim those panels closed.
+        if NSApp.modalWindow != nil { return true }
+        return NSApp.windows.contains {
+            guard let sheet = $0.attachedSheet, sheet.isVisible else { return false }
+            if model.keyboardShortcutsOpen, sheet === model.keyboardShortcutsNativeWindow { return false }
+            if model.hubPairingRoute != nil, sheet === model.hubPairingNativeWindow { return false }
+            if model.signOutConfirmationOpen, sheet === model.signOutNativeWindow { return false }
+            return true
+        }
+    }
+    private func appRoute(_ window: String) -> String? {
+        if window == "menu_bar" { return model.menuBarOpen ? "menu" : nil }
+        if window == "keyboard_shortcuts" {
+            return model.keyboardShortcutsOpen && model.keyboardShortcutsNativeWindow?.isVisible == true ? "shortcuts" : nil
+        }
+        if window == "hub_pairing" {
+            return model.hubPairingNativeWindow?.isVisible == true ? model.hubPairingRoute : nil
+        }
+        if window == "sign_out_confirmation" {
+            return model.signOutConfirmationOpen && model.signOutNativeWindow?.isVisible == true ? "sign_out" : nil
+        }
+        guard let native = appWindow(window), native.isVisible, !native.isMiniaturized else { return nil }
+        switch window {
+        case "settings": return model.selectedTab.rawValue.lowercased()
+        case "onboarding":
+            guard (0...2).contains(model.onboardingStep) else { return nil }
+            return ["welcome", "permissions", "hub"][model.onboardingStep]
+        case "chat": return model.voicePanelSelected ? "voice" : "chat"
+        case "command_palette": return "commands"
+        case "keyboard_shortcuts": return "shortcuts"
+        case "face", "orb", "hud", "about", "main": return window
+        // A dialog must supply its actual route before it is observable.
+        default: return nil
+        }
+    }
+    private func appSnapshot() throws -> SoftmaxAppSurface.CBORValue {
+        typealias Value = SoftmaxAppSurface.CBORValue
+        func object(_ fields: [(String, Value)]) -> Value {
+            .map(fields.map { SoftmaxAppSurface.CBORMapEntry($0.0, $0.1) })
+        }
+        func meter(_ elapsed: Double, _ level: Float) throws -> (Value, Value) {
+            guard elapsed.isFinite, (0...120).contains(elapsed), level.isFinite, (0...1).contains(level) else {
+                throw AppSurfaceFailure.unavailable
+            }
+            return (.unsigned(UInt64((elapsed * 1000).rounded(.down))), .unsigned(UInt64((Double(level) * 1000).rounded(.down))))
+        }
+        guard !model.appControlRegistrationFailed, !hasUnqualifiedAppModal else { throw AppSurfaceFailure.unavailable }
+        let defaults = UserDefaults.standard
+        let appearance = defaults.string(forKey: "appearance") ?? "System"
+        let scale = defaults.object(forKey: "textScale") == nil ? 1.0 : defaults.double(forKey: "textScale")
+        let textSize: String
+        switch scale { case 1.0: textSize = "standard"; case 1.3: textSize = "large"; case 1.6: textSize = "largest"
+        default: throw AppSurfaceFailure.unavailable }
+        let modifierBits: [(UInt64, String)] = [(UInt64(NSEvent.ModifierFlags.command.rawValue), "command"),
+            (UInt64(NSEvent.ModifierFlags.control.rawValue), "control"), (UInt64(NSEvent.ModifierFlags.option.rawValue), "option"),
+            (UInt64(NSEvent.ModifierFlags.shift.rawValue), "shift")]
+        let mask = modifierBits.reduce(UInt64(0)) { $0 | $1.0 }
+        guard (0...127).contains(model.keySource.keyCode), model.keySource.modifiers & ~mask == 0 else {
+            throw AppSurfaceFailure.unavailable
+        }
+        let modifiers = modifierBits.filter { model.keySource.modifiers & $0.0 != 0 }.map { Value.text($0.1) }
+        let settings = object([("appearance", .text(appearance)), ("text_size", .text(textSize)),
+            ("floating_orb", .boolean(model.orbEnabled)), ("talk_mode", .text(model.toggleMode ? "toggle" : "hold")),
+            ("sound_cues", .boolean(model.startSound)), ("launch_at_login", .text(model.loginItem.rawValue)),
+            ("hotkey", object([("key_code", .unsigned(UInt64(model.keySource.keyCode))), ("modifiers", .array(modifiers))]))])
+        let pttMeter = try meter(model.elapsed, model.level)
+        let hudMeter = try meter(talkHUD.surfaceElapsed, talkHUD.surfaceLevel)
+        let ptt = object([("state", .text(model.talkState.rawValue)), ("visible", .boolean(talkHUD.surfaceVisible)),
+            ("elapsed_ms", pttMeter.0), ("level", pttMeter.1)])
+        let hud = object([("state", .text(talkHUD.surfaceState)), ("visible", .boolean(talkHUD.surfaceVisible)),
+            ("elapsed_ms", hudMeter.0), ("level", hudMeter.1)])
+        let faceState = object([("visible", .boolean(appRoute("face") != nil)),
+            ("mode", .text(model.faceHost.compact ? "compact" : "full")),
+            ("expression", .text(model.faceHost.driver.expression.rawValue)),
+            ("status", .text(model.faceHost.driver.state.label.lowercased()))])
+        let hub: String
+        switch model.hubConnection?.state ?? .offline { case .connected: hub = "connected"
+        case .connecting: hub = "connecting"; case .offline: hub = "offline" }
+        let windows = Self.appWindows.map { id -> Value in
+            let route = appRoute(id)
+            return object([("window", .text(id)), ("open", .boolean(route != nil)), ("route", route.map(Value.text) ?? .null)])
+        }
+        let snapshot = object([("revision", .unsigned(model.appControls.revision)), ("windows", .array(windows)),
+            ("focus", try model.appControls.focusedControl()), ("settings", settings), ("ptt", ptt), ("hud", hud),
+            ("hub", .text(hub)), ("face", faceState)])
+        try SoftmaxAppSurface.CBORCodec.validate("app-state-result", snapshot)
+        return snapshot
     }
 
     private func window<V: View>(title: String, size: NSSize, view: V) -> NSWindow {
