@@ -14,6 +14,45 @@ fn fixture() -> Value {
 }
 
 #[test]
+fn runtime_clone_shares_immutable_history_and_append_is_isolated() {
+    let setup = fixture();
+    let mut original = Runtime::from_fixture(&setup).unwrap();
+    let mut input = setup["inputs"].clone();
+    for step in 0..2 {
+        input["step"] = json!(step);
+        input["previous"] = original
+            .records()
+            .last()
+            .map(|r| r["record_hash"].clone())
+            .unwrap_or(Value::Null);
+        original
+            .step(&input, &mut MockEngine::new(setup["guest_script"].clone()))
+            .unwrap();
+    }
+    let saved = original.records().to_vec();
+    let serialized = serde_json::to_value(&original).unwrap();
+    let mut cloned = original.clone();
+    assert!(
+        std::ptr::eq(original.records().as_ptr(), cloned.records().as_ptr()),
+        "cloning live state must not copy immutable historical record bytes"
+    );
+    assert_eq!(serde_json::to_value(&cloned).unwrap(), serialized);
+    assert!(serialized.get("records").is_none());
+    input["step"] = json!(2);
+    input["previous"] = original.records().last().unwrap()["record_hash"].clone();
+    cloned
+        .step(&input, &mut MockEngine::new(setup["guest_script"].clone()))
+        .unwrap();
+    assert_eq!(original.records(), saved.as_slice());
+    assert_eq!(cloned.records().len(), 3);
+    assert_eq!(&cloned.records()[..2], saved.as_slice());
+    assert!(!std::ptr::eq(
+        original.records().as_ptr(),
+        cloned.records().as_ptr()
+    ));
+}
+
+#[test]
 fn live_detached_replays_only_new_observed_transition() {
     for prefix in [2, 8] {
         let dir = tempfile::tempdir().unwrap();

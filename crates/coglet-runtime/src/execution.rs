@@ -245,7 +245,7 @@ impl RuntimeService {
         #[cfg(feature = "device")]
         state.receiver.validate()?;
         let offset = Self::validate_segments(&state, &configured.initial_setup, store.records())?;
-        state.runtime.records = store.records()[offset..].to_vec();
+        state.runtime.records = store.records()[offset..].to_vec().into();
         let code_files = |runtime: &Runtime| {
             runtime
                 .files
@@ -848,8 +848,10 @@ pub struct Runtime {
     previous: Value,
     // The WAL owns journal history. Repeating it inside every state frame would
     // make durable storage quadratic and eventually exceed transaction bounds.
+    // Metadata/preflight clones share these immutable bytes. Only append needs
+    // copy-on-write isolation; neither serialization nor the public slice changes.
     #[serde(skip)]
-    records: Vec<Value>,
+    records: std::sync::Arc<Vec<Value>>,
     ledger: EffectLedger,
     inbox_wakes: VecDeque<u64>,
     pending_llm: BTreeMap<String, Value>,
@@ -979,7 +981,7 @@ impl Runtime {
             step: 0,
             time: 0,
             previous: Value::Null,
-            records: Vec::new(),
+            records: Default::default(),
             ledger,
             inbox_wakes,
             pending_llm,
@@ -1287,7 +1289,7 @@ impl Runtime {
             self.db_revision = Some(record["db_after"].as_u64().ok_or("missing DB revision")?);
         }
         self.step = self.step.checked_add(1).ok_or("step counter exhausted")?;
-        self.records.push(record);
+        std::sync::Arc::make_mut(&mut self.records).push(record);
         self.unresolved_attempt = None;
         Ok(result)
     }
@@ -1488,13 +1490,13 @@ impl Runtime {
         next.sealed = true;
         next.trace_id = Some(trace_id.clone());
         next.time = logical_time;
-        next.records.push(record.clone());
+        std::sync::Arc::make_mut(&mut next.records).push(record.clone());
         *self = next;
         Ok(record)
     }
 
     pub fn records(&self) -> &[Value] {
-        &self.records
+        &self.records[..]
     }
 
     /// Re-execute a journal with a pinned engine/program. Only recorded step
