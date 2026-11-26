@@ -249,8 +249,9 @@ final class AppSurfaceWireTests: XCTestCase {
         try wait { (try? String(contentsOf: directory.appendingPathComponent("status"), encoding: .utf8)) == "closed" }
         let ledger = try Data(contentsOf: directory.appendingPathComponent("l/ledger.cbor"))
         let saved = try CogletTypes.CBORCodec.decodeProfile(Array(ledger))
-        XCTAssertEqual(saved["running"], .boolean(false))
-        XCTAssertEqual(saved["killed"], .boolean(false))
+        guard case .map(let entries) = saved else { throw WireTestFailure() }
+        XCTAssertEqual(entries.first { $0.key == "running" }?.value, .boolean(false))
+        XCTAssertEqual(entries.first { $0.key == "killed" }?.value, .boolean(false))
         let retained = XCTAttachment(data: ledger, uniformTypeIdentifier: "public.data")
         retained.name = "live-app-wire-final-ledger"; retained.lifetime = .keepAlways; add(retained)
     }
