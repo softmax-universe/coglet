@@ -7,10 +7,6 @@ on:
     - cron: '23 */6 * * *'
   workflow_dispatch:
     inputs:
-      settings-search:
-        description: 'Run the opt-in Settings first-arrow diagnostic in UI-suite context (5 iterations)'
-        type: boolean
-        default: false
       repeats:
         description: 'iterations (1 or more; 0 or empty means 20)'
         type: number
@@ -24,40 +20,6 @@ concurrency:
   group: stability
   cancel-in-progress: false
 jobs:
-  settings-search:
-    # Diagnostic only. Repetition never runs in the required native lane.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.settings-search }}
-    runs-on: macos-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-      - uses: Swatinem/rust-cache@v2
-      - name: Install pinned header generator
-        run: cargo install cbindgen --version 0.29.2 --locked
-      - name: Build real universal runtime
-        run: bash scripts/build-runtime-xcframework.sh
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate project
-        working-directory: apps/softmax-mac
-        run: xcodegen generate
-      - name: Repeat UI-suite context without retry-on-failure
-        working-directory: apps/softmax-mac
-        run: >-
-          xcodebuild test -project Softmax.xcodeproj -scheme Softmax
-          -destination 'platform=macOS' -derivedDataPath build
-          -resultBundlePath SettingsSearchStability.xcresult CODE_SIGNING_ALLOWED=NO
-          -only-testing:SoftmaxUITests
-          -test-iterations 5 -test-repetition-relaunch-enabled YES
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Softmax-settings-search-stability
-          path: apps/softmax-mac/SettingsSearchStability.xcresult
-          if-no-files-found: warn
   scheduler-stall:
     # Deliberately non-required; execute the script directly, never Go's test cache.
     runs-on: ubuntu-24.04

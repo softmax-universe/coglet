@@ -196,49 +196,72 @@ final class SoftmaxUITests: XCTestCase {
     @MainActor
     func testSettingsFocusedSearchArrowNavigation() {
         let app = XCUIApplication()
-        let probe = FileManager.default.temporaryDirectory.appendingPathComponent("settings-arrow-\(UUID().uuidString).log")
-        XCTAssertTrue(FileManager.default.createFile(atPath: probe.path, contents: Data()))
+        let probe = FileManager.default.temporaryDirectory.appendingPathComponent("settings-arrow-\(UUID().uuidString).json")
         app.launchEnvironment["SOFTMAX_SETTINGS_ARROW_PROBE"] = probe.path
+        var driver: [[String: Any]] = []
+        driver.reserveCapacity(32)
+        func input(_ operation: String, _ body: () -> Void) {
+            func mark(_ edge: String) {
+                guard driver.count < 32 else { XCTFail("Driver capture overflow"); return }
+                driver.append(["sequence": driver.count, "uptime": ProcessInfo.processInfo.systemUptime,
+                               "operation": operation, "edge": edge])
+            }
+            mark("begin")
+            body()
+            mark("end")
+        }
         defer {
-            let trace = (try? String(contentsOf: probe, encoding: .utf8)) ?? ""
-            print("SETTINGS_ARROW_EVENT_TRACE: \(trace)")
-            XCTAssertTrue(trace.contains("arrival keyCode="), "Event probe must capture native input; empty evidence is inconclusive")
-            try? FileManager.default.removeItem(at: probe)
+            defer { app.terminate(); try? FileManager.default.removeItem(at: probe) }
+            let data = try? Data(contentsOf: probe)
+            let document = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+            let records = document?["records"] as? [[String: Any]] ?? []
+            let valid = document?["schema"] as? Int == 1
+                && document?["boundary"] as? String == "finalEscapeBeforeDispatch"
+                && document?["complete"] as? Bool == true
+                && records.last?["phase"] as? String == "arrival"
+                && records.last?["keyCode"] as? Int == 53
+                && records.contains { $0["phase"] as? String == "arrival" }
+                && driver.count == 28
+            let status = !valid ? "missingOrInvalid" : (document?["dropped"] as? Int == 0 ? "complete" : "overflow")
+            var envelope: [String: Any] = ["schema": 1, "captureStatus": status, "driver": driver]
+            if let document { envelope["app"] = document }
+            if let evidence = try? JSONSerialization.data(withJSONObject: envelope, options: [.sortedKeys]) {
+                let attachment = XCTAttachment(data: evidence, uniformTypeIdentifier: "public.json")
+                attachment.name = "settings-arrow-boundaries.json"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            } else { XCTFail("Unable to encode diagnostic evidence") }
+            XCTAssertEqual(status, "complete", "Incomplete boundary capture is inconclusive, not non-delivery proof")
         }
         app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
         app.launch()
-        defer { app.terminate() }
         let onboarding = app.windows["Welcome to Softmax"]
         XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
         onboarding.buttons["Open Settings…"].click()
         let settings = app.windows["Softmax Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
-        settings.typeText("/")
-        settings.typeText("o") // Multiple matches including General, Hotkey and Audio.
-
+        input("slash") { settings.typeText("/") }
+        input("filter") { settings.typeText("o") } // Multiple matches including General, Hotkey and Audio.
         XCTAssertTrue(settings.buttons["General"].exists)
         XCTAssertTrue(settings.buttons["Hotkey"].exists)
         XCTAssertTrue(settings.buttons["Audio"].exists)
-        print("SETTINGS_ARROW_TEST first Down begin uptime=\(ProcessInfo.processInfo.systemUptime)")
-        settings.typeKey(.downArrow, modifierFlags: [])
-        print("SETTINGS_ARROW_TEST first Down end uptime=\(ProcessInfo.processInfo.systemUptime)")
-
-        settings.typeKey(.return, modifierFlags: [])
+        input("firstDown") { settings.typeKey(.downArrow, modifierFlags: []) }
+        input("firstReturn") { settings.typeKey(.return, modifierFlags: []) }
         XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Focused search Down must select Hotkey")
-        settings.typeKey(.downArrow, modifierFlags: [])
-        settings.typeKey(.return, modifierFlags: [])
+        input("secondDown") { settings.typeKey(.downArrow, modifierFlags: []) }
+        input("secondReturn") { settings.typeKey(.return, modifierFlags: []) }
         XCTAssertTrue(settings.checkBoxes["Play sound cues"].exists, "Second Down must select Audio")
-        settings.typeKey(.upArrow, modifierFlags: [])
-        settings.typeKey(.return, modifierFlags: [])
+        input("up") { settings.typeKey(.upArrow, modifierFlags: []) }
+        input("upReturn") { settings.typeKey(.return, modifierFlags: []) }
         XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Up must return to Hotkey")
-        settings.typeKey("a", modifierFlags: .command)
-        settings.typeText("zz-no-matches")
+        input("selectAll") { settings.typeKey("a", modifierFlags: .command) }
+        input("noMatches") { settings.typeText("zz-no-matches") }
         XCTAssertTrue(settings.staticTexts["No matching settings"].exists)
-        settings.typeKey(.downArrow, modifierFlags: [])
-        settings.typeKey(.upArrow, modifierFlags: [])
-        settings.typeKey(.return, modifierFlags: [])
+        input("emptyDown") { settings.typeKey(.downArrow, modifierFlags: []) }
+        input("emptyUp") { settings.typeKey(.upArrow, modifierFlags: []) }
+        input("emptyReturn") { settings.typeKey(.return, modifierFlags: []) }
         XCTAssertTrue(settings.buttons["Record Hotkey…"].exists, "Empty search must retain the current section")
-        settings.typeKey(.escape, modifierFlags: [])
+        input("escape") { settings.typeKey(.escape, modifierFlags: []) }
         XCTAssertTrue(settings.buttons["General"].exists)
     }
 

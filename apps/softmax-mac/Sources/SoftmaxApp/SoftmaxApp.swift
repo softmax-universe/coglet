@@ -8,20 +8,96 @@ import FaceMac
 import Combine
 import SoftmaxRuntime
 
-// Temporary opt-in event-boundary probe; never enabled in release builds.
+// Diagnostic only: no I/O during navigation, no text or arbitrary model content.
 @MainActor
-func settingsArrowProbe(_ message: String) {
-#if DEBUG
-    guard ProcessInfo.processInfo.arguments.contains("--ui-testing"),
-          let path = ProcessInfo.processInfo.environment["SOFTMAX_SETTINGS_ARROW_PROBE"] else { return }
-    let responder = (NSApp.keyWindow?.firstResponder).map { String(describing: type(of: $0)) } ?? "nil"
-    let line = "\(ProcessInfo.processInfo.systemUptime) active=\(NSApp.isActive) keyWindow=\(NSApp.keyWindow?.title ?? "nil") responder=\(responder) \(message)\n"
-    if let handle = FileHandle(forWritingAtPath: path) {
-        defer { try? handle.close() }
-        _ = try? handle.seekToEnd()
-        try? handle.write(contentsOf: Data(line.utf8))
+enum SettingsArrowCapture {
+    enum Phase: String, Codable {
+        case arrival, downEnter, downExit, upEnter, upExit, submitEnter, submitExit
+        case selectionSet, viewAppear, viewDisappear, viewSelection, viewQuery, viewFocus
     }
+    struct Metadata {
+        var selected: SettingsTab?
+        var previous: SettingsTab?
+        var keyCode: UInt16?
+        var eventTime: Double?
+        var queryEmpty: Bool?
+        var matchCount: Int?
+        var searchFocused: Bool?
+    }
+    struct Record: Codable {
+        let sequence: Int
+        let uptime: Double
+        let phase: Phase
+        let active: Bool
+        let hasKeyWindow: Bool
+        let responder: String?
+        let selected: String?
+        let previous: String?
+        let keyCode: UInt16?
+        let eventTime: Double?
+        let queryEmpty: Bool?
+        let matchCount: Int?
+        let searchFocused: Bool?
+    }
+    struct Document: Codable {
+        let schema = 1
+        let boundary = "finalEscapeBeforeDispatch"
+        let complete = true
+        let dropped: Int
+        let records: [Record]
+    }
+#if DEBUG
+    static let outputURL: URL? = {
+        guard ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+              let path = ProcessInfo.processInfo.environment["SOFTMAX_SETTINGS_ARROW_PROBE"] else { return nil }
+        return URL(fileURLWithPath: path)
+    }()
+    static var records: [Record] = {
+        var result: [Record] = []
+        result.reserveCapacity(1024)
+        return result
+    }()
+    static var dropped = 0
+    static var exported = false
 #endif
+    static func record(_ phase: Phase, metadata: () -> Metadata) {
+#if DEBUG
+        guard outputURL != nil, !exported else { return }
+        guard records.count < 1024 else { dropped += 1; return }
+        let value = metadata()
+        let responder = (NSApp.keyWindow?.firstResponder).map { String(String(describing: type(of: $0)).prefix(128)) }
+        records.append(Record(sequence: records.count, uptime: ProcessInfo.processInfo.systemUptime,
+            phase: phase, active: NSApp.isActive, hasKeyWindow: NSApp.keyWindow != nil,
+            responder: responder, selected: value.selected?.rawValue, previous: value.previous?.rawValue,
+            keyCode: value.keyCode, eventTime: value.eventTime, queryEmpty: value.queryEmpty,
+            matchCount: value.matchCount, searchFocused: value.searchFocused))
+#endif
+    }
+    // Only the final original Escape calls this, after earlier assertions/input.
+    // Its timing is not usable as navigation-latency evidence.
+    static func exportBeforeEscape() {
+#if DEBUG
+        guard let outputURL, !exported else { return }
+        exported = true
+        do {
+            let data = try JSONEncoder().encode(Document(dropped: dropped, records: records))
+            try data.write(to: outputURL, options: .atomic)
+        } catch {
+            // Missing export is an explicit diagnostic failure in the driver.
+        }
+#endif
+    }
+}
+
+@MainActor
+func settingsArrowCapture(_ phase: SettingsArrowCapture.Phase,
+                          selected: @autoclosure () -> SettingsTab,
+                          queryEmpty: @autoclosure () -> Bool,
+                          matchCount: @autoclosure () -> Int,
+                          searchFocused: @autoclosure () -> Bool) {
+    SettingsArrowCapture.record(phase) {
+        .init(selected: selected(), queryEmpty: queryEmpty(), matchCount: matchCount(), searchFocused: searchFocused())
+    }
 }
 
 @main
@@ -127,7 +203,11 @@ final class ShellModel: ObservableObject {
     @Published var permissions = PermissionSnapshot(microphone: .unknown, inputMonitoring: .unknown)
     @Published var loginItem: LoginItemStatus = .unknown
     @Published var message: String?
-    @Published var selectedTab: SettingsTab = .general
+    @Published var selectedTab: SettingsTab = .general {
+        didSet {
+            SettingsArrowCapture.record(.selectionSet) { .init(selected: selectedTab, previous: oldValue) }
+        }
+    }
     @Published var talkState: AppState = .idle
     @Published var level: Float = 0
     @Published var elapsed: TimeInterval = 0
@@ -306,7 +386,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.setActivationPolicy(.accessory)
         commandMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
-            settingsArrowProbe("arrival keyCode=\(event.keyCode) eventTime=\(event.timestamp) selected=\(self.model.selectedTab.rawValue)")
+            SettingsArrowCapture.record(.arrival) {
+                .init(selected: self.model.selectedTab, keyCode: event.keyCode, eventTime: event.timestamp)
+            }
+            if event.keyCode == 53 { SettingsArrowCapture.exportBeforeEscape() }
             let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
             if modifiers == .command && event.charactersIgnoringModifiers == "k" {
                 self.showCommands(); return nil
