@@ -8,50 +8,22 @@ import XCTest
 /// No product action, real account, system AX access, or persistent defaults.
 @MainActor
 final class RadioPresentationMeasurementTests: XCTestCase {
-    // Diagnostic interventions ONLY. Replacement-control fidelity is an offline
-    // interpretation gate, not implied by successfully drawing these cells.
+    // Measurement interventions, not a proposed product implementation.
     private enum Treatment: String, CaseIterable {
-        case original, passive, control, ink, label, disc, combined
-        var recolor: Bool { self == .ink || self == .combined }
-        var moveLabel: Bool { self == .label || self == .combined }
-        var centerDisc: Bool { self == .disc || self == .combined }
+        case pickerOriginal = "picker-original", pickerMarked = "picker-marked"
+        case ownedOriginal = "owned-original", ownedControl = "owned-control"
+        case ownedStructural = "owned-structural"
+        var owned: Bool { self == .ownedOriginal || self == .ownedControl || self == .ownedStructural }
     }
-    private final class PassiveCell: NSButtonCell {}
-    private final class ProbeCell: NSButtonCell {
-        var treatment: Treatment = .control
-        weak var owner: NSButton?
-        var measuringRender = false
-        var renderCalls: [[String: Any]] = []
-        // NO drawTitle/drawImage overrides: their mere presence changed rasterization.
-        override func titleRect(forBounds bounds: NSRect) -> NSRect {
-            let native = super.titleRect(forBounds: bounds)
-            var applied = native
-            if treatment.moveLabel, let owner {
-                var backing = owner.convertToBacking(native); backing.origin.x -= 1
-                applied = owner.convertFromBacking(backing)
-            }
-            record("title", bounds: bounds, native: native, applied: applied)
-            return applied
-        }
-        override func imageRect(forBounds bounds: NSRect) -> NSRect {
-            let native = super.imageRect(forBounds: bounds)
-            var applied = native
-            if treatment.centerDisc, let owner {
-                // Feasibility probe ONLY: fixed one-pixel upward translation.
-                // Not a fitted center formula or a proposed product geometry.
-                var backing = owner.convertToBacking(native)
-                backing.origin.y += owner.isFlipped ? -1 : 1
-                applied = owner.convertFromBacking(backing)
-            }
-            record("image", bounds: bounds, native: native, applied: applied)
-            return applied
-        }
-        private func record(_ kind: String, bounds: NSRect, native: NSRect, applied: NSRect) {
-            guard measuringRender else { return }
-            func values(_ r: NSRect) -> [Double] { [r.origin.x, r.origin.y, r.width, r.height].map(Double.init) }
-            renderCalls.append(["kind": kind, "bounds": values(bounds), "native": values(native), "applied": values(applied)])
-        }
-    }
+    private static let appearanceChoices: [CogletRadioGroup.Choice] = [
+        .init(value: "System", label: "System", id: "settings.general.appearance.system"),
+        .init(value: "Light", label: "Light", id: "settings.general.appearance.light"),
+        .init(value: "Dark", label: "Dark", id: "settings.general.appearance.dark")]
+    private static let sizeChoices: [CogletRadioGroup.Choice] = [
+        .init(value: "standard", label: "Standard", id: "settings.general.text_size.standard"),
+        .init(value: "large", label: "Large", id: "settings.general.text_size.large"),
+        .init(value: "largest", label: "Largest", id: "settings.general.text_size.largest")]
+    @MainActor
     private struct Marker: NSViewRepresentable {
         let name: String
         func makeNSView(context: Context) -> NSView {
@@ -59,11 +31,21 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         }
         func updateNSView(_ v: NSView, context: Context) {}
     }
+    @MainActor
     private struct Fixture: View {
-        let owned: Bool, dark: Bool, pointSize: CGFloat
+        let treatment: Treatment, dark: Bool, pointSize: CGFloat
+        var owned: Bool { treatment.owned }
+        private var appearanceChoices: [CogletRadioGroup.Choice] { RadioPresentationMeasurementTests.appearanceChoices }
+        private var sizeChoices: [CogletRadioGroup.Choice] { RadioPresentationMeasurementTests.sizeChoices }
         let registry: ControlRegistry
-        @State private var appearance = "System"
-        @State private var scale = 1.0
+        // Immutable bindings: no SwiftUI updates may reconfigure the installed graph.
+        private let appearance = Binding.constant("System")
+        private let scale = Binding.constant(1.0)
+        @ViewBuilder private func option(_ label: String, id: String) -> some View {
+            if treatment == .pickerMarked {
+                Text(label).background(Marker(name: "label." + id))
+            } else { Text(label) }
+        }
         // Exact generated tokens, not approximate appearance guesses.
         var ink: Color { dark ? Color(.sRGB, red: 0.925490196, green: 0.960784314, blue: 0.937254902, opacity: 1) : Color(.sRGB, red: 0.090196078, green: 0.137254902, blue: 0.113725490, opacity: 1) }
         var surface: Color { dark ? Color(.sRGB, red: 0.109803922, green: 0.149019608, blue: 0.125490196, opacity: 1) : .white }
@@ -76,15 +58,12 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     Text("Appearance").font(.system(size: pointSize)).accessibilityHidden(true)
                     if owned {
                         CogletRadioGroup("Appearance", id: "settings.general.appearance", registry: registry,
-                            window: "settings", route: "general", choices: [
-                                .init(value: "System", label: "System", id: "settings.general.appearance.system"),
-                                .init(value: "Light", label: "Light", id: "settings.general.appearance.light"),
-                                .init(value: "Dark", label: "Dark", id: "settings.general.appearance.dark")],
-                            selection: $appearance, fontSize: pointSize, failure: { XCTFail("\($0)") })
+                            window: "settings", route: "general", choices: appearanceChoices,
+                            selection: appearance, fontSize: pointSize, failure: { XCTFail("\($0)") })
                             .background(Marker(name: "appearance.rows"))
                     } else {
-                        Picker("Appearance", selection: $appearance) {
-                            ForEach(["System", "Light", "Dark"], id: \.self) { Text($0) }
+                        Picker("Appearance", selection: appearance) {
+                            ForEach(appearanceChoices, id: \.value) { option($0.label, id: $0.id) }
                         }.pickerStyle(.radioGroup).labelsHidden()
                             .background(Marker(name: "appearance.rows"))
                     }
@@ -93,17 +72,15 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     Text("Text size").font(.system(size: pointSize)).accessibilityHidden(true)
                     if owned {
                         CogletRadioGroup("Text size", id: "settings.general.text_size", registry: registry,
-                            window: "settings", route: "general", choices: [
-                                .init(value: "standard", label: "Standard", id: "settings.general.text_size.standard"),
-                                .init(value: "large", label: "Large", id: "settings.general.text_size.large"),
-                                .init(value: "largest", label: "Largest", id: "settings.general.text_size.largest")],
-                            selection: Binding(get: { scale == 1 ? "standard" : scale == 1.3 ? "large" : "largest" },
-                                set: { scale = $0 == "standard" ? 1 : $0 == "large" ? 1.3 : 1.6 }),
+                            window: "settings", route: "general", choices: sizeChoices,
+                            selection: .constant("standard"),
                             fontSize: pointSize, failure: { XCTFail("\($0)") })
                             .background(Marker(name: "text_size.rows"))
                     } else {
-                        Picker("Text size", selection: $scale) {
-                            Text("Standard").tag(1.0); Text("Large").tag(1.3); Text("Largest").tag(1.6)
+                        Picker("Text size", selection: scale) {
+                            option("Standard", id: sizeChoices[0].id).tag(1.0)
+                            option("Large", id: sizeChoices[1].id).tag(1.3)
+                            option("Largest", id: sizeChoices[2].id).tag(1.6)
                         }.pickerStyle(.radioGroup).labelsHidden()
                             .background(Marker(name: "text_size.rows"))
                     }
@@ -141,12 +118,18 @@ final class RadioPresentationMeasurementTests: XCTestCase {
             "intrinsic": size(v.intrinsicContentSize), "fitting": size(v.fittingSize), "flipped": v.isFlipped,
             "firstBaselineFromTop": Double(v.firstBaselineOffsetFromTop), "lastBaselineFromBottom": Double(v.lastBaselineOffsetFromBottom),
             "appearance": v.effectiveAppearance.name.rawValue, "hidden": v.isHidden,
+            "objectIdentity": String(describing: ObjectIdentifier(v)),
+            "bounds_backing": rect(v.convertToBacking(v.bounds)),
+            "axLabel": v.accessibilityLabel() ?? "notExposed",
             "axRole": v.accessibilityRole()?.rawValue ?? "notExposed", "axID": v.accessibilityIdentifier() ?? "notExposed"]
         if let c = v as? NSControl {
             d["font"] = font(c.font); d["enabled"] = c.isEnabled; d["controlSize"] = c.controlSize.rawValue
         }
         if let b = v as? NSButton {
             d["title"] = b.title; d["state"] = b.state.rawValue
+            d["cellIdentity"] = b.cell.map { String(describing: ObjectIdentifier($0)) } ?? "none"
+            d["targetIdentity"] = b.target.map { String(describing: ObjectIdentifier($0)) } ?? "none"
+            d["action"] = b.action.map(NSStringFromSelector) ?? "none"
             d["imagePosition"] = b.imagePosition.rawValue; d["imageScaling"] = b.imageScaling.rawValue
             d["contentTint"] = color(b.contentTintColor)
             var runs: [[String: Any]] = []
@@ -156,11 +139,6 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                 }])
             }
             d["titleAttributeRuns"] = runs
-            if let probe = b.cell as? ProbeCell {
-                d["probe"] = ["treatment": probe.treatment.rawValue,
-                    "renderCalls": probe.renderCalls, "ownerMatches": probe.owner === b,
-                    "backingBounds": rect(b.convertToBacking(b.bounds)), "highlighted": probe.isHighlighted]
-            }
             if let cell = b.cell as? NSButtonCell {
                 d["nativeCellState"] = ["highlightsBy": cell.highlightsBy.rawValue, "showsStateBy": cell.showsStateBy.rawValue,
                     "bezelStyle": cell.bezelStyle.rawValue, "bordered": cell.isBordered, "transparent": cell.isTransparent,
@@ -182,13 +160,69 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         return d
     }
     private func views(_ v: NSView) -> [NSView] { [v] + v.subviews.flatMap { views($0) } }
-    private func capture(_ host: NSView, measure: [ProbeCell] = []) throws -> (Data, NSBitmapImageRep) {
+    private func capture(_ host: NSView) throws -> (Data, NSBitmapImageRep) {
         let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-        // Allocate/layout FIRST, count ONLY cacheDisplay, never metadata/crops.
-        for cell in measure { cell.renderCalls = []; cell.measuringRender = true }
         host.cacheDisplay(in: host.bounds, to: bitmap)
-        for cell in measure { cell.measuringRender = false }
         return (try XCTUnwrap(bitmap.representation(using: .png, properties: [:])), bitmap)
+    }
+    private func settled(_ host: NSView, window: NSWindow, key: String) throws -> (Data, NSBitmapImageRep) {
+        let start = Date(); var previous: Data?; var count = 0
+        while Date().timeIntervalSince(start) < 2 {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+            host.layoutSubtreeIfNeeded(); window.display()
+            let current = try capture(host)
+            count = current.0 == previous ? count + 1 : 1; previous = current.0
+            if count >= 3 && Date().timeIntervalSince(start) >= 0.2 { return current }
+        }
+        throw XCTUnwrapError.unstable(key)
+    }
+    private enum XCTUnwrapError: Error { case unstable(String) }
+    @MainActor
+    private struct ExistingRadio: NSViewRepresentable {
+        let button: NSButton
+        func makeNSView(context: Context) -> NSButton { button }
+        func updateNSView(_ view: NSButton, context: Context) {} // Never configure or replace.
+        func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSButton, context: Context) -> CGSize? {
+            CGSize(width: 16, height: 16)
+        }
+    }
+    @MainActor
+    private struct StructuralRows: View {
+        let buttons: [NSButton]
+        let choices: [CogletRadioGroup.Choice]
+        let baselines: [CGFloat]
+        let pointSize: CGFloat, ink: Color
+        var body: some View {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Array(choices.enumerated()), id: \.element.id) { index, choice in
+                    let baseline = baselines[index]
+                    HStack(alignment: .firstTextBaseline, spacing: nil) {
+                        ExistingRadio(button: buttons[index]).frame(width: 16, height: 16)
+                            .alignmentGuide(.firstTextBaseline) { _ in baseline }
+                        Text(choice.label).font(.system(size: pointSize)).foregroundStyle(ink)
+                            .fixedSize().accessibilityHidden(true)
+                            .background(Marker(name: "label." + choice.id))
+                    }
+                }
+            }
+        }
+    }
+    private func install(_ group: CogletRadioGroup.NativeView, choices: [CogletRadioGroup.Choice],
+                         pointSize: CGFloat, ink: Color) throws -> NSHostingView<StructuralRows> {
+        XCTAssertEqual(group.buttons.map { $0.accessibilityIdentifier() }, choices.map { Optional($0.id) })
+        for button in group.buttons {
+            button.title = ""; button.imagePosition = .imageOnly; button.font = .systemFont(ofSize: 13)
+            group.removeArrangedSubview(button); button.removeFromSuperview()
+            // Sample the baseline for the intended native frame, not the old titled frame.
+            button.setFrameSize(NSSize(width: 16, height: 16))
+        }
+        // Native baseline measured AFTER fixed font AND frame, never fitted to reference pixels.
+        let baselines = group.buttons.map { $0.firstBaselineOffsetFromTop }
+        let hosting = NSHostingView(rootView: StructuralRows(buttons: group.buttons, choices: choices,
+            baselines: baselines, pointSize: pointSize, ink: ink))
+        group.addArrangedSubview(hosting)
+        group.setAccessibilityChildren(group.buttons)
+        return hosting
     }
     func testPairedNativeMeasurementsOnly() throws {
         guard let path = ProcessInfo.processInfo.environment["SOFTMAX_RADIO_MEASUREMENT_DIR"] else {
@@ -199,23 +233,13 @@ final class RadioPresentationMeasurementTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         var cases: [String] = []
         for dark in [false, true] {
-            for pointSize in [CGFloat(14), CGFloat(18.2), CGFloat(22.4)] {
-                let variants: [(Bool, Treatment)] = [(false, .original)] + Treatment.allCases.map { (true, $0) }
-                for (owned, treatment) in variants {
-                    let key = "\(dark ? "dark" : "light")-\(pointSize)-\(owned ? "owned-" + treatment.rawValue : "picker")"
+            for pointSize in [CGFloat(14), CGFloat(18.2), CGFloat(22.4), CGFloat(16), CGFloat(20), CGFloat(26)] {
+                for treatment in Treatment.allCases {
+                    let owned = treatment.owned
+                    let key = "\(dark ? "dark" : "light")-\(pointSize)-\(treatment.rawValue)"
                     let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
-                    // MainActor serial fixture only: let native initialization own
-                    // every cell property. NEVER copy or replace an existing cell.
-                    let savedClass = NSButton.cellClass
-                    if owned && treatment != .original {
-                        NSButton.cellClass = treatment == .passive ? PassiveCell.self : ProbeCell.self
-                    }
-                    let expectedClass = NSButton.cellClass
-                    defer {
-                        NSButton.cellClass = savedClass
-                        XCTAssertEqual(NSButton.cellClass.map { ObjectIdentifier($0) }, savedClass.map { ObjectIdentifier($0) })
-                    }
-                    let host = NSHostingView(rootView: Fixture(owned: owned, dark: dark, pointSize: pointSize, registry: registry))
+                    let fixture = Fixture(treatment: treatment, dark: dark, pointSize: pointSize, registry: registry)
+                    let host = NSHostingView(rootView: fixture)
                     let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: 440),
                         styleMask: [.borderless], backing: .buffered, defer: false)
                     window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -223,88 +247,92 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                     defer { window.endEditing(for: nil); window.makeFirstResponder(nil); window.contentView = nil; window.close() }
                     window.contentView = host; host.frame = NSRect(x: 0, y: 0, width: 540, height: 440)
                     window.orderBack(nil); window.makeFirstResponder(nil)
-                    // Stabilize the SAME native graph before changing its cells.
-                    RunLoop.current.run(until: Date().addingTimeInterval(0.25))
-                    host.layoutSubtreeIfNeeded(); window.display()
+                    // Mount and settle BEFORE taking graph/mount snapshots or installing anything.
+                    _ = try settled(host, window: window, key: key + "-initial")
+                    let groups = views(host).compactMap { $0 as? CogletRadioGroup.NativeView }
+                    let initialGroups = groups.map(ObjectIdentifier.init)
+                    let initialGroupIDs = groups.map { $0.accessibilityIdentifier() }
+                    let initialGroupLabels = groups.map { $0.accessibilityLabel() }
                     let nativeButtons = views(host).compactMap { $0 as? NSButton }
                     let initialButtons = nativeButtons.map(ObjectIdentifier.init)
                     let initialTargets = nativeButtons.map { $0.target.map(ObjectIdentifier.init) }
                     let initialActions = nativeButtons.map { $0.action }
                     let initialStates = nativeButtons.map { $0.state }
                     let initialFrames = nativeButtons.map { $0.frame }
-                    let initialIDs: [String?] = nativeButtons.map { $0.accessibilityIdentifier() }
+                    let initialIDs = nativeButtons.map { $0.accessibilityIdentifier() }
+                    let initialLabels = nativeButtons.map { $0.accessibilityLabel() }
                     let initialCells = nativeButtons.map { $0.cell.map(ObjectIdentifier.init) }
-                    if owned {
-                        XCTAssertEqual(nativeButtons.count, 6)
-                        let wanted = expectedClass ?? NSButtonCell.self
-                        for button in nativeButtons {
-                            let cell = try XCTUnwrap(button.cell)
-                            XCTAssertEqual(ObjectIdentifier(type(of: cell)), ObjectIdentifier(wanted), "Factory was not inherited: " + key)
+                    let initialInventory = registry.registrationInventory()
+                    // Inventory includes BOTH parent groups and every child. prepareFocus only reads tokens.
+                    let mountIDs = initialInventory.map(\.id)
+                    @MainActor func mounts() throws -> [ControlRegistry.Mount] {
+                        try mountIDs.map { id in
+                            try registry.captureDirectory().prepareFocus(.map([
+                                .init("window", .text("settings")), .init("control", .text(id))]))
                         }
                     }
-                    let initialInventory = registry.registrationInventory()
-                    let initialMounts = try initialIDs.compactMap { id -> ControlRegistry.Mount? in
-                        guard owned, let id else { return nil }
-                        return try registry.captureDirectory().prepareFocus(.map([
-                            .init("window", .text("settings")), .init("control", .text(id))]))
-                    }
-                    // Bind geometry conversions to the actual existing owner.
-                    for button in nativeButtons { (button.cell as? ProbeCell)?.owner = button }
-                    if owned && treatment != .original {
+                    let initialMounts = try mounts()
+                    let nativeBefore = nativeButtons.map { metadata($0, host: host, path: $0.accessibilityIdentifier() ?? "") }
+                    var retainedHosts: [NSHostingView<StructuralRows>] = []
+                    if owned {
+                        XCTAssertEqual(nativeButtons.count, 6); XCTAssertEqual(groups.count, 2)
+                        XCTAssertEqual(initialInventory.count, 8); XCTAssertEqual(initialMounts.count, 8)
                         let before = try capture(host)
                         try before.0.write(to: root.appendingPathComponent(key + "-before.png"))
                         try JSONSerialization.data(withJSONObject: metadata(host, host: host, path: "root"), options: [.prettyPrinted, .sortedKeys])
                             .write(to: root.appendingPathComponent(key + "-before.json"))
-                        if treatment != .passive {
-                            // All rect-cell variants get the SAME unchanged setter
-                            // checkpoint. Offline equality is mandatory before ink
-                            // attribution; preserve all original non-colour attrs.
-                            for button in nativeButtons {
-                                button.attributedTitle = NSAttributedString(attributedString: button.attributedTitle)
-                                button.needsDisplay = true
-                            }
-                            let noop = try capture(host)
-                            try noop.0.write(to: root.appendingPathComponent(key + "-noop.png"))
-                            try JSONSerialization.data(withJSONObject: metadata(host, host: host, path: "root"), options: [.prettyPrinted, .sortedKeys])
-                                .write(to: root.appendingPathComponent(key + "-noop.json"))
-                            for button in nativeButtons {
-                                let probe = try XCTUnwrap(button.cell as? ProbeCell)
-                                XCTAssertTrue(probe.owner === button)
-                                probe.treatment = treatment
-                                if treatment.recolor {
-                                    let text = NSMutableAttributedString(attributedString: button.attributedTitle)
-                                    let ink = NSColor(srgbRed: dark ? 0.925490196 : 0.090196078,
-                                        green: dark ? 0.960784314 : 0.137254902, blue: dark ? 0.937254902 : 0.113725490, alpha: 1)
-                                    text.addAttribute(.foregroundColor, value: ink, range: NSRange(location: 0, length: text.length))
-                                    button.attributedTitle = text
+                        // Identical setter/display checkpoint for ALL owned cases, no configure/remount.
+                        for button in nativeButtons {
+                            button.attributedTitle = NSAttributedString(attributedString: button.attributedTitle)
+                            button.needsDisplay = true
+                        }
+                        window.display()
+                        let noop = try capture(host)
+                        try noop.0.write(to: root.appendingPathComponent(key + "-noop.png"))
+                        try JSONSerialization.data(withJSONObject: metadata(host, host: host, path: "root"), options: [.prettyPrinted, .sortedKeys])
+                            .write(to: root.appendingPathComponent(key + "-noop.json"))
+                        XCTAssertEqual(before.0, noop.0, "Unchanged setter checkpoint: " + key)
+                        if treatment == .ownedStructural {
+                            for group in groups {
+                                let id = try XCTUnwrap(group.accessibilityIdentifier())
+                                let choices: [CogletRadioGroup.Choice]
+                                switch id {
+                                case "settings.general.appearance": choices = Self.appearanceChoices
+                                case "settings.general.text_size": choices = Self.sizeChoices
+                                default: XCTFail("Unexpected group: " + id); continue
                                 }
-                                button.needsDisplay = true
+                                retainedHosts.append(try install(group, choices: choices, pointSize: pointSize, ink: fixture.ink))
                             }
                         }
                     }
-                    let start = Date(); var previous: Data?; var count = 0
-                    var stable: (Data, NSBitmapImageRep)?
-                    while Date().timeIntervalSince(start) < 2 {
-                        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-                        host.layoutSubtreeIfNeeded(); window.display()
-                        let current = try capture(host)
-                        count = current.0 == previous ? count + 1 : 1; previous = current.0
-                        if count >= 3 && Date().timeIntervalSince(start) >= 0.2 { stable = current; break }
-                    }
-                    _ = try XCTUnwrap(stable, "Unstable fixture: \(key)")
+                    let stable = try settled(host, window: window, key: key)
                     for button in nativeButtons { button.needsDisplay = true }
                     host.needsDisplay = true
-                    let (png, bitmap) = try capture(host, measure: nativeButtons.compactMap { $0.cell as? ProbeCell })
-                    XCTAssertEqual(png, stable?.0, "Forced capture changed stable pixels: " + key)
-                    // Retain the pixels/metadata even if an invariant or hook fails.
+                    let (png, bitmap) = try capture(host)
+                    XCTAssertEqual(png, stable.0, "Forced capture changed stable pixels: " + key)
+                    // Retain pixels/metadata even if a presentation invariant fails.
                     try png.write(to: root.appendingPathComponent(key + ".png"))
                     let all = views(host)
+                    let labelMarkers = all.filter { $0.identifier?.rawValue.hasPrefix("label.") == true }
+                    XCTAssertEqual(labelMarkers.count, treatment == .pickerMarked || treatment == .ownedStructural ? 6 : 0)
                     if owned {
                         let buttons = all.compactMap { $0 as? NSButton }
                         XCTAssertEqual(buttons.count, 6)
-                        XCTAssertEqual(Set(buttons.map(\.title)), Set(["System", "Light", "Dark", "Standard", "Large", "Largest"]))
+                        if treatment == .ownedStructural {
+                            for button in buttons {
+                                XCTAssertEqual(button.title, ""); XCTAssertEqual(button.imagePosition, .imageOnly)
+                                XCTAssertEqual(button.font, NSFont.systemFont(ofSize: 13))
+                                XCTAssertEqual(button.frame.size, NSSize(width: 16, height: 16))
+                            }
+                            for retained in retainedHosts {
+                                XCTAssertEqual(retained.rootView.buttons.map { $0.firstBaselineOffsetFromTop },
+                                    retained.rootView.baselines, "Native baseline changed after mounting: " + key)
+                            }
+                        } else {
+                            XCTAssertEqual(Set(buttons.map(\.title)), Set(["System", "Light", "Dark", "Standard", "Large", "Largest"]))
+                            XCTAssertTrue(buttons.allSatisfy { $0.font?.pointSize == pointSize })
+                        }
                         XCTAssertEqual(buttons.filter { $0.state == .on }.count, 2)
-                        XCTAssertTrue(buttons.allSatisfy { $0.font?.pointSize == pointSize })
                         XCTAssertEqual(registry.registrationInventory().count, 8)
                     }
                     var crops: [[String: Any]] = []
@@ -324,6 +352,16 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                             green: dark ? 0.960784314 : 0.137254902, blue: dark ? 0.937254902 : 0.113725490, alpha: 1))]
                     }
                     let result: [String: Any] = ["case": key, "kind": owned ? "owned" : "picker", "pointSize": Double(pointSize),
+                        "treatment": treatment.rawValue,
+                        "offlineGates": ["full-raster picker-original == picker-marked EXACT before marker geometry is trusted",
+                            "full-raster owned-original == owned-control EXACT; all owned before/noop checkpoints EXACT",
+                            "compare untranslated label/disc pixels and full scene; mismatch is a valid negative, never fit offsets"],
+                        "scaleCoverage": window.backingScaleFactor == 1 ? "1x observed; 2x UNTESTED" : "only actual backingScale observed",
+                        "nativeBefore": nativeBefore,
+                        "labelFrames": labelMarkers.map { metadata($0, host: host, path: $0.identifier!.rawValue) },
+                        "nativeAfter": nativeButtons.map { metadata($0, host: host, path: $0.accessibilityIdentifier() ?? "") },
+                        "mountIDs": mountIDs, "mountsBefore": initialMounts.map { String(describing: $0) },
+                        "mountsAfter": try mounts().map { String(describing: $0) },
                         "source": ProcessInfo.processInfo.environment["GITHUB_SHA"] ?? "unrecorded",
                         "base": "bb4949eb4ec4667186478142a999cda76ba69532", "os": ProcessInfo.processInfo.operatingSystemVersionString,
                         "backingScale": Double(window.backingScaleFactor), "rasterSize": [bitmap.pixelsWide, bitmap.pixelsHigh],
@@ -337,36 +375,29 @@ final class RadioPresentationMeasurementTests: XCTestCase {
                         .write(to: root.appendingPathComponent(key + ".json"))
                     cases.append(key)
                     if owned {
+                        XCTAssertEqual(views(host).compactMap { $0 as? CogletRadioGroup.NativeView }.map(ObjectIdentifier.init), initialGroups)
+                        XCTAssertEqual(groups.map { $0.accessibilityIdentifier() }, initialGroupIDs)
+                        XCTAssertEqual(groups.map { $0.accessibilityLabel() }, initialGroupLabels)
                         XCTAssertEqual(views(host).compactMap { $0 as? NSButton }.map(ObjectIdentifier.init), initialButtons)
                         XCTAssertEqual(nativeButtons.map { $0.target.map(ObjectIdentifier.init) }, initialTargets)
                         XCTAssertEqual(nativeButtons.map { $0.action }, initialActions)
                         XCTAssertEqual(nativeButtons.map { $0.state }, initialStates)
-                        XCTAssertEqual(nativeButtons.map { $0.frame }, initialFrames)
+                        if treatment != .ownedStructural { XCTAssertEqual(nativeButtons.map { $0.frame }, initialFrames) }
+                        XCTAssertEqual(nativeButtons.map { $0.accessibilityLabel() }, initialLabels)
+                        for group in groups {
+                            let children = try XCTUnwrap(group.accessibilityChildren() as? [NSButton])
+                            XCTAssertEqual(children.map(ObjectIdentifier.init), group.buttons.map(ObjectIdentifier.init))
+                        }
                         XCTAssertEqual(nativeButtons.map { $0.accessibilityIdentifier() }, initialIDs)
                         XCTAssertEqual(nativeButtons.map { $0.cell.map(ObjectIdentifier.init) }, initialCells)
                         XCTAssertEqual(registry.registrationInventory(), initialInventory)
-                        let finalMounts = try initialIDs.compactMap { id -> ControlRegistry.Mount? in
-                            guard let id else { return nil }
-                            return try registry.captureDirectory().prepareFocus(.map([
-                                .init("window", .text("settings")), .init("control", .text(id))]))
-                        }
-                        XCTAssertEqual(finalMounts, initialMounts)
-                        if treatment != .original && treatment != .passive {
-                            for button in nativeButtons {
-                                let probe = try XCTUnwrap(button.cell as? ProbeCell)
-                                XCTAssertTrue(probe.owner === button)
-                                XCTAssertFalse(probe.measuringRender)
-                                // A zero-call hook is a measured negative result,
-                                // not a test failure to be retried or restored to
-                                // the confounded drawing override. Offline pixel
-                                // translation AND render calls are needed for use.
-                            }
-                        }
+                        XCTAssertEqual(try mounts(), initialMounts)
                     }
+                    withExtendedLifetime(retainedHosts) {}
                 }
             }
         }
-        XCTAssertEqual(cases.count, 48); XCTAssertEqual(Set(cases).count, 48)
+        XCTAssertEqual(cases.count, 60); XCTAssertEqual(Set(cases).count, 60)
         try JSONSerialization.data(withJSONObject: ["cases": cases, "meaning": "measurement complete, NOT visual acceptance"], options: [.prettyPrinted])
             .write(to: root.appendingPathComponent("cases.json"))
     }
