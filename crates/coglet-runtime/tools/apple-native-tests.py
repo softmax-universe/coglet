@@ -2,14 +2,17 @@
 """Exhaustive Apple native-test partition; no test-name skip filters.
 
 The Factory integration executable dominates the Apple wall budget. Discover its
-actual libtest inventory and partition sorted names round-robin across three
-bounded jobs. All other native targets retain their Cargo execution environment.
+actual libtest inventory, retain three sorted round-robin partitions, and isolate
+the measured baseline-comparison outlier in a fourth bounded job. All other
+native targets retain their Cargo execution environment.
 """
 import argparse
 import json
 import subprocess
 
-SHARDS = 3
+ROUND_ROBIN_SHARDS = 3
+SHARDS = ROUND_ROBIN_SHARDS + 1
+ISOLATED = "factory_research::candidate_baseline_comparison_is_reproducible"
 PACKAGE = "coglet-runtime"
 FACTORY = "factory_database"
 BASE = ["cargo", "test", "--locked", "-p", PACKAGE, "--features", "native-engine"]
@@ -75,7 +78,13 @@ def factory_names(output):
 def partition(names, shard):
     if shard not in range(SHARDS):
         raise ValueError("invalid shard")
-    selected = names[shard::SHARDS]
+    if names.count(ISOLATED) != 1:
+        raise ValueError("missing or duplicate isolated Factory test")
+    # Filter AFTER indexing the full inventory: original shard 0/2 membership
+    # must not reshuffle just because the outlier moved to its own job.
+    selected = ([ISOLATED] if shard == ROUND_ROBIN_SHARDS else
+                [name for index, name in enumerate(names)
+                 if index % ROUND_ROBIN_SHARDS == shard and name != ISOLATED])
     if not selected:
         raise ValueError("empty Factory shard")
     return selected
