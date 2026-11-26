@@ -6,9 +6,11 @@
 //! validation, audit recording and step serialization belong to the runtime.
 mod disk;
 mod git;
+mod state_hash;
 pub use disk::{DiskStore, FlushPoint};
 pub use git::{GitPoint, GitStore};
 use sha2::{Digest, Sha256};
+pub use state_hash::snapshot_tree_hash;
 use std::{collections::BTreeMap, sync::Arc};
 
 pub const INBOX: &str = "/data/inbox.jsonl";
@@ -69,7 +71,7 @@ pub fn validate_path(path: &str) -> Result<()> {
         || !matches!(parts[1], "code" | "data" | "logs")
         || parts[2..]
             .iter()
-            .any(|p| p.is_empty() || *p == "." || *p == "..")
+            .any(|p| p.is_empty() || *p == "." || *p == ".." || p.eq_ignore_ascii_case(".git"))
     {
         return Err(Error::PermissionDenied);
     }
@@ -152,7 +154,7 @@ impl Snapshot {
         self.files().map(|(p, b)| (p.to_owned(), hex(b))).collect()
     }
     pub fn tree_hash(&self) -> String {
-        digest(&self.cbor())
+        snapshot_tree_hash(&self.export()).expect("validated filesystem snapshot")
     }
     pub fn cbor(&self) -> Vec<u8> {
         let mut entries: Vec<_> = self

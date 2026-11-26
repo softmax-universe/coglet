@@ -1,0 +1,1759 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/hub.schema.json",
+  "$ref": "#/$defs/hub-frame",
+  "$defs": {
+    "hub-null": {
+      "type": "null"
+    },
+    "hub-bool": {
+      "type": "boolean"
+    },
+    "hub-hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "hub-build-version": {
+      "enum": [
+        "1.0"
+      ]
+    },
+    "hub-build-record": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/hub-build-version"
+        },
+        "source_tree": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "recipe_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "policy_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "transform_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "original_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "rewritten_sha256": {
+          "$ref": "#/$defs/hub-hash"
+        }
+      },
+      "required": [
+        "version",
+        "source_tree",
+        "recipe_sha256",
+        "policy_sha256",
+        "transform_sha256",
+        "original_sha256",
+        "rewritten_sha256"
+      ],
+      "additionalProperties": false
+    },
+    "hub-signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}(?![\\s\\S])"
+    },
+    "hub-secret": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "hub-text": {
+      "type": "string",
+      "maxLength": 65536
+    },
+    "hub-path": {
+      "type": "string",
+      "pattern": "^(/data/|/logs/)[a-zA-Z0-9_./-]{1,512}(?![\\s\\S])|^@step/[0-9]{1,20}(?![\\s\\S])"
+    },
+    "hub-write-path": {
+      "type": "string",
+      "pattern": "^/data/[a-zA-Z0-9_./-]{1,512}(?![\\s\\S])"
+    },
+    "hub-chunk-hex": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{2}){1,32768}(?![\\s\\S])"
+    },
+    "hub-timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300000
+    },
+    "hub-size": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 67108864
+    },
+    "hub-read-size": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65536
+    },
+    "hub-queue": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 256
+    },
+    "hub-maybe-tree": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/hub-hash"
+        },
+        {
+          "$ref": "#/$defs/hub-null"
+        }
+      ]
+    },
+    "hub-maybe-generation": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        {
+          "$ref": "#/$defs/hub-null"
+        }
+      ]
+    },
+    "hub-target": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        {
+          "$ref": "#/$defs/hub-null"
+        }
+      ]
+    },
+    "hub-maybe-step": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        {
+          "$ref": "#/$defs/hub-null"
+        }
+      ]
+    },
+    "hub-maybe-error": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/error"
+        },
+        {
+          "$ref": "#/$defs/hub-null"
+        }
+      ]
+    },
+    "hub-maybe-secret": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/hub-secret"
+        },
+        {
+          "$ref": "#/$defs/hub-null"
+        }
+      ]
+    },
+    "hub-empty": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    },
+    "hub-state": {
+      "enum": [
+        "stopped",
+        "running",
+        "paused",
+        "faulted"
+      ]
+    },
+    "hub-method": {
+      "enum": [
+        "hub.enroll",
+        "hub.install",
+        "hub.start",
+        "hub.stop",
+        "hub.status",
+        "manage.patch",
+        "manage.tail_log",
+        "hub.events",
+        "hub.actions",
+        "manage.read",
+        "manage.write",
+        "manage.pause",
+        "manage.step",
+        "hub.inbox",
+        "hub.health",
+        "hub.receipt",
+        "hub.cancel"
+      ]
+    },
+    "hub-methods": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hub-method"
+      },
+      "maxItems": 17
+    },
+    "hub-purpose-delegation": {
+      "enum": [
+        "delegation"
+      ]
+    },
+    "hub-delegation-statement": {
+      "type": "object",
+      "properties": {
+        "purpose": {
+          "$ref": "#/$defs/hub-purpose-delegation"
+        },
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "device": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "hub": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "generation": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "expires": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "methods": {
+          "$ref": "#/$defs/hub-methods"
+        }
+      },
+      "required": [
+        "purpose",
+        "coglet",
+        "device",
+        "hub",
+        "generation",
+        "expires",
+        "methods"
+      ],
+      "additionalProperties": false
+    },
+    "hub-signed-delegation": {
+      "type": "object",
+      "properties": {
+        "statement": {
+          "$ref": "#/$defs/hub-delegation-statement"
+        },
+        "signer": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "signature": {
+          "$ref": "#/$defs/hub-signature"
+        }
+      },
+      "required": [
+        "statement",
+        "signer",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "manage-file-bytes": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{2})*(?![\\s\\S])"
+    },
+    "manage-code-path": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.-]+(/[a-zA-Z0-9_.-]+)*(?![\\s\\S])"
+    },
+    "manage-file-change": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/manage-code-path"
+        },
+        "bytes": {
+          "$ref": "#/$defs/manage-file-bytes"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "manage-files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/manage-file-change"
+      },
+      "maxItems": 4096
+    },
+    "manage-patch": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "revision": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "generation": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "files": {
+          "$ref": "#/$defs/manage-files"
+        },
+        "signature": {
+          "$ref": "#/$defs/hub-signature"
+        }
+      },
+      "required": [
+        "revision",
+        "generation",
+        "files",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "manage-patch-signing": {
+      "type": "object",
+      "properties": {
+        "hub": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "base": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "revision": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "generation": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "files": {
+          "$ref": "#/$defs/manage-files"
+        }
+      },
+      "required": [
+        "hub",
+        "coglet",
+        "revision",
+        "generation",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "hub-status": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/hub-state"
+        },
+        "live_tree": {
+          "$ref": "#/$defs/hub-maybe-tree"
+        },
+        "generation": {
+          "$ref": "#/$defs/hub-maybe-generation"
+        },
+        "step": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "pending": {
+          "$ref": "#/$defs/hub-queue"
+        },
+        "error": {
+          "$ref": "#/$defs/hub-maybe-error"
+        }
+      },
+      "required": [
+        "state",
+        "live_tree",
+        "generation",
+        "step",
+        "pending",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "hub-queued": {
+      "enum": [
+        "queued"
+      ]
+    },
+    "hub-receipt-queued": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "state": {
+          "$ref": "#/$defs/hub-queued"
+        },
+        "step": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "error": {
+          "$ref": "#/$defs/hub-null"
+        }
+      },
+      "required": [
+        "operation_id",
+        "state",
+        "step",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "hub-applied": {
+      "enum": [
+        "applied"
+      ]
+    },
+    "hub-receipt-applied": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "state": {
+          "$ref": "#/$defs/hub-applied"
+        },
+        "step": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "error": {
+          "$ref": "#/$defs/hub-null"
+        }
+      },
+      "required": [
+        "operation_id",
+        "state",
+        "step",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "hub-cancelled": {
+      "enum": [
+        "cancelled"
+      ]
+    },
+    "hub-receipt-cancelled": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "state": {
+          "$ref": "#/$defs/hub-cancelled"
+        },
+        "step": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "error": {
+          "$ref": "#/$defs/hub-null"
+        }
+      },
+      "required": [
+        "operation_id",
+        "state",
+        "step",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "hub-failed": {
+      "enum": [
+        "failed"
+      ]
+    },
+    "hub-receipt-failed": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "state": {
+          "$ref": "#/$defs/hub-failed"
+        },
+        "step": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "error": {
+          "$ref": "common.schema.json#/$defs/error"
+        }
+      },
+      "required": [
+        "operation_id",
+        "state",
+        "step",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "hub-mutation-receipt": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/hub-receipt-queued"
+        },
+        {
+          "$ref": "#/$defs/hub-receipt-applied"
+        },
+        {
+          "$ref": "#/$defs/hub-receipt-cancelled"
+        },
+        {
+          "$ref": "#/$defs/hub-receipt-failed"
+        }
+      ]
+    },
+    "hub-inbox-delivery": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "sender": {
+          "$ref": "common.schema.json#/$defs/source-id"
+        },
+        "event": {
+          "$ref": "common.schema.json#/$defs/event"
+        }
+      },
+      "required": [
+        "id",
+        "sender",
+        "event"
+      ],
+      "additionalProperties": false
+    },
+    "hub-event-batch": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/event"
+      },
+      "maxItems": 64
+    },
+    "hub-health-item": {
+      "type": "object",
+      "properties": {
+        "coglet": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "status": {
+          "$ref": "#/$defs/hub-status"
+        }
+      },
+      "required": [
+        "coglet",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "hub-health-items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hub-health-item"
+      },
+      "maxItems": 256
+    },
+    "hub-enroll-params": {
+      "type": "object",
+      "properties": {
+        "offer": {
+          "$ref": "common.schema.json#/$defs/version-offer"
+        },
+        "invite": {
+          "$ref": "#/$defs/hub-maybe-secret"
+        }
+      },
+      "required": [
+        "offer",
+        "invite"
+      ],
+      "additionalProperties": false
+    },
+    "hub-install-params": {
+      "type": "object",
+      "properties": {
+        "delegation": {
+          "$ref": "#/$defs/hub-signed-delegation"
+        },
+        "initial": {
+          "$ref": "#/$defs/hub-hash"
+        }
+      },
+      "required": [
+        "delegation",
+        "initial"
+      ],
+      "additionalProperties": false
+    },
+    "manage-patch-params": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/hub-size"
+        },
+        "sha256": {
+          "$ref": "#/$defs/hub-hash"
+        }
+      },
+      "required": [
+        "size",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "manage-tail-log-params": {
+      "type": "object",
+      "properties": {
+        "from_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "from_offset"
+      ],
+      "additionalProperties": false
+    },
+    "hub-events-params": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "events": {
+          "$ref": "#/$defs/hub-event-batch"
+        }
+      },
+      "required": [
+        "offset",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "hub-actions-params": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "common.schema.json#/$defs/action"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "hub-read-params": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/hub-path"
+        },
+        "offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "limit": {
+          "$ref": "#/$defs/hub-read-size"
+        }
+      },
+      "required": [
+        "path",
+        "offset",
+        "limit"
+      ],
+      "additionalProperties": false
+    },
+    "hub-write-params": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/hub-write-path"
+        },
+        "text": {
+          "$ref": "#/$defs/hub-text"
+        },
+        "expected_hash": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "actor": {
+          "$ref": "common.schema.json#/$defs/source-id"
+        },
+        "ticket": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "path",
+        "text",
+        "expected_hash",
+        "actor"
+      ],
+      "additionalProperties": false
+    },
+    "hub-inbox-params": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "$ref": "#/$defs/hub-inbox-delivery"
+        },
+        "actor": {
+          "$ref": "common.schema.json#/$defs/source-id"
+        },
+        "ticket": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "message",
+        "actor"
+      ],
+      "additionalProperties": false
+    },
+    "hub-health-params": {
+      "type": "object",
+      "properties": {
+        "device": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "uptime_ms": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "queue_depth": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "available_bytes": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "coglets": {
+          "$ref": "#/$defs/hub-health-items"
+        }
+      },
+      "required": [
+        "device",
+        "uptime_ms",
+        "queue_depth",
+        "available_bytes",
+        "coglets"
+      ],
+      "additionalProperties": false
+    },
+    "hub-operation-params": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "operation_id"
+      ],
+      "additionalProperties": false
+    },
+    "hub-context": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "$ref": "common.schema.json#/$defs/source-id"
+        },
+        "ticket": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "actor"
+      ],
+      "additionalProperties": false
+    },
+    "hub-enroll-request-method": {
+      "enum": [
+        "hub.enroll"
+      ]
+    },
+    "hub-enroll-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-enroll-request-method"
+        },
+        "target": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-enroll-params"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params"
+      ],
+      "additionalProperties": false
+    },
+    "hub-install-request-method": {
+      "enum": [
+        "hub.install"
+      ]
+    },
+    "hub-install-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-install-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-install-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "hub-start-request-method": {
+      "enum": [
+        "hub.start"
+      ]
+    },
+    "hub-start-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-start-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-empty"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "hub-stop-request-method": {
+      "enum": [
+        "hub.stop"
+      ]
+    },
+    "hub-stop-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-stop-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-empty"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "hub-status-request-method": {
+      "enum": [
+        "hub.status"
+      ]
+    },
+    "hub-status-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-status-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-empty"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "manage-patch-request-method": {
+      "enum": [
+        "manage.patch"
+      ]
+    },
+    "manage-patch-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/manage-patch-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/manage-patch-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "manage-tail_log-request-method": {
+      "enum": [
+        "manage.tail_log"
+      ]
+    },
+    "manage-tail_log-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/manage-tail_log-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/manage-tail-log-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "hub-events-request-method": {
+      "enum": [
+        "hub.events"
+      ]
+    },
+    "hub-events-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-events-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-events-params"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params"
+      ],
+      "additionalProperties": false
+    },
+    "hub-actions-request-method": {
+      "enum": [
+        "hub.actions"
+      ]
+    },
+    "hub-actions-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-actions-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-actions-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "manage-read-request-method": {
+      "enum": [
+        "manage.read"
+      ]
+    },
+    "manage-read-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/manage-read-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-read-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "manage-write-request-method": {
+      "enum": [
+        "manage.write"
+      ]
+    },
+    "manage-write-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/manage-write-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-write-params"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params"
+      ],
+      "additionalProperties": false
+    },
+    "manage-pause-request-method": {
+      "enum": [
+        "manage.pause"
+      ]
+    },
+    "manage-pause-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/manage-pause-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-empty"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "manage-step-request-method": {
+      "enum": [
+        "manage.step"
+      ]
+    },
+    "manage-step-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/manage-step-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-empty"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "hub-inbox-request-method": {
+      "enum": [
+        "hub.inbox"
+      ]
+    },
+    "hub-inbox-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-inbox-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-inbox-params"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params"
+      ],
+      "additionalProperties": false
+    },
+    "hub-health-request-method": {
+      "enum": [
+        "hub.health"
+      ]
+    },
+    "hub-health-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-health-request-method"
+        },
+        "target": {
+          "$ref": "#/$defs/hub-null"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-health-params"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params"
+      ],
+      "additionalProperties": false
+    },
+    "hub-receipt-request-method": {
+      "enum": [
+        "hub.receipt"
+      ]
+    },
+    "hub-receipt-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-receipt-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-operation-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "hub-cancel-request-method": {
+      "enum": [
+        "hub.cancel"
+      ]
+    },
+    "hub-cancel-request": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/hub-cancel-request-method"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "timeout_ms": {
+          "$ref": "#/$defs/hub-timeout"
+        },
+        "params": {
+          "$ref": "#/$defs/hub-operation-params"
+        },
+        "context": {
+          "$ref": "#/$defs/hub-context"
+        }
+      },
+      "required": [
+        "method",
+        "target",
+        "correlation_id",
+        "timeout_ms",
+        "params",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "hub-request": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/hub-enroll-request"
+        },
+        {
+          "$ref": "#/$defs/hub-install-request"
+        },
+        {
+          "$ref": "#/$defs/hub-start-request"
+        },
+        {
+          "$ref": "#/$defs/hub-stop-request"
+        },
+        {
+          "$ref": "#/$defs/hub-status-request"
+        },
+        {
+          "$ref": "#/$defs/manage-patch-request"
+        },
+        {
+          "$ref": "#/$defs/manage-tail_log-request"
+        },
+        {
+          "$ref": "#/$defs/hub-events-request"
+        },
+        {
+          "$ref": "#/$defs/hub-actions-request"
+        },
+        {
+          "$ref": "#/$defs/manage-read-request"
+        },
+        {
+          "$ref": "#/$defs/manage-write-request"
+        },
+        {
+          "$ref": "#/$defs/manage-pause-request"
+        },
+        {
+          "$ref": "#/$defs/manage-step-request"
+        },
+        {
+          "$ref": "#/$defs/hub-inbox-request"
+        },
+        {
+          "$ref": "#/$defs/hub-health-request"
+        },
+        {
+          "$ref": "#/$defs/hub-receipt-request"
+        },
+        {
+          "$ref": "#/$defs/hub-cancel-request"
+        }
+      ]
+    },
+    "hub-enroll-result": {
+      "type": "object",
+      "properties": {
+        "selection": {
+          "$ref": "common.schema.json#/$defs/version-selection"
+        },
+        "device": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "hub": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        }
+      },
+      "required": [
+        "selection",
+        "device",
+        "hub"
+      ],
+      "additionalProperties": false
+    },
+    "hub-read-result": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "snapshot_hash": {
+          "$ref": "#/$defs/hub-hash"
+        },
+        "text": {
+          "$ref": "#/$defs/hub-text"
+        },
+        "next_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "eof": {
+          "$ref": "#/$defs/hub-bool"
+        }
+      },
+      "required": [
+        "step",
+        "snapshot_hash",
+        "text",
+        "next_offset",
+        "eof"
+      ],
+      "additionalProperties": false
+    },
+    "hub-events-result": {
+      "type": "object",
+      "properties": {
+        "next_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "next_offset"
+      ],
+      "additionalProperties": false
+    },
+    "hub-step-result": {
+      "type": "object",
+      "properties": {
+        "receipt": {
+          "$ref": "#/$defs/hub-mutation-receipt"
+        },
+        "step": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "receipt",
+        "step"
+      ],
+      "additionalProperties": false
+    },
+    "hub-result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/hub-enroll-result"
+        },
+        {
+          "$ref": "#/$defs/hub-mutation-receipt"
+        },
+        {
+          "$ref": "#/$defs/hub-status"
+        },
+        {
+          "$ref": "common.schema.json#/$defs/action-accept"
+        },
+        {
+          "$ref": "#/$defs/hub-read-result"
+        },
+        {
+          "$ref": "#/$defs/hub-events-result"
+        },
+        {
+          "$ref": "#/$defs/hub-step-result"
+        },
+        {
+          "$ref": "#/$defs/hub-empty"
+        }
+      ]
+    },
+    "hub-success-type": {
+      "enum": [
+        "reply"
+      ]
+    },
+    "hub-success": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/hub-success-type"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "result": {
+          "$ref": "#/$defs/hub-result"
+        }
+      },
+      "required": [
+        "type",
+        "correlation_id",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "hub-failure-type": {
+      "enum": [
+        "error"
+      ]
+    },
+    "hub-failure": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/hub-failure-type"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "error": {
+          "$ref": "common.schema.json#/$defs/error"
+        }
+      },
+      "required": [
+        "type",
+        "correlation_id",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "hub-credit-type": {
+      "enum": [
+        "credit"
+      ]
+    },
+    "hub-credit": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/hub-credit-type"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "bytes": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "type",
+        "correlation_id",
+        "bytes"
+      ],
+      "additionalProperties": false
+    },
+    "hub-chunk-type": {
+      "enum": [
+        "chunk"
+      ]
+    },
+    "hub-chunk": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/hub-chunk-type"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "hex": {
+          "$ref": "#/$defs/hub-chunk-hex"
+        }
+      },
+      "required": [
+        "type",
+        "correlation_id",
+        "offset",
+        "hex"
+      ],
+      "additionalProperties": false
+    },
+    "hub-end-type": {
+      "enum": [
+        "end"
+      ]
+    },
+    "hub-end": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/hub-end-type"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "type",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "manage-log-path": {
+      "type": "string",
+      "pattern": "^/logs/([^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][.][^/\\u0000-\\u001f\\u007f\\\\]+)(/([^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][^/.\\u0000-\\u001f\\u007f\\\\][^/\\u0000-\\u001f\\u007f\\\\]*|[.][.][^/\\u0000-\\u001f\\u007f\\\\]+))*(?![\\s\\S])"
+    },
+    "manage-log-entry": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/manage-log-path"
+        },
+        "file_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "hex": {
+          "$ref": "#/$defs/hub-chunk-hex"
+        }
+      },
+      "required": [
+        "path",
+        "file_offset",
+        "hex"
+      ],
+      "additionalProperties": false
+    },
+    "manage-tail-log-result": {
+      "type": "object",
+      "properties": {
+        "next_offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "next_offset"
+      ],
+      "additionalProperties": false
+    },
+    "manage-log-type": {
+      "enum": [
+        "log"
+      ]
+    },
+    "manage-log": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/manage-log-type"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "offset": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "hex": {
+          "$ref": "#/$defs/hub-chunk-hex"
+        }
+      },
+      "required": [
+        "type",
+        "correlation_id",
+        "offset",
+        "hex"
+      ],
+      "additionalProperties": false
+    },
+    "hub-frame": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/hub-request"
+        },
+        {
+          "$ref": "#/$defs/hub-success"
+        },
+        {
+          "$ref": "#/$defs/hub-failure"
+        },
+        {
+          "$ref": "#/$defs/hub-credit"
+        },
+        {
+          "$ref": "#/$defs/hub-chunk"
+        },
+        {
+          "$ref": "#/$defs/hub-end"
+        },
+        {
+          "$ref": "#/$defs/manage-log"
+        }
+      ]
+    }
+  }
+}

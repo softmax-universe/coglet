@@ -11,6 +11,7 @@ from referencing import Registry, Resource
 
 from reference_cddl import Schema, ValidationError
 from test_common import decode, encode
+from build_surface02 import manifest_versions
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'sdk/surface-python'))
@@ -60,11 +61,38 @@ class Surface02Contracts(unittest.TestCase):
                     self.assertEqual(decode(raw), value)
         print(f'surface02: {len(self.cases)} independent CDDL/JSON/generated vectors')
 
+    def test_profiles_reject_old_public_record_versions(self):
+        # Reuse regenerated hash fixtures, without manufacturing recorded hashes.
+        for family, rules in (('abi', ('step-record', 'boundary-record', 'trace')),
+                              ('database', ('db-step-record', 'db-trace'))):
+            cases = json.loads((ROOT / f'spec/fixtures/{family}/cases.json').read_text())
+            for rule in rules:
+                value = next(c['value'] for c in cases if c['type'] == rule and c['valid'])
+                for selected in (rule, 's02-' + rule):
+                    if selected not in self.schemas:
+                        continue  # Name-free boundary rules are shared imports.
+                    schema = self.schemas[selected]
+                    validator = Draft202012Validator(
+                        {'$ref': schema['$id'] + '#/$defs/' + selected}, registry=self.registry)
+                    oracle = Schema(f'fixture = {selected}\n' + self.cddl)
+                    with self.subTest(rule=selected):
+                        self.assertTrue(validator.is_valid(value))
+                        oracle.validate_cbor(cbor2.dumps(value))
+                        validate(selected, value)
+                        for old_version in ('0.1', '0.2'):
+                            old = dict(value, version=old_version)
+                            self.assertFalse(validator.is_valid(old))
+                            with self.assertRaises(ValidationError):
+                                oracle.validate_cbor(cbor2.dumps(old))
+                            with self.assertRaises(ValueError):
+                                validate(selected, old)
+
     def test_surface02_frozen_rules_are_imports(self):
         schema = self.schemas['s02-manifest']
         self.assertNotIn('capability-name', schema['$defs'])
-        self.assertEqual(schema['$defs']['s02-manifest']['properties']['version'], {'const': '0.1'})
-        self.assertEqual(schema['$defs']['s02-db-manifest']['properties']['version'], {'const': '0.2'})
+        for rule, version in manifest_versions().items():
+            self.assertEqual(schema['$defs']['s02-' + rule]['properties']['version'],
+                             {'const': version})
         self.assertEqual(schema['$defs']['s02-manifest']['properties']['budgets'],
                          {'$ref': 'abi.schema.json#/$defs/budgets'})
 

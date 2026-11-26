@@ -224,7 +224,8 @@ fn write_paths(case: &str) -> Vec<&'static str> {
 fn fetch_logs_snapshot() -> Result<Value> {
     // Crate-owned harness input (not a spec fixture): compiled in so the peer
     // cannot lose it to an unrelated spec change. Guarded by
-    // tests/receiver_harness_inputs.rs.
+    // tests/receiver_harness_inputs.rs. Content is the final `refs/heads/logs`
+    // entry of the frozen hub0 corpus (tests/data/hub0/fetch.json), unchanged.
     let last: Value = serde_json::from_str(include_str!("receiver-fetch-logs-snapshot.json"))?;
     if last["ref"] != "refs/heads/logs" {
         return Err("logs snapshot missing".into());
@@ -256,7 +257,7 @@ fn bundle(
         "queue-backpressure" => 8_000_000,
         _ => 2_000_000,
     };
-    let manifest = json!({"version":"0.1","id":coglet,"subscriptions":[],
+    let manifest = json!({"version":"1.0","id":coglet,"subscriptions":[],
         "required_capabilities":[],"exclusive_outputs":[],
         "budgets":{"compute":compute,"compute_mode":coglet_engine_wamr::COMPUTE_MODE,
             "memory_pages":pages,"wall_time_us":wall_time_us,"max_events":16,"host_bytes":1_048_576}});

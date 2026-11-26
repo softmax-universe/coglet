@@ -1,8 +1,8 @@
-# Rust guest SDK (ABI 0.1)
+# Rust guest SDK (ABI 1.0)
 
 ## Opt-in database extension (in progress)
 
-The default feature set and `Host` remain frozen ABI0.1. Feature `database` adds
+The default feature set and `Host` target plain ABI 1.0. Feature `database` adds
 `database::{DbHost, Client, DbError}` and `Context::database()` only for a host
 implementing both boundaries. Wasm uses synchronous `coglet_v0.db` with separate
 input/output allocations and a 65,540-byte output buffer. Typed generated
@@ -15,7 +15,8 @@ no guest commit, migration or authority acquisition API. Host units must enforce
 poisoning/call counts and rollback independently of this untrusted guest client.
 Locally rejected requests never invoke the host and are not host calls; local
 checks cannot replace host validation. This feature does not make existing
-0.1 engines admit DB guests. Factory's supplemental real Wasm/SQLite probe and
+plain ABI engines admit DB guests. The database manifest and records use ABI 1.1;
+the `coglet_v0` import namespace is unchanged. Factory's supplemental real Wasm/SQLite probe and
 proof boundaries are documented in `coglets/factory/README.md`.
 
 

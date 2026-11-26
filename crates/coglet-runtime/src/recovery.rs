@@ -67,6 +67,12 @@ impl RuntimeService {
     /// No missing usage is synthesized and no guest is invoked. Without such
     /// evidence the attempt remains fenced indefinitely.
     pub fn recover_attempt(&mut self, record: &Value) -> Result<()> {
+        let historical = legacy_version(&self.state.runtime.manifest["version"]);
+        historical_scope(historical, || self.recover_attempt_inner(record))?;
+        self.upgrade_hash_if_ready()
+    }
+
+    fn recover_attempt_inner(&mut self, record: &Value) -> Result<()> {
         if !self.store.is_healthy() {
             return Err("WAL must be reopened before attempt reconciliation".into());
         }
@@ -140,7 +146,7 @@ impl RuntimeService {
                 .push(action["id"].as_str().ok_or("missing action ID")?.to_owned());
         }
         #[cfg(feature = "device")]
-        Self::receiver_finish_step(&mut next, &json!({"journal":record}))?;
+        Self::receiver_finish_step(&mut next, &json!({"journal":record}), &state.runtime.files)?;
         Self::finish_pending_stops(
             &mut next,
             journal.iter().filter(|r| r.get("step").is_some()).count() as u64,

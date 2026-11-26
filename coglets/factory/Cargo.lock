@@ -337,6 +337,7 @@ version = "0.1.0"
 dependencies = [
  "coglet-engine",
  "coglet-types",
+ "coglet-types-hub0",
  "fs2",
  "hex",
  "rusqlite",
@@ -418,6 +419,7 @@ dependencies = [
  "coglet-engine",
  "coglet-proto",
  "coglet-transform",
+ "coglet-types",
  "coglet-types-hub0",
  "ed25519-dalek 2.2.0",
  "hex",

@@ -214,12 +214,47 @@ fn local_contract_profile_defaults_and_unknowns() {
     }
 }
 
+#[test]
+fn local_contract_profiles_reject_old_public_records() {
+    for (source, rules) in [
+        (
+            include_str!("../../../spec/fixtures/abi/cases.json"),
+            &["step-record", "boundary-record", "trace"][..],
+        ),
+        (
+            include_str!("../../../spec/fixtures/database/cases.json"),
+            &["db-step-record", "db-trace"][..],
+        ),
+    ] {
+        let cases: Vec<Value> = serde_json::from_str(source).unwrap();
+        for rule in rules {
+            let value = &cases
+                .iter()
+                .find(|case| case["type"] == *rule && case["valid"] == true)
+                .unwrap()["value"];
+            let qualified = if rule.starts_with("db-") {
+                format!("database::{rule}")
+            } else {
+                format!("abi::{rule}")
+            };
+            for profile in [ContractProfile::Surface01, ContractProfile::Surface02] {
+                profile.validate(&qualified, value).unwrap();
+                for version in ["0.1", "0.2"] {
+                    let mut old = value.clone();
+                    old["version"] = json!(version);
+                    assert!(profile.validate(&qualified, &old).is_err());
+                }
+            }
+        }
+    }
+}
+
 fn manifest(version: &str) -> Value {
     let mut m = json!({"version":version,"id":format!("coglet:{}", "a".repeat(64)),
         "subscriptions":["softmax.app.view_changed"],"required_capabilities":["softmax.app"],
         "exclusive_outputs":["softmax.app_control"],
         "budgets":{"compute":1,"compute_mode":"fuel","memory_pages":1,"wall_time_us":1,"max_events":1,"host_bytes":1}});
-    if version == "0.2" {
+    if version == "1.1" || version == "0.2" {
         m["database"] = json!({"schema_min":0,"schema_max":1,"catalog_hash":"0".repeat(64)});
     }
     m
@@ -227,14 +262,14 @@ fn manifest(version: &str) -> Value {
 
 #[test]
 fn local_contract_profile_manifest_format_independent() {
-    for version in ["0.1", "0.2"] {
+    for version in ["1.0", "1.1"] {
         let mut m = manifest(version);
         assert!(ContractProfile::Surface01.validate_manifest(&m).is_err());
         ContractProfile::Surface02.validate_manifest(&m).unwrap();
         m["subscriptions"] = json!(["speech.start"]);
         ContractProfile::Surface01.validate_manifest(&m).unwrap();
         ContractProfile::Surface02.validate_manifest(&m).unwrap();
-        if version == "0.2" {
+        if version == "1.1" {
             m.as_object_mut().unwrap().remove("database");
         } else {
             m["database"] = json!({"schema_min":0,"schema_max":1,"catalog_hash":"0".repeat(64)});
@@ -242,11 +277,11 @@ fn local_contract_profile_manifest_format_independent() {
         assert!(ContractProfile::Surface01.validate_manifest(&m).is_err());
         assert!(ContractProfile::Surface02.validate_manifest(&m).is_err());
     }
-    for version in ["surface-0.2", "0.3", ""] {
-        assert!(
-            ContractProfile::Surface02
-                .validate_manifest(&manifest(version))
-                .is_err()
-        );
+    for version in ["0.1", "0.2", "surface-0.2", "0.3", ""] {
+        let mut old = manifest(version);
+        old["subscriptions"] = json!(["speech.start"]);
+        for profile in [ContractProfile::Surface01, ContractProfile::Surface02] {
+            assert!(profile.validate_manifest(&old).is_err());
+        }
     }
 }

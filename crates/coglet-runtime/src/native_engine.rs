@@ -358,7 +358,7 @@ impl crate::RuntimeService {
             .state
             .completed_segments
             .iter()
-            .any(|s| s.code_revision.is_some())
+            .any(|s| s.code_revision.is_some() || s.hash_upgrade)
         {
             config.trace_id = self
                 .state

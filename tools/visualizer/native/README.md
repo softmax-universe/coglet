@@ -18,17 +18,17 @@ SHA-256, producer revision, proof hash and final state hash are in
 `fixtures/provenance.json`. The fixture contains synthetic M2 test data, not a
 user archive. Tests verify both file hashes before using the actual trace.
 
-The source capture ran the unmodified `sim/check-native.sh`, then unmodified
-`sim/tests/test_native.py` with an operator-selected proof wrapper. At the normal
-proof invocation, after child-cogletd termination and before test cleanup, the
-wrapper copied `setup.json` and the stopped test WAL to a private directory,
-invoked the real `coglet-sandbox-proof` unchanged with the original arguments,
-and retained its actual report. Both Gridbot and Cartpole tests passed. Only
-Gridbot is committed here. This helper's `export` opened that stopped test WAL
-and used `RuntimeService::export_trace` to preserve the complete initial state,
-pending state, manifest/code blobs, records and trailing boundary. No live
-router WAL or database was scraped. Hashes bind bytes, not producer signatures,
-cutoff authentication, or admission/transform qualification.
+For ADR-0035 the trace is recaptured by
+`tools/visualizer/regenerate_state_hash_fixtures.py` (see its build/run instructions).
+It runs the production Gridbot evaluator and real WAMR daemon. After daemon
+termination, the normal proof invocation executes independent native replay and
+this helper's `export` opens only that stopped synthetic test WAL, preserving the
+complete initial state, pending state, manifest/code blobs, records and trailing
+boundary through `RuntimeService::export_trace`. The generator verifies exported
+step hashes against the actual proof before publishing gzip bytes and provenance.
+No old trace is converted or rehashed; no live router WAL or database is scraped.
+Hashes bind bytes, not producer signatures, cutoff authentication or admission/
+transform qualification.
 
 ## Operator commands
 

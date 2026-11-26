@@ -1,6 +1,7 @@
 //! ABI 0.2 archive export/import of exact lossless DB records, and the daemon
 //! admission boundary. Offline archive validation is not guest replay.
 use coglet_runtime::{MockEngine, Runtime, admit_manifest, cbor, digest};
+use coglet_types_current as coglet_types;
 use serde_json::{Value, json};
 
 const CATALOG: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -8,13 +9,16 @@ const CATALOG: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 fn send() -> Value {
     let cases: Vec<Value> =
         serde_json::from_str(include_str!("../../../conformance/abi/cases.json")).unwrap();
-    cases.iter().find(|c| c["name"] == "no-effects").unwrap()["steps"][0]["send"].clone()
+    let mut setup =
+        cases.iter().find(|c| c["name"] == "no-effects").unwrap()["steps"][0]["send"].clone();
+    setup["manifest"]["version"] = json!("1.0");
+    setup
 }
 
 fn database_setup() -> Value {
     let mut setup = send();
     let mut manifest = setup["manifest"].clone();
-    manifest["version"] = json!("0.2");
+    manifest["version"] = json!("1.1");
     manifest["database"] = json!({"schema_min":1,"schema_max":1,"catalog_hash":CATALOG});
     setup["manifest"] = manifest;
     // Trusted fixture observation, not an inferred fresh-database revision.
@@ -29,7 +33,7 @@ fn db_call() -> Value {
 }
 
 fn exact_record(mut record: Value) -> (Value, Vec<u8>) {
-    record["version"] = json!("0.2");
+    record["version"] = json!("1.1");
     record["db_before"] = json!(3);
     record["db_after"] = json!(3);
     record["db_schema_version"] = json!(1);
@@ -55,7 +59,7 @@ fn empty_database_archive_roundtrips_without_guest_execution() {
     let runtime = Runtime::from_fixture(&setup).unwrap();
     let id = &setup["inputs"]["trace_id"];
     let trace = runtime.export_trace(id).unwrap();
-    assert_eq!(trace["version"], "0.2");
+    assert_eq!(trace["version"], "1.1");
     assert!(trace["records"].as_array().unwrap().is_empty());
     assert_eq!(trace["initial_db_revision"], 3);
     assert_eq!(trace["final_db_revision"], 3);
@@ -91,7 +95,7 @@ fn database_archive_accepts_exact_lossless_records_and_rejects_projection_only()
     header["blobs"][digest(&raw)] = json!(hex::encode(&raw));
     let imported = Runtime::import_trace(&header).unwrap();
     let exported = imported.export_trace(&setup["inputs"]["trace_id"]).unwrap();
-    assert_eq!(exported["version"], "0.2");
+    assert_eq!(exported["version"], "1.1");
     assert_eq!(exported["records"][0]["calls"][0]["op"], "db");
     assert_eq!(
         exported["blobs"][digest(&raw)].as_str().unwrap(),
@@ -140,7 +144,7 @@ fn mixed_ordinary_records_on_db_manifest_do_not_export() {
         &mut MockEngine::new(setup["guest_script"].clone()),
     )
     .unwrap();
-    assert_eq!(live.records()[0]["version"], "0.1");
+    assert_eq!(live.records()[0]["version"], "1.0");
     let error = live.export_trace(&setup["inputs"]["trace_id"]).unwrap_err();
     assert!(
         error.contains("mixed") || error.contains("exact record bytes"),
@@ -149,7 +153,7 @@ fn mixed_ordinary_records_on_db_manifest_do_not_export() {
 }
 
 #[test]
-fn frozen_zero_one_archive_import_export_is_unchanged() {
+fn current_plain_archive_import_export_roundtrips() {
     let setup = send();
     let mut live = Runtime::from_fixture(&setup).unwrap();
     live.step(
@@ -158,7 +162,7 @@ fn frozen_zero_one_archive_import_export_is_unchanged() {
     )
     .unwrap();
     let trace = live.export_trace(&setup["inputs"]["trace_id"]).unwrap();
-    assert_eq!(trace["version"], "0.1");
+    assert_eq!(trace["version"], "1.0");
     assert_eq!(
         Runtime::import_trace(&trace)
             .unwrap()
@@ -191,7 +195,7 @@ fn database_boundary_seal_and_empty_successor_keep_observed_revision_across_wal_
     let change = json!({"actor":format!("hub:{}","3".repeat(64)),"target":setup["manifest"]["id"],
         "audit_id":"d".repeat(32),"ticket":null,"method":"debug.write","path":"/data/count","before":"30","after":"31"});
     let record = service.seal_boundary(id, 20, &[change]).unwrap();
-    assert_eq!(record["version"], "0.2");
+    assert_eq!(record["version"], "1.1");
     drop(service);
     let mut service = coglet_runtime::RuntimeService::open(&path, &setup, 64).unwrap();
     let trace = service.export_trace(id, 20).unwrap();

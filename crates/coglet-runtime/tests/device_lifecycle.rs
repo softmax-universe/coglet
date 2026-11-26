@@ -452,7 +452,7 @@ impl Env {
         git(&work, &["init", "--initial-branch=hub"]);
         let wasm = wat::parse_str(wat).unwrap();
         let mode = native_compute_mode();
-        let manifest = json!({"version":"0.1","id":self.coglet,"subscriptions":[],
+        let manifest = json!({"version":"1.0","id":self.coglet,"subscriptions":[],
             "required_capabilities":[],"exclusive_outputs":[],
             "budgets":{"compute":compute,"compute_mode":mode,"memory_pages":2,
                 "wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}});
@@ -1847,7 +1847,7 @@ async fn subprocess_lifecycle(resume: bool, tamper: bool) {
             state(&env.simple("hub.status").await),
             ("stopped".into(), Value::Null)
         );
-        let manifest = serde_json::to_vec(&json!({"version":"0.1","id":env.coglet,"subscriptions":["speech.start"],"required_capabilities":["speech.start"],"exclusive_outputs":["audio.mic","audio.speaker"],"budgets":{"compute":10000,"compute_mode":native_compute_mode(),"memory_pages":2,"wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}})).unwrap();
+        let manifest = serde_json::to_vec(&json!({"version":"1.0","id":env.coglet,"subscriptions":["speech.start"],"required_capabilities":["speech.start"],"exclusive_outputs":["audio.mic","audio.speaker"],"budgets":{"compute":10000,"compute_mode":native_compute_mode(),"memory_pages":2,"wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}})).unwrap();
         let extra = if resume {
             vec![("manifest.json", manifest.as_slice())]
         } else {

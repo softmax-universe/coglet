@@ -113,7 +113,7 @@ impl Fixture {
     fn new(code: Vec<u8>, mode: &str, grants: Vec<String>) -> Self {
         let root = tempfile::tempdir().unwrap();
         let cat = catalog();
-        let manifest = json!({"version":"0.2","id":OWNER,"subscriptions":[],
+        let manifest = json!({"version":"1.1","id":OWNER,"subscriptions":[],
             "required_capabilities":["db.read","db.write"],"exclusive_outputs":[],
             "budgets":{"compute_mode":mode,"compute":1000000,"memory_pages":3,"host_bytes":2000000,"wall_time_us":30000000,"max_events":1},
             "database":{"schema_min":1,"schema_max":1,"catalog_hash":cat.digest().unwrap()}});
@@ -243,7 +243,7 @@ impl Fixture {
             let lines: Vec<_> = preparation.lines().collect();
             assert_eq!(lines[0], "COGLET-PREPARED-1");
             let raw = hex::decode(lines[6]).unwrap();
-            let committed: Value = coglet_types::decode("database::db-step-record", &raw)
+            let committed: Value = coglet_types_current::decode("database::db-step-record", &raw)
                 .unwrap()
                 .deserialized()
                 .unwrap();

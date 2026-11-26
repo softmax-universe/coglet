@@ -68,7 +68,7 @@ def install(output, wal, trap=False):
     }
     budgets = {"compute": 100_000_000, "compute_mode": COMPUTE_MODE, "memory_pages": 256,
                "wall_time_us": 5_000_000, "max_events": 16, "host_bytes": 1_000_000}
-    manifest_value = {"version": "0.1", "id": COGLET, "subscriptions": ["speech.end"],
+    manifest_value = {"version": "1.0", "id": COGLET, "subscriptions": ["speech.end"],
                       "required_capabilities": ["speech.speak_chunk"],
                       "exclusive_outputs": ["audio.mic", "audio.speaker"], "budgets": budgets}
     setup = {"manifest": manifest_value,

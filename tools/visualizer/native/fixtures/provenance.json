@@ -1,11 +1,74 @@
 {
-  "producer_head": "4a94cea4ca1c6c2ec1e18024b3aaccdefdd479f0",
-  "producer_command": "sim/check-native.sh; then unmodified sim/tests/test_native.py with capture wrapper invoking real coglet-sandbox-proof",
-  "capture": "authorized synthetic M2 Gridbot test; stopped test WAL; no live router scraping",
-  "canonical_trace_sha256": "77c79fcb98f9e4198a4503301e52291a4279d1600509028affdc02ef9ffc2f79",
-  "canonical_trace_bytes": 49185661,
-  "proof_sha256": "9def2488032d5429ca38878e5507b0b213f53a5936a769a7e66b4ba02b7be457",
-  "fixture_sha256": "46f218fc71d11cc1526522f226cd27a628949a110439db4e15f19ea3e0243204",
-  "final_hash": "59c762853081b55d6ba0fdef9eaeb65896fca1eb0ab4cc4eee237027ef21b88b",
+  "producer_sha": "3119a673bf310f63d232308672fa85bfbbb395be",
+  "engine": "wamr",
+  "state_hash_definition": "git-sha256-tree-id (ADR-0035)",
+  "producer_command": "tools/visualizer/regenerate_state_hash_fixtures.py (real evaluate + stopped-WAL export)",
+  "full_trace_sha256": "c094176ba7d64fab5c36a968567696e4e665632dc025e37f340a7c239532ecd2",
+  "proof_output_sha256": "272feab5066e8d15dcd34c84574144626e8af47921730bbf0124d94a7f314ff5",
+  "independent_guest_reexecution": true,
+  "changed_seed_rejected": true,
+  "changed_guest_rejected": true,
+  "world": "gridbot-v1",
+  "seed": 42,
+  "config": {
+    "width": 8,
+    "height": 8,
+    "max_steps": 16
+  },
+  "actions": [
+    "east",
+    "east",
+    "south",
+    "south"
+  ],
+  "display_omits": [
+    "initial_files",
+    "blobs",
+    "/code",
+    "calls",
+    "usage"
+  ],
+  "steps": [
+    {
+      "output_hash": "cc19a0db7cd442cb30c2d14697ded429fdc3f182810657648394f755d66a1928",
+      "inbox_bytes": 0
+    },
+    {
+      "output_hash": "cc19a0db7cd442cb30c2d14697ded429fdc3f182810657648394f755d66a1928",
+      "inbox_bytes": 0
+    },
+    {
+      "output_hash": "e498a3d13774b9376b9f967b3e6d56eb44e412541a6933fbc0884195592f7508",
+      "inbox_bytes": 479
+    },
+    {
+      "output_hash": "e498a3d13774b9376b9f967b3e6d56eb44e412541a6933fbc0884195592f7508",
+      "inbox_bytes": 479
+    },
+    {
+      "output_hash": "d8ec63c667b3be683c31578de0d8f60e721eba528e476ce23d2cb1ff0386bd72",
+      "inbox_bytes": 958
+    },
+    {
+      "output_hash": "d8ec63c667b3be683c31578de0d8f60e721eba528e476ce23d2cb1ff0386bd72",
+      "inbox_bytes": 958
+    },
+    {
+      "output_hash": "d8d97c823b1302133727940a64dc3ee128e9ee94546fa2517e3c985c5715576a",
+      "inbox_bytes": 1437
+    },
+    {
+      "output_hash": "d8d97c823b1302133727940a64dc3ee128e9ee94546fa2517e3c985c5715576a",
+      "inbox_bytes": 1437
+    },
+    {
+      "output_hash": "56cdcb744bea9fd625b4a961c434da1082b387b37a60abfcb803f8b239fce9d9",
+      "inbox_bytes": 1916
+    }
+  ],
+  "fixture_sha256": "eb15db72c0b652c5917112d1bc119926024098b606a6b524c7f5319363bad8ad",
+  "canonical_trace_sha256": "c094176ba7d64fab5c36a968567696e4e665632dc025e37f340a7c239532ecd2",
+  "canonical_trace_bytes": 49185271,
+  "final_hash": "56cdcb744bea9fd625b4a961c434da1082b387b37a60abfcb803f8b239fce9d9",
   "records": 9
 }

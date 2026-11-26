@@ -58,7 +58,7 @@ fn limits(mode: &str) -> Limits {
     }
 }
 fn manifest(mode: &str, cat: &Catalog) -> Value {
-    json!({"version":"0.2","id":"coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","subscriptions":[],"required_capabilities":["db.read","db.write"],"exclusive_outputs":[],"budgets":{"compute_mode":mode,"compute":1_000_000,"memory_pages":3,"host_bytes":1_000_000,"wall_time_us":30_000_000,"max_events":1},"database":{"schema_min":1,"schema_max":1,"catalog_hash":cat.digest().unwrap()}})
+    json!({"version":"1.1","id":"coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","subscriptions":[],"required_capabilities":["db.read","db.write"],"exclusive_outputs":[],"budgets":{"compute_mode":mode,"compute":1_000_000,"memory_pages":3,"host_bytes":1_000_000,"wall_time_us":30_000_000,"max_events":1},"database":{"schema_min":1,"schema_max":1,"catalog_hash":cat.digest().unwrap()}})
 }
 fn pins(db: &Database, cat: &Catalog, code: &[u8]) -> Pins {
     let (schema_version, schema_hash) = db.schema_pin().unwrap();
@@ -281,7 +281,7 @@ fn db_deployment_pins_refuse_before_instantiation() {
         let mut pins = pins(&db, &cat, &code);
         let mut grants = vec!["db.read".into(), "db.write".into()];
         match change {
-            0 => manifest["version"] = json!("0.1"),
+            0 => manifest["version"] = json!("1.0"),
             1 => {
                 manifest["id"] =
                     json!("coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")

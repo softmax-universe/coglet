@@ -23,7 +23,7 @@ def cases():
 
 
 if __name__ == '__main__':
-    path = ROOT / 'conformance/abi/manifest-admission.json'
+    path = ROOT / 'spec/fixtures/abi/manifest-admission-timeline.fixture'
     text = json.dumps(cases(), indent=2) + '\n'
     if '--check' in sys.argv:
         if not path.exists() or path.read_text() != text:

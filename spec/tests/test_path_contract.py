@@ -41,7 +41,9 @@ class PathContract(unittest.TestCase):
         for c in ['\n', '\x01', '\x7f', '\\']:
             rec = copy.deepcopy(base)
             rec['output_files']['/data/a' + c + 'b'] = ''
-            rec['output_hash'] = digest(rec['output_files'])
+            # ADR-0035 refuses this path before any state id can be computed.
+            with self.assertRaisesRegex(ValueError, 'unsafe path'):
+                digest(rec['output_files'])
             rec['record_hash'] = record_hash(rec)
             with self.assertRaisesRegex(ValueError, 'unsafe path'):
                 check_record(rec)

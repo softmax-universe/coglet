@@ -32,7 +32,7 @@ pub fn setup(trace: &Value) -> Value {
             .unwrap(),
     )
     .unwrap();
-    let manifest: Value = coglet_types::decode("manifest", &raw)
+    let manifest: Value = coglet_types_current::decode("manifest", &raw)
         .unwrap()
         .deserialized()
         .unwrap();

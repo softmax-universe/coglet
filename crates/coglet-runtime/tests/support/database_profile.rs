@@ -89,7 +89,7 @@ fn app_database_profile_path<E: SharedEngine>(
     let calls = field(&record, "calls").as_array().unwrap();
     assert_eq!(calls.len(), 3);
     assert_eq!(field(field(&calls[1], "argument"), "kind").as_text(), Some("softmax.app.invoke"));
-    assert_eq!(field(&record, "version").as_text(), Some("0.2"));
+    assert_eq!(field(&record, "version").as_text(), Some("1.1"));
     if recovery == 2 {
         assert!(field(&record, "actions").as_array().unwrap().is_empty());
         assert_eq!(field(&record, "input_files"), field(&record, "output_files"));

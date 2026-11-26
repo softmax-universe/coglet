@@ -76,7 +76,7 @@ def schemas():
         branches = value.get('oneOf', value.get('anyOf',[value]))
         for branch in branches:
             props = branch['properties']
-            props['version'] = const('0.2')
+            props['version'] = const('1.1')
             extra = {}
             if old == 'manifest':
                 extra['database'] = ref('db-config')
@@ -103,7 +103,7 @@ def extended_cddl():
     for new,old in [('db-manifest','manifest'),('db-step-record','step-record'),('db-trace','trace'),('db-boundary-record','boundary-record')]:
         line=next(x for x in source if x.startswith(old+' = '))
         line=new+line[len(old):]
-        line=line.replace('version: "0.1"','version: "0.2"').replace('"version": "0.1"','"version": "0.2"')
+        line=line.replace('version: "1.0"','version: "1.1"').replace('"version": "1.0"','"version": "1.1"')
         if old=='manifest':
             line=line[:-1]+', database: db-config}'
         elif old=='step-record':
@@ -146,7 +146,7 @@ def fixtures():
     for old,new in [('manifest','db-manifest'),('step-record','db-step-record'),('trace','db-trace')]:
         candidate=next((deepcopy(c['value']) for c in base if c.get('type')==old and c.get('valid')),None)
         if candidate is None: continue
-        candidate['version']='0.2'
+        candidate['version']='1.1'
         if old=='manifest': candidate['database']=dict(schema_min=1,schema_max=2,catalog_hash='a'*64)
         elif old=='step-record':
             candidate.update(db_before=7,db_after=7,db_schema_version=1,db_catalog_hash='a'*64)

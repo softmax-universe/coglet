@@ -18,19 +18,19 @@ m1-tests = ["native-engine"]
 ffi-test-hooks = []
 # Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
 echo-smoke = ["native-engine"]
-native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:coglet-fs", "dep:wasmparser", "dep:coglet-db"]
+native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:wasmparser", "dep:coglet-db"]
 
 [dependencies]
 coglet-db = { path = "../coglet-db", optional = true }
 coglet-engine = { path = "../coglet-engine", optional = true }
 coglet-engine-wamr = { path = "../coglet-engine-wamr", optional = true }
-coglet-fs = { path = "../coglet-fs", optional = true }
+coglet-fs = { path = "../coglet-fs" }
 wasmparser = { version = "=0.245.1", optional = true }
 libc = "0.2"
 # ADR-0031: existing implementation remains hub/0 until its separate migration.
 coglet-types = { package = "coglet-types-hub0", path = "../coglet-types-hub0" }
-# Selected surface-0.2 roots are not present in the frozen hub/0 snapshot.
-# Keep legacy hub/default validation pinned; route only qualified surface02 roots here.
+# Current ABI and selected surface-0.2 roots use the current codec;
+# hub protocol validation remains pinned to the frozen hub/0 snapshot.
 coglet-types-current = { package = "coglet-types", path = "../coglet-types" }
 coglet-proto = { path = "../coglet-proto", optional = true }
 serde = { version = "1", features = ["derive"] }

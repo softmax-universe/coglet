@@ -5,15 +5,23 @@ Only fixtures/schemas are generated; this is not a runtime implementation.
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 from test_common import encode
+from state_hash import snapshot_hash as digest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get('COGLET_ABI_GENERATOR_ROOT', Path(__file__).resolve().parents[2]))
+# The serving runtime deliberately pins the old router contract until its
+# migration lands. ABI hashes/versions still use the current contract.
+RUNTIME_CORPUS = os.environ.get('COGLET_ABI_RUNTIME_CORPUS') == '1'
+WRITE_METHOD = 'debug.write' if RUNTIME_CORPUS else 'manage.write'
+STEP_NAME = 'debug-step' if RUNTIME_CORPUS else 'manage-step'
+STEP_KIND = 'runtime.debug_step' if RUNTIME_CORPUS else 'runtime.manage_step'
 BASE = 'https://coglet.dev/spec/'
 COMMON = BASE + 'messages/common.schema.json#/$defs/'
 ABI = BASE + 'messages/abi.schema.json'
 DEFS = {}
-CDDL = []
+CDDL = ['; Filesystem state hashes: Git SHA-256 tree ids, 100644 blobs, 40000 trees, Git ordering (ADR-0035).', '; Snapshot CBOR is the wire representation, not the filesystem hash input.']
 
 
 def ref(name):
@@ -45,7 +53,7 @@ def record(name, fields):
 
 def write(path, value):
     # Spec case contracts stay separate from the legacy runtime harness corpus.
-    if path.startswith('conformance/abi/'):
+    if path.startswith('conformance/abi/') and not RUNTIME_CORPUS:
         path = 'spec/fixtures/abi/' + Path(path).stem + '-timeline.fixture'
     path = ROOT / path
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -76,10 +84,6 @@ def write(path, value):
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + '\n')
 
 
-def digest(value):
-    return hashlib.sha256(encode(value)).hexdigest()
-
-
 U = ref('uint64')
 S = {'type': 'string', 'minLength': 1}
 HEX = {'type': 'string', 'pattern': '^([0-9a-f]{2})*(?![\\s\\S])'}
@@ -93,7 +97,7 @@ rule('hex', HEX, 'tstr .regexp "^([0-9a-f]{2})*$"')
 rule('path', PATH, 'tstr .regexp ' + json.dumps(PATH_PATTERN.replace(r'\u00', r'\x') + '$'))
 # Path-key grammar and blob digest keys are cross-field semantic checks. pycddl
 # 0.6.4 incorrectly applies a regex key control to the entire enclosing map.
-rule('snapshot', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')
+rule('snapshot', {'type': 'object', 'additionalProperties': local('hex'), 'description': 'Absolute paths to hex bytes. Filesystem state identity is the Git SHA-256 tree object id (100644 blobs, 40000 directories, Git ordering), not a hash of this CBOR map; see ABI and ADR-0035.'}, '{* tstr => hex}')
 positive = {'type': 'integer', 'minimum': 1, 'maximum': 2**64-1}
 record('budgets', [('compute', positive, '1..18446744073709551615'),
                    ('compute_mode', S, 'tstr .size (1..18446744073709551615)'),
@@ -144,7 +148,7 @@ record('boundary-change', [('actor', ref('source-id'), 'source-id'), ('audit_id'
 record('engine', [('build', S, 'tstr .size (1..18446744073709551615)'), ('policy', S, 'tstr .size (1..18446744073709551615)')])
 record('usage', [(k, U, 'uint64') for k in ['compute', 'memory_pages', 'wall_time_us', 'host_bytes']])
 record('failure', [('kind', {'enum': ['compute', 'memory', 'wall', 'host_bytes', 'trap', 'guest_return', 'invalid_argument']}, '"compute" / "memory" / "wall" / "host_bytes" / "trap" / "guest_return" / "invalid_argument"'), ('error', ref('error'), 'error')])
-fields = [('version', {'const': '0.1'}, '"0.1"'), ('trace_id', ref('correlation-id'), 'correlation-id'), ('coglet', ref('coglet-id'), 'coglet-id')]
+fields = [('version', {'const': '1.0'}, '"1.0"'), ('trace_id', ref('correlation-id'), 'correlation-id'), ('coglet', ref('coglet-id'), 'coglet-id')]
 stepfields = fields + [(k, U, 'uint64') for k in ['step', 'logical_time', 'seed']] + [
  ('previous', {'anyOf': [local('hash'), {'type': 'null'}]}, 'hash / null')]
 stepfields += [(k, local('hash'), 'hash') for k in ['code_hash', 'manifest_hash', 'before_hash', 'input_hash', 'output_hash', 'record_hash']]
@@ -171,13 +175,19 @@ record('boundary-record', fields + [
 rule('action-rejection', {'allOf': [ref('action-accept'), {'properties': {'accepted': {'const': False}}}]},
      'action-accept .and ({id: action-id, correlation_id: correlation-id, accepted: false, error: error})')
 record('trace', fields + [('initial_effect_ids', local('effect-ledger'), 'effect-ledger'), ('initial_actions', arr(ref('action')), '[* action]'), ('initial_inbox_wakes', arr(U), '[* uint64]'), ('initial_hash', local('hash'), 'hash'), ('initial_files', local('snapshot'), 'snapshot'), ('code_hash', local('hash'), 'hash'), ('manifest_hash', local('hash'), 'hash'), ('final_hash', local('hash'), 'hash'), ('trailing_boundary', {'anyOf': [local('boundary-record'), {'type': 'null'}]}, 'boundary-record / null'), ('initial_timers', arr(local('timer-request')), '[* timer-request]'), ('initial_llm_requests', arr(local('llm-request')), '[* llm-request]'), ('records', arr(local('step-record')), '[* step-record]'), ('blobs', {'type': 'object', 'additionalProperties': local('hex')}, '{* tstr => hex}')])
-manifest = obj({'version': {'const': '0.1'}, 'id': ref('coglet-id'),
+manifest = obj({'version': {'const': '1.0'}, 'id': ref('coglet-id'),
                 **{k: dict(arr(ref('capability-name')), uniqueItems=True) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']},
                 'budgets': {'$ref': ABI + '#/$defs/budgets'}})
 manifest.update({'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': BASE + 'manifest.schema.json'})
 write('spec/manifest.schema.json', manifest)
+# The catalog/grant scenarios are authored data; their embedded manifest follows
+# the generated ABI version without changing those scenarios' semantics.
+admission_path = ROOT / 'spec/fixtures/abi/manifest-admission.fixture'
+admission_vectors = json.loads(admission_path.read_text())
+admission_vectors['manifest']['version'] = manifest['properties']['version']['const']
+write('spec/fixtures/abi/manifest-admission.fixture', admission_vectors)
 # Manifest CDDL is an imported ABI fixture rule, sharing common definitions.
-rule('manifest', obj({'version': {'const': '0.1'}, 'id': ref('coglet-id'), **{k: arr(ref('capability-name')) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']}, 'budgets': local('budgets')}), '{version: "0.1", id: coglet-id, subscriptions: [* capability-name], required_capabilities: [* capability-name], exclusive_outputs: [* capability-name], budgets: budgets}')
+rule('manifest', obj({'version': {'const': '1.0'}, 'id': ref('coglet-id'), **{k: arr(ref('capability-name')) for k in ['subscriptions', 'required_capabilities', 'exclusive_outputs']}, 'budgets': local('budgets')}), '{version: "1.0", id: coglet-id, subscriptions: [* capability-name], required_capabilities: [* capability-name], exclusive_outputs: [* capability-name], budgets: budgets}')
 ROOT_RULES = ['trace', 'step-record', 'boundary-record', 'inbox-message', 'timer-request', 'llm-request', 'llm-reply', 'log-entry', 'manifest']
 write('spec/messages/abi.schema.json', {'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': ABI, 'anyOf': [local(k) for k in ROOT_RULES], '$defs': DEFS})
 (ROOT / 'spec/messages/abi.cddl').write_text('; Import common.cddl after this file. Shapes only; semantic invariants are in abi.md.\nabi = ' + ' / '.join(ROOT_RULES) + '\n' + '\n'.join(CDDL) + '\n')
@@ -187,7 +197,7 @@ SURFACE = 'surface:' + '2'*64
 HUB = 'hub:' + '3'*64
 ID = '4'*32
 budget = dict(compute=10000, compute_mode='fixture.interpreter', memory_pages=2, wall_time_us=100000, max_events=16, host_bytes=65536)
-man = dict(version='0.1', id=COG, subscriptions=['sensor.tick'], required_capabilities=['motor.move', 'llm.complete'], exclusive_outputs=['motor.move'], budgets=budget)
+man = dict(version='1.0', id=COG, subscriptions=['sensor.tick'], required_capabilities=['motor.move', 'llm.complete'], exclusive_outputs=['motor.move'], budgets=budget)
 event = dict(source=SURFACE, kind='sensor.tick', seq=0, logical_time=10, payload={}, correlation_id=ID)
 files = {'/code/bin/step.wasm': '0061736d01000000', '/data/count': '30'}
 code = bytes.fromhex(files['/code/bin/step.wasm'])
@@ -195,13 +205,15 @@ manifest_bytes = encode(man)
 codehash = hashlib.sha256(code).hexdigest()
 manhash = hashlib.sha256(manifest_bytes).hexdigest()
 # Test-only identity transform provenance, not a qualified production build.
-provenance = dict(version='1.0', source_tree=digest({k: v for k, v in files.items() if k.startswith('/code/')}),
+code_source = ({'source_commit': 'a'*40} if RUNTIME_CORPUS else
+               {'source_tree': digest({k: v for k, v in files.items() if k.startswith('/code/')})})
+provenance = dict(version='0.1' if RUNTIME_CORPUS else '2.0', **code_source,
                   recipe_sha256=hashlib.sha256(b'fixture recipe').hexdigest(),
                   policy_sha256=hashlib.sha256(b'test-only policy').hexdigest(),
                   transform_sha256=hashlib.sha256(b'test-only identity transform').hexdigest(),
                   original_sha256=codehash, rewritten_sha256=codehash)
 files['/code/build/provenance.cbor'] = encode(provenance).hex()
-base = dict(version='0.1', trace_id='5'*32, coglet=COG, step=0, logical_time=10, seed=7, previous=None,
+base = dict(version='1.0', trace_id='5'*32, coglet=COG, step=0, logical_time=10, seed=7, previous=None,
             code_hash=codehash, manifest_hash=manhash, before_hash=digest(files), input_hash=digest(files), output_hash=digest(files),
             engine=dict(build='fixture-v1', policy='TBD-by-ADR-0003'), budgets=budget, grants=man['required_capabilities'], events=[event],
             boundary=[], calls=[], actions=[], timers=[], llm_requests=[], logs=[], input_files=files, output_files=files,
@@ -210,7 +222,7 @@ base = dict(version='0.1', trace_id='5'*32, coglet=COG, step=0, logical_time=10,
 def seal(rec):
     rec = copy.deepcopy(rec)
     rec.pop('record_hash', None)
-    rec['record_hash'] = digest(rec)
+    rec['record_hash'] = hashlib.sha256(encode(rec)).hexdigest()
     return rec
 
 base = seal(base)
@@ -221,11 +233,11 @@ action = dict(id=ID, coglet=COG, capability='motor.move', args=dict(x=1), deadli
 llm_reply = dict(request_id=ID, status='succeeded', output=dict(text='hello'))
 inbox = dict(index=0, id=ID, sender=HUB, event=dict(event, source=HUB, kind='hub.steer', payload=dict(text='hello')))
 empty_ledger = dict(actions=[], timers=[], llm_requests=[])
-trace = dict(version='0.1', trace_id=base['trace_id'], coglet=COG, initial_effect_ids=empty_ledger, initial_actions=[], initial_inbox_wakes=[], initial_hash=base['before_hash'], initial_files=files, code_hash=codehash, manifest_hash=manhash, final_hash=base['output_hash'], trailing_boundary=None, initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
-valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method='manage.write', target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
+trace = dict(version='1.0', trace_id=base['trace_id'], coglet=COG, initial_effect_ids=empty_ledger, initial_actions=[], initial_inbox_wakes=[], initial_hash=base['before_hash'], initial_files=files, code_hash=codehash, manifest_hash=manhash, final_hash=base['output_hash'], trailing_boundary=None, initial_timers=[], initial_llm_requests=[], records=[base], blobs={codehash: code.hex(), manhash: manifest_bytes.hex()})
+valids = {'timer-request': timer, 'llm-request': llm, 'llm-reply': llm_reply, 'log-entry': log, 'inbox-message': inbox, 'budgets': budget, 'snapshot': files, 'call': dict(op='timer', argument=timer, result=0), 'engine': base['engine'], 'usage': base['usage'], 'step-record': base, 'trace': trace, 'manifest': man, 'boundary-change': dict(actor=HUB, audit_id=ID, ticket=None, method=WRITE_METHOD, target=COG, path='/data/count', before='30', after='31'), 'failure': dict(kind='wall', error=dict(code='deadline_exceeded', message='step expired', retryable=False))}
 valids['action-rejection'] = dict(id=ID, correlation_id=ID, accepted=False,
     error=dict(code='permission_denied', message='grant revoked', retryable=False))
-valids['boundary-record'] = seal(dict(version='0.1', trace_id=base['trace_id'], coglet=COG,
+valids['boundary-record'] = seal(dict(version='1.0', trace_id=base['trace_id'], coglet=COG,
     logical_time=20, previous=None, before_hash=digest(files),
     output_hash=digest(dict(files, **{'/data/count': '31'})),
     boundary=[valids['boundary-change']], output_files=dict(files, **{'/data/count': '31'})))
@@ -251,10 +263,10 @@ write('spec/fixtures/abi/cases.json', cases)
 # are the language-neutral mock-engine input; adapters supply equivalent guests.
 timelines = []
 records = []
-for name in ['manage-step', 'no-effects', 'action', 'timer', 'llm', 'log', 'abort-wall', 'abort-compute', 'abort-memory', 'abort-host_bytes', 'inbox-boundary', 'invalid-call', 'duplicate-timer', 'denied-action']:
+for name in [STEP_NAME, 'no-effects', 'action', 'timer', 'llm', 'log', 'abort-wall', 'abort-compute', 'abort-memory', 'abort-host_bytes', 'inbox-boundary', 'invalid-call', 'duplicate-timer', 'denied-action']:
     rec = copy.deepcopy(base)
-    if name == 'manage-step':
-        rec['events'] = [dict(event, source=COG, kind='runtime.manage_step', payload={})]
+    if name == STEP_NAME:
+        rec['events'] = [dict(event, source=COG, kind=STEP_KIND, payload={})]
     elif name == 'invalid-call':
         rec['calls'] = [dict(op='timer', argument_hex='ff', result=1)]
     elif name == 'duplicate-timer':
@@ -312,7 +324,10 @@ for name, source, mutate in [
     # JSON copy breaks aliases, as real archived JSON does.
     bad = json.loads(json.dumps(bad))
     mutate(bad)
-    bad['output_hash'] = digest(bad['output_files'])
+    # Unmappable paths have no state identity under ADR-0035. Keep the old
+    # advertised hash for that rejection vector; all mappable mutations rehash.
+    if name != 'unsafe-path-rehashed':
+        bad['output_hash'] = digest(bad['output_files'])
     semantics.append(dict(name=name, valid=False, value=seal(bad)))
 write('spec/fixtures/abi/semantic-cases.fixture', semantics)
 
@@ -378,13 +393,13 @@ write('conformance/abi/provenance.json', [dict(name=c['name'], steps=[
 ]) for c in provenance_cases])
 
 trace_case('async-reply-control', reply_trace)
-debug_trace = dict(trace, records=[dict(records)['manage-step']])
-trace_case('manage-step-control', debug_trace)
+debug_trace = dict(trace, records=[dict(records)[STEP_NAME]])
+trace_case(STEP_NAME+'-control', debug_trace)
 for field, value in [('source', SURFACE), ('logical_time', 9), ('payload', {'untrusted': True})]:
     bad = copy.deepcopy(debug_trace)
     bad['records'][0]['events'][0][field] = value
     bad['records'][0] = seal(bad['records'][0])
-    trace_case('manage-step-wrong-'+field, bad, False, 'debug step wake binding')
+    trace_case(STEP_NAME+'-wrong-'+field, bad, False, 'debug step wake binding')
 for name, error in [('reply-missing-output', 'embedded llm-reply'),
                     ('inbox-missing-sender', 'embedded inbox-message'),
                     ('inbox-spaces', 'noncanonical inbox'),

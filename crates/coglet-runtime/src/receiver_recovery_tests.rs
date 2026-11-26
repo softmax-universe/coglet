@@ -212,6 +212,60 @@ fn prepared_step_revocation_and_cancel_retire_source_reservations_atomically() {
 }
 
 #[test]
+fn debug_step_audit_keeps_cbor_identity_on_completion_and_recovery() {
+    struct Lost;
+    impl Engine for Lost {
+        fn execute(&mut self, _: &Value, _: &mut StepHost) -> Result<EngineReport> {
+            Err("observation withheld".into())
+        }
+    }
+    for recover in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("state.wal");
+        let setup = setup();
+        let mut original = service(&path, &setup, 8);
+        let step = prepared(&mut original, &setup);
+        let before = digest(&cbor(&json!(original.state.runtime.files.files())).unwrap());
+        let mut observer = original.state.runtime.clone();
+        let event = original.state.router.events().next().unwrap().clone();
+        let mut inputs = setup["inputs"].clone();
+        inputs["events"] = json!([event]);
+        original.debug_executing = true;
+        let record = if recover {
+            assert!(original.run_next(&inputs, &mut Lost).is_err());
+            drop(original);
+            original = RuntimeService::open(&path, &setup, 8).unwrap();
+            let observed = observer
+                .step(&inputs, &mut MockEngine::new(setup["guest_script"].clone()))
+                .unwrap();
+            original.recover_attempt(&observed["journal"]).unwrap();
+            observed["journal"].clone()
+        } else {
+            original
+                .run_next(&inputs, &mut MockEngine::new(setup["guest_script"].clone()))
+                .unwrap()
+                .unwrap()["journal"]
+                .clone()
+        };
+        let after = digest(&cbor(&json!(original.state.runtime.files.files())).unwrap());
+        assert_ne!(record["before_hash"], before);
+        assert_ne!(record["output_hash"], after);
+        let audit = original.state.receiver.audit.last().unwrap();
+        assert_eq!(audit["operation_id"], step["correlation_id"]);
+        assert_eq!(audit["before_hash"], before);
+        assert_eq!(audit["after_hash"], after);
+        assert_eq!(audit["outcome"], "applied");
+        drop(original);
+        let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+        assert_eq!(
+            reopened.state.receiver.audit.last().unwrap()["after_hash"],
+            after
+        );
+        assert_eq!(reopened.records()[0]["output_hash"], record["output_hash"]);
+    }
+}
+
+#[test]
 fn unresolved_step_cannot_cancel_and_reconciliation_finishes_original_receipt() {
     struct Lost;
     impl Engine for Lost {
