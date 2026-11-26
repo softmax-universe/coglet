@@ -271,23 +271,42 @@ coglet code against unforged `5c1b48aa` from outside the root workspace:
 bash spikes/unforged-proof/run.sh
 ```
 
-It uses `UNFORGED_DIR` if set, otherwise a checkout of `5c1b48aa` next to this
-repository, and exits 0 only if every assertion and `git fsck --full` passes.
-It needs access to the private unforged repository.
+[Run it](../../spikes/unforged-proof/README.md#run-it) says how it finds an
+unforged checkout at `5c1b48aa`; it needs access to the private repository. It
+exits 0 only if every assertion and `git fsck --full` passes. The spike crate
+ships as `Cargo.toml.in`, materialized in a temporary directory, so it adds no
+tracked `Cargo.toml`, `Cargo.lock` or `build.rs` and does not move the
+dependency mirror key
+([CI and dependency hygiene](../../spikes/unforged-proof/README.md#ci-and-dependency-hygiene)).
+
+**How it binds the engine.** The spike builds its own resolver commit: a
+`strategy` with `driver = coglet-step`, `deterministic = true`,
+`engine = <pin>` and `validation = coglet`; a `drivers/coglet-step` script; and
+`bin/coglet-wamr-step`, a helper that links `coglet-runtime`'s WAMR engine.
+Cold-path steps run through `gecaos::coglet::execute_coglet_step` with
+`LocalDriverRunner`, so the driver really execs the WAMR helper. Hot-path
+steps write their step commits in process with `MemoryObjectBatch` and
+`LooseObjectStore`, naming the same resolver commit in `Engine:`.
 
 | Act | Stage | Checks |
 |---|---|---|
 | 0 | ADR-0035 | `coglet_fs::Snapshot::tree_hash`, `unforged_gitobj::snapshot_tree_hash_sha256` and `git --object-format=sha256` agree on the empty snapshot, `coglets/counter` states and sort edge cases, and both refuse `.git` paths |
 | 1 | 1 | [First test](../cogent-design/unforged.md#first-test): `coglet_counter.wasm` on WAMR for three wakes and one aborted step; replay with the cache off gives the same four commit ids and `executed: true`; cache on gives `executed: false`; a new engine pin gives `executed: true`; a non-deterministic resolver is never cached |
-| 2 | 2 | A 100-step chain replayed as one job with no `git` spawn per step; two maintainers' SHA-1 signatures over the same tree both survive translation |
-| 3 | 3 | A signed ref statement with an iroh key under per-ref rights; a state push without `/data/count`; fetch refused without a `data.read` grant and allowed with one; compaction keeps recent ids |
-| 4 | 4 | A staged `/net/github` call through `0x20`; an ungranted patch pauses with `state` unmoved; a lease refused to a step and granted to an adapter, with no secret bytes in `git rev-list --objects --all` |
+| 2 | 2 | A 100-step WAMR chain replayed in one pass with no `git` spawn (counted with `gecaos::git::git_spawn_count`), plus a control run of `replay_step_chain` on unforged's built-in module; two maintainers' SHA-1 signatures over the same tree both survive translation |
+| 3 | 3 | A signed `hub-ref-statement` with an iroh key under per-ref rights, byte-equal to `coglet-types-hub0`'s encoding; a state push without `/data/count`; reads refused without a `data.read` grant and allowed with one; compaction keeps recent ids |
+| 4 | 4 | A staged `/net/github` call through `0x20`, dispatched once; an ungranted patch pauses with `state` unmoved, then merges once granted; a lease refused to a step and granted to an adapter, with no secret bytes in any git object |
 
-What the spike establishes: the codec agrees with coglet-fs, and coglet's
-real engine produces the commit ids unforged expects. What it does not:
-anything about `cogletd` itself, iOS or EO1 behaviour, CAOS (the spike runs
-local jobs), or the spec. The [spike README](../../spikes/unforged-proof/README.md)
-is the authority for exactly how each Act binds the engine.
+`replay_step_chain` is hard-wired to unforged's built-in interpreter, so Act 2's
+WAMR replay is a spike-local single pass assembled from unforged's in-process
+primitives (`collect_recorded_chain_inproc`, `load_strict_tree_inproc`,
+`MemoryObjectBatch`, `StepCommitSpec`), not a stock unforged job.
+
+What the spike establishes: the codec agrees with coglet-fs, and coglet's real
+engine, driven through unforged's cold path, reproduces the hot path's commit
+ids. What it does not: anything about `cogletd` itself, iOS or EO1 behaviour,
+CAOS, or the spec. Its [Known gaps](../../spikes/unforged-proof/README.md#known-gaps)
+and [What each act proves](../../spikes/unforged-proof/README.md#what-each-act-proves)
+are the authority on detail.
 
 ## Open gates
 
@@ -297,8 +316,9 @@ Before any of this reaches `crates/coglet-*` or `spec/`:
    whether coglet depends on `unforged-gitobj`, how, and with which
    distribution (see [Consuming](#consuming-unforged-gitobj)).
 2. **An engine binding in unforged.** The resolver's engine pin must name the
-   engine build the cold path runs (WAMR at a given id), in stock unforged, not
-   only in the spike.
+   engine build the cold path runs (WAMR at a given id) in stock unforged, and
+   `replay_step_chain` needs an engine hook; today both exist only in the
+   spike.
 3. **CAOS.** Review and deploy of `softmax-universe/caos#502`; until then
    replays on CAOS use the salt fallback. CAOS on SHA-256 remains a separate,
    larger track.
