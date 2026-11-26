@@ -222,7 +222,8 @@ final class SoftmaxUITests: XCTestCase {
                 && records.last?["keyCode"] as? Int == 53
                 && records.contains { $0["phase"] as? String == "arrival" }
                 && driver.count == 28
-            let status = !valid ? "missingOrInvalid" : (document?["dropped"] as? Int == 0 ? "complete" : "overflow")
+            let dropped = document?["dropped"] as? Int
+            let status = (dropped ?? 0) > 0 ? "overflow" : (valid && dropped == 0 ? "complete" : "missingOrInvalid")
             var envelope: [String: Any] = ["schema": 1, "captureStatus": status, "driver": driver]
             if let document { envelope["app"] = document }
             if let evidence = try? JSONSerialization.data(withJSONObject: envelope, options: [.sortedKeys]) {

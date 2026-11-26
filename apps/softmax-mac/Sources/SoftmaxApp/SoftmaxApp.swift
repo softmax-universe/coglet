@@ -39,7 +39,7 @@ enum SettingsArrowCapture {
         let matchCount: Int?
         let searchFocused: Bool?
     }
-    struct Document: Codable {
+    struct Document: Encodable {
         let schema = 1
         let boundary = "finalEscapeBeforeDispatch"
         let complete = true
