@@ -2,6 +2,9 @@
 //! coordinator. Probe-only callers retain the same negotiation shell.
 use crate::phase_evidence::{Phase, mark};
 use crate::{Result, SURFACE_MAX_FRAME, SurfaceBinding, SurfaceSession};
+#[cfg(all(test, target_os = "linux"))]
+#[path = "d1_socket_tests.rs"]
+mod d1_tests;
 #[cfg(test)]
 #[path = "phase_socket_tests.rs"]
 mod phase_tests;

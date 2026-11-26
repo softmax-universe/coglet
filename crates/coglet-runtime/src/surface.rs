@@ -45,7 +45,12 @@ impl SurfaceBinding {
     }
 }
 
+#[cfg(test)]
+type TestPumpHook = Box<dyn FnMut(&SurfaceSession, u64) + Send>;
+
 pub struct SurfaceSession {
+    #[cfg(test)]
+    test_pump_hook: Option<TestPumpHook>,
     phase: Option<crate::phase_evidence::Sink>,
     catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     /// Trusted local ceiling (what this runtime can validate), never peer input.
@@ -80,6 +85,16 @@ pub struct SurfaceSession {
     sent_dispatches: BTreeSet<String>,
 }
 impl SurfaceSession {
+    #[cfg(test)]
+    pub(crate) fn test_set_pump_hook(&mut self, hook: TestPumpHook) {
+        self.test_pump_hook = Some(hook);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_last_received(&self) -> u64 {
+        self.last_received
+    }
+
     pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
         self.phase.clone()
     }
@@ -96,6 +111,8 @@ impl SurfaceSession {
     }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
+            #[cfg(test)]
+            test_pump_hook: None,
             phase: None,
             catalog: std::sync::Arc::new(crate::TrustedExtensionCatalog::default()),
             ceiling: crate::ContractProfile::Surface01,
@@ -151,6 +168,13 @@ impl SurfaceSession {
     pub fn pump_dispatch(&mut self, now: u64) -> Result<()> {
         if !self.negotiated || self.closed {
             return Ok(());
+        }
+        // D1 gates inside the pump, AFTER the transport's tick/sample. The
+        // callback cannot renew the already-sampled authority for this read.
+        #[cfg(test)]
+        if let Some(mut hook) = self.test_pump_hook.take() {
+            hook(self, now);
+            self.test_pump_hook = Some(hook);
         }
         let Some(service) = self.service.clone() else {
             return Ok(());

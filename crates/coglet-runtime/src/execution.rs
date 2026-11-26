@@ -202,6 +202,11 @@ pub struct RuntimeService {
     native: Option<(native_engine::NativeSchedule, native_engine::NativeEngine)>,
 }
 impl RuntimeService {
+    #[cfg(test)]
+    pub(crate) fn test_set_clock_sample(&mut self, sample: clock::TestClockSample) {
+        self.test_clock_sample = Some(sample);
+    }
+
     pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
         self.store.phase_sink()
     }
