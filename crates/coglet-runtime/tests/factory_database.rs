@@ -31,6 +31,7 @@ use std::{
 mod factory;
 mod factory_dispatch_result;
 mod factory_goals;
+mod factory_research;
 use factory_dispatch_result::dispatch_result_consumed;
 #[rustfmt::skip]
 #[path = "../../../spikes/cross-engine-hash/host-wasmtime/src/nancanon.rs"]

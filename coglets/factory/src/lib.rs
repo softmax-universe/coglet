@@ -3,6 +3,7 @@
 pub mod catalog;
 pub mod executive;
 pub mod goals;
+pub mod research;
 pub use coglet_guest_rust::database::DbHost;
 use coglet_guest_rust::database::{Client, DbError};
 use coglet_types::{DatabaseDbPage, DatabaseDbStatement, Value};
