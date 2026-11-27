@@ -375,7 +375,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             let a = tt0 + UInt64(k) * 450_000_000 + 150_000_000, b = tt0 + UInt64(k) * 450_000_000 + 400_000_000
             let mid = (0..<e.v.count).filter { e.t[$0] > a && e.t[$0] < b }.map { e.v[$0] }
             let n99 = percentile(noise[k].v, 0.99), t10 = percentile(mid, 0.10)
-            thrWords.append((n99 * t10).squareRoot())
+            thrWords.append(0.5 * t10)   // -6 dB below the calibrated tone level; the >=12 dB SNR gate keeps it above noise
             let snr = 20 * log10(max(t10, 1e-9) / max(n99, 1e-9)); snrs.append(snr)
             cal["noise_\(Int(f))_p99"] = round5(n99); cal["tone_\(Int(f))_p10"] = round5(t10)
             cal["threshold_\(Int(f))"] = round5(thrWords[k]); cal["snr_\(Int(f))_db"] = round3(snr)
@@ -477,9 +477,9 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             if let fr = firstRender { r["play_to_first_render_ms"] = round3(msBetween(tAct, fr)) }
             _ = swOnset
             if let lr = lastRender { r["barge_to_render_stop_ms"] = round3(msBetween(tPress, lr)) }
-            // Onset: relative to the run's own tone level (a precursor noise blip must not count as the onset).
-            let toneLevel = percentile((0..<env.v.count).filter { env.t[$0] >= tAct && env.t[$0] < tPress }.map { env.v[$0] }, 0.9)
-            var on = onsetTime(env, from: tAct, thr: max(thr, 0.35 * toneLevel))
+            // Onset: first 3 consecutive windows above every-word threshold-normalised level 1.0 (= half the tone level).
+            _ = swOnset
+            var on = onsetTime(env, from: tAct, thr: thr)
             if let o = on { on = o; r["play_to_acoustic_onset_ms"] = round3(msBetween(tAct, o)) }
             let refSamples = (0..<env.v.count).filter { env.t[$0] >= tPress - 60_000_000 && env.t[$0] < tPress }.map { env.v[$0] }
             let ref = percentile(refSamples, 0.5)
