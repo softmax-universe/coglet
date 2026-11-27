@@ -661,16 +661,28 @@ final class AppSurfaceWireTests: XCTestCase {
         guard pairingScrolls.count == 1 else { XCTFail("invitation viewport ambiguous"); throw WireTestFailure() }
         let pairingScroll = pairingScrolls.firstMatch
         pairingScroll.scroll(byDeltaX: 0, deltaY: -200)
-        try wait {
-            let field = invitation.frame, viewport = pairingScroll.frame
-            guard [field.minX, field.minY, field.width, field.height,
-                   viewport.minX, viewport.minY, viewport.width, viewport.height].allSatisfy({ $0.isFinite }),
-                  field.width > 0, field.height > 0, viewport.width > 0, viewport.height > 0 else { return false }
-            // Native field borders extend a point beyond the viewport in X;
-            // require full vertical visibility and an interior centre click.
-            return field.minY >= viewport.minY && field.maxY <= viewport.maxY
-                && field.midY > viewport.minY && field.midY < viewport.maxY
-                && field.midX > viewport.minX && field.midX < viewport.maxX && invitation.isHittable
+        var revealGeometry = "not sampled"
+        do {
+            try wait {
+                let field = invitation.frame, viewport = pairingScroll.frame
+                // Sample hit testing independently, even if geometry is false.
+                let hittable = invitation.isHittable
+                let finite = [field.minX, field.minY, field.width, field.height,
+                    viewport.minX, viewport.minY, viewport.width, viewport.height].allSatisfy({ $0.isFinite })
+                let positive = field.width > 0 && field.height > 0 && viewport.width > 0 && viewport.height > 0
+                // Exact 4a275d98 AX: content is at its end, field y473...500,
+                // viewport y187...499. Permit only the measured 1pt border,
+                // never an offscreen centre (the earlier y503...530 failure).
+                let vertical = field.minY >= viewport.minY && field.maxY <= viewport.maxY + 1
+                let centre = field.midY > viewport.minY && field.midY < viewport.maxY
+                    && field.midX > viewport.minX && field.midX < viewport.maxX
+                revealGeometry = "field=\(field); viewport=\(viewport); finite=\(finite); positive=\(positive); vertical=\(vertical); centre=\(centre); hittable=\(hittable)"
+                return finite && positive && vertical && centre && hittable
+            }
+        } catch {
+            let geometry = XCTAttachment(string: revealGeometry)
+            geometry.name = "live-app-wire-invitation-reveal-geometry"; geometry.lifetime = .keepAlways; add(geometry)
+            throw error
         }
         invitation.click()
         try wait { invitation.value(forKey: "hasKeyboardFocus") as? Bool == true }
