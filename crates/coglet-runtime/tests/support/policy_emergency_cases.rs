@@ -113,15 +113,21 @@ impl Daemon {
     fn daemon_log(&self) -> String {
         std::fs::read_to_string(self.root.join("restart.log")).unwrap_or_default()
     }
-    /// Wait on observable state until no guest step can be in flight, so a
-    /// following SIGKILL cannot land on an unresolved engine attempt (which
-    /// restart admission rightly refuses to resume). The daemon serves the
-    /// adapter on one thread that runs each fed event's step inline, so the
-    /// guest is quiescent once the attempt fence is clear and either every one
-    /// of the `fed` events is attempted and resolved, or the daemon has closed
-    /// the adapter session (a fenced publication ends it; the rest is unread).
-    async fn guest_quiescent(&mut self, link: &UnixStream, bundle: &Bundle, fed: u64) {
+    /// Wait on observable state until the daemon has ended this adapter session
+    /// with no guest step in flight. The daemon serves the adapter on one
+    /// thread: read a frame, run its guest step inline, prepare the dispatch,
+    /// flush through the output gate, then the next frame. It closes the link
+    /// only when that thread leaves the session, so the hang-up is a barrier
+    /// after every step AND every physical write of the session; a following
+    /// SIGKILL cannot land on an unresolved engine attempt (which restart
+    /// admission rightly refuses to resume), and the byte count read after it
+    /// is final. A fenced publication ends the session (later events stay
+    /// unread). If instead all `fed` events resolve, the test half-closes its
+    /// write side so the daemon ends the session at EOF; the read side stays
+    /// open, so a late write would still be counted.
+    async fn adapter_session_ended(&mut self, link: &mut UnixStream, bundle: &Bundle, fed: u64) {
         let mut last = Value::Null;
+        let mut half_closed = false;
         let done = tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 // Sampled before the health observation it is combined with.
@@ -133,8 +139,12 @@ impl Daemon {
                 let resolved = n("committed") + n("failed");
                 let clear = sample["result"]["attempt_fence"] == "clear";
                 last = sample;
-                if clear && (closed || resolved == fed) {
+                if closed && clear {
                     return;
+                }
+                if !closed && clear && resolved == fed && !half_closed {
+                    link.shutdown().await.unwrap();
+                    half_closed = true;
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
@@ -142,7 +152,7 @@ impl Daemon {
         .await;
         assert!(
             done.is_ok(),
-            "guest never became quiescent: {last}\ndaemon log: {}",
+            "adapter session never ended quiescent: {last}\ndaemon log: {}",
             self.daemon_log()
         );
     }
@@ -324,7 +334,7 @@ async fn saturation_case(seed: u8, blocked: bool) {
     for seq in 3..=6 {
         let _ = feed(&mut link, &d.surface, seq).await;
     }
-    d.guest_quiescent(&link, &a, 6).await;
+    d.adapter_session_ended(&mut link, &a, 6).await;
     assert_eq!(queued_bytes(&link), queued, "output exposed after revoke");
     let mut raw = vec![0; queued];
     link.read_exact(&mut raw).await.unwrap();
@@ -461,9 +471,10 @@ async fn reserved_emergency_endpoint_rejects_non_revoke_and_forged_bindings() {
     assert_eq!(producer_code(&reply), "resource_exhausted", "{reply}");
     // Reserved capacity: four idle/partial connections exhaust it; a fifth
     // valid revoke is closed, never queued and never served elsewhere.
-    // A worker of an exchange above releases its slot only after its peer saw
-    // the reply, so wait until none is left: the next four connections are
-    // then exactly the pool's four slots, and all four are seen holding one.
+    // A worker of an exchange above replies, closes and only then releases its
+    // slot; reading the reply does not wait for that release. So wait until
+    // none is left: the next four connections are then exactly the pool's four
+    // slots, and all four are seen holding one.
     wait_for("earlier reserved workers to retire", || {
         d.reserved_workers() == 0
     })
@@ -520,7 +531,7 @@ async fn reserved_emergency_endpoint_rejects_non_revoke_and_forged_bindings() {
     for seq in 4..=6 {
         let _ = feed(&mut link, &d.surface, seq).await;
     }
-    d.guest_quiescent(&link, &a, 6).await;
+    d.adapter_session_ended(&mut link, &a, 6).await;
     assert_eq!(queued_bytes(&link), queued, "output exposed after revoke");
     let mut params = d.pins(&a);
     params["daemon_instance"] = instance;
@@ -608,7 +619,7 @@ async fn repeated_revoke_coalesces_pending_recorder() {
     for seq in 3..=5 {
         let _ = feed(&mut link, &d.surface, seq).await;
     }
-    tokio::time::sleep(Duration::from_millis(700)).await;
+    d.adapter_session_ended(&mut link, &a, 5).await;
     assert_eq!(queued_bytes(&link), queued, "output exposed after revoke");
     drop(link);
     // SIGKILL, then read the reopened WAL before the next process starts: the

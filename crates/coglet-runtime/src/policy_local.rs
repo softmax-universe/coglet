@@ -1235,25 +1235,28 @@ mod tests {
             assert_eq!(ops.calls.load(std::sync::atomic::Ordering::SeqCst), 1);
             // Four idle/partial connections exhaust the reserved pool: the fifth
             // is closed, never queued and never moved to the ordinary pool.
-            // A worker releases its slot only after its peer saw the reply or
-            // the close, so a slot of an exchange above may still be taken when
-            // the holders connect; the accept loop then closes one holder at
-            // once and admits the fifth. Accepts are serial, so a round whose
-            // four holders are all still connected after the fifth's outcome
-            // held all four slots throughout. Only such a round is judged.
+            // A worker replies, closes and only then releases its slot; reading
+            // the reply or the close does not wait for that release. So a slot
+            // of an exchange above may still be taken when the holders connect;
+            // the accept loop then closes one holder at once and admits the
+            // fifth. Accepts are serial, so a round whose four holders are all
+            // still connected after the fifth's outcome had all four slots held
+            // when the fifth was admitted or refused. Only such a round is
+            // judged; a holder closed during setup makes the round invalid.
             let (started, idle) = (0..50)
                 .find_map(|_| {
                     let calls = ops.calls.load(std::sync::atomic::Ordering::SeqCst);
                     let started = std::time::Instant::now();
                     let mut idle = vec![];
+                    let mut valid = true;
                     for i in 0..4 {
                         let mut stream = UnixStream::connect(&lane).unwrap();
                         // Set now: macOS refuses socket options once the peer closed.
-                        stream
+                        valid &= stream
                             .set_read_timeout(Some(std::time::Duration::from_secs(8)))
-                            .unwrap();
+                            .is_ok();
                         if i % 2 == 0 {
-                            stream.write_all(b"{\"version\":1,").unwrap();
+                            valid &= stream.write_all(b"{\"version\":1,").is_ok();
                         }
                         idle.push(stream);
                     }
@@ -1261,7 +1264,7 @@ mod tests {
                     let _ = fifth.write_all(&frame(|_| {}));
                     let _ = fifth.write_all(b"\n");
                     let dropped = closed_without_reply(fifth);
-                    if !idle.iter().all(still_held) {
+                    if !valid || !idle.iter().all(still_held) {
                         drop(idle);
                         std::thread::sleep(std::time::Duration::from_millis(20));
                         return None;
