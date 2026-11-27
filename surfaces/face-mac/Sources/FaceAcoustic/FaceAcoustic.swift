@@ -12,11 +12,11 @@ import CogletTypes
 // (FaceAudioKit, one shared AVAudioEngine graph on real hardware) from the frozen
 // conformance speech timelines (spec/fixtures/speech/timelines.json) and measures
 // the acoustic path through a physical microphone. Test seams, declared honestly:
-//   * synthesis route "acoustic-tone": deterministic five-frequency (800..2400 Hz) word bursts with
+//   * synthesis route "acoustic-tone": deterministic five-frequency (1000..2600 Hz) word bursts with
 //     time-aligned spans, NOT a voice;
 //   * recognition route "acoustic-scripted": delivers the timeline's scripted
 //     partial/final text, it is NOT speech recognition;
-//   * a second AVAudioEngine plays a 3.2 kHz stimulus standing in for the user's voice.
+//   * a second AVAudioEngine plays a 3.4 kHz stimulus standing in for the user's voice.
 // It must run from a signed .app bundle (microphone TCC grant); see
 // scripts/acoustic/run.sh. It is never shipped; it opens no network route.
 
@@ -87,8 +87,8 @@ func tone(freq: Double, ms: Int, amp: Double = 0.6, fadeMS: Int = 3) -> [Int16] 
 let wordPeriodMS = 600, wordToneMS = 500, wordCount = 5
 /// One frequency per word: each word's own Goertzel envelope identifies it even through room
 /// reverberation (a 1 kHz-only design merged words across the 100 ms gap in a real room).
-let wordFreqs: [Double] = [800, 1200, 1600, 2000, 2400]   // 200 Hz apart = exact Goertzel bins (5 ms window): no leakage
-let stimulusFreq = 3200.0
+let wordFreqs: [Double] = [1000, 1400, 1800, 2200, 2600]   // multiples of 200 Hz = exact Goertzel bins (5 ms window): no leakage
+let stimulusFreq = 3400.0
 func wordedItem() -> (samples: [Int16], spans: [SpeechObservations.Span]) {
     var s = [Int16](); var spans = [SpeechObservations.Span]()
     for k in 0..<wordCount {
@@ -258,7 +258,7 @@ func appendLine(_ path: String, _ s: String) {
 
 struct Fail: Swift.Error, CustomStringConvertible { let description: String }
 
-/// Plays a 3.2 kHz burst on a second engine at a scheduled host time (user-voice stand-in).
+/// Plays a 3.4 kHz burst on a second engine at a scheduled host time (user-voice stand-in).
 @MainActor final class Stimulus {
     let engine = AVAudioEngine(); let player = AVAudioPlayerNode()
     let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)!
