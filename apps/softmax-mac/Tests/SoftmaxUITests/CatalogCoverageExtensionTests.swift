@@ -180,7 +180,20 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
                         "raw_id": button.identifier,
                         "frame": [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height]])
                 }
+                // Include every descendant type as well: AppKit may expose scroller
+                // arrows as incrementArrow/decrementArrow rather than button.
+                let descendants = scrollBar.descendants(matching: .any)
+                var descendantRecords: [[String: Any]] = []
+                for (descendantIndex, element) in descendants.allElementsBoundByIndex.prefix(buttonLimit).enumerated() {
+                    let frame = element.frame
+                    descendantRecords.append(["parent_scrollbar_index": parentIndex,
+                        "descendant_index": descendantIndex, "type": String(describing: element.elementType),
+                        "raw_id": element.identifier,
+                        "frame": [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height]])
+                }
                 scrollBarRecords.append(["scrollbar_index": parentIndex,
+                    "descendant_count": descendants.count, "descendants": descendantRecords,
+                    "descendants_truncated": descendants.count > buttonLimit,
                     "type": String(describing: scrollBar.elementType), "raw_id": scrollBar.identifier,
                     "frame": [parentFrame.origin.x, parentFrame.origin.y, parentFrame.size.width, parentFrame.size.height],
                     "descendant_button_count": buttons.count, "descendant_buttons": buttonRecords,
