@@ -469,6 +469,7 @@ final class AppSurfaceWireTests: XCTestCase {
             return try canonical(snapshot)
         }
         var exercised: [[String: String]] = []
+        var ungrantedSensitive: [[String: String]] = []
         func refuseSensitive(_ window: String, anchors: Set<String>) throws {
             let rows = try readControls(window)
             let protected = rows.filter { $0["sensitive"] as? Bool == true }
@@ -533,6 +534,33 @@ final class AppSurfaceWireTests: XCTestCase {
                     XCTAssertEqual(try String(contentsOf: countFile, encoding: .utf8), beforeCount)
                     XCTAssertEqual(beforeCount, "1")
                     exercised.append(["window": window, "control": controlID, "verb": verb])
+                    // The separate sensitive operation is advertised but NOT granted.
+                    // Exercise it on the same mounted control, without weakening the
+                    // ordinary-invoke bypass proof or adding any destructive authority.
+                    let sensitiveID = id()
+                    try peer.send(["kind": "act", "operation": "softmax.app.invoke_sensitive",
+                        "args": args, "id": sensitiveID])
+                    try wait { (try? peer.snapshot().contains {
+                        $0["type"] as? String == "accept" && self.body($0)["id"] as? String == sensitiveID
+                    }) == true }
+                    let refused = try XCTUnwrap(peer.snapshot().first {
+                        $0["type"] as? String == "accept" && self.body($0)["id"] as? String == sensitiveID
+                    })
+                    XCTAssertEqual(body(refused)["accepted"] as? Bool, false)
+                    let refusal = try XCTUnwrap(body(refused)["error"] as? [String: Any])
+                    XCTAssertEqual(refusal["code"] as? String, "permission_denied")
+                    XCTAssertFalse(try peer.snapshot().contains {
+                        self.body($0)["kind"] as? String == "action.outcome"
+                            && self.payload($0)["id"] as? String == sensitiveID
+                    }, "ungranted action must not be admitted")
+                    // No new read traffic: original exact before/after reads above
+                    // remain intact. Native UI and positive-counter witnesses are
+                    // independently checked after the second direction as well.
+                    XCTAssertTrue(canonicalAX(app.debugDescription) == beforeUI,
+                        "native UI changed after ungranted sensitive invocation")
+                    XCTAssertEqual(try String(contentsOf: countFile, encoding: .utf8), beforeCount)
+                    ungrantedSensitive.append(["window": window, "control": controlID,
+                        "verb": verb, "action_id": sensitiveID])
                 }
             }
         }
@@ -706,6 +734,10 @@ final class AppSurfaceWireTests: XCTestCase {
             "native_press_count": nativePressCount, "exercised": exercised] as [String: Any])
         let bounded = XCTAttachment(data: evidence, uniformTypeIdentifier: "public.json")
         bounded.name = "live-app-wire-bounded-sensitive-evidence"; bounded.lifetime = .keepAlways; add(bounded)
+        XCTAssertFalse(ungrantedSensitive.isEmpty)
+        XCTAssertEqual(ungrantedSensitive.map { [$0["window"], $0["control"], $0["verb"]] },
+            exercised.map { [$0["window"], $0["control"], $0["verb"]] })
+        XCTAssertEqual(Set(ungrantedSensitive.compactMap { $0["action_id"] }).count, exercised.count)
         // Captured receipts are schema-validated by the real peer; successful
         // close waits for every expected accept/outcome/replay/read response.
         let initialEpoch = try XCTUnwrap(peer.snapshot().first { $0["type"] as? String == "grants" })
@@ -724,6 +756,18 @@ final class AppSurfaceWireTests: XCTestCase {
         XCTAssertEqual(entries.first { $0.key == "killed" }?.value, .boolean(false))
         // Include bytes produced during close and the FINAL durable ledger.
         try scanCanaries(ledger)
+        let finalFrames = try peer.snapshot()
+        for entry in ungrantedSensitive {
+            let actionID = try XCTUnwrap(entry["action_id"])
+            let accepts = finalFrames.filter { $0["type"] as? String == "accept" && body($0)["id"] as? String == actionID }
+            XCTAssertEqual(accepts.count, 1)
+            XCTAssertEqual(body(try XCTUnwrap(accepts.first))["accepted"] as? Bool, false)
+            XCTAssertFalse(finalFrames.contains { body($0)["kind"] as? String == "action.outcome"
+                && payload($0)["id"] as? String == actionID }, "late ungranted action outcome")
+        }
+        let separate = XCTAttachment(data: try canonical(["scope": "ungranted separate sensitive operation; bounded live controls only",
+            "exercised": ungrantedSensitive] as [String: Any]), uniformTypeIdentifier: "public.json")
+        separate.name = "live-app-wire-ungranted-sensitive-evidence"; separate.lifetime = .keepAlways; add(separate)
         let retained = XCTAttachment(data: safeAttachmentBytes(ledger), uniformTypeIdentifier: "public.data")
         retained.name = "live-app-wire-final-ledger"; retained.lifetime = .keepAlways; add(retained)
         retainedFinalLedger = true
