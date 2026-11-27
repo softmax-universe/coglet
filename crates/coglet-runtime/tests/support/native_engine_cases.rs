@@ -2,6 +2,11 @@ use super::*;
 use coglet_runtime::{NativeEngine, Runtime, RuntimeService, digest};
 #[path = "native_expiry.rs"]
 mod expiry;
+#[path = "native_ready.rs"]
+mod ready;
+#[cfg(target_os = "macos")]
+#[path = "native_ready_swift.rs"]
+mod ready_swift;
 
 fn escaped(raw: &[u8]) -> String {
     raw.iter().map(|b| format!("\\{b:02x}")).collect()

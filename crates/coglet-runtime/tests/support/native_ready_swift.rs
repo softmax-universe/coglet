@@ -1,0 +1,101 @@
+//! Actual unchanged Swift SDK health/native-stop oracle over the real C ABI.
+//! macOS-only execution, not iOS/acoustic qualification.
+use super::*;
+
+#[test]
+fn swift_sdk_ready_health_obstruction_and_control() {
+    let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    let scratch = tempfile::tempdir().unwrap();
+    let target = scratch.path().join("target");
+    let built = Command::new("cargo")
+        .current_dir(&root)
+        .args([
+            "build",
+            "--locked",
+            "-p",
+            "coglet-runtime",
+            "--lib",
+            "--no-default-features",
+            "--features",
+            "native-engine,ffi-test-hooks",
+        ])
+        .env("CARGO_TARGET_DIR", &target)
+        .status()
+        .unwrap();
+    assert!(
+        built.success(),
+        "isolated embedded diagnostic library build"
+    );
+    let swift = scratch.path().join("swift");
+    assert!(
+        Command::new("bash")
+            .current_dir(&root)
+            .arg("crates/coglet-runtime/tools/ready-output-sdk/build.sh")
+            .arg(&swift)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let wasm = wat::parse_str(
+        "(module (memory (export \"memory\") 1 2)
+        (func (export \"abi_alloc\") (param i32) (result i32) i32.const 8192)
+        (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))",
+    )
+    .unwrap();
+    for mode in ["control", "receive-error", "obstruct"] {
+        let dir = scratch.path().join(mode);
+        std::fs::create_dir(&dir).unwrap();
+        let setup = with_wasm(setup(), &wasm);
+        std::fs::write(
+            dir.join("binding.json"),
+            serde_json::to_vec(&json!({"surface":S,"permitted_coglets":[C]})).unwrap(),
+        )
+        .unwrap();
+        std::fs::write(dir.join("startup.json"), serde_json::to_vec(&json!({"wal":dir.join("state.wal"),"setup":setup,"native_schedule":setup["native_schedule"]})).unwrap()).unwrap();
+        let mut child = Command::new(swift.join("ready-output-sdk"))
+            .arg(target.join("debug/libcoglet_runtime.dylib"))
+            .arg(&dir)
+            .arg(mode)
+            .stdout(std::fs::File::create(dir.join("stdout.log")).unwrap())
+            .stderr(std::fs::File::create(dir.join("stderr.log")).unwrap())
+            .spawn()
+            .unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if std::time::Instant::now() >= deadline {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!(
+                    "Swift SDK process watchdog: {}",
+                    std::fs::read_to_string(dir.join("stderr.log")).unwrap()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        let stdout = std::fs::read_to_string(dir.join("stdout.log")).unwrap();
+        let stderr = std::fs::read_to_string(dir.join("stderr.log")).unwrap();
+        eprintln!("Swift {mode}: {stdout}\n{stderr}");
+        assert!(status.success(), "Swift SDK oracle {mode}: {status}");
+        assert!(stdout.contains(if mode == "receive-error" {
+            "SDK_RECEIVE_ERROR_CLOSE_EXECUTED"
+        } else {
+            "SDK_READY_HEALTH_EXECUTED"
+        }));
+        let recovered = RuntimeService::open(&dir.join("state.wal"), &setup, 128).unwrap();
+        assert_eq!(recovered.records().len(), 1);
+        let record = &recovered.records()[0];
+        assert_eq!(record["engine"]["build"], coglet_engine_wamr::BUILD);
+        assert_eq!(record["status"], "committed");
+        assert!(record["usage"]["compute"].as_u64().unwrap() > 0);
+        assert_eq!(record["actions"], json!([]));
+    }
+}

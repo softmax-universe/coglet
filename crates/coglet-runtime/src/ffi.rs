@@ -12,6 +12,14 @@ use std::{
     time::Instant,
 };
 
+#[cfg(feature = "ffi-test-hooks")]
+#[path = "ffi_test_hooks.rs"]
+mod test_hooks;
+#[path = "ffi_timing.rs"]
+pub mod timing;
+#[cfg(feature = "ffi-test-hooks")]
+pub use test_hooks::*;
+
 static BINDING: OnceLock<SurfaceBinding> = OnceLock::new();
 static RUNTIME: Mutex<Option<Arc<Mutex<crate::RuntimeService>>>> = Mutex::new(None);
 static FENCED: AtomicBool = AtomicBool::new(false);
@@ -182,8 +190,46 @@ pub struct CogletSurfaceLink {
     session: SurfaceSession,
     clock: Instant,
     generation: u64,
+    timings: timing::History,
+    #[cfg(feature = "ffi-test-hooks")]
+    recv_pump_hold: Option<Arc<timing::obstruction::PumpHold>>,
 }
 impl CogletSurfaceLink {
+    /// Native diagnostic snapshot, with the same exclusive custody as recv.
+    /// Contains no private payloads. Production builds retain these timings too.
+    pub fn timings(&self) -> (Vec<timing::CallTiming>, Option<timing::CallTiming>) {
+        self.timings.snapshot()
+    }
+    #[cfg(feature = "ffi-test-hooks")]
+    pub fn hold_recv_pump(&mut self, hold: Arc<timing::obstruction::PumpHold>) {
+        self.recv_pump_hold = Some(hold);
+    }
+    fn timed(
+        &mut self,
+        send: bool,
+        call: impl FnOnce(&mut Self, &mut timing::CallTiming) -> i32,
+    ) -> i32 {
+        let mut observation = self.timings.begin(send);
+        let result = catch_unwind(AssertUnwindSafe(|| call(self, &mut observation)));
+        self.timings
+            .finish(observation, result.as_ref().copied().unwrap_or(-2));
+        match result {
+            Ok(status) => status,
+            Err(payload) => std::panic::resume_unwind(payload),
+        }
+    }
+    fn pump(&mut self, now: u64, call: &mut timing::CallTiming) -> crate::Result<()> {
+        call.pump_entry_us = Some(self.timings.now());
+        #[cfg(feature = "ffi-test-hooks")]
+        if !call.send
+            && let Some(hold) = &self.recv_pump_hold
+        {
+            hold.enter();
+        }
+        let result = self.session.pump_dispatch(now);
+        call.pump_exit_us = Some(self.timings.now());
+        result
+    }
     fn fenced(&self) -> bool {
         FENCED.load(Ordering::SeqCst) || self.generation != GENERATION.load(Ordering::SeqCst)
     }
@@ -254,6 +300,9 @@ pub unsafe extern "C" fn coglet_surface_open(
             session,
             clock: Instant::now(),
             generation: GENERATION.load(Ordering::SeqCst),
+            timings: timing::History::default(),
+            #[cfg(feature = "ffi-test-hooks")]
+            recv_pump_hold: None,
         });
         unsafe {
             out.write(Box::into_raw(link));
@@ -277,21 +326,24 @@ pub unsafe extern "C" fn coglet_surface_send(
             return -1;
         }
         let link = unsafe { &mut *link };
-        if link.fenced() {
-            return -2;
-        }
-        let Ok(now) = link.session.transport_now(link.clock) else {
-            link.session.disconnect();
-            return -2;
-        };
-        let status = link
-            .session
-            .send(unsafe { slice::from_raw_parts(cbor, n) }, now);
-        if status == 0 && link.session.pump_dispatch(now).is_err() {
-            link.session.disconnect();
-            return -2;
-        }
-        status
+        link.timed(true, |link, call| {
+            if link.fenced() {
+                return -2;
+            }
+            let Ok(now) = link.session.transport_now(link.clock) else {
+                link.session.disconnect();
+                return -2;
+            };
+            call.clock_us = Some(link.timings.now());
+            let status = link
+                .session
+                .send(unsafe { slice::from_raw_parts(cbor, n) }, now);
+            if status == 0 && link.pump(now, call).is_err() {
+                link.session.disconnect();
+                return -2;
+            }
+            status
+        })
     })
 }
 
@@ -315,32 +367,51 @@ pub unsafe extern "C" fn coglet_surface_recv(
             n.write(0);
         }
         let link = unsafe { &mut *link };
-        if link.fenced() {
-            return -2;
-        }
-        let Ok(now) = link.session.transport_now(link.clock) else {
-            link.session.disconnect();
-            return -2;
-        };
-        link.session.tick(now);
-        if link.session.pump_dispatch(now).is_err() {
-            link.session.disconnect();
-            return -2;
-        }
-        let Some(bytes) = link.session.front() else {
-            return if link.session.is_closed() { -2 } else { 1 };
-        };
-        unsafe {
-            n.write(bytes.len());
-        }
-        if cap < bytes.len() {
-            return 2;
-        }
-        unsafe {
-            ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len());
-        }
-        link.session.pop();
-        0
+        link.timed(false, |link, call| {
+            if link.fenced() {
+                return -2;
+            }
+            let Ok(now) = link.session.transport_now(link.clock) else {
+                link.session.disconnect();
+                return -2;
+            };
+            call.clock_us = Some(link.timings.now());
+            link.session.tick(now);
+            call.tick_us = Some(link.timings.now());
+            call.output_depth = link.session.output_depth();
+            if let Some(bytes) = link.session.front() {
+                call.ready_us = Some(link.timings.now());
+                call.ready_bytes = bytes.len();
+                call.output_kind = timing::OutputKind::of_valid_frame(bytes);
+            }
+            // ADR-0034: tick above is mandatory (expiry/revocation/inactivity).
+            // Once its front is eligible, do not put optional guest/fsync work
+            // ahead of either a size query, short retry or the exact copy.
+            if link.session.front().is_none() && link.pump(now, call).is_err() {
+                link.session.disconnect();
+                return -2;
+            }
+            let Some(bytes) = link.session.front() else {
+                return if link.session.is_closed() { -2 } else { 1 };
+            };
+            if call.ready_us.is_none() {
+                call.ready_us = Some(link.timings.now());
+                call.ready_bytes = bytes.len();
+                call.output_depth = link.session.output_depth();
+                call.output_kind = timing::OutputKind::of_valid_frame(bytes);
+            }
+            unsafe {
+                n.write(bytes.len());
+            }
+            if cap < bytes.len() {
+                return 2;
+            }
+            unsafe {
+                ptr::copy_nonoverlapping(bytes.as_ptr(), out, bytes.len());
+            }
+            link.session.pop();
+            0
+        })
     })
 }
 
@@ -387,6 +458,33 @@ mod tests {
         );
         let mut link = ptr::null_mut();
         assert_eq!(unsafe { coglet_surface_open(1, &mut link) }, 0);
+        // A real queued hello reply must not bypass inactivity preflight.
+        let hello = crate::cbor(&serde_json::json!({"type":"hello","body":{
+            "surface":"surface:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "clock":0,"offer":{"versions":["0.1"]},"correlation_id":"1".repeat(32)
+        }}))
+        .unwrap();
+        assert_eq!(
+            unsafe { coglet_surface_send(link, hello.as_ptr(), hello.len()) },
+            0
+        );
+        assert!(unsafe { &*link }.session.front().is_some());
+        unsafe { &mut *link }.clock = Instant::now() - std::time::Duration::from_secs(4);
+        let mut expired_n = 123;
+        assert_eq!(
+            unsafe { coglet_surface_recv(link, ptr::null_mut(), 0, &mut expired_n) },
+            -2
+        );
+        assert_eq!(expired_n, 0);
+        assert!(unsafe { &*link }.session.front().is_none());
+        unsafe { coglet_surface_close(link) };
+        assert_eq!(unsafe { coglet_surface_open(1, &mut link) }, 0);
+        assert_eq!(
+            unsafe { coglet_surface_send(link, hello.as_ptr(), hello.len()) },
+            0
+        );
+        assert!(unsafe { &*link }.session.front().is_some());
+        // Keep ready output queued across the panic and stop-generation checks.
         assert_eq!(coglet_runtime_test_panic(), -2);
         assert!(RUNTIME.is_poisoned());
         let mut n = 123;
