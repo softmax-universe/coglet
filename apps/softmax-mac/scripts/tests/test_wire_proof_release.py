@@ -12,6 +12,21 @@ SCRIPT = Path(__file__).resolve().parents[1] / 'audit-wire-proof-release.py'
 
 
 class ReleaseGateTests(unittest.TestCase):
+    def test_boundary_fixture_handles_aliased_temporary_root(self):
+        # macOS exposes the temporary root via /var -> /private/var. Exercise
+        # that filesystem identity mismatch on every platform, without tools.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve(strict=True)
+            actual = root / 'actual'
+            actual.mkdir()
+            alias = root / 'alias'
+            alias.symlink_to(actual, target_is_directory=True)
+            with patch.object(tempfile, 'tempdir', str(alias)):
+                result = unittest.TestResult()
+                ReleaseBoundaryTests('test_all_ten_markers_rejected_in_either_projection').run(result)
+            self.assertEqual(result.testsRun, 1)
+            self.assertTrue(result.wasSuccessful(), result.errors + result.failures)
+
     def test_release_rejects_credential_marker_in_dylib(self):
         self.assertTrue(SCRIPT.is_file(), 'missing per-image Release auditor')
         spec = importlib.util.spec_from_file_location('wire_release_audit', SCRIPT)
@@ -102,7 +117,7 @@ class ReleaseBoundaryTests(unittest.TestCase):
         spec.loader.exec_module(self.audit)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve(strict=True)
         self.app = self.root / 'Softmax.app'
         self.main = self.image('Contents/MacOS/Softmax')
         self.output = self.root / 'evidence'
