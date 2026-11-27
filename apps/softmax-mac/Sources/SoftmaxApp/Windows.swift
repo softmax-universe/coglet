@@ -143,7 +143,12 @@ struct SettingsView: View {
                 SettingsTransitionProbe.queryChanged(query, matchCount: tabs.count)
 #endif
             }
-            .onChange(of: searchFocused) { capture(.viewFocus) }
+            .onChange(of: searchFocused) {
+                capture(.viewFocus)
+#if DEBUG
+                SettingsTransitionProbe.viewFocusChanged()
+#endif
+            }
             .onReceive(NotificationCenter.default.publisher(for: .softmaxFilterInput)) { notification in
                 guard let characters = notification.object as? String else { return }
                 query += characters; searchFocused = true

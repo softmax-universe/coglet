@@ -76,6 +76,7 @@ enum SettingsTransitionProbe {
         let mismatches: [Mismatch]
         let checkpoints: [Checkpoint]
         let records: [SettingsArrowCapture.Record]
+        let nativeCensus: SettingsNativeCensus.Document
     }
 
     // Bounds are harness-only: 10 ms ticks, 500 ticks and 5 s per checkpoint, 15 s per scenario.
@@ -102,6 +103,11 @@ enum SettingsTransitionProbe {
     private static var mismatches: [Mismatch] = []
 
     // MARK: Hooks (called by AppDelegate/SettingsView, all under #if DEBUG)
+    static func viewFocusChanged() {
+        guard scenario != nil, !finished else { return }
+        SettingsNativeCensus.capture(.viewFocusFirst, window: window, stepIndex: index, stepTicks: stepTicks)
+    }
+
     static func attach(window: NSWindow, model: ShellModel) {
         let env = ProcessInfo.processInfo.environment
         guard scenario == nil, ProcessInfo.processInfo.arguments.contains("--ui-testing"),
@@ -194,7 +200,9 @@ enum SettingsTransitionProbe {
     private static func run(_ step: Step) -> Bool {
         switch step {
         case .waitKey: return window?.isKeyWindow == true && model != nil
-        case .waitEditor: return ownership() == true
+        case .waitEditor:
+            SettingsNativeCensus.capture(.waitEditorFirst, window: window, stepIndex: index, stepTicks: stepTicks)
+            return ownership() == true
         case .waitArrivals: return expected.isEmpty
         case .waitQuery(let fixture): return queryFixture == fixture && (fixture != .noMatches || queryMatches == 0)
         case .armQueryPost: armed = true; return true
@@ -287,6 +295,7 @@ enum SettingsTransitionProbe {
     private static func finish(_ reason: String) {
         guard !finished, let scenario else { return }
         finished = true; timer?.invalidate(); timer = nil
+        SettingsNativeCensus.capture(.terminal, window: window, stepIndex: index, stepTicks: stepTicks)
         let dropped = SettingsArrowCapture.dropped
         let evidenceComplete = !overflow && dropped == 0 && SettingsArrowCapture.outputURL != nil
         let timedOut = !["complete", "monitorNotReached", "eventCreation"].contains(reason)
@@ -303,7 +312,7 @@ enum SettingsTransitionProbe {
                                 checkpointOverflow: overflow, terminalReason: reason, firstDownArrived: firstArrived,
                                 firstDownEditorOwned: firstOwned, firstDownQueryReady: firstReady, queryRoute: route,
                                 unexpectedArrivals: unexpected, mismatches: mismatches, checkpoints: checkpoints,
-                                records: SettingsArrowCapture.records)
+                                records: SettingsArrowCapture.records, nativeCensus: SettingsNativeCensus.document)
         // One atomic write; a missing file is an explicit driver failure.
         if let outputURL, let data = try? JSONEncoder().encode(document) { try? data.write(to: outputURL, options: .atomic) }
     }
