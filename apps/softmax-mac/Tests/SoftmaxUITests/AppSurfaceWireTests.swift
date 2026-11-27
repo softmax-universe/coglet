@@ -13,7 +13,7 @@ private final class AppMockPeer: @unchecked Sendable {
     private let lock = NSLock()
     private var pending = Data(), raw = Data()
     private var frames: [[String: Any]] = []
-    private var invalid = false
+    private var invalid = false, outputEnded = false
     init(executable: String, socket: String, errors: URL) throws {
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = [socket]
@@ -23,7 +23,10 @@ private final class AppMockPeer: @unchecked Sendable {
         output.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard let self else { return }
-            if data.isEmpty { handle.readabilityHandler = nil; return }
+            if data.isEmpty {
+                self.lock.lock(); self.outputEnded = true; self.lock.unlock()
+                handle.readabilityHandler = nil; return
+            }
             self.consume(data)
         }
         try process.run()
@@ -48,6 +51,7 @@ private final class AppMockPeer: @unchecked Sendable {
         return frames
     }
     func bytes() -> Data { lock.lock(); defer { lock.unlock() }; return raw }
+    func drained() -> Bool { lock.lock(); defer { lock.unlock() }; return outputEnded && pending.isEmpty && !invalid }
     func send(_ command: [String: Any]) throws {
         guard process.isRunning else { throw WireTestFailure() }
         var data = try JSONSerialization.data(withJSONObject: command, options: [.sortedKeys])
@@ -70,6 +74,34 @@ final class AppSurfaceWireTests: XCTestCase {
         guard XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed else {
             XCTFail("live app wire proof timed out"); throw WireTestFailure()
         }
+    }
+    // Only XCTest's element-address slot is unstable. Preserve identifiers,
+    // geometry, values, enabled state, focus and hex-looking semantic content.
+    private func canonicalAX(_ tree: String) -> String {
+        tree.replacingOccurrences(of: #"(?m)(^[ \t]*[A-Za-z][A-Za-z0-9 ]*, )0x[0-9a-fA-F]+(?=, \{\{)"#,
+            with: "$1<address>", options: .regularExpression)
+    }
+    private func containsCanary(_ bytes: Data, canaries: [String]) -> Bool {
+        canaries.contains { bytes.range(of: Data($0.utf8)) != nil }
+    }
+    func testEvidenceCanonicalizationAndCanaryDetection() {
+        let first = "  TextField, 0x600abc, {{1, 2}, {30, 40}}, identifier: 'semantic-0x123', value: 'old-0x456', Disabled, Focused"
+        let second = "  TextField, 0x700def, {{1, 2}, {30, 40}}, identifier: 'semantic-0x123', value: 'old-0x456', Disabled, Focused"
+        XCTAssertTrue(canonicalAX(first) == canonicalAX(second), "object addresses must not affect equality")
+        for changed in [second.replacingOccurrences(of: "old-0x456", with: "new-0x456"),
+            second.replacingOccurrences(of: "semantic-0x123", with: "semantic-0x124"),
+            second.replacingOccurrences(of: "{30, 40}", with: "{31, 40}"),
+            second.replacingOccurrences(of: ", Disabled", with: ""),
+            second.replacingOccurrences(of: ", Focused", with: "")] {
+            XCTAssertFalse(canonicalAX(first) == canonicalAX(changed), "semantic AX changes must remain visible")
+        }
+        let synthetic = ["synthetic-marker-one", "synthetic-marker-two"]
+        for marker in synthetic {
+            XCTAssertTrue(containsCanary(Data(("prefix" + marker + "suffix").utf8), canaries: synthetic),
+                "scanner positive control failed")
+        }
+        XCTAssertFalse(containsCanary(Data("unrelated evidence".utf8), canaries: synthetic),
+            "scanner negative control failed")
     }
     private func body(_ frame: [String: Any]) -> [String: Any] { frame["body"] as? [String: Any] ?? [:] }
     private func payload(_ frame: [String: Any]) -> [String: Any] { body(frame)["payload"] as? [String: Any] ?? [:] }
@@ -102,14 +134,20 @@ final class AppSurfaceWireTests: XCTestCase {
         XCTAssertLessThan(socket.utf8.count, 100)
         let errorFile = directory.appendingPathComponent("peer-stderr")
         let peer = try AppMockPeer(executable: executable, socket: socket, errors: errorFile)
+        let secretCanaries = [id() + id(), id() + id()]
+        func safeAttachmentBytes(_ bytes: Data) -> Data {
+            let leaked = containsCanary(bytes, canaries: secretCanaries)
+            XCTAssertFalse(leaked, "generated secret leaked into evidence")
+            return leaked ? Data("Evidence withheld: generated secret detected.".utf8) : bytes
+        }
         defer {
-            let raw = XCTAttachment(data: peer.bytes(), uniformTypeIdentifier: "public.jsonl")
+            let raw = XCTAttachment(data: safeAttachmentBytes(peer.bytes()), uniformTypeIdentifier: "public.jsonl")
             raw.name = "live-app-coglet-mock-wire"; raw.lifetime = .keepAlways; add(raw)
             if let bytes = try? Data(contentsOf: errorFile) {
-                let errors = XCTAttachment(data: bytes, uniformTypeIdentifier: "public.plain-text")
+                let errors = XCTAttachment(data: safeAttachmentBytes(bytes), uniformTypeIdentifier: "public.plain-text")
                 errors.name = "live-app-coglet-mock-stderr"; errors.lifetime = .keepAlways; add(errors)
             }
-            let tree = XCTAttachment(string: app.debugDescription)
+            let tree = XCTAttachment(data: safeAttachmentBytes(Data(app.debugDescription.utf8)), uniformTypeIdentifier: "public.plain-text")
             tree.name = "live-app-wire-final-ax"; tree.lifetime = .keepAlways; add(tree)
             peer.terminate()
         }
@@ -252,6 +290,272 @@ final class AppSurfaceWireTests: XCTestCase {
                 && self.body($0)["accepted"] as? Bool == false
         }) == true }
         XCTAssertEqual(try String(contentsOf: countFile, encoding: .utf8), "1")
+        // Bounded live delta only: no reconnect/revocation/identity-token claim.
+        // The closed app-control wire record has no verbs member. Derive target
+        // membership/sensitivity from wire reads, then use the exact registered
+        // verbs in Windows.swift / HubSettings.swift (never invent a wire field).
+        func readControls(_ window: String) throws -> [[String: Any]] {
+            var rows: [[String: Any]] = [], seen = Set<String>(), cursors = Set<String>()
+            var after: Any = NSNull(), revision: Any = NSNull()
+            for _ in 0..<32 {
+                let readID = id()
+                try peer.send(["kind": "read", "operation": "softmax.app.controls", "id": readID,
+                    "args": ["window": window, "after": after, "limit": 128, "revision": revision]])
+                try wait { (try? peer.snapshot().contains {
+                    $0["type"] as? String == "read_reply" && self.body($0)["correlation_id"] as? String == readID
+                }) == true }
+                let reply = try XCTUnwrap(peer.snapshot().first {
+                    $0["type"] as? String == "read_reply" && self.body($0)["correlation_id"] as? String == readID
+                })
+                // Stale/conflict is a failure, not a restart with mixed pages.
+                guard body(reply)["ok"] as? Bool == true else {
+                    XCTFail("controls page refused"); throw WireTestFailure()
+                }
+                let page = try XCTUnwrap(body(reply)["value"] as? [String: Any])
+                XCTAssertEqual(page["window"] as? String, window)
+                let current = try XCTUnwrap(page["revision"] as? NSNumber)
+                if let expected = revision as? NSNumber { XCTAssertEqual(current, expected) }
+                revision = current
+                let batch = try XCTUnwrap(page["controls"] as? [[String: Any]])
+                XCTAssertLessThanOrEqual(batch.count, 128)
+                for row in batch {
+                    let key = try XCTUnwrap(row["id"] as? String)
+                    guard seen.insert(key).inserted else {
+                        XCTFail("duplicate wire control"); throw WireTestFailure()
+                    }
+                    rows.append(row)
+                }
+                guard let next = page["next"] else { throw WireTestFailure() }
+                if next is NSNull { return rows }
+                let cursor = try XCTUnwrap(next as? String)
+                guard cursors.insert(cursor).inserted else { throw WireTestFailure() }
+                after = cursor
+            }
+            XCTFail("controls pagination exceeded bound"); throw WireTestFailure()
+        }
+        // Sample NEW read replies outside an XCTest predicate: state()/controls
+        // each wait for their own correlated response, never nested XCTWaiter calls.
+        // No action retry and no swallowed read/schema/modal-owner errors. Twelve
+        // attempts + a deadline bound added traffic (normally one page per read),
+        // retaining the peer's hard 512-frame / 1 MiB fail-closed limits.
+        var observationSamplesRemaining = 32 // shared across all readiness waits
+        func observe(_ window: String, route: String, anchors: Set<String>,
+                     searchText: String? = nil) throws {
+            let deadline = Date().addingTimeInterval(8)
+            for attempt in 0..<12 {
+                guard observationSamplesRemaining > 0 else {
+                    XCTFail("fresh observation sample budget exhausted"); throw WireTestFailure()
+                }
+                observationSamplesRemaining -= 1
+                let snapshot = try state()
+                let windows = try XCTUnwrap(snapshot["windows"] as? [[String: Any]])
+                let ready = windows.contains { $0["window"] as? String == window
+                    && $0["open"] as? Bool == true && $0["route"] as? String == route }
+                if ready {
+                    let rows = try readControls(window)
+                    let ids = Set(rows.compactMap { $0["id"] as? String })
+                    var textReady = searchText == nil
+                    if let searchText, let row = rows.first(where: { $0["id"] as? String == "settings.search" }) {
+                        let value = try XCTUnwrap(row["value"] as? [String: Any])
+                        textReady = value["kind"] as? String == "text" && value["value"] as? String == searchText
+                    }
+                    if anchors.isSubset(of: ids) && textReady { return }
+                }
+                guard attempt < 11, Date() < deadline else { break }
+                // Yield for the app's asynchronous registration/capture pump, not
+                // a busy loop or an XCTest predicate invoking another waiter.
+                RunLoop.current.run(until: min(deadline, Date().addingTimeInterval(0.25)))
+            }
+            XCTFail("fresh app observation did not settle within bound"); throw WireTestFailure()
+        }
+        func canonical(_ value: Any) throws -> Data {
+            try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
+        }
+        func safeState() throws -> Data {
+            var snapshot = try state()
+            // UI revision is not itself a native effect; retain all safe state.
+            snapshot.removeValue(forKey: "revision")
+            return try canonical(snapshot)
+        }
+        var exercised: [[String: String]] = []
+        func refuseSensitive(_ window: String, anchors: Set<String>) throws {
+            let rows = try readControls(window)
+            let protected = rows.filter { $0["sensitive"] as? Bool == true }
+            let ids = Set(protected.compactMap { $0["id"] as? String })
+            guard !anchors.isEmpty, anchors.isSubset(of: ids) else {
+                XCTFail("required source-backed sensitive controls missing"); throw WireTestFailure()
+            }
+            for control in protected {
+                let controlID = try XCTUnwrap(control["id"] as? String)
+                let role = try XCTUnwrap(control["role"] as? String)
+                let sourceButtons: Set<String> = ["settings.general.login_enable", "settings.general.login_disable",
+                    "settings.general.login_settings", "settings.privacy.microphone_settings",
+                    "settings.privacy.input_monitoring_settings", "settings.hub.pair",
+                    "settings.hub.pairing.import_qr", "settings.hub.pairing.connect"]
+                let sourceFields: Set<String> = ["settings.hub.pairing.code", "settings.hub.pairing.invitation",
+                    "settings.hub.pairing.router_name", "settings.hub.pairing.router_node",
+                    "settings.hub.pairing.router_addresses", "settings.hub.pairing.relay_url"]
+                let verbs: [String]
+                switch role {
+                case "button" where sourceButtons.contains(controlID): verbs = ["press"]
+                case "disclosure" where controlID == "settings.hub.pairing.manual": verbs = ["toggle"]
+                case "secure_field" where sourceFields.contains(controlID): verbs = ["type_text"]
+                case "text_field" where sourceFields.contains(controlID): verbs = ["type_text"]
+                default:
+                    XCTFail("unreviewed sensitive role/verb inventory"); throw WireTestFailure()
+                }
+                for verb in verbs {
+                    let beforeState = try safeState()
+                    let beforeControls = try canonical(readControls(window))
+                    let beforeUI = canonicalAX(app.debugDescription)
+                    let beforeCount = try String(contentsOf: countFile, encoding: .utf8)
+                    var args: [String: Any] = ["window": window, "control": controlID, "verb": verb]
+                    if verb == "toggle" { args["value"] = true }
+                    if verb == "type_text" { args["value"] = "ordinary-refused-input" }
+                    let actionID = id()
+                    try peer.send(["kind": "act", "operation": "softmax.app.invoke", "args": args, "id": actionID])
+                    func terminal() -> [String: Any]? {
+                        try? peer.snapshot().first {
+                            ($0["type"] as? String == "accept" && self.body($0)["id"] as? String == actionID
+                                && self.body($0)["accepted"] as? Bool == false)
+                            || (self.body($0)["kind"] as? String == "action.outcome"
+                                && self.payload($0)["id"] as? String == actionID)
+                        }
+                    }
+                    try wait { terminal() != nil }
+                    let frame = try XCTUnwrap(terminal())
+                    if frame["type"] as? String == "accept" {
+                        XCTAssertEqual(body(frame)["accepted"] as? Bool, false)
+                    } else {
+                        XCTAssertEqual(payload(frame)["status"] as? String, "failed")
+                        let accepted = try XCTUnwrap(peer.snapshot().first {
+                            $0["type"] as? String == "accept" && self.body($0)["id"] as? String == actionID
+                        })
+                        XCTAssertEqual(body(accepted)["accepted"] as? Bool, true)
+                    }
+                    let error = (body(frame)["error"] ?? payload(frame)["error"]) as? [String: Any]
+                    XCTAssertEqual(error?["code"] as? String, "permission_denied")
+                    // Boolean comparisons keep potentially private values out of failure diagnostics.
+                    XCTAssertTrue(try safeState() == beforeState, "safe state changed after refusal")
+                    XCTAssertTrue(try canonical(readControls(window)) == beforeControls, "controls changed after refusal")
+                    XCTAssertTrue(canonicalAX(app.debugDescription) == beforeUI, "native UI changed after refusal")
+                    XCTAssertEqual(try String(contentsOf: countFile, encoding: .utf8), beforeCount)
+                    XCTAssertEqual(beforeCount, "1")
+                    exercised.append(["window": window, "control": controlID, "verb": verb])
+                }
+            }
+        }
+        func redacted(_ window: String, _ controlID: String) throws {
+            let row = try XCTUnwrap(readControls(window).first { $0["id"] as? String == controlID })
+            XCTAssertEqual(row["sensitive"] as? Bool, true)
+            let value = try XCTUnwrap(row["value"] as? [String: Any])
+            XCTAssertTrue(try canonical(value) == canonical(["kind": "redacted"]), "secure projection is not constant redacted")
+        }
+        func scanCanaries(_ additional: Data = Data()) throws {
+            let sources = [peer.bytes(), try Data(contentsOf: errorFile),
+                Data(app.debugDescription.utf8), additional]
+            for source in sources {
+                XCTAssertFalse(containsCanary(source, canaries: secretCanaries), "generated secret leaked")
+            }
+            for frame in try peer.snapshot() where body(frame)["kind"] as? String == "softmax.app.control_changed" {
+                let p = payload(frame)
+                if let key = p["control"] as? String,
+                   ["settings.hub.pairing.code", "settings.hub.pairing.invitation"].contains(key) {
+                    let value = try XCTUnwrap(p["value"] as? [String: Any])
+                    XCTAssertTrue(try canonical(value) == canonical(["kind": "redacted"]), "secret event not redacted")
+                }
+            }
+        }
+        // Dismiss the original real shortcuts sheet before navigation.
+        app.buttons["keyboard_shortcuts.done"].click()
+        try wait { !app.buttons["keyboard_shortcuts.done"].exists }
+        // Positive control: ordinary text is retained, not blanket-redacted.
+        let publicSearch = "general"
+        search.click(); search.typeText(publicSearch)
+        try wait { search.value as? String == publicSearch }
+        try observe("settings", route: "general", anchors: ["settings.search"], searchText: publicSearch)
+        let searchRow = try XCTUnwrap(readControls("settings").first { $0["id"] as? String == "settings.search" })
+        let searchValue = try XCTUnwrap(searchRow["value"] as? [String: Any])
+        XCTAssertEqual(searchValue["kind"] as? String, "text")
+        XCTAssertEqual(searchValue["value"] as? String, publicSearch)
+        search.typeKey("a", modifierFlags: .command); search.typeKey(.delete, modifierFlags: [])
+        try observe("settings", route: "general", anchors: ["settings.search"], searchText: "")
+        for (route, anchors) in [
+            ("general", Set(["settings.general.login_enable", "settings.general.login_disable", "settings.general.login_settings"])),
+            ("privacy", Set(["settings.privacy.microphone_settings", "settings.privacy.input_monitoring_settings"])),
+            ("hub", Set(["settings.hub.pair"]))
+        ] {
+            try act("softmax.app.navigate", ["window": "settings", "route": route])
+            XCTAssertTrue(settings.buttons[anchors.sorted()[0]].waitForExistence(timeout: 5))
+            try observe("settings", route: route, anchors: anchors)
+            try refuseSensitive("settings", anchors: anchors)
+        }
+        // Native USER click only. configureHub() returns immediately when testing;
+        // HubSettings still presents its actual app-owned sheet. No sensitive grant.
+        settings.buttons["settings.hub.pair"].click()
+        let codeField = app.secureTextFields["settings.hub.pairing.code"]
+        XCTAssertTrue(codeField.waitForExistence(timeout: 5))
+        try observe("hub_pairing", route: "code", anchors: ["settings.hub.pairing.code",
+            "settings.hub.pairing.manual", "settings.hub.pairing.import_qr", "settings.hub.pairing.connect"])
+        let sheetState = try state() // appSnapshot modal-owner guard must recognize this sheet.
+        let sheetWindows = try XCTUnwrap(sheetState["windows"] as? [[String: Any]])
+        XCTAssertTrue(sheetWindows.contains { $0["window"] as? String == "hub_pairing"
+            && $0["open"] as? Bool == true && $0["route"] as? String == "code" })
+        try redacted("hub_pairing", "settings.hub.pairing.code")
+        try refuseSensitive("hub_pairing", anchors: ["settings.hub.pairing.code", "settings.hub.pairing.manual",
+            "settings.hub.pairing.import_qr", "settings.hub.pairing.connect"])
+        // ADR-0030 private input/audit boundary: XCTest typeText activities (and
+        // xcresult/xcodebuild input logs) are NOT scanned here. This bounded
+        // observation/event/ledger proof is NOT total diagnostic secrecy or full
+        // ADR acceptance; private input retention/audit requires a separate gate.
+        let emptyCodeUI = codeField.value as? String
+        codeField.click(); codeField.typeText(secretCanaries[0])
+        try wait { (codeField.value as? String) != emptyCodeUI }
+        try wait { codeField.value(forKey: "hasKeyboardFocus") as? Bool == true }
+        _ = try event("softmax.app.focus_changed") { $0["control"] as? String == "settings.hub.pairing.code" }
+        try observe("hub_pairing", route: "code", anchors: ["settings.hub.pairing.code"])
+        try redacted("hub_pairing", "settings.hub.pairing.code")
+        try scanCanaries()
+        // Disclosure is expanded through its real native user control, NOT an
+        // adapter sensitive invocation, and neither Connect nor QR is clicked.
+        // HubSettings attaches the exact ID to the DisclosureGroup: use its
+        // native triangle, never a whole-group centre or an unrelated triangle.
+        let manualID = "settings.hub.pairing.manual"
+        let manual = app.descendants(matching: .any).matching(identifier: manualID).firstMatch
+        XCTAssertTrue(manual.exists)
+        let identifiedTriangle = app.disclosureTriangles[manualID]
+        let triangle = identifiedTriangle.exists ? identifiedTriangle : manual.disclosureTriangles.firstMatch
+        guard triangle.exists else {
+            XCTFail("owned manual disclosure triangle missing"); throw WireTestFailure()
+        }
+        triangle.click()
+        let invitation = app.secureTextFields["settings.hub.pairing.invitation"]
+        XCTAssertTrue(invitation.waitForExistence(timeout: 5))
+        try observe("hub_pairing", route: "manual", anchors: ["settings.hub.pairing.invitation",
+            "settings.hub.pairing.router_name", "settings.hub.pairing.router_node",
+            "settings.hub.pairing.router_addresses", "settings.hub.pairing.relay_url"])
+        try redacted("hub_pairing", "settings.hub.pairing.invitation")
+        let emptyInvitationUI = invitation.value as? String
+        invitation.click(); invitation.typeText(secretCanaries[1])
+        try wait { (invitation.value as? String) != emptyInvitationUI }
+        try wait { invitation.value(forKey: "hasKeyboardFocus") as? Bool == true }
+        _ = try event("softmax.app.focus_changed") { $0["control"] as? String == "settings.hub.pairing.invitation" }
+        try observe("hub_pairing", route: "manual", anchors: ["settings.hub.pairing.code", "settings.hub.pairing.invitation"])
+        try redacted("hub_pairing", "settings.hub.pairing.code")
+        try redacted("hub_pairing", "settings.hub.pairing.invitation")
+        try refuseSensitive("hub_pairing", anchors: ["settings.hub.pairing.invitation", "settings.hub.pairing.router_name",
+            "settings.hub.pairing.router_node", "settings.hub.pairing.router_addresses", "settings.hub.pairing.relay_url"])
+        try scanCanaries()
+        app.buttons["settings.hub.pairing.cancel"].click()
+        try wait { !app.buttons["settings.hub.pairing.cancel"].exists }
+        try scanCanaries()
+        let nativePressCount = try String(contentsOf: countFile, encoding: .utf8)
+        XCTAssertEqual(nativePressCount, "1")
+        let evidence = try canonical(["scope": "bounded live routes and pairing fields only",
+            "excluded_private_input_audit": "XCTest typeText activities, xcresult and xcodebuild input logs not scanned; not total diagnostic secrecy or full ADR acceptance",
+            "native_press_count": nativePressCount, "exercised": exercised] as [String: Any])
+        let bounded = XCTAttachment(data: evidence, uniformTypeIdentifier: "public.json")
+        bounded.name = "live-app-wire-bounded-sensitive-evidence"; bounded.lifetime = .keepAlways; add(bounded)
         // Captured receipts are schema-validated by the real peer; successful
         // close waits for every expected accept/outcome/replay/read response.
         let initialEpoch = try XCTUnwrap(peer.snapshot().first { $0["type"] as? String == "grants" })
@@ -261,13 +565,16 @@ final class AppSurfaceWireTests: XCTestCase {
         try peer.send(["kind": "close"])
         try wait { !peer.process.isRunning }
         XCTAssertEqual(peer.process.terminationStatus, 0)
+        try wait { peer.drained() }
         try wait { (try? String(contentsOf: directory.appendingPathComponent("status"), encoding: .utf8)) == "closed" }
         let ledger = try Data(contentsOf: directory.appendingPathComponent("l/ledger.cbor"))
         let saved = try CogletTypes.CBORCodec.decodeProfile(Array(ledger))
         guard case .map(let entries) = saved else { throw WireTestFailure() }
         XCTAssertEqual(entries.first { $0.key == "running" }?.value, .boolean(false))
         XCTAssertEqual(entries.first { $0.key == "killed" }?.value, .boolean(false))
-        let retained = XCTAttachment(data: ledger, uniformTypeIdentifier: "public.data")
+        // Include bytes produced during close and the FINAL durable ledger.
+        try scanCanaries(ledger)
+        let retained = XCTAttachment(data: safeAttachmentBytes(ledger), uniformTypeIdentifier: "public.data")
         retained.name = "live-app-wire-final-ledger"; retained.lifetime = .keepAlways; add(retained)
     }
 }
