@@ -454,7 +454,9 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             if let fr = firstRender { r["play_to_first_render_ms"] = round3(msBetween(tAct, fr)) }
             _ = swOnset
             if let lr = lastRender { r["barge_to_render_stop_ms"] = round3(msBetween(tPress, lr)) }
-            var on = onsetTime(env, from: tAct, thr: thr)
+            // Onset: relative to the run's own tone level (a precursor noise blip must not count as the onset).
+            let toneLevel = percentile((0..<env.v.count).filter { env.t[$0] >= tAct && env.t[$0] < tPress }.map { env.v[$0] }, 0.9)
+            var on = onsetTime(env, from: tAct, thr: max(thr, 0.35 * toneLevel))
             if let o = on { on = o; r["play_to_acoustic_onset_ms"] = round3(msBetween(tAct, o)) }
             let refSamples = (0..<env.v.count).filter { env.t[$0] >= tPress - 60_000_000 && env.t[$0] < tPress }.map { env.v[$0] }
             let ref = percentile(refSamples, 0.5)
