@@ -150,6 +150,7 @@ struct CommandPaletteView: View {
 @MainActor final class CommandPaletteController: NSObject, NSWindowDelegate {
     var onChange: (() -> Void)?
     private var panel: NSPanel?
+    private var hosting: NSView?
     private weak var previous: NSWindow?
     func show(commands: [SoftmaxCommand], model: ShellModel) {
         if let panel, panel.isVisible { NSApp.activate(ignoringOtherApps: true); panel.makeKeyAndOrderFront(nil); return }
@@ -159,22 +160,30 @@ struct CommandPaletteView: View {
         panel.title = "Softmax Commands"; panel.isReleasedWhenClosed = false
         panel.identifier = NSUserInterfaceItemIdentifier("softmax.command_palette")
         panel.delegate = self
-        panel.contentView = NSHostingView(rootView: SoftmaxWindowRoot {
+        let hosting = NSHostingView(rootView: SoftmaxWindowRoot {
             CommandPaletteView(commands: commands, dismiss: { [weak self] in self?.close() }, model: model)
         })
-        self.panel = panel
+        panel.contentView = hosting
+        self.panel = panel; self.hosting = hosting
         panel.center(); NSApp.activate(ignoringOtherApps: true); panel.makeKeyAndOrderFront(nil)
         onChange?()
     }
     func close() { panel?.close(); onChange?() }
     func windowWillClose(_ notification: Notification) {
+        guard let closing = notification.object as? NSPanel, closing === panel else { return }
         previous?.makeKeyAndOrderFront(nil)
         previous = nil
         // willClose precedes committed visibility. Capture the ending instance,
         // never let a deferred callback close or mutate a successor panel.
-        let closing = panel
+        let retiring = hosting
         Task { @MainActor [weak self, weak closing] in
+            // Unmount only the ending hosting view (retires the search registration);
+            // a successor panel has a different hosting view and is never touched.
+            if let closing, let retiring, closing.contentView === retiring, !closing.isVisible {
+                closing.contentView = nil
+            }
             guard let self, self.panel === closing else { return }
+            if self.hosting === retiring { self.hosting = nil }
             self.onChange?()
         }
     }

@@ -158,24 +158,25 @@ struct ConversationView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Picker("Conversation mode", selection: $model.voicePanelSelected) {
-                    Text("Chat").tag(false)
-                    Text("Voice").tag(true)
+                    // Per-choice registration uses the existing Settings pattern. Whether it
+                    // reaches the segmented style's native radio buttons is unproven here.
+                    Text("Chat").cogletPickerChoice(id: "chat.mode.chat", registry: model.appControls,
+                        window: "chat", route: route, label: "Chat", selection: $model.voicePanelSelected,
+                        choice: false, failure: model.appControlFailure).tag(false)
+                    Text("Voice").cogletPickerChoice(id: "chat.mode.voice", registry: model.appControls,
+                        window: "chat", route: route, label: "Voice", selection: $model.voicePanelSelected,
+                        choice: true, failure: model.appControlFailure).tag(true)
                 }.pickerStyle(.segmented)
-                    .coglet(id: "chat.mode", registry: model.appControls, window: "chat", route: route,
-                        role: "picker", label: "Conversation mode", verbs: ["select"], value: {
-                            .map([.init("kind", .text("selection")), .init("value", .text(route))])
-                        }, failure: model.appControlFailure, invoke: { args in
-                            guard case .map(let fields) = args,
-                                  let field = fields.first(where: { $0.key == "value" }), case .text(let choice) = field.value,
-                                  ["chat", "voice"].contains(choice) else { throw ControlRegistryFailure.unsupported }
-                            model.voicePanelSelected = choice == "voice"
-                        })
-                Menu {
-                    CogletButton("Clear draft", id: "chat.clear_draft", registry: model.appControls, window: "chat",
-                        route: route, failure: model.appControlFailure) { draft = "" }
-                    CogletButton("Hide orb", id: "chat.hide_orb", registry: model.appControls, window: "chat",
-                        route: route, failure: model.appControlFailure) { model.orbEnabled = false }
-                } label: { Image(systemName: "ellipsis.circle") }.fixedSize()
+                    .cogletPickerSelection(id: "chat.mode", registry: model.appControls, window: "chat", route: route,
+                        label: "Conversation mode", selection: $model.voicePanelSelected,
+                        choices: [(false, "chat"), (true, "voice")], failure: model.appControlFailure)
+                // Native NSPopUpButton/NSMenu: item registrations exist only while its own
+                // menu is open; the trigger is registered while the chat panel is visible.
+                CogletMenuButton(id: "chat.menu", label: "Conversation actions", symbol: "ellipsis.circle",
+                    registry: model.appControls, window: "chat", route: route, items: [
+                        .init(id: "chat.clear_draft", title: "Clear draft") { draft = "" },
+                        .init(id: "chat.hide_orb", title: "Hide orb") { model.orbEnabled = false }
+                    ], failure: model.appControlFailure).fixedSize()
             }
             if model.voicePanelSelected {
                 Text("Voice").font(.title2)

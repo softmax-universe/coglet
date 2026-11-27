@@ -13,6 +13,8 @@ final class FaceHost: ObservableObject {
     @Published var revision = 0
     @Published var compact = false
     @Published var demo = false
+    /// True only while the Face panel is on screen; hidden panels keep their hosting view.
+    @Published private(set) var visible = false
     private var timer: Timer?
     private var demoStart = 0.0
     private let playback: FacePlaybackSession
@@ -74,6 +76,7 @@ final class FaceHost: ObservableObject {
     }
     func setVisible(_ visible: Bool) {
         timer?.invalidate(); timer = nil
+        if self.visible != visible { self.visible = visible }
         guard visible else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             Task { @MainActor in
@@ -163,12 +166,14 @@ struct FacePanelView: View {
     var resize: () -> Void
     /// nil only for design snapshots, which have no registry to register with.
     var model: ShellModel? = nil
+    /// Snapshots (model nil) always render controls; a model-backed hidden panel does not.
+    private var mountsControls: Bool { model == nil || host.visible }
     var body: some View {
         VStack(spacing: SoftmaxDesignTokens.spacing[0]) {
             FaceArtwork(parameters: host.driver.parameters(reduceMotion: reduceMotion || freezeMotion))
                 .animation(reduceMotion || freezeMotion ? nil : .easeOut(duration: 0.07), value: host.revision)
                 .accessibilityElement().accessibilityLabel("Face, \(host.driver.state.label)")
-            if !host.compact {
+            if mountsControls && !host.compact {
                 Text(host.demo ? "Simulated demo · no audio" : host.driver.state.label)
                 HStack {
                     OptionalCogletButton(host.demo ? "Stop demo" : "Start simulated demo", id: "face.demo_toggle", model: model,
@@ -178,12 +183,12 @@ struct FacePanelView: View {
                     OptionalCogletButton("Stop", id: "face.stop", model: model, window: "face", route: "face") { host.cancel() }
                 }
             }
-            HStack {
+            if mountsControls { HStack {
                 OptionalCogletButton(host.compact ? "Expand Face" : "Compact Face", id: "face.compact_toggle", model: model,
                     window: "face", route: "face") { host.compact.toggle(); resize() }
                 OptionalCogletButton("Hide Face", id: "face.hide", model: model, window: "face", route: "face", action: hide)
                     .keyboardShortcut(.escape, modifiers: [])
-            }.softmaxFont(SoftmaxDesignTokens.fontCaption)
+            }.softmaxFont(SoftmaxDesignTokens.fontCaption) }
         }.padding(SoftmaxDesignTokens.spacing[1]).modifier(SoftmaxTheme())
     }
 }

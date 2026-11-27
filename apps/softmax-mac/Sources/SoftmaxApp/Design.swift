@@ -173,7 +173,7 @@ struct AboutView: View {
                     AboutLink(title: "Support", id: "about.support", url: URL(string: "https://github.com/softmax-universe/coglet/issues")!, model: model)
                     AboutLink(title: "Source", id: "about.source", url: URL(string: "https://github.com/softmax-universe/coglet")!, model: model)
                 }
-                DisclosureGroup("Licences and acknowledgements", isExpanded: $licenses) {
+                DisclosureGroup(isExpanded: $licenses) {
                     // Do not retain actionable mounted children while collapsed.
                     if licenses {
                         VStack(alignment: .leading, spacing: 8) {
@@ -184,16 +184,21 @@ struct AboutView: View {
                             }
                         }.padding(.top, 8)
                     }
-                }.modifier(AboutControlRegistration(model: model, id: "about.licenses", role: "disclosure",
-                    label: "Licences and acknowledgements", verbs: ["toggle"],
-                    value: { .map([.init("kind", .text("boolean")), .init("value", .boolean(licenses))]) },
-                    invoke: { args in
-                        guard case .map(let fields) = args,
-                              let field = fields.first(where: { $0.key == "value" }), case .boolean(let expanded) = field.value else {
-                            throw ControlRegistryFailure.unsupported
-                        }
-                        licenses = expanded
-                    }))
+                } label: {
+                    // Scope the identifier to the native header; applying it to the
+                    // whole group overwrites the AX identifiers of expanded children.
+                    Text("Licences and acknowledgements")
+                        .modifier(AboutControlRegistration(model: model, id: "about.licenses", role: "disclosure",
+                        label: "Licences and acknowledgements", verbs: ["toggle"],
+                        value: { .map([.init("kind", .text("boolean")), .init("value", .boolean(licenses))]) },
+                        invoke: { args in
+                            guard case .map(let fields) = args,
+                                  let field = fields.first(where: { $0.key == "value" }), case .boolean(let expanded) = field.value else {
+                                throw ControlRegistryFailure.unsupported
+                            }
+                            licenses = expanded
+                        }))
+                }
             }.padding(SoftmaxDesignTokens.spacing[4])
         }.frame(minWidth: 420, minHeight: 380).modifier(SoftmaxTheme())
     }
