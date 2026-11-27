@@ -148,12 +148,16 @@ public final class ControlRegistry {
     /// Returns the ACTUAL open route, not adapter-owned shadow navigation.
     private let currentRoute: (String) -> String?
     private let interactionAllowed: (String) -> Bool
+    /// Passive focus ownership only, independent of enabled state and action authority.
+    private let focusObservationEligible: (String) -> Bool
 
     public init(revision: UInt64, interactionAllowed: @escaping (String) -> Bool = { _ in true },
+                focusObservationEligible: @escaping (String) -> Bool = { _ in true },
                 currentRoute: @escaping (String) -> String?) {
         self.revision = revision
         self.currentRoute = currentRoute
         self.interactionAllowed = interactionAllowed
+        self.focusObservationEligible = focusObservationEligible
     }
 
     @discardableResult
@@ -368,7 +372,9 @@ public final class ControlRegistry {
     }
 
     public func focusedControl() throws -> CBORValue {
-        let focused = entries.values.filter { currentRoute($0.window) == $0.route && $0.visible() && $0.focused?() == true }
+        let focused = entries.values.filter {
+            currentRoute($0.window) == $0.route && $0.visible() && focusObservationEligible($0.window) && $0.focused?() == true
+        }
         guard focused.count <= 1 else { throw ControlRegistryFailure.conflict }
         guard let entry = focused.first else { return .null }
         return object(["window": .text(entry.window), "control": .text(entry.mount.id)])

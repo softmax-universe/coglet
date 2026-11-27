@@ -54,12 +54,16 @@ final class ShellModel: ObservableObject {
     /// Actual window visibility and existing Settings selection, not shadow state.
     lazy var appControls = ControlRegistry(revision: 0, interactionAllowed: { [weak self] window in
         self?.appInteractionAllowed?(window) ?? false
+    }, focusObservationEligible: { [weak self] window in
+        self?.appFocusObservationEligible?(window) ?? true
     }) { [weak self] window in
         self?.appSurfaceRoute?(window)
     }
     // Installed by the actual window owner; absent ownership is unavailable.
     var appSurfaceRoute: ((String) -> String?)?
     var appInteractionAllowed: ((String) -> Bool)?
+    // Unknown focus ownership remains eligible: only positive supersession excludes it.
+    var appFocusObservationEligible: ((String) -> Bool)?
     var appSurface: AppSurfaceAdapter?
     #if DEBUG
     var wireProofShortcutPresses = 0
@@ -529,6 +533,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         talkHUD.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         face.onChange = { [weak self] in self?.invalidateAppControlSnapshots() }
         model.appSurfaceRoute = { [weak self] in self?.appRoute($0) }
+        model.appFocusObservationEligible = { [weak self] window in
+            guard let self else { return true }
+            let owner: NSWindow?
+            switch window {
+            case "hub_pairing": owner = self.model.hubPairingNativeWindow
+            case "sign_out_confirmation": owner = self.model.signOutNativeWindow
+            case "keyboard_shortcuts": owner = self.model.keyboardShortcutsNativeWindow
+            default: owner = self.appWindow(window)
+            }
+            return NativeFocusObservation.isEligible(owner: owner)
+        }
         model.appInteractionAllowed = { [weak self] window in
             guard let self, !self.hasUnqualifiedAppModal else { return false }
             if self.model.keyboardShortcutsOpen { return window == "keyboard_shortcuts" }
