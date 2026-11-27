@@ -263,7 +263,9 @@ impl DeviceHandler {
                             },
                         )
                     })();
-                    if admission.is_err() {
+                    if let Err(error) = &admission {
+                        // The reason stays local: status reports only the fence.
+                        eprintln!("cogletd restart admission refused: {error}");
                         service
                             .lock()
                             .map_err(|_| "unavailable")?

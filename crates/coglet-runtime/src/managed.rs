@@ -610,12 +610,22 @@ impl RuntimeService {
             || saved.scope.as_ref() != Some(&recovery.scope)
             || recovery.scope.method != "hub.start"
             || saved.receipt["state"] != "applied"
-            || self.state.runtime.unresolved_attempt.is_some()
-            || self.state.staged_boundary.is_some()
-            || managed.cancellation_pending
-            || managed.recovery_fault.is_some()
         {
-            return Err("invalid or fenced start recovery context".into());
+            return Err("invalid start recovery context".into());
+        }
+        let fence = if self.state.runtime.unresolved_attempt.is_some() {
+            Some("unresolved engine attempt")
+        } else if self.state.staged_boundary.is_some() {
+            Some("staged boundary")
+        } else if managed.cancellation_pending {
+            Some("cancellation pending")
+        } else if managed.recovery_fault.is_some() {
+            Some("recovery fault")
+        } else {
+            None
+        };
+        if let Some(fence) = fence {
+            return Err(format!("fenced start recovery context: {fence}"));
         }
         Ok(recovery.clone())
     }

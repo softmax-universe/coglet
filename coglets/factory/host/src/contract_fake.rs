@@ -142,6 +142,10 @@ impl Drop for ContractKanbanServer {
     }
 }
 fn handle(mut stream: TcpStream, shared: &Mutex<State>) -> std::io::Result<()> {
+    // The listener is non-blocking and macOS hands that flag to the accepted
+    // socket: a request not yet in the buffer would fail the first read and the
+    // connection would be dropped unanswered.
+    stream.set_nonblocking(false)?;
     stream.set_read_timeout(Some(Duration::from_secs(3)))?;
     let mut raw = Vec::new();
     let end;
