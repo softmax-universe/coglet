@@ -7,6 +7,31 @@ animations. The manifest requires the baseline speech/expression controls and
 exclusive microphone/speaker ownership; grants and capture configuration remain
 operator/host responsibilities.
 
+## Router speech (`face.say`)
+
+A router can ask the Face to speak by appending an inbox message whose event
+kind is `face.say` and whose payload is exactly `{"text": "..."}` (non-blank, at
+most 4096 UTF-8 bytes). The sender must be a router id (`hub:` plus 64 hex).
+Only a host-materialized `runtime.inbox` wake lets the guest read
+`/data/inbox.jsonl`; each row is consumed once, in index order, tracked by
+`inbox_cursor` in `/data/face-state.json`. The reply is one
+`speech.speak_chunk` (chunk zero, final true) on a fresh stream, carrying the
+inbox event's correlation ID. Inbox corruption (missing newline, index gap,
+sender differing from event source, non-canonical bytes, a wake past the
+delivered rows) fails the step closed. A row that is not a well-formed router
+`face.say` is skipped, so it cannot wedge the cursor. The Face never decides
+what to say: the text is the router's. Used by the Mindister lane acceptance
+test (Face → router → avatar).
+
+## Installed identity
+
+By default the Face's coglet id is the fixed `coglet:ccc…c` (`ID`). A router
+that registers the Face under its own signing key installs
+`/code/face/identity.json` as `{"coglet": "coglet:<64 hex>"}`; the Face then
+uses that id for its `runtime.inbox` wakes and as the `coglet` of every
+action. A present but malformed identity (wrong prefix or length, extra fields,
+more than 256 bytes) fails the step closed; it never falls back to `ID`.
+
 ## Build and test
 
 Run from this directory (so Cargo finds the local target configuration):

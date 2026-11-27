@@ -240,3 +240,173 @@ fn malformed_or_oversized_state_fails_closed() {
     );
     assert!(h.actions.is_empty());
 }
+
+fn router() -> String {
+    format!("hub:{}", "c".repeat(64))
+}
+fn inbox_row(index: u64, sender: &str, kind: &str, payload: serde_json::Value) -> String {
+    let row = serde_json::json!({
+        "index": index, "id": format!("{index:032x}"), "sender": sender,
+        "event": {"source": sender, "kind": kind, "seq": index, "logical_time": 50,
+            "payload": payload, "correlation_id": "e".repeat(32)}
+    });
+    format!("{}\n", serde_json::to_string(&row).unwrap())
+}
+fn wake_inbox(index: u64) -> Event {
+    Event {
+        source: coglet_face::ID.into(),
+        kind: "runtime.inbox".into(),
+        seq: index,
+        logical_time: 100,
+        payload: BTreeMap::from([
+            ("index".into(), Value::Integer(index.into())),
+            ("id".into(), Value::Text(format!("{index:032x}"))),
+        ]),
+        correlation_id: "e".repeat(32),
+    }
+}
+#[test]
+fn router_say_is_spoken_once_in_order_and_survives_restart() {
+    let mut h = Memory::default();
+    let mut inbox = inbox_row(
+        0,
+        &router(),
+        "face.say",
+        serde_json::json!({"text": "Router researched."}),
+    );
+    h.files
+        .insert(coglet_face::INBOX_PATH.into(), inbox.clone().into_bytes());
+    run(&mut h, 1, &[wake_inbox(0)]).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    assert_eq!(h.actions[0].capability, "speech.speak_chunk");
+    assert_eq!(
+        h.actions[0].args["text"].as_text(),
+        Some("Router researched.")
+    );
+    assert_eq!(h.actions[0].correlation_id, "e".repeat(32));
+    // A repeated wake for the same index must not speak again.
+    run(&mut h, 2, &[wake_inbox(0)]).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    inbox.push_str(&inbox_row(
+        1,
+        &router(),
+        "face.say",
+        serde_json::json!({"text": "Second."}),
+    ));
+    h.files
+        .insert(coglet_face::INBOX_PATH.into(), inbox.into_bytes());
+    run(&mut h, 3, &[wake_inbox(1)]).unwrap();
+    assert_eq!(h.actions.len(), 2);
+    assert_eq!(h.actions[1].args["text"].as_text(), Some("Second."));
+    assert_ne!(h.actions[0].id, h.actions[1].id);
+    assert!(!String::from_utf8_lossy(&h.files[STATE_PATH]).contains("Router"));
+}
+#[test]
+fn router_say_ignores_non_router_foreign_and_malformed_rows_without_wedging() {
+    let mut h = Memory::default();
+    let surface = format!("surface:{}", "b".repeat(64));
+    let mut inbox = String::new();
+    inbox.push_str(&inbox_row(
+        0,
+        &surface,
+        "face.say",
+        serde_json::json!({"text": "forged"}),
+    ));
+    inbox.push_str(&inbox_row(
+        1,
+        &router(),
+        "face.other",
+        serde_json::json!({"text": "kind"}),
+    ));
+    inbox.push_str(&inbox_row(
+        2,
+        &router(),
+        "face.say",
+        serde_json::json!({"text": "  "}),
+    ));
+    inbox.push_str(&inbox_row(
+        3,
+        &router(),
+        "face.say",
+        serde_json::json!({"text": "x", "extra": 1}),
+    ));
+    inbox.push_str(&inbox_row(
+        4,
+        &router(),
+        "face.say",
+        serde_json::json!({"text": "ok"}),
+    ));
+    h.files
+        .insert(coglet_face::INBOX_PATH.into(), inbox.into_bytes());
+    run(&mut h, 1, &[wake_inbox(4)]).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    assert_eq!(h.actions[0].args["text"].as_text(), Some("ok"));
+}
+#[test]
+fn router_say_inbox_corruption_fails_closed() {
+    let mut h = Memory::default();
+    let good = inbox_row(0, &router(), "face.say", serde_json::json!({"text": "ok"}));
+    for bad in [
+        good.trim_end().to_string(),                          // missing LF
+        good.replace("\"index\":0", "\"index\":1"),           // index gap
+        good.replace("\"sender\":\"hub", "\"sender\":\"hup"), // sender != source
+        good.replace(":", ": "),                              // non-canonical bytes
+    ] {
+        h.files
+            .insert(coglet_face::INBOX_PATH.into(), bad.into_bytes());
+        assert_eq!(
+            run(&mut h, 1, &[wake_inbox(0)]),
+            Err(HostError::InvalidArgument)
+        );
+    }
+    // Wake beyond the delivered inbox is also corruption.
+    h.files
+        .insert(coglet_face::INBOX_PATH.into(), good.into_bytes());
+    assert_eq!(
+        run(&mut h, 1, &[wake_inbox(1)]),
+        Err(HostError::InvalidArgument)
+    );
+    assert!(h.actions.is_empty());
+}
+#[test]
+fn installed_identity_owns_wakes_and_actions_and_malformed_identity_fails_closed() {
+    let own = format!("coglet:{}", "9".repeat(64));
+    let mut h = Memory::default();
+    h.files.insert(
+        coglet_face::IDENTITY_PATH.into(),
+        serde_json::to_vec(&serde_json::json!({"coglet": own})).unwrap(),
+    );
+    run(&mut h, 1, &turn(1, 1, "echo")).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    assert_eq!(h.actions[0].coglet, own);
+    let inbox = inbox_row(
+        0,
+        &router(),
+        "face.say",
+        serde_json::json!({"text": "Routed."}),
+    );
+    h.files
+        .insert(coglet_face::INBOX_PATH.into(), inbox.into_bytes());
+    // A wake attributed to the fixed default id is not this Face's wake.
+    run(&mut h, 2, &[wake_inbox(0)]).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    let mut own_wake = wake_inbox(0);
+    own_wake.source = own.clone();
+    run(&mut h, 3, &[own_wake]).unwrap();
+    assert_eq!(h.actions.len(), 2);
+    assert_eq!(h.actions[1].coglet, own);
+    assert_eq!(h.actions[1].args["text"].as_text(), Some("Routed."));
+    for bad in [
+        br#"{"coglet":"coglet:XYZ"}"#.to_vec(),
+        br#"{"coglet":"hub:9999999999999999999999999999999999999999999999999999999999999999"}"#
+            .to_vec(),
+        br#"{"coglet":"coglet:9999999999999999999999999999999999999999999999999999999999999999","x":1}"#
+            .to_vec(),
+        vec![b' '; coglet_face::MAX_IDENTITY_BYTES + 1],
+    ] {
+        let mut h = Memory::default();
+        h.files.insert(coglet_face::IDENTITY_PATH.into(), bad);
+        assert!(run(&mut h, 1, &turn(1, 1, "echo")).is_err());
+        assert!(h.actions.is_empty());
+    }
+}
