@@ -181,6 +181,34 @@ private actor BackendHarness {
             return (calls, true)
         }
     }
+    func queuedRegistryEvents() throws -> [[UInt8]] {
+        try XCTUnwrap(connection).publishEvents(session)
+        return session.drain()
+    }
+    func socketPayloads(_ frames: [[UInt8]]) throws -> (bytes: [[UInt8]], values: [W]) {
+        let values = try wire.outgoing(frames)
+        return (wire.receivedPayloads, values)
+    }
+    func actWithBytes(_ operation: String, args: W, id: String) throws -> (bytes: [[UInt8]], values: [W]) {
+        let values = try act(operation, args: args, id: id)
+        return (wire.receivedPayloads, values)
+    }
+    // Diagnostics are from actual failing backend calls on the same copied
+    // capture/arguments as the wire requests, not constructed error instances.
+    func failedReadDiagnostic(_ args: W) throws -> NativeSurfaceError {
+        var failure: NativeSurfaceError?
+        do {
+            _ = try backend.read(operation: "softmax.app.controls", args: args, owner: owner, now: clock.now())
+        } catch let error as NativeSurfaceError { failure = error }
+        return try XCTUnwrap(failure, "stale backend read unexpectedly succeeded")
+    }
+    func failedInvokeDiagnostic(_ operation: String, args: W) throws -> NativeSurfaceError {
+        var failure: NativeSurfaceError?
+        do {
+            try backend.preflight(action: obj(["capability": .text(operation), "args": args]), now: clock.now())
+        } catch let error as NativeSurfaceError { failure = error }
+        return try XCTUnwrap(failure, "direction-bypass preflight unexpectedly succeeded")
+    }
     func queuedSuccessfulRead() throws -> [[UInt8]] {
         try session.receive(wire.incoming(SurfaceWire.encode(obj(["type": .text("read"), "body": obj([
             "coglet": .text(owner), "capability": .text("softmax.app.state"), "args": .map([]), "deadline": .unsigned(1000),
@@ -384,6 +412,167 @@ final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
             await MainActor.run { fixture.assertGetters(); fixture.host.registry.onChange = nil }
             try await successor.close()
         }
+    }
+
+    private func assertClosedSecrecyError(_ error: W?, code: String) throws {
+        XCTAssertEqual(try CogletTypes.CBORCodec.encodeProfile(XCTUnwrap(error)),
+            try CogletTypes.CBORCodec.encodeProfile(obj([
+                "code": .text(code), "message": .text(code), "retryable": .boolean(false)])))
+    }
+    private func assertActualErrorDescription(_ error: NativeSurfaceError, code: String) {
+        XCTAssertEqual(error.code, code)
+        for description in [String(describing: error), String(reflecting: error), error.localizedDescription] {
+            for secret in secrecyCanaries {
+                XCTAssertFalse(description.contains(secret), "actual error description leaked private input")
+            }
+            XCTAssertFalse(description.contains("PUBLIC_TRANSPORT_WITNESS"))
+        }
+    }
+    func testSDKCloseAndGrantRevocationDiscardOldEventsAndDetachedGapEditsBeforeNewSession() async throws {
+        for revoke in [false, true] {
+            let fixture = try await MainActor.run { try SecrecyFixture() }
+            let capture = try await MainActor.run { try fixture.host.adapter.capture() }
+            let old = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+            await MainActor.run { fixture.observe(into: old.mailbox) }
+            try await MainActor.run { try fixture.changeProtectedInput(self.secrecyCanaries[0]) }
+            let oldEvents = try await old.queuedRegistryEvents()
+            XCTAssertEqual(oldEvents.count, 2)
+            let oldRead = try await old.queuedControlsRead(secrecyControlsArgs)
+            XCTAssertEqual(oldRead.count, 1)
+            let retained = oldEvents + oldRead
+            // Establish that retained frames really came from registry/SDK and
+            // crossed the socket as redacted events plus a useful public read.
+            let oldOutput = try await old.socketPayloads(retained)
+            try assertNoSecret(oldOutput)
+            for event in oldOutput.values.prefix(2) {
+                XCTAssertEqual(event["body"]?["kind"], .text("softmax.app.control_changed"))
+                XCTAssertEqual(event["body"]?["payload"]?["value"], obj(["kind": .text("redacted")]))
+            }
+            try assertSecrecyControls(XCTUnwrap(oldOutput.values.last))
+            // Also leave actual native observations pending at the SDK stop.
+            try await MainActor.run { try fixture.changeProtectedInput(self.secrecyCanaries[1]) }
+            await MainActor.run { fixture.host.registry.onChange = nil }
+            if revoke {
+                let revoked = try await old.revokeGrants()
+                XCTAssertGreaterThan(revoked.after, revoked.before)
+            } else { try await old.close() }
+            let refusedBeforeReconnect = try await old.privatePayloadAttempt(retained)
+            XCTAssertEqual(refusedBeforeReconnect.calls, 0); XCTAssertTrue(refusedBeforeReconnect.refused)
+            XCTAssertTrue(old.mailbox.drainEvents().isEmpty)
+            let gapCapture = try await MainActor.run {
+                XCTAssertNil(fixture.host.registry.onChange)
+                for secret in self.secrecyCanaries { try fixture.changeProtectedInput(secret) }
+                try fixture.host.registry.controlChanged(fixture.publicMount, force: true)
+                return try fixture.host.adapter.capture()
+            }
+            XCTAssertGreaterThan(gapCapture.revision, capture.revision)
+            // New SDK object AND mailbox, never reactivation of old custody.
+            let successor = try BackendHarness(capture: gapCapture, clock: BackendClock(), withConnection: true)
+            XCTAssertFalse(old.mailbox === successor.mailbox)
+            let first = try await successor.readWithBytes("softmax.app.controls", args: secrecyControlsArgs)
+            XCTAssertEqual(first.values.count, 1)
+            try assertNoSecret(first); try assertSecrecyControls(XCTUnwrap(first.values.first))
+            XCTAssertEqual(first.values.first?["body"]?["value"]?["revision"], .unsigned(gapCapture.revision))
+            let noReplay = try await successor.eventsWithBytes()
+            XCTAssertTrue(noReplay.values.isEmpty); XCTAssertTrue(noReplay.bytes.isEmpty)
+            await MainActor.run { fixture.observe(into: successor.mailbox) }
+            let noReplayOnAttach = try await successor.eventsWithBytes()
+            XCTAssertTrue(noReplayOnAttach.values.isEmpty); XCTAssertTrue(noReplayOnAttach.bytes.isEmpty)
+            try await MainActor.run {
+                try fixture.changeProtectedInput(self.secrecyCanaries[0])
+                try fixture.host.registry.controlChanged(fixture.publicMount, force: true)
+            }
+            let fresh = try await successor.eventsWithBytes()
+            XCTAssertEqual(fresh.values.count, 3); try assertNoSecret(fresh)
+            for (event, id) in zip(fresh.values, ["secrecy.secure", "secrecy.sensitive", "secrecy.public"]) {
+                XCTAssertEqual(event["type"], .text("event"))
+                XCTAssertEqual(event["body"]?["kind"], .text("softmax.app.control_changed"))
+                XCTAssertEqual(event["body"]?["payload"]?["control"], .text(id))
+                let expected: W = id == "secrecy.public"
+                    ? .map([.init("kind", .text("text")), .init("value", .text("PUBLIC_TRANSPORT_WITNESS"))])
+                    : obj(["kind": .text("redacted")])
+                XCTAssertEqual(event["body"]?["payload"]?["value"], expected)
+                guard case .unsigned(let revision)? = event["body"]?["payload"]?["revision"] else {
+                    return XCTFail("missing native event revision")
+                }
+                XCTAssertGreaterThan(revision, gapCapture.revision)
+            }
+            let afterDrain = try await successor.eventsWithBytes()
+            XCTAssertTrue(afterDrain.values.isEmpty)
+            let stillRefused = try await old.privatePayloadAttempt(retained)
+            XCTAssertEqual(stillRefused.calls, 0); XCTAssertTrue(stillRefused.refused)
+            let liveAttempt = try await successor.privatePayloadAttempt(first.bytes)
+            XCTAssertEqual(liveAttempt.calls, 1); XCTAssertFalse(liveAttempt.refused)
+            await MainActor.run { fixture.assertGetters(); fixture.host.registry.onChange = nil }
+            try await successor.close()
+            if revoke { try await old.close() }
+        }
+    }
+    func testStaleCursorAndSensitiveInputDirectionErrorsAreClosedAndSecretFreeOnSocket() async throws {
+        let fixture = try await MainActor.run { try SecrecyFixture() }
+        let capture = try await MainActor.run { try fixture.host.adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(),
+            allowed: ["softmax.app.controls", "softmax.app.invoke", "softmax.app.invoke_sensitive"], withConnection: true)
+        let first = try await h.readWithBytes("softmax.app.controls", args: obj([
+            "window": .text("settings"), "after": .null, "revision": .null, "limit": .unsigned(1)]))
+        try assertNoSecret(first)
+        XCTAssertEqual(first.values.first?["body"]?["ok"], .boolean(true))
+        let page = try XCTUnwrap(first.values.first?["body"]?["value"])
+        let cursor = try XCTUnwrap(page["next"])
+        guard case .text = cursor else { return XCTFail("missing real continuation cursor") }
+        let staleArgs = obj(["window": .text("settings"), "after": cursor,
+            "revision": try XCTUnwrap(page["revision"]), "limit": .unsigned(1)])
+        for (index, secret) in secrecyCanaries.enumerated() {
+            let refreshed = try await MainActor.run {
+                try fixture.changeProtectedInput(secret)
+                return try fixture.host.adapter.capture()
+            }
+            try await h.publish(refreshed)
+            let stale = try await h.readWithBytes("softmax.app.controls", args: staleArgs)
+            XCTAssertEqual(stale.values.count, 1); try assertNoSecret(stale)
+            XCTAssertEqual(stale.bytes.first, try CogletTypes.CBORCodec.encodeProfile(obj(["type": .text("read_reply"), "body": obj([
+                "correlation_id": .text(cid), "ok": .boolean(false),
+                "error": obj(["code": .text("conflict"), "message": .text("conflict"), "retryable": .boolean(false)])])])))
+            try assertClosedSecrecyError(stale.values.first?["body"]?["error"], code: "conflict")
+            let readError = try await h.failedReadDiagnostic(staleArgs)
+            assertActualErrorDescription(readError, code: "conflict")
+            for (offset, operation, control) in [
+                (1, "softmax.app.invoke", "secrecy.sensitive"),
+                (2, "softmax.app.invoke_sensitive", "secrecy.public")
+            ] {
+                // Real secret input travels IN; neither a refusal envelope nor
+                // the backend's actual error description may echo it OUT.
+                let args = obj(["window": .text("settings"), "control": .text(control),
+                    "verb": .text("type_text"), "value": .text(secret)])
+                let id = String(format: "%032x", index * 4 + offset)
+                let refused = try await h.actWithBytes(operation, args: args, id: id)
+                XCTAssertEqual(refused.values.count, 1); try assertNoSecret(refused)
+                XCTAssertEqual(refused.bytes.first, try CogletTypes.CBORCodec.encodeProfile(obj(["type": .text("accept"), "body": obj([
+                    "id": .text(id), "correlation_id": .text(cid), "accepted": .boolean(false),
+                    "error": obj(["code": .text("permission_denied"), "message": .text("permission_denied"),
+                                  "retryable": .boolean(false)])])])))
+                try assertClosedSecrecyError(refused.values.first?["body"]?["error"], code: "permission_denied")
+                let invokeError = try await h.failedInvokeDiagnostic(operation, args: args)
+                assertActualErrorDescription(invokeError, code: "permission_denied")
+                XCTAssertTrue(h.mailbox.queuedCommands().isEmpty)
+            }
+        }
+        let publicPage = try await h.readWithBytes("softmax.app.controls", args: secrecyControlsArgs)
+        try assertNoSecret(publicPage); try assertSecrecyControls(XCTUnwrap(publicPage.values.first))
+        let accepted = try await h.actWithBytes("softmax.app.invoke", args: invoke("settings.general.button"),
+            id: String(repeating: "f", count: 32))
+        try assertNoSecret(accepted)
+        XCTAssertEqual(accepted.values.first?["body"]?["accepted"], .boolean(true))
+        let ticket = try XCTUnwrap(h.mailbox.queuedCommands().first)
+        await MainActor.run {
+            h.mailbox.execute(ticket, adapter: fixture.host.adapter)
+            XCTAssertEqual(fixture.host.pressCalls, 1)
+            fixture.assertGetters()
+        }
+        let outcome = try await h.reconcile()
+        XCTAssertEqual(outcome.count, 1)
+        XCTAssertEqual(outcome.first?["body"]?["payload"]?["status"], .text("succeeded"))
+        try await h.close()
     }
 
     @MainActor private final class Suspension {
