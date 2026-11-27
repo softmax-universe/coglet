@@ -57,6 +57,8 @@ public struct NativeSurfaceError: Swift.Error, Sendable {
 public enum NativeSurfaceResult: Sendable {
     case succeeded(CBORValue)
     case failed(NativeSurfaceError)
+    /// Native stop/reflex cancellation is distinct from execution failure.
+    case cancelled
 }
 
 /// Opaque callback custody captured when a native/provider generation STARTS.
@@ -123,6 +125,15 @@ public final class SurfaceSession {
     private var extensionTokens: [String: ExtensionObservationToken] = [:]
     private var normalizers: [String: SpeechObservations] = [:]
     public var grantEpoch: UInt64 { ledger.epoch }
+    /// Trusted embedding hosts may reconstruct native admission tombstones, never
+    /// replay effects. Only durable accepted actions are returned, in key order;
+    /// rejected attempts are not admissions. Copies cannot mutate the ledger.
+    public func retainedAdmittedActions() throws -> [CBORValue] {
+        try ledger.records.sorted { $0.key < $1.key }.compactMap { _, record in
+            guard record.accept["accepted"] == .boolean(true) else { return nil }
+            return try SurfaceWire.decode(record.envelope, from: .runtime)["body"]!["action"]!
+        }
+    }
     public var isKilled: Bool { ledger.killed }
 
     public init(identity: String, boundCoglets: Set<String>, operations: [SurfaceOperation],
@@ -165,7 +176,7 @@ public final class SurfaceSession {
         }
         try ledger.save()
     }
-    deinit { backend.stop(owner: nil) }
+    deinit { if !retired { backend.stop(owner: nil) } }
 
     public func start() throws {
         try guarded {
@@ -376,6 +387,7 @@ public final class SurfaceSession {
                 try check(operation, output: true, value: value)
                 try terminal(key: key, status: "succeeded", value: value, now: now)
             case .failed(let error): try terminal(key: key, status: "failed", value: error.value, now: now)
+            case .cancelled: try terminal(key: key, status: "cancelled", value: NativeSurfaceError("cancelled").value, now: now)
             }
         }
     }
@@ -465,7 +477,9 @@ public final class SurfaceSession {
                 ("events", .array(selected.filter { $0.direction == .event }.map { .text($0.name) })),
                 ("reads", .array(selected.filter { $0.direction == .read }.map { .text($0.name) })),
                 ("actions", .array(selected.filter { $0.direction == .action }.map { .text($0.name) })),
-                ("exclusive", .array(Set(selected.flatMap(\.resources)).sorted().map(CBORValue.text))),
+                // History/work depend on leases advertised by speech.control;
+                // a read's authorization resource is not a second exclusive claim.
+                ("exclusive", .array((entry == "speech.history" || entry == "speech.work" ? [] : Set(selected.flatMap(\.resources)).sorted()).map(CBORValue.text))),
                 ("schemas", .map(selected.map { operation in
                     if trustedCatalog?.operations.contains(where: { $0.name == operation.name }) == true {
                         return CBORMapEntry(operation.name, .text(trustedCatalog!.schemaURI(operation: operation.name)))
@@ -568,14 +582,17 @@ public final class SurfaceSession {
         try emit(.message("accept", receipt))
         guard rejection == nil else { return }
         let result: NativeSurfaceResult?
+        let effectNow = try sample()
         do {
-            let effectTime = try sample()
-            try authorize(owner: owner, operation: operations[name]!, epoch: body["grant_epoch"]!.uintValue!, deadline: action["deadline"]!.uintValue!, now: effectTime)
-            result = try backend.begin(action: action, epoch: ledger.epoch, now: effectTime)
-        }
-        catch {
+            // Durable admission can block. Its old timestamp is not authority
+            // to start a provider or physical effect after expiry.
+            try authorize(owner: owner, operation: operations[name]!, epoch: body["grant_epoch"]!.uintValue!,
+                          deadline: action["deadline"]!.uintValue!, now: effectNow)
+            result = try backend.begin(action: action, epoch: ledger.epoch, now: effectNow)
+        } catch {
             backend.stop(owner: owner)
-            try terminal(key: key, status: "failed", value: NativeSurfaceError("unavailable").value, now: now)
+            let failure = error as? NativeSurfaceError ?? NativeSurfaceError("unavailable")
+            try terminal(key: key, status: failure.code == "deadline_exceeded" ? "expired" : "failed", value: failure.value, now: effectNow)
             return
         }
         if let result {

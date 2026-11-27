@@ -1,0 +1,5 @@
+module CRuntime [system] {
+    header "shim.h"
+    link "coglet_runtime"
+    export *
+}

@@ -86,8 +86,11 @@ public struct AudioConfiguration: Equatable, Sendable {
     public func flushPlayback() { playback?.flush() }
     /// Frames actually handed to the output graph (silence/underruns excluded),
     /// not a hardware acoustic timestamp. Monotonic over graph rebuilds/flushes.
+    public var renderedPlaybackFrames: UInt64 {
+        completedFrames + (playback.map { fa_played($0.raw) } ?? 0)
+    }
     public var playbackPosition: TimeInterval {
-        Double(completedFrames + (playback.map { fa_played($0.raw) } ?? 0)) / 24000
+        Double(renderedPlaybackFrames) / 24000
     }
     public var inputPeak: Float { capture.map { fa_peak($0.raw) } ?? 0 }
     public var outputPeak: Float { playback.map { fa_peak($0.raw) } ?? 0 }
