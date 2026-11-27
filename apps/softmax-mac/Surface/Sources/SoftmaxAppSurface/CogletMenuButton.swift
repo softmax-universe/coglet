@@ -47,6 +47,45 @@ public struct CogletMenuButton: NSViewRepresentable {
         self.id = id; self.label = label; self.symbol = symbol; self.registry = registry
         self.window = window; self.route = route; self.items = items; self.failure = failure
     }
+    #if DEBUG
+    /// Temporary native-order measurement, NOT an adapter observation. No input
+    /// strings, ids, labels, values, timestamps or object addresses are accepted.
+    /// Enabled only after the app validates its existing private UI-test probe.
+    public enum DiagnosticEvent: String, Codable {
+        case open, highlightOwned, highlightNil, highlightForeign
+        case closeWithCandidate, closeWithoutCandidate, pendingCreated, pendingExpired
+        case chooseEntered, chooseWrongSender, chooseOpen, chooseNoPending
+        case chooseWrongPending, chooseWrongBox, choosePending
+        case clearPending, retire, reconfigureSame, reconfigureReplacement
+    }
+    public struct DiagnosticSnapshot: Encodable {
+        public let events: [DiagnosticEvent]
+        public let dropped: Int
+    }
+    private static var diagnosticEnabled = false
+    private static var diagnosticEvents: [DiagnosticEvent] = []
+    private static var diagnosticDropped = 0
+    public static func enableDiagnostics(_ enabled: Bool) {
+        diagnosticEnabled = enabled
+        diagnosticEvents = []; diagnosticDropped = 0
+    }
+    public static var diagnosticSnapshot: DiagnosticSnapshot {
+        DiagnosticSnapshot(events: diagnosticEvents, dropped: diagnosticDropped)
+    }
+    private static func record(_ event: DiagnosticEvent) {
+        guard diagnosticEnabled else { return }
+        // Ignore startup/configuration churn before any menu presentation.
+        guard !diagnosticEvents.isEmpty || event == .open else { return }
+        // Prefix, never eviction: preserve the first causal sequence. Saturate
+        // the dropped counter too; observers can detect incomplete evidence.
+        guard diagnosticEvents.count < 128 else {
+            if diagnosticDropped < Int.max { diagnosticDropped += 1 }
+            return
+        }
+        diagnosticEvents.append(event)
+    }
+    #endif
+
     public func makeNSView(context: Context) -> NativeView {
         let view = NativeView(frame: .zero, pullsDown: true)
         updateNSView(view, context: context)
@@ -126,6 +165,11 @@ public struct CogletMenuButton: NSViewRepresentable {
             let next = Identity(id: id, label: label, symbol: symbol, window: window, route: route,
                 itemIDs: items.map(\.id), titles: items.map(\.title))
             let replaced = identity != next || self.registry !== registry
+            #if DEBUG
+            if menuOpen || pending != nil {
+                CogletMenuButton.record(replaced ? .reconfigureReplacement : .reconfigureSame)
+            }
+            #endif
             if replaced { retire() }
             self.identity = next; self.registry = registry; self.failure = failure
             self.menuEnabled = enabled; dismantled = false; mountFailed = false
@@ -170,16 +214,34 @@ public struct CogletMenuButton: NSViewRepresentable {
         /// exact item object of the live presentation, or the one-shot pending
         /// selection of the presentation that just closed.
         @objc func choose(_ sender: NSMenuItem) {
+            #if DEBUG
+            CogletMenuButton.record(.chooseEntered)
+            if generationExhausted || dismantled || menu == nil || sender.menu !== menu
+                || menu?.items.contains(where: { $0 === sender }) != true {
+                CogletMenuButton.record(.chooseWrongSender)
+            }
+            #endif
             guard !generationExhausted, !dismantled, let own = menu,
                   sender.menu === own, own.items.contains(where: { $0 === sender }) else { return }
             if menuOpen, !selectionConsumed, let box = boxes.first(where: { $0.item === sender }),
                box.generation == openGeneration, isOperable(in: mountedWindow) {
+                #if DEBUG
+                CogletMenuButton.record(.chooseOpen)
+                #endif
                 selectionConsumed = true
                 box.action()
                 return
             }
+            #if DEBUG
+            if pending == nil { CogletMenuButton.record(.chooseNoPending) }
+            else if pending?.box.item !== sender || menuOpen { CogletMenuButton.record(.chooseWrongPending) }
+            else if !boxes.contains(where: { $0 === pending?.box }) { CogletMenuButton.record(.chooseWrongBox) }
+            #endif
             guard let selected = pending, selected.box.item === sender, !menuOpen,
                   boxes.contains(where: { $0 === selected.box }) else { return }
+            #if DEBUG
+            CogletMenuButton.record(.choosePending)
+            #endif
             pending = nil
             selected.action()
         }
@@ -187,7 +249,12 @@ public struct CogletMenuButton: NSViewRepresentable {
             guard openGeneration < UInt64.max else { generationExhausted = true; return }
             openGeneration += 1
         }
-        private func clearPending() { pending = nil; highlightedMenuItem = nil; pendingToken &+= 1 }
+        private func clearPending() {
+            #if DEBUG
+            CogletMenuButton.record(.clearPending)
+            #endif
+            pending = nil; highlightedMenuItem = nil; pendingToken &+= 1
+        }
         func expirePendingSelection() { clearPending() }
 
         // MARK: Native presentation lifetime
@@ -279,6 +346,9 @@ public struct CogletMenuButton: NSViewRepresentable {
         /// but each token is also unmounted individually so a duplicate owner's
         /// entries are never touched.
         private func retire() {
+            #if DEBUG
+            CogletMenuButton.record(.retire)
+            #endif
             let tokens = itemMounts + (triggerMount.map { [$0] } ?? [])
             itemMounts = []; triggerMount = nil; mountedWindow = nil
             let wasOpen = menuOpen
@@ -316,6 +386,9 @@ public struct CogletMenuButton: NSViewRepresentable {
 
         public func menuWillOpen(_ menu: NSMenu) {
             guard menu === self.menu else { return }
+            #if DEBUG
+            CogletMenuButton.record(.open)
+            #endif
             clearPending()
             selectionConsumed = false
             retireItems()
@@ -358,6 +431,10 @@ public struct CogletMenuButton: NSViewRepresentable {
         }
         public func menu(_ menu: NSMenu, willHighlight item: NSMenuItem?) {
             guard menu === self.menu else { return }
+            #if DEBUG
+            CogletMenuButton.record(item == nil ? .highlightNil
+                : boxes.contains(where: { $0.item === item }) ? .highlightOwned : .highlightForeign)
+            #endif
             highlightedMenuItem = item
         }
         public func menuDidClose(_ menu: NSMenu) {
@@ -369,17 +446,26 @@ public struct CogletMenuButton: NSViewRepresentable {
                let box = boxes.first(where: { $0.item === item }), box.generation == openGeneration {
                 candidate = box
             }
+            #if DEBUG
+            CogletMenuButton.record(candidate == nil ? .closeWithoutCandidate : .closeWithCandidate)
+            #endif
             highlightedMenuItem = nil
             retireItems()
             guard let box = candidate, !generationExhausted else { return }
             pendingToken &+= 1
             let token = pendingToken
             pending = PendingSelection(box: box, action: box.action, token: token)
+            #if DEBUG
+            CogletMenuButton.record(.pendingCreated)
+            #endif
             // AppKit sends the item action in the same turn as the close; anything
             // later (Escape, stale item) is expired.
             DispatchQueue.main.async { [weak self] in
                 MainActor.assumeIsolated {
                     guard let self, self.pending?.token == token else { return }
+                    #if DEBUG
+                    CogletMenuButton.record(.pendingExpired)
+                    #endif
                     self.pending = nil
                 }
             }

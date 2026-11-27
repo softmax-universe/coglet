@@ -320,6 +320,72 @@ final class CogletMenuButtonTests: XCTestCase {
         XCTAssertEqual(f.calls.clear + f.calls.hide, 0)
     }
 
+    #if DEBUG
+    // Temporary diagnostics must distinguish the two unproven native hypotheses
+    // without changing either behavior. These are characterization, NOT native proof.
+    func testDiagnosticDistinguishesNilHighlightFromPendingExpiry() async throws {
+        CogletMenuButton.enableDiagnostics(true)
+        defer { CogletMenuButton.enableDiagnostics(false) }
+        let f = fixture(); defer { f.win.close() }
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        let item = items(f.view)[0]
+        f.view.menu(menu, willHighlight: item)
+        f.view.menu(menu, willHighlight: nil)
+        f.view.menuDidClose(menu)
+        f.view.choose(item)
+        let nilEvents = CogletMenuButton.diagnosticSnapshot.events
+        XCTAssertTrue(nilEvents.contains(.highlightOwned))
+        XCTAssertTrue(nilEvents.contains(.highlightNil))
+        XCTAssertTrue(nilEvents.contains(.closeWithoutCandidate))
+        XCTAssertTrue(nilEvents.contains(.chooseNoPending))
+        XCTAssertFalse(nilEvents.contains(.pendingCreated))
+        XCTAssertEqual(f.calls.clear + f.calls.hide, 0)
+
+        CogletMenuButton.enableDiagnostics(true)
+        let pendingItem = try openHighlightClose(f, index: 0)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+        f.view.choose(pendingItem)
+        let expired = CogletMenuButton.diagnosticSnapshot.events
+        let createdIndex = try XCTUnwrap(expired.firstIndex(of: .pendingCreated))
+        let expiredIndex = try XCTUnwrap(expired.firstIndex(of: .pendingExpired))
+        let chooseIndex = try XCTUnwrap(expired.firstIndex(of: .chooseEntered))
+        XCTAssertLessThan(createdIndex, expiredIndex)
+        XCTAssertLessThan(expiredIndex, chooseIndex)
+        XCTAssertTrue(expired.contains(.chooseNoPending))
+        XCTAssertFalse(expired.contains(.choosePending))
+        XCTAssertEqual(f.calls.clear + f.calls.hide, 0)
+        XCTAssertEqual(CogletMenuButton.diagnosticSnapshot.dropped, 0)
+    }
+
+    func testDiagnosticIsOptInClosedBoundedAndNeverSerializesNativeText() throws {
+        CogletMenuButton.enableDiagnostics(false)
+        defer { CogletMenuButton.enableDiagnostics(false) }
+        let f = fixture(); defer { f.win.close() }
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        XCTAssertTrue(CogletMenuButton.diagnosticSnapshot.events.isEmpty)
+        f.view.menuDidClose(menu)
+        CogletMenuButton.enableDiagnostics(true)
+        f.view.menuWillOpen(menu)
+        let foreign = NSMenuItem(title: "private-diagnostic-canary", action: nil, keyEquivalent: "")
+        for _ in 0..<100 { f.view.choose(foreign) }
+        let snapshot = CogletMenuButton.diagnosticSnapshot
+        XCTAssertEqual(snapshot.events.count, 128)
+        XCTAssertEqual(snapshot.dropped, 74) // open + clearPending + 100*(entry + refusal)
+        XCTAssertEqual(snapshot.events.first, .open)
+        XCTAssertTrue(snapshot.events.contains(.chooseWrongSender))
+        let encoded = try JSONEncoder().encode(snapshot)
+        let fields = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(Set(fields.keys), Set(["events", "dropped"]))
+        XCTAssertFalse(String(decoding: encoded, as: UTF8.self).contains("private-diagnostic-canary"))
+        XCTAssertLessThan(encoded.count, 4096)
+        XCTAssertEqual(f.calls.clear + f.calls.hide, 0)
+    }
+    #endif
+
     func testGenerationOverflowFailsClosed() throws {
         var failures: [ControlRegistryFailure] = []
         let win = window(); defer { win.close() }

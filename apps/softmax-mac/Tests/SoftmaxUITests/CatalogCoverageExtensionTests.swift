@@ -31,6 +31,11 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
         let revision: UInt64
         let registrationFailed: Bool
         let registrations: [Registration]
+        struct MenuDiagnostics: Decodable {
+            let events: [String]
+            let dropped: Int
+        }
+        let menuDiagnostics: MenuDiagnostics
     }
 
     private struct CoverageResult {
@@ -648,8 +653,12 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
         XCTAssertTrue(face.waitForNonExistence(timeout: 5))
         try assertNoVisibleRegistrations(window: "face", tag: "hide")
         guard let palette = openPalette(app) else { return }
+        // "face" also matches Settings/General keywords, which precedes Open Face.
+        // Select the exact native command rather than relying on filtered ordering.
         palette.typeText("face")
-        palette.typeKey(.return, modifierFlags: [])
+        let openFace = palette.buttons["command_palette.command.face"]
+        XCTAssertTrue(openFace.waitForExistence(timeout: 5))
+        openFace.click()
         try captureCoverage(scope: face, owner: "face", route: "face", tag: "reshown",
             sentinel: face.buttons["face.compact_toggle"], anchors: full, expecting: expecting(full))
         face.buttons["face.hide"].click()
@@ -709,9 +718,12 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
             selectedMenu.menuItems["chat.clear_draft"].click()
             XCTAssertTrue(selectedMenu.waitForNonExistence(timeout: 5))
             XCTAssertTrue(waitUntil { (draft.value as? String) == "" }, "native Clear draft selection must run")
-            try captureCoverage(scope: chat, owner: "chat", route: "chat", tag: "menu-selected",
+            let selection = try captureCoverage(scope: chat, owner: "chat", route: "chat", tag: "menu-selected",
                 sentinel: draft, anchors: ["chat.mode", "chat.mode.chat", "chat.mode.voice", "chat.menu", "chat.draft", "chat.send"],
                 absent: ["chat.clear_draft", "chat.hide_orb"])
+            let diagnostics = try XCTUnwrap(selection?.probe.menuDiagnostics)
+            XCTAssertEqual(diagnostics.dropped, 0, "truncated native-order evidence is not a diagnosis")
+            XCTAssertGreaterThanOrEqual(diagnostics.events.filter { $0 == "open" }.count, 2)
         } else {
             XCTFail("conversation menu trigger not exposed by the AX tree: \(chat.debugDescription)")
         }

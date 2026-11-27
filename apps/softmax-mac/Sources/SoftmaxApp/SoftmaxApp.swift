@@ -676,11 +676,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
               attributes[.type] as? FileAttributeType == .typeDirectory,
               (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o700,
               (attributes[.ownerAccountID] as? NSNumber)?.uint32Value == getuid() else { return }
+        CogletMenuButton.enableDiagnostics(true)
         struct Probe: Encodable {
             let request: String
             let revision: UInt64
             let registrationFailed: Bool
             let registrations: [ControlRegistry.Registration]
+            let menuDiagnostics: CogletMenuButton.DiagnosticSnapshot
         }
         catalogProbeTask = Task { @MainActor [weak self] in
             var lastRequest: String?
@@ -699,7 +701,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 self.model.synchronizeAppSurface?()
                 let probe = Probe(request: request, revision: self.model.appControls.revision,
                     registrationFailed: self.model.appControlRegistrationFailed,
-                    registrations: self.model.appControls.registrationInventory())
+                    registrations: self.model.appControls.registrationInventory(),
+                    menuDiagnostics: CogletMenuButton.diagnosticSnapshot)
                 do {
                     let output = try JSONEncoder().encode(probe)
                     try output.write(to: directory.appendingPathComponent("response.json"), options: .atomic)
