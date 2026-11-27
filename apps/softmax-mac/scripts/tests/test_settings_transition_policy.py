@@ -48,7 +48,19 @@ class SettingsTransitionPolicyTests(unittest.TestCase):
         executable = '\n'.join(line.split('//')[0] for line in PROBE.splitlines())
         for forbidden in ('makeFirstResponder(', 'fieldEditor(', '.keyDown(', 'doCommand(', 'selectedTab =', 'sleep(', 'RunLoop.run'):
             self.assertNotIn(forbidden, executable)
-        self.assertIn('guard let editor = fields[0].currentEditor(), let responder = window.firstResponder', PROBE)
+        self.assertIn('let editor = field.currentEditor(), let responder = window.firstResponder', PROBE)
+
+    def test_evidence_backed_native_matcher_fails_closed(self):
+        body = PROBE.split('private static func ownership()', 1)[1].split('private static func fixtureTabs', 1)[0]
+        self.assertIn('field.placeholderString == "Filter settings  /"', body)
+        self.assertNotIn('accessibilityLabel()', body)
+        for guard in ('guard visited < 256 else { return nil }', 'if depth >= 32',
+                      '256 - visited - stack.count', 'guard children.count <= remaining else { return nil }',
+                      'if fields.count > 1 { return nil }', 'guard fields.count == 1 else { return nil }'):
+            self.assertIn(guard, body)
+        self.assertLess(body.index('guard fields.count == 1'), body.index('field.isEditable'))
+        self.assertIn('field.isEnabled, !field.isHiddenOrHasHiddenAncestor', body)
+        self.assertIn('return editor === responder', body)
         self.assertIn('return editor === responder', PROBE)
         self.assertIn('NSApp.sendEvent($0)', PROBE)
         self.assertIn('NSApp.postEvent($0, atStart: false)', PROBE)

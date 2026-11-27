@@ -49,7 +49,9 @@ class SettingsCensusPolicyTests(unittest.TestCase):
         for role in [".waitEditorFirst", ".terminal", ".viewFocusFirst"]:
             self.assertIn("SettingsNativeCensus.capture(" + role, probe)
         self.assertIn("return ownership() == true", probe)
-        self.assertIn('field.accessibilityLabel() == "Search settings" { fields.append(field) }', probe)
+        # Actual hosted census proved placeholder identity, not SwiftUI's native AX label.
+        self.assertIn('field.placeholderString == "Filter settings  /"', probe)
+        self.assertIn('return editor === responder', probe)
 
 
 if __name__ == "__main__":

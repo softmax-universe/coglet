@@ -252,18 +252,35 @@ enum SettingsTransitionProbe {
     }
 
     // MARK: Read-only observations
-    /// true only when the unique labelled search NSTextField has a live editor identical to firstResponder.
-    /// nil: field missing/ambiguous (precondition unavailable). Never creates an editor or touches focus.
+    /// true only when the unique native placeholder field has an editor identical to firstResponder.
+    /// Hosted census proved SwiftUI's AX label is not the underlying NSTextField's label.
+    /// nil: field missing/ambiguous or traversal incomplete. Never creates an editor or touches focus.
     private static func ownership() -> Bool? {
         guard let window, let root = window.contentView else { return nil }
+        // Same traversal/storage/depth bounds as SettingsNativeCensus; truncation refuses qualification.
+        var stack: [(NSView, Int)] = [(root, 0)]
         var fields: [NSTextField] = []
-        func walk(_ view: NSView) {
-            if let field = view as? NSTextField, field.accessibilityLabel() == "Search settings" { fields.append(field) }
-            view.subviews.forEach(walk)
+        var visited = 0
+        while let (view, depth) = stack.popLast() {
+            guard visited < 256 else { return nil }
+            visited += 1
+            if let field = view as? NSTextField, field.placeholderString == "Filter settings  /" {
+                fields.append(field)
+                if fields.count > 1 { return nil }
+            }
+            let children = view.subviews
+            if depth >= 32 {
+                if !children.isEmpty { return nil }
+            } else {
+                let remaining = max(0, 256 - visited - stack.count)
+                guard children.count <= remaining else { return nil }
+                stack.append(contentsOf: children.map { ($0, depth + 1) })
+            }
         }
-        walk(root)
         guard fields.count == 1 else { return nil }
-        guard let editor = fields[0].currentEditor(), let responder = window.firstResponder else { return false }
+        let field = fields[0]
+        guard field.isEditable, field.isEnabled, !field.isHiddenOrHasHiddenAncestor,
+              let editor = field.currentEditor(), let responder = window.firstResponder else { return false }
         return editor === responder
     }
     private static func fixtureTabs(_ query: String) -> [SettingsTab] {
