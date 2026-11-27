@@ -650,7 +650,31 @@ final class AppSurfaceWireTests: XCTestCase {
             "settings.hub.pairing.router_addresses", "settings.hub.pairing.relay_url"])
         try redacted("hub_pairing", "settings.hub.pairing.invitation")
         let emptyInvitationUI = invitation.value as? String
-        invitation.click(); invitation.typeText(secretCanaries[1])
+        // Exact 15e6915 native evidence: invitation y=503...530 is below
+        // its viewport y=187...499; click() targets the blank fixed footer.
+        // Reveal through this field's unique owning native sheet/scroll view,
+        // not an adapter action, alternate selector, or click retry.
+        let invitationID = "settings.hub.pairing.invitation"
+        let pairingSheets = app.sheets.containing(.secureTextField, identifier: invitationID)
+        guard pairingSheets.count == 1 else { XCTFail("invitation sheet ambiguous"); throw WireTestFailure() }
+        let pairingScrolls = pairingSheets.firstMatch.scrollViews.containing(.secureTextField, identifier: invitationID)
+        guard pairingScrolls.count == 1 else { XCTFail("invitation viewport ambiguous"); throw WireTestFailure() }
+        let pairingScroll = pairingScrolls.firstMatch
+        pairingScroll.scroll(byDeltaX: 0, deltaY: -200)
+        try wait {
+            let field = invitation.frame, viewport = pairingScroll.frame
+            guard [field.minX, field.minY, field.width, field.height,
+                   viewport.minX, viewport.minY, viewport.width, viewport.height].allSatisfy({ $0.isFinite }),
+                  field.width > 0, field.height > 0, viewport.width > 0, viewport.height > 0 else { return false }
+            // Native field borders extend a point beyond the viewport in X;
+            // require full vertical visibility and an interior centre click.
+            return field.minY >= viewport.minY && field.maxY <= viewport.maxY
+                && field.midY > viewport.minY && field.midY < viewport.maxY
+                && field.midX > viewport.minX && field.midX < viewport.maxX && invitation.isHittable
+        }
+        invitation.click()
+        try wait { invitation.value(forKey: "hasKeyboardFocus") as? Bool == true }
+        invitation.typeText(secretCanaries[1])
         try wait { (invitation.value as? String) != emptyInvitationUI }
         try wait { invitation.value(forKey: "hasKeyboardFocus") as? Bool == true }
         _ = try event("softmax.app.focus_changed") { $0["control"] as? String == "settings.hub.pairing.invitation" }
