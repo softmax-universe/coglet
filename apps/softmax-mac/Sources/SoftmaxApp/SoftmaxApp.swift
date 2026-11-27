@@ -122,6 +122,16 @@ final class ShellModel: ObservableObject {
         }
         hubConnection?.start()
     }
+    #if DEBUG
+    /// Isolated wire-proof seam only: the sole non-production writer of
+    /// `hubConnection`. It never replaces an existing connection and requires
+    /// the UI-testing launch with a stopped runtime (no production override).
+    func installWireProofHubFixture(_ connection: HubConnection) throws {
+        guard testing, runtime.state == .stopped, hubConnection == nil else { throw HubError.unavailable }
+        connection.changed = { [weak self] in self?.objectWillChange.send() }
+        hubConnection = connection
+    }
+    #endif
     private var runtimeSubscription: AnyCancellable?
     private var speechDelivery: Task<Void, Never>?
     func configureRuntime() {
@@ -640,6 +650,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         do {
             let proof = try AppSurfaceWireProof(model: model,
                 directory: URL(fileURLWithPath: args[i + 1]).standardizedFileURL,
+                credentialFixture: args.contains(WireProofCredentialFixture.flag),
                 refresh: { [weak self] in
                     guard let self else { throw AppSurfaceFailure.unavailable }
                     try self.synchronizeNativeWindowControls()

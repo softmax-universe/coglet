@@ -89,13 +89,19 @@ final class AppSurfaceWireProof {
     private var task: Task<Void, Never>?
     private var attached = false
     private var retired = false
+    // Strongly retained for the whole proof; nil unless the distinct flag is set.
+    // Nothing is read or installed at init: the first native capture seeds it
+    // only AFTER the executor validated the private directory.
+    private let credentials: WireProofCredentialFixture?
 
-    init(model: ShellModel, directory: URL, refresh: @escaping @MainActor () throws -> Void,
+    init(model: ShellModel, directory: URL, credentialFixture: Bool = false,
+         refresh: @escaping @MainActor () throws -> Void,
          diagnosticContext: (@MainActor () -> WireProofNativeContext)? = nil) throws {
         guard model.testing, model.runtime.state == .stopped, model.appControls.onChange == nil,
               let adapter = model.appSurface else { throw WireProofFailure() }
         self.model = model; self.adapter = adapter; self.directory = directory; self.refresh = refresh
         self.diagnosticContext = diagnosticContext
+        self.credentials = credentialFixture ? WireProofCredentialFixture(directory: directory) : nil
     }
     func start() {
         guard task == nil else { return }
@@ -135,6 +141,8 @@ final class AppSurfaceWireProof {
     }
     func capture() throws -> AppSurfaceCapture {
         try check()
+        // One-shot; first call is after prepare/accept/select, before the baseline.
+        try diagnosed(.nativeRefresh) { if let credentials { try credentials.install(into: model) } }
         try diagnosed(.nativeRefresh) { try refresh() }
         return try diagnosed(.adapterCapture) { try adapter.capture() }
     }
@@ -172,6 +180,7 @@ final class AppSurfaceWireProof {
         // Retire synchronously BEFORE dropping the listener or closing the stream.
         mailbox.retire(); retired = true
         if attached { model.appControls.onChange = nil; attached = false }
+        credentials?.stop()
     }
 }
 
