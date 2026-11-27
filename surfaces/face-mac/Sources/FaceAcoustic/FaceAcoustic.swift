@@ -231,7 +231,7 @@ func appendLine(_ path: String, _ s: String) {
     let h = FileHandle(forWritingAtPath: path)!; h.seekToEndOfFile(); h.write(Data((s + "\n").utf8)); try? h.close()
 }
 
-struct Fail: Error, CustomStringConvertible { let description: String }
+struct Fail: Swift.Error, CustomStringConvertible { let description: String }
 
 /// Plays a 1.8 kHz burst on a second engine at a scheduled host time (user-voice stand-in).
 @MainActor final class Stimulus {
