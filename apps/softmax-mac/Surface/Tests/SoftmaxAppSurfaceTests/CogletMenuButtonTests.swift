@@ -67,6 +67,25 @@ final class CogletMenuButtonTests: XCTestCase {
         return item
     }
 
+    /// The measured native order: highlight an owned item, AppKit then reports
+    /// `willHighlight(nil)`, then `menuDidClose`; the action (`choose`) comes after.
+    private func openHighlightNilClose(_ f: Fixture, index: Int) throws -> NSMenuItem {
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        let item = items(f.view)[index]
+        f.view.menu(menu, willHighlight: item)
+        f.view.menu(menu, willHighlight: nil)
+        f.view.menuDidClose(menu)
+        return item
+    }
+    /// One real main-queue turn (the pending selection's expiry runs in it).
+    private func mainTurn() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async { continuation.resume() }
+        }
+    }
+    private func total(_ f: Fixture) -> Int { f.calls.clear + f.calls.hide }
+
     // MARK: presentation lifetime
 
     func testItemsExistOnlyBetweenNativeOpenAndClose() throws {
@@ -320,9 +339,243 @@ final class CogletMenuButtonTests: XCTestCase {
         XCTAssertEqual(f.calls.clear + f.calls.hide, 0)
     }
 
+    // MARK: measured native order: highlight(owned), highlight(nil), close, THEN action
+
+    func testNilHighlightBeforeCloseStillExecutesSelectedItemOnceAndNeverSibling() throws {
+        let f = fixture(); defer { f.win.close() }
+        for round in 1...2 {  // identical-count repeat: each presentation is independent
+            let item = try openHighlightNilClose(f, index: 1)
+            XCTAssertEqual(ids(f.registry), ["chat.menu"], "fully closed registry before the action arrives")
+            let sibling = items(f.view)[0]
+            f.view.choose(sibling)
+            XCTAssertEqual(f.calls.clear, 0, "sibling never runs (round \(round))")
+            f.view.choose(item)
+            XCTAssertEqual(f.calls.hide, round, "selected action exactly once per presentation")
+            f.view.choose(item)
+            f.view.choose(sibling)
+            XCTAssertEqual(f.calls.hide, round, "one-shot")
+            XCTAssertEqual(f.calls.clear, 0)
+            XCTAssertEqual(ids(f.registry), ["chat.menu"])
+        }
+    }
+
+    func testNilHighlightClearDraftExecutesOnceAndNeverHideOrb() throws {
+        let f = fixture(); defer { f.win.close() }
+        let item = try openHighlightNilClose(f, index: 0)
+        f.view.choose(item)
+        f.view.choose(item)
+        XCTAssertEqual(f.calls.clear, 1)
+        XCTAssertEqual(f.calls.hide, 0)
+    }
+
+    func testNilHighlightWrongSiblingIsRefused() throws {
+        let f = fixture(); defer { f.win.close() }
+        _ = try openHighlightNilClose(f, index: 0)
+        f.view.choose(items(f.view)[1])
+        XCTAssertEqual(total(f), 0)
+        _ = try openHighlightNilClose(f, index: 1)
+        f.view.choose(items(f.view)[0])
+        XCTAssertEqual(total(f), 0)
+    }
+
+    func testNilHighlightAfterMovingFromAToBNeverChoosesA() throws {
+        let f = fixture(); defer { f.win.close() }
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        let a = items(f.view)[0], b = items(f.view)[1]
+        f.view.menu(menu, willHighlight: a)
+        f.view.menu(menu, willHighlight: b)
+        f.view.menu(menu, willHighlight: nil)
+        f.view.menuDidClose(menu)
+        f.view.choose(a)
+        XCTAssertEqual(total(f), 0, "A was replaced by B before the nil")
+    }
+
+    func testForeignNonNilHighlightBreaksNilHighlightMemory() throws {
+        let f = fixture(); defer { f.win.close() }
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        let a = items(f.view)[0]
+        let foreign = NSMenuItem(title: "Foreign", action: nil, keyEquivalent: "")
+        f.view.menu(menu, willHighlight: a)
+        f.view.menu(menu, willHighlight: foreign)
+        f.view.menu(menu, willHighlight: nil)
+        f.view.menuDidClose(menu)
+        f.view.choose(a)
+        f.view.choose(foreign)
+        XCTAssertEqual(total(f), 0, "a foreign highlight clears both current and remembered item")
+        // Foreign highlight directly (no nil) also leaves nothing.
+        f.view.menuWillOpen(menu)
+        f.view.menu(menu, willHighlight: items(f.view)[1])
+        f.view.menu(menu, willHighlight: foreign)
+        f.view.menuDidClose(menu)
+        f.view.choose(items(f.view)[1])
+        XCTAssertEqual(total(f), 0)
+    }
+
+    func testNilHighlightPendingExpiresByExplicitExpiryAndByActualMainTurn() async throws {
+        let f = fixture(); defer { f.win.close() }
+        let explicit = try openHighlightNilClose(f, index: 0)
+        f.view.expirePendingSelection()
+        f.view.choose(explicit)
+        XCTAssertEqual(total(f), 0, "explicit expiry")
+        let late = try openHighlightNilClose(f, index: 1)
+        await mainTurn()
+        f.view.choose(late)
+        XCTAssertEqual(total(f), 0, "actual next main-turn expiry")
+        f.view.choose(late)
+        XCTAssertEqual(total(f), 0)
+    }
+
+    func testEscapeAfterHoverWithNoActionThenExpiryRejectsLateChoose() async throws {
+        let f = fixture(); defer { f.win.close() }
+        let item = try openHighlightNilClose(f, index: 0)  // hover, mouse off, Escape: no action delivered
+        XCTAssertEqual(total(f), 0)
+        await mainTurn()
+        f.view.choose(item)
+        XCTAssertEqual(total(f), 0)
+        // A hover-only Escape never leaks into the next presentation.
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        f.view.menuDidClose(menu)
+        f.view.choose(item)
+        f.view.choose(items(f.view)[0])
+        XCTAssertEqual(total(f), 0)
+    }
+
+    func testReopenRejectsOldSenderAndFreshPresentationInheritsNoHistory() throws {
+        let f = fixture(); defer { f.win.close() }
+        let menu = try XCTUnwrap(f.view.menu)
+        let old = try openHighlightNilClose(f, index: 0)
+        f.view.menuWillOpen(menu)  // reopen before the action arrives
+        f.view.choose(old)
+        XCTAssertEqual(total(f), 0, "old sender after reopen")
+        // Fresh presentation: no highlight at all, then close; history from before must not apply.
+        f.view.menuDidClose(menu)
+        f.view.choose(old)
+        f.view.choose(items(f.view)[0])
+        f.view.choose(items(f.view)[1])
+        XCTAssertEqual(total(f), 0, "no inherited nil-highlight history")
+        // Remembered item from a closed presentation, new presentation with only a nil highlight.
+        let remembered = try openHighlightNilClose(f, index: 1)
+        f.view.menuWillOpen(menu)
+        f.view.menu(menu, willHighlight: nil)
+        f.view.menuDidClose(menu)
+        f.view.choose(remembered)
+        f.view.choose(items(f.view)[1])
+        XCTAssertEqual(total(f), 0)
+    }
+
+    func testRetirementBeforeAndAfterCloseRejectsNilHighlightSelection() throws {
+        do {  // orderOut after close
+            let f = fixture(); defer { f.win.close() }
+            let item = try openHighlightNilClose(f, index: 0)
+            f.win.orderOut(nil)
+            f.view.choose(item)
+            XCTAssertEqual(total(f), 0, "orderOut after close")
+        }
+        do {  // orderOut before close (while open, after highlight + nil)
+            let f = fixture(); defer { f.win.close() }
+            let menu = try XCTUnwrap(f.view.menu)
+            f.view.menuWillOpen(menu)
+            let item = items(f.view)[1]
+            f.view.menu(menu, willHighlight: item)
+            f.view.menu(menu, willHighlight: nil)
+            f.win.orderOut(nil)
+            f.view.menuDidClose(menu)
+            f.view.choose(item)
+            XCTAssertEqual(total(f), 0, "orderOut before close")
+        }
+        do {  // route change / reconfigure replacement after close
+            let f = fixture(); defer { f.win.close() }
+            let successor = Calls()
+            let item = try openHighlightNilClose(f, index: 0)
+            configure(f.view, registry: f.registry, route: "voice", calls: successor)
+            f.view.choose(item)
+            XCTAssertEqual(total(f) + successor.clear + successor.hide, 0, "route configure after close")
+        }
+        do {  // route change / reconfigure replacement before close
+            let f = fixture(); defer { f.win.close() }
+            let successor = Calls()
+            let menu = try XCTUnwrap(f.view.menu)
+            f.view.menuWillOpen(menu)
+            let item = items(f.view)[0]
+            f.view.menu(menu, willHighlight: item)
+            f.view.menu(menu, willHighlight: nil)
+            configure(f.view, registry: f.registry, route: "voice", calls: successor)
+            f.view.menuDidClose(menu)
+            f.view.choose(item)
+            XCTAssertEqual(total(f) + successor.clear + successor.hide, 0, "route configure before close")
+        }
+        do {  // dismantle after close
+            let f = fixture(); defer { f.win.close() }
+            let item = try openHighlightNilClose(f, index: 1)
+            f.view.dismantle()
+            f.view.choose(item)
+            XCTAssertEqual(total(f), 0, "dismantle after close")
+        }
+        do {  // dismantle before close
+            let f = fixture(); defer { f.win.close() }
+            let menu = try XCTUnwrap(f.view.menu)
+            f.view.menuWillOpen(menu)
+            let item = items(f.view)[1]
+            f.view.menu(menu, willHighlight: item)
+            f.view.menu(menu, willHighlight: nil)
+            f.view.dismantle()
+            f.view.menuDidClose(menu)
+            f.view.choose(item)
+            XCTAssertEqual(total(f), 0, "dismantle before close")
+        }
+    }
+
+    func testAdapterConsumedSelectionCannotRunAgainAfterNilHighlightClose() throws {
+        let f = fixture(); defer { f.win.close() }
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        let item = items(f.view)[0]
+        f.view.menu(menu, willHighlight: item)
+        f.view.menu(menu, willHighlight: nil)
+        let request = try f.registry.prepare(args("chat.clear_draft"), sensitive: false)
+        try f.registry.perform(request, authorized: { true })
+        XCTAssertEqual(f.calls.clear, 1)
+        f.view.menuDidClose(menu)
+        f.view.choose(item)
+        f.view.choose(items(f.view)[1])
+        XCTAssertEqual(f.calls.clear, 1, "consumed selection creates no pending selection")
+        XCTAssertEqual(f.calls.hide, 0)
+        // Native selection while open first, then the adapter, is likewise single-shot.
+        f.view.menuWillOpen(menu)
+        let second = items(f.view)[1]
+        f.view.menu(menu, willHighlight: second)
+        f.view.menu(menu, willHighlight: nil)
+        f.view.choose(second)
+        XCTAssertEqual(f.calls.hide, 1)
+        XCTAssertThrowsError(try f.registry.perform(
+            f.registry.prepare(args("chat.clear_draft"), sensitive: false), authorized: { true }))
+        f.view.menuDidClose(menu)
+        f.view.choose(second)
+        XCTAssertEqual(f.calls.clear, 1)
+        XCTAssertEqual(f.calls.hide, 1)
+    }
+
+    func testGenerationExhaustionRefusesNilHighlightSelection() throws {
+        let f = fixture(); defer { f.win.close() }
+        let menu = try XCTUnwrap(f.view.menu)
+        f.view.menuWillOpen(menu)
+        let item = items(f.view)[0]
+        f.view.menu(menu, willHighlight: item)
+        f.view.menu(menu, willHighlight: nil)
+        f.view.forceGenerationForTesting(UInt64.max)  // presentation generation no longer current
+        f.view.menuDidClose(menu)
+        f.view.choose(item)
+        f.view.choose(items(f.view)[1])
+        XCTAssertEqual(total(f), 0)
+    }
+
     #if DEBUG
-    // Temporary diagnostics must distinguish the two unproven native hypotheses
-    // without changing either behavior. These are characterization, NOT native proof.
+    // Temporary diagnostics distinguish nil-highlight loss from pending expiry. The first half
+    // asserts the CORRECTED nil-highlight behavior (candidate retained across highlight(nil));
+    // the second half characterizes expiry (count stays at the one earlier clear). NOT native proof.
     func testDiagnosticDistinguishesNilHighlightFromPendingExpiry() async throws {
         CogletMenuButton.enableDiagnostics(true)
         defer { CogletMenuButton.enableDiagnostics(false) }
@@ -337,10 +590,13 @@ final class CogletMenuButtonTests: XCTestCase {
         let nilEvents = CogletMenuButton.diagnosticSnapshot.events
         XCTAssertTrue(nilEvents.contains(.highlightOwned))
         XCTAssertTrue(nilEvents.contains(.highlightNil))
-        XCTAssertTrue(nilEvents.contains(.closeWithoutCandidate))
-        XCTAssertTrue(nilEvents.contains(.chooseNoPending))
-        XCTAssertFalse(nilEvents.contains(.pendingCreated))
-        XCTAssertEqual(f.calls.clear + f.calls.hide, 0)
+        XCTAssertTrue(nilEvents.contains(.closeWithCandidate))
+        XCTAssertFalse(nilEvents.contains(.closeWithoutCandidate))
+        XCTAssertTrue(nilEvents.contains(.pendingCreated))
+        XCTAssertTrue(nilEvents.contains(.choosePending))
+        XCTAssertFalse(nilEvents.contains(.chooseNoPending))
+        XCTAssertEqual(f.calls.clear, 1, "exactly one clear")
+        XCTAssertEqual(f.calls.hide, 0)
 
         CogletMenuButton.enableDiagnostics(true)
         let pendingItem = try openHighlightClose(f, index: 0)
@@ -356,7 +612,7 @@ final class CogletMenuButtonTests: XCTestCase {
         XCTAssertLessThan(expiredIndex, chooseIndex)
         XCTAssertTrue(expired.contains(.chooseNoPending))
         XCTAssertFalse(expired.contains(.choosePending))
-        XCTAssertEqual(f.calls.clear + f.calls.hide, 0)
+        XCTAssertEqual(f.calls.clear + f.calls.hide, 1, "relative count unchanged: only the earlier clear")
         XCTAssertEqual(CogletMenuButton.diagnosticSnapshot.dropped, 0)
     }
 

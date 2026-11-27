@@ -18,7 +18,8 @@ import SwiftUI
 /// Native selection is bound to the exact `NSMenuItem` object of ONE
 /// presentation (items are rebuilt on every open): a sender is never resolved
 /// through its tag/index. AppKit may deliver `menuDidClose` BEFORE the chosen
-/// item's action, so close hands the highlighted item to a one-shot pending
+/// item's action (and clear its highlight first), so close hands the last owned
+/// highlighted item to a one-shot pending
 /// selection (immutable action snapshot) that expires on the next main turn and
 /// is cleared by reopen, replacement, retirement and dismantle.
 /// The trigger runs as an async registry invocation: the native open happens
@@ -125,6 +126,9 @@ public struct CogletMenuButton: NSViewRepresentable {
         private var pending: PendingSelection?
         private var pendingToken: UInt64 = 0
         private weak var highlightedMenuItem: NSMenuItem?
+        /// AppKit can report nil while dismissing, before delivering the action.
+        /// A nil highlight is not a selection: only the exact later sender may act.
+        private weak var lastOwnedItem: NSMenuItem?
         private var selectionConsumed = false
         private var generationExhausted = false
         /// Test seams: the native open and the suspension before it.
@@ -190,7 +194,7 @@ public struct CogletMenuButton: NSViewRepresentable {
             setAccessibilityLabel(next.label)
             guard let menu else { return }
             menu.removeAllItems()
-            boxes = []; pending = nil; highlightedMenuItem = nil
+            boxes = []; pending = nil; highlightedMenuItem = nil; lastOwnedItem = nil
             menu.delegate = self
             // Pull-down title item: carries the visible image only.
             let head = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -253,7 +257,7 @@ public struct CogletMenuButton: NSViewRepresentable {
             #if DEBUG
             CogletMenuButton.record(.clearPending)
             #endif
-            pending = nil; highlightedMenuItem = nil; pendingToken &+= 1
+            pending = nil; highlightedMenuItem = nil; lastOwnedItem = nil; pendingToken &+= 1
         }
         func expirePendingSelection() { clearPending() }
 
@@ -436,20 +440,25 @@ public struct CogletMenuButton: NSViewRepresentable {
                 : boxes.contains(where: { $0.item === item }) ? .highlightOwned : .highlightForeign)
             #endif
             highlightedMenuItem = item
+            if let item {
+                // A foreign/title highlight invalidates history; nil during close
+                // retains only the last exact owned item of this presentation.
+                lastOwnedItem = boxes.contains(where: { $0.item === item }) ? item : nil
+            }
         }
         public func menuDidClose(_ menu: NSMenu) {
             guard menu === self.menu else { return }
             let wasOpen = menuOpen
             menuOpen = false
             var candidate: ItemBox?
-            if wasOpen, !selectionConsumed, !generationExhausted, let item = highlightedMenuItem,
+            if wasOpen, !selectionConsumed, !generationExhausted, let item = highlightedMenuItem ?? lastOwnedItem,
                let box = boxes.first(where: { $0.item === item }), box.generation == openGeneration {
                 candidate = box
             }
             #if DEBUG
             CogletMenuButton.record(candidate == nil ? .closeWithoutCandidate : .closeWithCandidate)
             #endif
-            highlightedMenuItem = nil
+            highlightedMenuItem = nil; lastOwnedItem = nil
             retireItems()
             guard let box = candidate, !generationExhausted else { return }
             pendingToken &+= 1
