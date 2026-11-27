@@ -120,6 +120,14 @@ jobs:
           name: r3-runtime-x86_64-${{ inputs.bundle-mode || 'normal' }}
           path: ${{ runner.temp }}/r3-runtime-x86_64
           if-no-files-found: error
+      # Failure evidence only: name deliberately avoids the r3-runtime-* aggregation
+      # wildcard; missing diagnostics warn and are never success proof.
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-diagnostics-x86_64-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-runtime-x86_64-diagnostics
+          if-no-files-found: warn
   transform-runtime-arm:
     needs: [source, transform-publication]
     runs-on: ubuntu-24.04-arm
@@ -160,6 +168,12 @@ jobs:
           name: r3-runtime-aarch64-${{ inputs.bundle-mode || 'normal' }}
           path: ${{ runner.temp }}/r3-runtime-aarch64
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-diagnostics-aarch64-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-runtime-aarch64-diagnostics
+          if-no-files-found: warn
   factory:
     needs: [source]
     # Independent runner/private target: preserve the entire owned qualification

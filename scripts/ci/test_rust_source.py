@@ -376,7 +376,15 @@ class WorkflowBinding(unittest.TestCase):
 
         def gated(name):
             return [s for s in steps(name) if gate in s + "\n"]
-        self.assertEqual(workflow.count("needs.source.outputs.r3-required == 'true'"), 9)
+        self.assertEqual(workflow.count("needs.source.outputs.r3-required == 'true'"), 11)
+        # The two additive failure uploads cannot relax any success-path gate.
+        diagnostic_gate = "\n        if: always() && needs.source.outputs.r3-required == 'true'\n"
+        for name, arch in (("transform-publication", "x86_64"), ("transform-runtime-arm", "aarch64")):
+            diagnostics = [s for s in steps(name) if diagnostic_gate in s + "\n"]
+            self.assertEqual(len(diagnostics), 1)
+            self.assertIn(f"name: r3-diagnostics-{arch}-", diagnostics[0])
+            self.assertIn("if-no-files-found: warn", diagnostics[0])
+        self.assertEqual(workflow.count(diagnostic_gate), 2)
         expected = {
             "transform-publication": ["check_r3.py --publication", "check_r3.py --runtime", "name: r3-publication-", "name: r3-runtime-x86_64-"],
             "transform-runtime-arm": ["name: r3-publication-", "check_r3.py --runtime", "name: r3-runtime-aarch64-"],

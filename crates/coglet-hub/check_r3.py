@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import sys
+import traceback
 
 ROOT = Path(__file__).resolve().parents[2]
 BUILD_TESTS = {
@@ -172,7 +173,56 @@ def runtime():
     out.mkdir(parents=True, exist_ok=False)
     (out / "rustc.txt").write_text(subprocess.check_output(["rustc", "-vV"], cwd=ROOT, text=True))
     shutil.copy2(ROOT / "Cargo.lock", out / "Cargo.lock")
-    run_inventory("r3_runtime", out / "runtime.log", RUNTIME_TESTS)
+    run_and_seal_runtime(out)
+
+
+def diagnostics_dir(out):
+    """Sibling of the runtime evidence dir; never part of the sealed inventory."""
+    return out.with_name(out.name + "-diagnostics")
+
+
+def _sync_dir(path):
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def _create_new(path, data):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    with os.fdopen(fd, "wb") as f:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+    _sync_dir(path.parent)
+
+
+def write_failure_diagnostic(out, exc):
+    """Best effort, never overwrites. Caller re-raises the ORIGINAL exception."""
+    d = diagnostics_dir(out)
+    d.mkdir(parents=True, exist_ok=True)
+    text = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    doc = {"schema": "coglet-r3-runner-failure/1", "type": type(exc).__name__, "message": str(exc), "repr": repr(exc), "traceback": text}
+    for n in range(100):
+        name = "runner-exception.json" if n == 0 else f"runner-exception-{n}.json"
+        try:
+            _create_new(d / name, json.dumps(doc, indent=2).encode())
+            return d / name
+        except FileExistsError:
+            continue
+    raise FileExistsError("no free diagnostic name")
+
+
+def run_and_seal_runtime(out):
+    try:
+        run_inventory("r3_runtime", out / "runtime.log", RUNTIME_TESTS)
+    except BaseException as exc:
+        try:
+            write_failure_diagnostic(out, exc)
+        except BaseException as secondary:
+            print(f"secondary failure writing R3 diagnostic: {secondary!r}", file=sys.stderr)
+        raise  # the original exception; never seal after failure
     seal(out, RUNTIME_FILES)
 
 
