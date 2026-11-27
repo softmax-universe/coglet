@@ -378,6 +378,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         var evs: [Ev] = []
         try await pump(host, until: nowNS() + 600_000_000, into: &evs) // pre-roll capture
         tap.beginRun()
+        try await pump(host, until: nowNS() + 300_000_000, into: &evs) // quiet lead-in, scored as per-run noise
         let startAt = steps.first { $0["input"] as? String == "start" }?["at_ms"] as? Int ?? 0
         let hasPlay = steps.contains { $0["input"] as? String == "play" }
         let shift = hasPlay ? offset - startAt : 0
@@ -436,6 +437,8 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             let times = tap.sampleTimes()
             let env = envelope(samples: tap.samples, times: times, freq: 1000)
             let thr = thr1k
+            let preNoise = (0..<env.v.count).filter { env.t[$0] < t0 }.map { env.v[$0] }.max() ?? 0
+            r["pre_noise_max"] = round3(preNoise); r["noise_ok"] = preNoise < thr
             let swOnset = tap.renderLog.first { $0.frames > (tap.renderLog.first?.frames ?? 0) }
             // Software render start/stop from the render counter (polled at ~1 ms).
             let firstRender = tap.renderLog.first?.t

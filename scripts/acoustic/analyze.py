@@ -50,7 +50,9 @@ def values(runs, metric, kind=None):
 
 
 def summarize(runs):
-    out = {'latency_ms': {m: dist(values(runs, m, k)) for m, k in LATENCY.items()}}
+    noisy = sum(1 for r in runs if r.get('noise_ok') is False)
+    runs = [r for r in runs if r.get('noise_ok') is not False]  # lead-in already above the tone threshold
+    out = {'noisy_runs_excluded': noisy, 'latency_ms': {m: dist(values(runs, m, k)) for m, k in LATENCY.items()}}
     barge = [r for r in runs if r.get('kind') == 'barge']
     out['heard_truncation'] = {
         'played_minus_acoustic_ms': dist(values(barge, 'played_minus_acoustic_ms')),

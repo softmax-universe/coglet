@@ -13,14 +13,14 @@
 # at the Mac must answer it (an ad-hoc signature changes with each build; keep FACE_ACOUSTIC_APP to
 # reuse one signed bundle across runs and avoid re-prompting).
 #
-# Environment: ACOUSTIC_VOLUME (0-100, default 60) system output volume during the run.
+# Environment: ACOUSTIC_VOLUME (0-100, default 90) system output volume during the run.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="${1:?usage: run.sh <out-dir> [options]}"; shift || true
 mkdir -p "$OUT"; OUT="$(cd "$OUT" && pwd)"
 PKG="$ROOT/surfaces/face-mac"
 APP="${FACE_ACOUSTIC_APP:-$HOME/.cache/coglet-face-acoustic/FaceAcoustic.app}"
-VOLUME="${ACOUSTIC_VOLUME:-60}"
+VOLUME="${ACOUSTIC_VOLUME:-90}"
 
 if [ "${FACE_ACOUSTIC_SKIP_BUILD:-0}" != 1 ]; then
   swift build -c release --package-path "$PKG" --product face-acoustic
