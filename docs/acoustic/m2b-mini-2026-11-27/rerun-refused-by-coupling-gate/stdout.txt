@@ -1,0 +1,1 @@
+insufficient speaker->microphone coupling: SNR 11.767 dB < 12 dB; refusing to measure

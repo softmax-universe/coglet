@@ -1,0 +1,94 @@
+{
+  "conformance": {
+    "barge": {
+      "conformant": 60,
+      "runs": 60
+    },
+    "capture": {
+      "conformant": 20,
+      "runs": 20
+    }
+  },
+  "heard_truncation": {
+    "abs_error_ms": {
+      "max": 84.32,
+      "mean": 31.46,
+      "min": 0.54,
+      "n": 60,
+      "p50": 6.75,
+      "p95": 80.32,
+      "p99": 84.2
+    },
+    "over_credited_runs": 0,
+    "played_minus_acoustic_ms": {
+      "max": 9.29,
+      "mean": -31.15,
+      "min": -84.32,
+      "n": 60,
+      "p50": -6.49,
+      "p95": -1.89,
+      "p99": 3.49
+    },
+    "runs_with_heard_measure": 60,
+    "word_exact_rate": 1.0
+  },
+  "latency_ms": {
+    "barge_to_acoustic_stop_ms": {
+      "max": 117.65,
+      "mean": 65.89,
+      "min": 27.0,
+      "n": 60,
+      "p50": 41.98,
+      "p95": 116.55,
+      "p99": 117.46
+    },
+    "play_to_acoustic_onset_ms": {
+      "max": 43.18,
+      "mean": 37.48,
+      "min": 29.67,
+      "n": 60,
+      "p50": 39.72,
+      "p95": 42.7,
+      "p99": 42.95
+    },
+    "ptt_press_call_ms": {
+      "max": 2.53,
+      "mean": 1.18,
+      "min": 0.55,
+      "n": 60,
+      "p50": 1.12,
+      "p95": 1.72,
+      "p99": 2.12
+    },
+    "ptt_press_to_first_capture_ms": {
+      "max": 5.86,
+      "mean": 3.1,
+      "min": 0.21,
+      "n": 20,
+      "p50": 2.76,
+      "p95": 5.48,
+      "p99": 5.79
+    },
+    "ptt_release_to_end_event_ms": {
+      "max": 0.8,
+      "mean": 0.43,
+      "min": 0.24,
+      "n": 20,
+      "p50": 0.34,
+      "p95": 0.71,
+      "p99": 0.79
+    },
+    "stimulus_scheduled_to_capture_ms": {
+      "max": 22.09,
+      "mean": 20.81,
+      "min": 19.36,
+      "n": 20,
+      "p50": 20.8,
+      "p95": 21.69,
+      "p99": 22.01
+    }
+  },
+  "noisy_runs_excluded": 0,
+  "stimulus_missed": 0,
+  "tone_missing_at_barge": 0
+}

@@ -1,0 +1,47 @@
+{
+  "conformance_rate_min": 1.0,
+  "heard_truncation": {
+    "abs_error_ms": {
+      "max_max": 170,
+      "min_n": 15,
+      "p95_max": 160
+    },
+    "over_credited_runs_max": 0,
+    "word_exact_rate_min": 0.9
+  },
+  "latency_ms": {
+    "barge_to_acoustic_stop_ms": {
+      "max_max": 235,
+      "min_n": 15,
+      "p95_max": 230
+    },
+    "play_to_acoustic_onset_ms": {
+      "max_max": 90,
+      "min_n": 15,
+      "p95_max": 90
+    },
+    "ptt_press_call_ms": {
+      "max_max": 25,
+      "min_n": 15,
+      "p95_max": 5
+    },
+    "ptt_press_to_first_capture_ms": {
+      "max_max": 30,
+      "min_n": 5,
+      "p95_max": 15
+    },
+    "ptt_release_to_end_event_ms": {
+      "max_max": 25,
+      "min_n": 5,
+      "p95_max": 5
+    },
+    "stimulus_scheduled_to_capture_ms": {
+      "max_max": 50,
+      "min_n": 5,
+      "p95_max": 45
+    }
+  },
+  "rule": "p95_limit=ceil5(2*p95); max_limit=ceil5(max(2*max, p99+20)); sample counts are minimums",
+  "stimulus_missed_max": 0,
+  "version": 1
+}

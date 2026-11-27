@@ -36,6 +36,7 @@ and the other ADR status decisions remain separate.
 | 0039 | [Fail-closed iOS process-scoped runtime clock](0039-ios-process-runtime-clock.md) | Accepted decision (#207); renumbered from duplicate 0038; implementation and physical qualification separate |
 | 0040 | [Coglets live in unforged repos; hubs and smart routers](0040-hubs-and-coglets-on-unforged.md) | Proposed; direction decided by David 2026-11-25, target design, implementation staged |
 | 0042 | [Router storage on Unforged, without replacing runtime boundaries](0042-router-on-unforged.md) | Proposed; design only, stage-2 and implementation qualification remain gated |
+| 0044 | [M2b real-Mac acoustic proof: measured distributions and thresholds](0044-m2b-acoustic-proof-thresholds.md) | Accepted for the Mac mini tone/scripted-ASR rig; laptop AEC, real voice, hot-unplug untested |
 
 0002 belongs to common conventions; the platform findings retain their evidence
 unchanged under 0008. After `spec-v0`, changes to frozen contracts require an ADR,
