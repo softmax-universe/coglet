@@ -469,7 +469,10 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
                     r["reported_played_ms"] = played
                     r["played_minus_acoustic_ms"] = round3(Double(played) - heard)
                     let credited = (0..<wordCount).filter { UInt64($0 * wordPeriodMS + wordToneMS) <= played }.count
-                    let bs = bursts(env, from: o, to: st + 50_000_000, thr: thr)
+                    let level = percentile((0..<env.v.count).filter { env.t[$0] >= o && env.t[$0] <= st }.map { env.v[$0] }, 0.9)
+                    // Per-run relative threshold and a 40 ms dropout merge (word gaps are 100 ms): standing-wave
+                    // fades in a real room must not split one 500 ms word into fragments.
+                    let bs = bursts(env, from: o, to: st + 50_000_000, thr: 0.35 * level, mergeMS: 40)
                     // A burst is fully heard if it lasted >= 470 of its 500 ms.
                     let full = bs.filter { msBetween($0.0, $0.1) >= 470 }.count
                     r["credited_words"] = credited; r["acoustic_full_words"] = full
