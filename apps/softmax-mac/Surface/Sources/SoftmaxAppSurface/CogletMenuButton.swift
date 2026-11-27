@@ -85,7 +85,7 @@ public struct CogletMenuButton: NSViewRepresentable {
         private var boxes: [ItemBox] = []
         private var pending: PendingSelection?
         private var pendingToken: UInt64 = 0
-        private weak var highlighted: NSMenuItem?
+        private weak var highlightedMenuItem: NSMenuItem?
         private var selectionConsumed = false
         private var generationExhausted = false
         /// Test seams: the native open and the suspension before it.
@@ -146,7 +146,7 @@ public struct CogletMenuButton: NSViewRepresentable {
             setAccessibilityLabel(next.label)
             guard let menu else { return }
             menu.removeAllItems()
-            boxes = []; pending = nil; highlighted = nil
+            boxes = []; pending = nil; highlightedMenuItem = nil
             menu.delegate = self
             // Pull-down title item: carries the visible image only.
             let head = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -187,7 +187,7 @@ public struct CogletMenuButton: NSViewRepresentable {
             guard openGeneration < UInt64.max else { generationExhausted = true; return }
             openGeneration += 1
         }
-        private func clearPending() { pending = nil; highlighted = nil; pendingToken &+= 1 }
+        private func clearPending() { pending = nil; highlightedMenuItem = nil; pendingToken &+= 1 }
         func expirePendingSelection() { clearPending() }
 
         // MARK: Native presentation lifetime
@@ -358,18 +358,18 @@ public struct CogletMenuButton: NSViewRepresentable {
         }
         public func menu(_ menu: NSMenu, willHighlight item: NSMenuItem?) {
             guard menu === self.menu else { return }
-            highlighted = item
+            highlightedMenuItem = item
         }
         public func menuDidClose(_ menu: NSMenu) {
             guard menu === self.menu else { return }
             let wasOpen = menuOpen
             menuOpen = false
             var candidate: ItemBox?
-            if wasOpen, !selectionConsumed, !generationExhausted, let item = highlighted,
+            if wasOpen, !selectionConsumed, !generationExhausted, let item = highlightedMenuItem,
                let box = boxes.first(where: { $0.item === item }), box.generation == openGeneration {
                 candidate = box
             }
-            highlighted = nil
+            highlightedMenuItem = nil
             retireItems()
             guard let box = candidate, !generationExhausted else { return }
             pendingToken &+= 1
