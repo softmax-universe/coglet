@@ -389,6 +389,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             SettingsArrowCapture.record(.arrival) {
                 .init(selected: self.model.selectedTab, keyCode: event.keyCode, eventTime: event.timestamp)
             }
+#if DEBUG
+            SettingsTransitionProbe.arrival(event)
+#endif
             if event.keyCode == 53 { SettingsArrowCapture.exportBeforeEscape() }
             let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
             if modifiers == .command && event.charactersIgnoringModifiers == "k" {
@@ -442,6 +445,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+#if DEBUG
+        if let settingsWindow { SettingsTransitionProbe.attach(window: settingsWindow, model: model) }
+#endif
     }
 
     func windowWillClose(_ notification: Notification) {

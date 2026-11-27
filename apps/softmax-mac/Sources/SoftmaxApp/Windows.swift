@@ -137,11 +137,19 @@ struct SettingsView: View {
             .onAppear { capture(.viewAppear) }
             .onDisappear { capture(.viewDisappear) }
             .onChange(of: model.selectedTab) { capture(.viewSelection) }
-            .onChange(of: query) { capture(.viewQuery) }
+            .onChange(of: query) {
+                capture(.viewQuery)
+#if DEBUG
+                SettingsTransitionProbe.queryChanged(query, matchCount: tabs.count)
+#endif
+            }
             .onChange(of: searchFocused) { capture(.viewFocus) }
             .onReceive(NotificationCenter.default.publisher(for: .softmaxFilterInput)) { notification in
                 guard let characters = notification.object as? String else { return }
                 query += characters; searchFocused = true
+#if DEBUG
+                SettingsTransitionProbe.notificationReceived()
+#endif
             }
             .onExitCommand { if !query.isEmpty { query = "" } else { searchFocused = false } }
             .sheet(isPresented: $shortcuts) {

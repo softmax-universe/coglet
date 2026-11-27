@@ -266,6 +266,54 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(settings.buttons["General"].exists)
     }
 
+    /// Three named event orders, once each. This is not XCTest synthesis proof or a stress loop.
+    @MainActor
+    func testSettingsTransitionOrderEvidence() throws {
+        for scenario in ["settled", "queuedAfterSlash", "queuedAfterQuery"] {
+            let app = XCUIApplication()
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("settings-transition-\(UUID().uuidString)", isDirectory: true)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let output = directory.appendingPathComponent("transition.json")
+            app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
+            app.launchEnvironment["SOFTMAX_SETTINGS_ARROW_PROBE"] = directory.appendingPathComponent("unused-escape.json").path
+            app.launchEnvironment["SOFTMAX_SETTINGS_TRANSITION_SCENARIO"] = scenario
+            app.launchEnvironment["SOFTMAX_SETTINGS_TRANSITION_OUTPUT"] = output.path
+            let started = ProcessInfo.processInfo.systemUptime
+            app.launch()
+            defer { app.terminate(); try? FileManager.default.removeItem(at: directory) }
+            let onboarding = app.windows["Welcome to Softmax"]
+            XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+            onboarding.buttons["Open Settings…"].click()
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                FileManager.default.fileExists(atPath: output.path)
+            }, object: nil)
+            let remaining = max(0, 25 - (ProcessInfo.processInfo.systemUptime - started))
+            let result = XCTWaiter.wait(for: [ready], timeout: remaining)
+            XCTAssertEqual(result, .completed, "Missing producer evidence is inconclusive, not event-loss proof")
+            guard result == .completed else { return }
+            let data = try Data(contentsOf: output)
+            let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+            attachment.name = "settings-transition-\(scenario).json"
+            attachment.lifetime = .keepAlways; add(attachment)
+            let document = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(document["schema"] as? Int, 2)
+            XCTAssertEqual(document["boundary"] as? String, "transitionScenarioEnd")
+            XCTAssertEqual(document["scenario"] as? String, scenario)
+            XCTAssertEqual(document["complete"] as? Bool, true)
+            XCTAssertEqual(document["dropped"] as? Int, 0)
+            let outcome = try XCTUnwrap(document["outcome"] as? String)
+            print("Settings transition scenario=\(scenario) outcome=\(outcome)")
+            if scenario == "settled" {
+                XCTAssertEqual(outcome, "pass", "Settled native route must qualify before interpreting transitions")
+                guard outcome == "pass" else { return }
+            } else {
+                XCTAssertTrue(["pass", "transitionOnly"].contains(outcome),
+                              "Retain focused failure or invalid harness evidence; never treat it as green")
+            }
+        }
+    }
+
     @MainActor
     func testContrastCalibration() throws {
         let app = XCUIApplication()
