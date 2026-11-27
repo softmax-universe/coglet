@@ -23,6 +23,15 @@ delivered rows) fails the step closed. A row that is not a well-formed router
 what to say: the text is the router's. Used by the Mindister lane acceptance
 test (Face → router → avatar).
 
+## Installed identity
+
+By default the Face's coglet id is the fixed `coglet:ccc…c` (`ID`). A router
+that registers the Face under its own signing key installs
+`/code/face/identity.json` as `{"coglet": "coglet:<64 hex>"}`; the Face then
+uses that id for its `runtime.inbox` wakes and as the `coglet` of every
+action. A present but malformed identity (wrong prefix or length, extra fields,
+more than 256 bytes) fails the step closed; it never falls back to `ID`.
+
 ## Build and test
 
 Run from this directory (so Cargo finds the local target configuration):

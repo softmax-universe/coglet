@@ -13,6 +13,11 @@ pub const INBOX_PATH: &str = "/data/inbox.jsonl";
 pub const MAX_INBOX_BYTES: usize = 512 * 1024;
 /// Inbox event kind a router uses to ask the Face to speak. Payload: `{text}`.
 pub const SAY_KIND: &str = "face.say";
+/// Optional installed identity `{"coglet": "coglet:<64 hex>"}`. A router
+/// deployment that registers the Face under its own signing key installs this;
+/// without it the Face keeps the fixed product-neutral [`ID`].
+pub const IDENTITY_PATH: &str = "/code/face/identity.json";
+pub const MAX_IDENTITY_BYTES: usize = 256;
 
 #[derive(Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -59,6 +64,31 @@ fn valid_source(source: &str) -> bool {
         .strip_prefix("surface:")
         .is_some_and(|s| hex_id(s, 64))
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Identity {
+    coglet: String,
+}
+/// The Face's own coglet id: the installed identity, else [`ID`]. A present but
+/// malformed identity fails closed rather than falling back.
+fn identity<H: Host>(ctx: &mut Context<'_, H>) -> Result<String, HostError> {
+    let Some(bytes) = ctx.read_file(IDENTITY_PATH)? else {
+        return Ok(ID.into());
+    };
+    if bytes.len() > MAX_IDENTITY_BYTES {
+        return Err(HostError::ResourceExhausted);
+    }
+    let identity: Identity =
+        serde_json::from_slice(&bytes).map_err(|_| HostError::InvalidArgument)?;
+    if !identity
+        .coglet
+        .strip_prefix("coglet:")
+        .is_some_and(|key| hex_id(key, 64))
+    {
+        return Err(HostError::InvalidArgument);
+    }
+    Ok(identity.coglet)
+}
 fn load<H: Host>(ctx: &mut Context<'_, H>) -> Result<State, HostError> {
     let Some(bytes) = ctx.read_file(STATE_PATH)? else {
         return Ok(State::default());
@@ -84,13 +114,14 @@ fn load<H: Host>(ctx: &mut Context<'_, H>) -> Result<State, HostError> {
 /// bad message cannot wedge the cursor.
 fn say_from_router<H: Host>(
     ctx: &mut Context<'_, H>,
+    own: &str,
     state: &mut State,
     events: &[Event],
 ) -> Result<(), HostError> {
     let mut upto: Option<u64> = None;
     for e in events
         .iter()
-        .filter(|e| e.kind == "runtime.inbox" && e.source == ID)
+        .filter(|e| e.kind == "runtime.inbox" && e.source == own)
     {
         let n = e
             .payload
@@ -124,7 +155,7 @@ fn say_from_router<H: Host>(
             return Err(HostError::InvalidArgument);
         }
         if index >= state.inbox_cursor && index < end {
-            say_row(ctx, &row)?;
+            say_row(ctx, own, &row)?;
         }
         index += 1;
     }
@@ -134,7 +165,11 @@ fn say_from_router<H: Host>(
     state.inbox_cursor = state.inbox_cursor.max(end);
     Ok(())
 }
-fn say_row<H: Host>(ctx: &mut Context<'_, H>, row: &serde_json::Value) -> Result<(), HostError> {
+fn say_row<H: Host>(
+    ctx: &mut Context<'_, H>,
+    own: &str,
+    row: &serde_json::Value,
+) -> Result<(), HostError> {
     let event = &row["event"];
     let router = event["source"]
         .as_str()
@@ -159,7 +194,7 @@ fn say_row<H: Host>(ctx: &mut Context<'_, H>, row: &serde_json::Value) -> Result
     let stream = ctx.next_id()?;
     ctx.emit(&Action {
         id,
-        coglet: ID.into(),
+        coglet: own.into(),
         capability: "speech.speak_chunk".into(),
         args: BTreeMap::from([
             ("stream".into(), Value::Text(stream)),
@@ -177,6 +212,7 @@ fn say_row<H: Host>(ctx: &mut Context<'_, H>, row: &serde_json::Value) -> Result
 
 #[coglet]
 pub fn wake<H: Host>(ctx: &mut Context<'_, H>, events: &[Event]) -> Result<(), HostError> {
+    let own = identity(ctx)?;
     let mut state = load(ctx)?;
     // A restored filesystem must not combine with a reset context ID sequence.
     // Replay starts from its archived pre-step state, not this committed state.
@@ -184,7 +220,7 @@ pub fn wake<H: Host>(ctx: &mut Context<'_, H>, events: &[Event]) -> Result<(), H
         return Err(HostError::Conflict);
     }
     state.last_step = Some(ctx.step);
-    say_from_router(ctx, &mut state, events)?;
+    say_from_router(ctx, &own, &mut state, events)?;
     for event in events {
         if !matches!(
             event.kind.as_str(),
@@ -250,7 +286,7 @@ pub fn wake<H: Host>(ctx: &mut Context<'_, H>, events: &[Event]) -> Result<(), H
         let stream = ctx.next_id()?;
         ctx.emit(&Action {
             id,
-            coglet: ID.into(),
+            coglet: own.clone(),
             capability: "speech.speak_chunk".into(),
             args: BTreeMap::from([
                 ("stream".into(), Value::Text(stream)),

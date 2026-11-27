@@ -368,3 +368,45 @@ fn router_say_inbox_corruption_fails_closed() {
     );
     assert!(h.actions.is_empty());
 }
+#[test]
+fn installed_identity_owns_wakes_and_actions_and_malformed_identity_fails_closed() {
+    let own = format!("coglet:{}", "9".repeat(64));
+    let mut h = Memory::default();
+    h.files.insert(
+        coglet_face::IDENTITY_PATH.into(),
+        serde_json::to_vec(&serde_json::json!({"coglet": own})).unwrap(),
+    );
+    run(&mut h, 1, &turn(1, 1, "echo")).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    assert_eq!(h.actions[0].coglet, own);
+    let inbox = inbox_row(
+        0,
+        &router(),
+        "face.say",
+        serde_json::json!({"text": "Routed."}),
+    );
+    h.files
+        .insert(coglet_face::INBOX_PATH.into(), inbox.into_bytes());
+    // A wake attributed to the fixed default id is not this Face's wake.
+    run(&mut h, 2, &[wake_inbox(0)]).unwrap();
+    assert_eq!(h.actions.len(), 1);
+    let mut own_wake = wake_inbox(0);
+    own_wake.source = own.clone();
+    run(&mut h, 3, &[own_wake]).unwrap();
+    assert_eq!(h.actions.len(), 2);
+    assert_eq!(h.actions[1].coglet, own);
+    assert_eq!(h.actions[1].args["text"].as_text(), Some("Routed."));
+    for bad in [
+        br#"{"coglet":"coglet:XYZ"}"#.to_vec(),
+        br#"{"coglet":"hub:9999999999999999999999999999999999999999999999999999999999999999"}"#
+            .to_vec(),
+        br#"{"coglet":"coglet:9999999999999999999999999999999999999999999999999999999999999999","x":1}"#
+            .to_vec(),
+        vec![b' '; coglet_face::MAX_IDENTITY_BYTES + 1],
+    ] {
+        let mut h = Memory::default();
+        h.files.insert(coglet_face::IDENTITY_PATH.into(), bad);
+        assert!(run(&mut h, 1, &turn(1, 1, "echo")).is_err());
+        assert!(h.actions.is_empty());
+    }
+}
