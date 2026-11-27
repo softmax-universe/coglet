@@ -108,12 +108,17 @@ private actor BackendHarness {
             try mailbox.activate(incarnation: incarnation, epoch: session.grantEpoch, grant: grant, capture: capture)
         }
     }
-    func act(_ capability: String, args: W, id: String = cid, deadline: UInt64 = 1000) throws -> [W] {
+    func revokeGrants() throws -> (before: UInt64, after: UInt64, frames: [W]) {
+        let before = session.grantEpoch
+        try session.installGrants([])
+        return (before, session.grantEpoch, try frames())
+    }
+    func act(_ capability: String, args: W, id: String = cid, deadline: UInt64 = 1000, epoch: UInt64? = nil) throws -> [W] {
         XCTAssertFalse(Thread.isMainThread)
         let action = obj(["id": .text(id), "coglet": .text(owner), "capability": .text(capability), "args": args,
                           "deadline": .unsigned(deadline), "correlation_id": .text(cid)])
         try session.receive(wire.incoming(SurfaceWire.encode(obj(["type": .text("act"), "body": obj([
-            "action": action, "grant_epoch": .unsigned(session.grantEpoch)])]), from: .runtime, contractProfile: .surface02)))
+            "action": action, "grant_epoch": .unsigned(epoch ?? session.grantEpoch)])]), from: .runtime, contractProfile: .surface02)))
         return try frames()
     }
     func read(_ operation: String, args: W = .map([])) throws -> W {
@@ -471,6 +476,141 @@ final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(refused.first?["body"]?["accepted"], .boolean(false))
         try await harness.close()
     }
+    // These exercise the real SDK/socketpair with fake product callbacks only:
+    // no permissions prompt, login item, identity reset, update or quit is run.
+    func testSensitiveGrantedFakeCallbackRunsOnceAndDirectionBypassesRefuse() async throws {
+        let (host, capture) = try await MainActor.run { let h = try Host(); return (h, try h.adapter.capture()) }
+        let harness = try BackendHarness(capture: capture, clock: BackendClock(),
+            allowed: ["softmax.app.invoke", "softmax.app.invoke_sensitive"])
+        let accepted = try await harness.act("softmax.app.invoke_sensitive", args: invoke("settings.general.login_enable"))
+        XCTAssertEqual(accepted.count, 1)
+        XCTAssertEqual(accepted.first?["body"]?["accepted"], .boolean(true))
+        let ticket = try XCTUnwrap(harness.mailbox.queuedCommands().first)
+        await MainActor.run {
+            harness.mailbox.execute(ticket, adapter: host.adapter)
+            harness.mailbox.execute(ticket, adapter: host.adapter)
+            XCTAssertEqual(host.loginCalls, 1)
+            XCTAssertEqual(host.pressCalls, 0)
+        }
+        let completed = try await harness.reconcile()
+        XCTAssertEqual(completed.count, 1)
+        XCTAssertEqual(completed.first?["body"]?["payload"]?["status"], .text("succeeded"))
+        let retry = try await harness.act("softmax.app.invoke_sensitive", args: invoke("settings.general.login_enable"))
+        XCTAssertEqual(retry.count, 2)
+        XCTAssertEqual(retry.first?["body"]?["accepted"], .boolean(true))
+        XCTAssertEqual(retry.last?["body"]?["payload"]?["status"], .text("succeeded"))
+        for (operation, control, id) in [
+            ("softmax.app.invoke", "settings.general.login_enable", "2"),
+            ("softmax.app.invoke_sensitive", "settings.general.button", "3")
+        ] {
+            let refused = try await harness.act(operation, args: invoke(control), id: String(repeating: id, count: 32))
+            XCTAssertEqual(refused.count, 1)
+            XCTAssertEqual(refused.first?["body"]?["accepted"], .boolean(false))
+            XCTAssertEqual(refused.first?["body"]?["error"]?["code"], .text("permission_denied"))
+            XCTAssertTrue(harness.mailbox.queuedCommands().isEmpty)
+        }
+        await MainActor.run { XCTAssertEqual(host.loginCalls, 1); XCTAssertEqual(host.pressCalls, 0) }
+        let duplicate = try await harness.reconcile()
+        XCTAssertTrue(duplicate.isEmpty)
+        try await harness.close()
+    }
+
+    func testSensitiveQueuedGrantReplacementAndExpiryFenceNativeEntry() async throws {
+        for expires in [false, true] {
+            let clock = BackendClock()
+            let (host, capture) = try await MainActor.run { let h = try Host(); return (h, try h.adapter.capture()) }
+            let harness = try BackendHarness(capture: capture, clock: clock,
+                allowed: ["softmax.app.invoke_sensitive"])
+            let accepted = try await harness.act("softmax.app.invoke_sensitive",
+                args: invoke("settings.general.login_enable"), deadline: 200_000)
+            XCTAssertEqual(accepted.first?["body"]?["accepted"], .boolean(true))
+            let ticket = try XCTUnwrap(harness.mailbox.queuedCommands().first)
+            if expires {
+                clock.advance(100_000) // exact exclusive grant expiry, before action deadline
+                let frames = try await harness.tick()
+                XCTAssertEqual(frames.first?["type"], .text("grants"))
+            } else {
+                let replacement = try await harness.revokeGrants()
+                XCTAssertGreaterThan(replacement.after, replacement.before)
+                XCTAssertEqual(replacement.frames.first?["type"], .text("grants"))
+            }
+            await MainActor.run {
+                harness.mailbox.execute(ticket, adapter: host.adapter)
+                harness.mailbox.execute(ticket, adapter: host.adapter)
+                XCTAssertEqual(host.loginCalls, 0)
+                XCTAssertEqual(host.pressCalls, 0)
+            }
+            // installGrants retires the mailbox and cancels old-epoch ledger
+            // records without delivering their outcomes into the new epoch.
+            let staleCompletion = try await harness.reconcile()
+            XCTAssertTrue(staleCompletion.isEmpty)
+            let stale = try await harness.act("softmax.app.invoke_sensitive", args: invoke("settings.general.login_enable"),
+                id: String(repeating: "2", count: 32), deadline: 200_000, epoch: ticket.epoch)
+            XCTAssertEqual(stale.first?["body"]?["accepted"], .boolean(false))
+            let fresh = try await harness.act("softmax.app.invoke_sensitive", args: invoke("settings.general.login_enable"),
+                id: String(repeating: "3", count: 32), deadline: 200_000)
+            XCTAssertEqual(fresh.first?["body"]?["accepted"], .boolean(false))
+            XCTAssertTrue(harness.mailbox.queuedCommands().isEmpty)
+            await MainActor.run { XCTAssertEqual(host.loginCalls, 0) }
+            try await harness.close()
+        }
+    }
+
+    func testSensitiveQueuedEffectStillAllowedImmediatelyBeforeGrantExpiry() async throws {
+        let clock = BackendClock()
+        let (host, capture) = try await MainActor.run { let h = try Host(); return (h, try h.adapter.capture()) }
+        let harness = try BackendHarness(capture: capture, clock: clock, allowed: ["softmax.app.invoke_sensitive"])
+        let accepted = try await harness.act("softmax.app.invoke_sensitive", args: invoke("settings.general.login_enable"), deadline: 200_000)
+        XCTAssertEqual(accepted.first?["body"]?["accepted"], .boolean(true))
+        let ticket = try XCTUnwrap(harness.mailbox.queuedCommands().first)
+        clock.advance(99_999)
+        let beforeExpiry = try await harness.tick()
+        XCTAssertTrue(beforeExpiry.isEmpty)
+        await MainActor.run { harness.mailbox.execute(ticket, adapter: host.adapter); XCTAssertEqual(host.loginCalls, 1) }
+        let completion = try await harness.reconcile()
+        XCTAssertEqual(completion.count, 1)
+        XCTAssertEqual(completion.first?["body"]?["payload"]?["status"], .text("succeeded"))
+        try await harness.close()
+    }
+
+    func testSensitiveSuspendedGrantRevocationFencesNoncooperativeEffect() async throws {
+        for revoked in [false, true] {
+        let suspension = Suspension()
+        let (host, capture) = try await MainActor.run { () -> (Host, AppSurfaceCapture) in
+            let host = try Host()
+            _ = try host.registry.mount(id: "sensitive.deferred", window: "settings", route: "general",
+                role: "button", label: "Fake sensitive deferred", sensitive: true, verbs: ["press"],
+                value: { .map([.init("kind", .text("none"))]) },
+                invokeAsync: { _, context in
+                    await suspension.wait() // intentionally ignores Task cancellation
+                    try context.perform { host.loginCalls += 1 }
+                }, invoke: { _ in XCTFail("sensitive async command used sync fallback") })
+            return (host, try host.adapter.capture())
+        }
+        let harness = try BackendHarness(capture: capture, clock: BackendClock(), allowed: ["softmax.app.invoke_sensitive"])
+        let accepted = try await harness.act("softmax.app.invoke_sensitive", args: invoke("sensitive.deferred"))
+        XCTAssertEqual(accepted.first?["body"]?["accepted"], .boolean(true))
+        let ticket = try XCTUnwrap(harness.mailbox.queuedCommands().first)
+        await MainActor.run { harness.mailbox.execute(ticket, adapter: host.adapter) }
+        await fulfillment(of: [suspension.entered], timeout: 2)
+        if revoked {
+            let replacement = try await harness.revokeGrants()
+            XCTAssertGreaterThan(replacement.after, replacement.before)
+        }
+        await MainActor.run { suspension.resume() }
+        let completion = try await awaitResult(harness)
+        if revoked {
+            XCTAssertTrue(completion.isEmpty)
+        } else {
+            XCTAssertEqual(completion.count, 1)
+            XCTAssertEqual(completion.first?["body"]?["payload"]?["status"], .text("succeeded"))
+        }
+        await MainActor.run { XCTAssertEqual(host.loginCalls, revoked ? 0 : 1); XCTAssertEqual(host.pressCalls, 0) }
+        XCTAssertTrue(harness.mailbox.queuedCommands().isEmpty)
+        try await harness.close()
+        }
+    }
+
     func testSnapshotPaginationRejectsReplacedCaptureAndStopIsTerminal() async throws {
         let (host, capture) = try await MainActor.run { let h = try Host(); return (h, try h.adapter.capture()) }
         let harness = try BackendHarness(capture: capture, clock: BackendClock())
