@@ -181,6 +181,10 @@ private actor BackendHarness {
             return (calls, true)
         }
     }
+    func connectionMailboxIsLive() throws -> Bool {
+        let attached = try XCTUnwrap(connection)
+        return mailbox.isLive(incarnation: attached.incarnation, epoch: attached.epoch)
+    }
     func queuedRegistryEvents() throws -> [[UInt8]] {
         try XCTUnwrap(connection).publishEvents(session)
         return session.drain()
@@ -452,13 +456,19 @@ final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
             // Also leave actual native observations pending at the SDK stop.
             try await MainActor.run { try fixture.changeProtectedInput(self.secrecyCanaries[1]) }
             await MainActor.run { fixture.host.registry.onChange = nil }
+            let liveBeforeStop = try await old.connectionMailboxIsLive()
+            XCTAssertTrue(liveBeforeStop)
             if revoke {
                 let revoked = try await old.revokeGrants()
                 XCTAssertGreaterThan(revoked.after, revoked.before)
             } else { try await old.close() }
+            // Observe SDK retirement before emit.validate can itself stop and
+            // clear the mailbox; missing backend.stop must fail this oracle.
+            let liveAfterStop = try await old.connectionMailboxIsLive()
+            XCTAssertFalse(liveAfterStop)
+            XCTAssertTrue(old.mailbox.drainEvents().isEmpty)
             let refusedBeforeReconnect = try await old.privatePayloadAttempt(retained)
             XCTAssertEqual(refusedBeforeReconnect.calls, 0); XCTAssertTrue(refusedBeforeReconnect.refused)
-            XCTAssertTrue(old.mailbox.drainEvents().isEmpty)
             let gapCapture = try await MainActor.run {
                 XCTAssertNil(fixture.host.registry.onChange)
                 for secret in self.secrecyCanaries { try fixture.changeProtectedInput(secret) }
