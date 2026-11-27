@@ -632,8 +632,19 @@ final class AppSurfaceWireTests: XCTestCase {
         XCTAssertTrue((triangle.value as? String) == "0" || (triangle.value as? NSNumber)?.intValue == 0)
         triangle.coordinate(withNormalizedOffset: CGVector(dx: 26 / triangleFrame.width, dy: 0.5)).click()
         try wait { (triangle.value as? String) == "1" || (triangle.value as? NSNumber)?.intValue == 1 }
+        // Native census regression: a container identifier must not replace
+        // the independently registered identities of its expanded inputs.
+        for fieldID in ["settings.hub.pairing.router_name", "settings.hub.pairing.router_node",
+                        "settings.hub.pairing.router_addresses", "settings.hub.pairing.relay_url"] {
+            let fields = app.textFields.matching(identifier: fieldID)
+            XCTAssertTrue(fields.firstMatch.waitForExistence(timeout: 5), "missing native field: \(fieldID)")
+            XCTAssertEqual(fields.count, 1, "ambiguous native field: \(fieldID)")
+        }
+        XCTAssertEqual(app.textFields.matching(identifier: manualID).count, 0)
+        XCTAssertEqual(app.secureTextFields.matching(identifier: manualID).count, 0)
         let invitation = app.secureTextFields["settings.hub.pairing.invitation"]
         XCTAssertTrue(invitation.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.secureTextFields.matching(identifier: "settings.hub.pairing.invitation").count, 1)
         try observe("hub_pairing", route: "manual", anchors: ["settings.hub.pairing.invitation",
             "settings.hub.pairing.router_name", "settings.hub.pairing.router_node",
             "settings.hub.pairing.router_addresses", "settings.hub.pairing.relay_url"])

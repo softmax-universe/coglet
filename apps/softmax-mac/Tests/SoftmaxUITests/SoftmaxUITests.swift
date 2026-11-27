@@ -519,6 +519,19 @@ final class SoftmaxUITests: XCTestCase {
         let settings = app.windows["Softmax Settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))
         settings.typeText("/")
+        // Slash transfers focus asynchronously through the existing native
+        // notification. Witness that precondition before sending field keys;
+        // never click the field or retry a lost arrow to conceal a failure.
+        let search = settings.textFields["settings.search"]
+        let focusedSearch = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            MainActor.assumeIsolated {
+                search.exists && search.value(forKey: "hasKeyboardFocus") as? Bool == true
+            }
+        }, object: nil)
+        guard XCTWaiter.wait(for: [focusedSearch], timeout: 5) == .completed else {
+            XCTFail("Slash did not focus Settings search before keyboard navigation: \(settings.debugDescription)")
+            return
+        }
         settings.typeText("o") // Multiple matches including General, Hotkey and Audio.
         XCTAssertTrue(settings.buttons["General"].exists)
         XCTAssertTrue(settings.buttons["Hotkey"].exists)

@@ -148,7 +148,7 @@ private struct HubPairingSheet: View {
                     CogletButton("Import QR image…", id: "\(idPrefix).pairing.import_qr", registry: model.appControls,
                         window: window, route: route, sensitive: true, adapterSynchronous: false, failure: model.appControlFailure, action: importQR)
                         .disabled(manual)
-                    DisclosureGroup("Developer: manual router address", isExpanded: $manual) {
+                    DisclosureGroup(isExpanded: $manual) {
                         VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
                             TextField("Router name", text: $name)
                                 .pairingField("pairing.router_name", "Router name", $name, secure: false, sheet: self)
@@ -161,17 +161,22 @@ private struct HubPairingSheet: View {
                             SecureField("Invitation (64 lowercase hex, optional for enrolled device)", text: $invite)
                                 .pairingField("pairing.invitation", "Invitation", $invite, secure: true, sheet: self)
                         }.padding(.top, SoftmaxDesignTokens.spacing[1])
+                    } label: {
+                        // Scope the identifier/registration to the native header.
+                        // Applying it to the group overwrites the AX identifiers
+                        // of every expanded child, including the secure field.
+                        Text("Developer: manual router address")
+                            .coglet(id: "\(idPrefix).pairing.manual", registry: model.appControls, window: window, route: route,
+                                role: "disclosure", label: "Developer: manual router address", sensitive: true,
+                                verbs: ["toggle"], value: { .map([.init("kind", .text("redacted"))]) },
+                                failure: model.appControlFailure, invoke: { args in
+                                    guard case .map(let fields) = args,
+                                          let field = fields.first(where: { $0.key == "value" }), case .boolean(let value) = field.value else {
+                                        throw ControlRegistryFailure.unsupported
+                                    }
+                                    manual = value
+                                })
                     }
-                    .coglet(id: "\(idPrefix).pairing.manual", registry: model.appControls, window: window, route: route,
-                        role: "disclosure", label: "Developer: manual router address", sensitive: true,
-                        verbs: ["toggle"], value: { .map([.init("kind", .text("redacted"))]) },
-                        failure: model.appControlFailure, invoke: { args in
-                            guard case .map(let fields) = args,
-                                  let field = fields.first(where: { $0.key == "value" }), case .boolean(let value) = field.value else {
-                                throw ControlRegistryFailure.unsupported
-                            }
-                            manual = value
-                        })
                     if let error { Text(error).modifier(SoftmaxErrorText()) }
                     if !model.testing && model.hubConnection?.deviceID == nil {
                         Text("Preparing device identity… Close this sheet and retry if the router helper is unavailable.")
