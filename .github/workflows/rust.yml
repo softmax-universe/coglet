@@ -15,7 +15,32 @@ on:
 permissions:
   contents: read
 jobs:
+  source:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.select.outputs.sha }}
+      scope: ${{ steps.select.outputs.scope }}
+      profile-required: ${{ steps.select.outputs.profile-required }}
+      profile-boundary: ${{ steps.select.outputs.profile-boundary }}
+      r3-required: ${{ steps.select.outputs.r3-required }}
+      r3-boundary: ${{ steps.select.outputs.r3-boundary }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Immutable event merge supplies workflow tooling even for legacy PRs.
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Workflow/source compatibility regression
+        run: python3 scripts/ci/test_rust_source.py -v
+      - name: Select and report immutable qualification source
+        id: select
+        env:
+          SOURCE_EVENT: ${{ github.event_name }}
+          SOURCE_RUN_SHA: ${{ github.sha }}
+          SOURCE_PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/ci/rust_source.py
   transform-native:
+    needs: [source]
     strategy:
       fail-fast: false
       matrix:
@@ -28,8 +53,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Qualify the run's head, never a PR's synthetic merge checkout.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Scope is reported by source; manifests retain this actual checkout.
+          ref: ${{ needs.source.outputs.sha }}
       - name: Execute native R3 component inventory without skips
         env:
           CARGO_BUILD_JOBS: 2
@@ -44,17 +69,150 @@ jobs:
           name: transform-native-${{ matrix.arch }}-${{ inputs.bundle-mode || 'normal' }}
           path: ${{ runner.temp }}/transform-proof
           if-no-files-found: error
-  rust:
-    needs: transform-native
+  transform-publication:
+    needs: [source]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Report R3 generation qualification
+        env:
+          R3_REQUIRED: ${{ needs.source.outputs.r3-required }}
+          R3_SHA: ${{ needs.source.outputs.sha }}
+          R3_BOUNDARY: ${{ needs.source.outputs.r3-boundary }}
+        run: |
+          case "$R3_REQUIRED" in
+            true) status="required" ;;
+            false) status="NOT EXECUTED/QUALIFIED (selected source $R3_SHA predates $R3_BOUNDARY)" ;;
+            *) echo "Invalid or missing R3 applicability output" >&2; exit 1 ;;
+          esac
+          echo "R3 publication/runtime qualification: $status"
+          printf '## R3 publication/runtime\n\n- Actual selected checkout: `%s`\n- R3 generation boundary: `%s`\n- Qualification: **%s**\n' "$R3_SHA" "$R3_BOUNDARY" "$status" >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+      - name: Live protected R3 provisioning and signed publication (zero skips)
+        if: needs.source.outputs.r3-required == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CARGO_BUILD_JOBS: 2
+          COGLET_R3_PUBLICATION_DIR: ${{ runner.temp }}/r3-publication
+        run: |
+          python3 crates/coglet-hub/test_check_r3.py -v
+          python3 crates/coglet-hub/check_r3.py --publication
+      - name: Execute that admitted archive on native x86_64
+        if: needs.source.outputs.r3-required == 'true'
+        env:
+          CARGO_BUILD_JOBS: 2
+          COGLET_R3_PUBLICATION_DIR: ${{ runner.temp }}/r3-publication
+          COGLET_R3_RUNTIME_DIR: ${{ runner.temp }}/r3-runtime-x86_64
+        run: python3 crates/coglet-hub/check_r3.py --runtime
+      - uses: actions/upload-artifact@v4
+        if: needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-publication-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-publication
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-runtime-x86_64-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-runtime-x86_64
+          if-no-files-found: error
+      # Failure evidence only: name deliberately avoids the r3-runtime-* aggregation
+      # wildcard; missing diagnostics warn and are never success proof.
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-diagnostics-x86_64-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-runtime-x86_64-diagnostics
+          if-no-files-found: warn
+  transform-runtime-arm:
+    needs: [source, transform-publication]
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Report R3 generation qualification
+        env:
+          R3_REQUIRED: ${{ needs.source.outputs.r3-required }}
+          R3_SHA: ${{ needs.source.outputs.sha }}
+          R3_BOUNDARY: ${{ needs.source.outputs.r3-boundary }}
+        run: |
+          case "$R3_REQUIRED" in
+            true) status="required" ;;
+            false) status="NOT EXECUTED/QUALIFIED (selected source $R3_SHA predates $R3_BOUNDARY)" ;;
+            *) echo "Invalid or missing R3 applicability output" >&2; exit 1 ;;
+          esac
+          echo "R3 publication/runtime qualification: $status"
+          printf '## R3 publication/runtime\n\n- Actual selected checkout: `%s`\n- R3 generation boundary: `%s`\n- Qualification: **%s**\n' "$R3_SHA" "$R3_BOUNDARY" "$status" >>"$GITHUB_STEP_SUMMARY"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        if: needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-publication-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-publication
+      - name: Execute identical admitted archive on native aarch64 (zero skips)
+        if: needs.source.outputs.r3-required == 'true'
+        env:
+          CARGO_BUILD_JOBS: 2
+          COGLET_R3_PUBLICATION_DIR: ${{ runner.temp }}/r3-publication
+          COGLET_R3_RUNTIME_DIR: ${{ runner.temp }}/r3-runtime-aarch64
+        run: |
+          test "$(uname -m)" = aarch64
+          python3 crates/coglet-hub/check_r3.py --runtime
+      - uses: actions/upload-artifact@v4
+        if: needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-runtime-aarch64-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-runtime-aarch64
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.source.outputs.r3-required == 'true'
+        with:
+          name: r3-diagnostics-aarch64-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-runtime-aarch64-diagnostics
+          if-no-files-found: warn
+  factory:
+    needs: [source]
+    # Independent runner/private target: preserve the entire owned qualification
+    # while removing its serial cost from the core critical path.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+      - uses: ./.github/actions/dependency-restore
+        with:
+          # Dependency-only union closure, captured once by core after explicit
+          # standalone Factory fetch. Supported by old exact-source helpers too.
+          job: rust
+          mode: ${{ inputs.bundle-mode || 'normal' }}
+          release: ${{ inputs.bundle-release || 'dependency-mirror-v1' }}
+      - name: Install pinned toolchain
+        run: rustup show active-toolchain
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: ${{ inputs.bundle-mode != 'proof' }}
+      - name: Factory guest and real/mock runtime database qualification
+        run: bash coglets/factory/check.sh
+
+  rust-core:
+    needs: [source, transform-native, transform-publication, transform-runtime-arm]
     if: always()
     runs-on: ubuntu-24.04
     steps:
-      - name: Both native architecture legs are mandatory
-        run: test '${{ needs.transform-native.result }}' = 'success'
+      - name: Source selection and both native architecture legs are mandatory
+        run: |
+          test '${{ needs.source.result }}' = 'success'
+          test '${{ needs.transform-native.result }}' = 'success'
+          test '${{ needs.transform-publication.result }}' = 'success'
+          test '${{ needs.transform-runtime-arm.result }}' = 'success'
       - uses: actions/checkout@v4
         with:
-          # Qualify the run's head, never a PR's synthetic merge checkout.
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Scope is reported by source; manifests retain this actual checkout.
+          ref: ${{ needs.source.outputs.sha }}
       - uses: ./.github/actions/dependency-restore
         with:
           job: rust
@@ -75,6 +233,14 @@ jobs:
         run: |
           echo "COGLET_TRANSFORM_NATIVE_PAIR=$RUNNER_TEMP/transform-native-pair" >>"$GITHUB_ENV"
           COGLET_TRANSFORM_NATIVE_PAIR="$RUNNER_TEMP/transform-native-pair" python3 crates/coglet-transform/check.py --aggregate-test
+      - uses: actions/download-artifact@v4
+        if: needs.source.outputs.r3-required == 'true'
+        with:
+          pattern: r3-runtime-*-${{ inputs.bundle-mode || 'normal' }}
+          path: ${{ runner.temp }}/r3-runtime-pair
+      - name: R3 publication runtime raw-state cross-architecture aggregation (required)
+        if: needs.source.outputs.r3-required == 'true'
+        run: python3 crates/coglet-hub/check_r3.py --aggregate "$RUNNER_TEMP/r3-runtime-pair"
       - name: cargo test --workspace (quarantined tests skipped; see ci/quarantine.toml)
         run: scripts/ci/cargo-test --workspace --locked
       - name: Device lifecycle and ADR-0027 real-daemon restart admission
@@ -98,8 +264,6 @@ jobs:
           cargo test --locked -p coglet-runtime --test sim_duplex_heard -- --ignored "${extra[@]}"
       - name: Execute compiled guest ABI tests
         run: uv run --with-requirements sdk/guest-rust/tests/requirements.txt python3 sdk/guest-rust/tests/test_wasm.py -v
-      - name: Factory opt-in DB guest slice (not runtime DB conformance)
-        run: bash coglets/factory/check.sh
       - name: Execute reference ABI cases on mock and WAMR
         run: |
           python3 sdk/guest-rust/tests/build_reference_cases.py --check
@@ -127,9 +291,43 @@ jobs:
           name: visualizer-native-proof-${{ inputs.bundle-mode || 'normal' }}
           path: tools/visualizer/proof/native/
           if-no-files-found: error
+      - name: Production runtime selected-profile peer qualification
+        if: needs.source.outputs.profile-required == 'true'
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: |
+          cargo build --locked -p coglet-runtime --bin cogletd
+          export COGLET_FIXTURE_COGLETD="$PWD/target/debug/cogletd"
+          uv run --no-project --python 3.12 python crates/coglet-runtime/tools/test_profile_fixture_bridge.py
+          uv run --no-project --python 3.12 python -m unittest discover -s conformance/tests -p test_expect_close.py -v
+          uv run --no-project --python 3.12 python conformance/run --registry conformance/impls-surface02-runtime.toml --contract-profile surface-0.2 --junit target/runtime-surface02.xml
+      - uses: actions/upload-artifact@v4
+        if: needs.source.outputs.profile-required == 'true' && always()
+        with:
+          name: runtime-surface02-${{ inputs.bundle-mode || 'normal' }}
+          path: target/runtime-surface02.xml
+          if-no-files-found: error
       - name: Check daemon version
         run: test "$(cargo run --quiet -p coglet-runtime --bin cogletd)" = 'cogletd 0.1.0'
+      - name: Complete standalone Factory Cargo closure for both runners
+        if: inputs.bundle-mode == 'prepare'
+        run: cargo fetch --locked --manifest-path coglets/factory/Cargo.toml
       - uses: ./.github/actions/dependency-capture
         if: inputs.bundle-mode == 'prepare'
         with:
           job: rust
+  rust:
+    # Preserve the required context; no skipped/cancelled producer is success.
+    needs: [source, transform-native, transform-publication, transform-runtime-arm, rust-core, factory]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: All exact-source qualification legs are mandatory
+        run: |
+          set -euo pipefail
+          test '${{ needs.source.result }}' = 'success'
+          test '${{ needs.transform-native.result }}' = 'success'
+          test '${{ needs.transform-publication.result }}' = 'success'
+          test '${{ needs.transform-runtime-arm.result }}' = 'success'
+          test '${{ needs.rust-core.result }}' = 'success'
+          test '${{ needs.factory.result }}' = 'success'
