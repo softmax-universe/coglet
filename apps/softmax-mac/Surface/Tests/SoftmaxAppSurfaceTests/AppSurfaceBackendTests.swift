@@ -15,6 +15,8 @@ private final class BackendWire {
     let transport: SurfaceSocketTransport
     let peer: Int32
     private var decoder = SurfaceFrameDecoder()
+    // Payloads recovered from the peer socket, before SDK decoding (not re-encoded values).
+    private(set) var receivedPayloads: [[UInt8]] = []
     init() throws {
         var fds: [Int32] = [-1, -1]
 #if canImport(Darwin)
@@ -43,12 +45,16 @@ private final class BackendWire {
         for frame in frames { try transport.enqueue(frame) }
         guard try transport.flush() else { throw NativeSurfaceError("resource_exhausted") }
         var result: [W] = []
+        receivedPayloads = []
         for _ in 0..<128 {
             var buffer = [UInt8](repeating: 0, count: 4096)
             let n = buffer.withUnsafeMutableBytes { recv(peer, $0.baseAddress!, $0.count, 0) }
             if n < 0, errno == EAGAIN || errno == EWOULDBLOCK { break }
             guard n > 0 else { throw NativeSurfaceError("unavailable") }
-            try decoder.consume(buffer.prefix(n)) { result.append(try SurfaceWire.decode($0, from: .surface, contractProfile: .surface02)) }
+            try decoder.consume(buffer.prefix(n)) { payload in
+                receivedPayloads.append(Array(payload))
+                result.append(try SurfaceWire.decode(payload, from: .surface, contractProfile: .surface02))
+            }
         }
         guard result.count == frames.count else { throw NativeSurfaceError("unavailable") }
         return result
@@ -148,6 +154,33 @@ private actor BackendHarness {
             return true
         }
     }
+    func readWithBytes(_ operation: String, args: W = .map([])) throws -> (bytes: [[UInt8]], values: [W]) {
+        let value = try read(operation, args: args)
+        return (wire.receivedPayloads, [value])
+    }
+    func eventsWithBytes() throws -> (bytes: [[UInt8]], values: [W]) {
+        let values = try eventFrames()
+        return (wire.receivedPayloads, values)
+    }
+    func queuedControlsRead(_ args: W) throws -> [[UInt8]] {
+        try session.receive(wire.incoming(SurfaceWire.encode(obj(["type": .text("read"), "body": obj([
+            "coglet": .text(owner), "capability": .text("softmax.app.controls"), "args": args, "deadline": .unsigned(1000),
+            "grant_epoch": .unsigned(session.grantEpoch), "correlation_id": .text(cid)])]), from: .runtime, contractProfile: .surface02)))
+        return session.drain()
+    }
+    // Probe entry into the whole-frame callback only. A socket's partial writer
+    // is deliberately NOT used under AppSurfaceConnection's ABI-only emit gate.
+    func privatePayloadAttempt(_ payload: [[UInt8]]) throws -> (calls: Int, refused: Bool) {
+        let attached = try XCTUnwrap(connection)
+        var calls = 0
+        do {
+            _ = try attached.emit(session: session) { calls += 1; return payload }
+            return (calls, false)
+        } catch let error as NativeSurfaceError {
+            XCTAssertEqual(error.code, "unavailable")
+            return (calls, true)
+        }
+    }
     func queuedSuccessfulRead() throws -> [[UInt8]] {
         try session.receive(wire.incoming(SurfaceWire.encode(obj(["type": .text("read"), "body": obj([
             "coglet": .text(owner), "capability": .text("softmax.app.state"), "args": .map([]), "deadline": .unsigned(1000),
@@ -157,6 +190,202 @@ private actor BackendHarness {
 }
 
 final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
+    // Synthetic native storage only; no Keychain, identity or product tokens.
+    @MainActor private final class SecrecyFixture {
+        let host: Host
+        var secureText = "", sensitiveText = ""
+        var secureGetterCalls = 0, sensitiveGetterCalls = 0, publicGetterCalls = 0
+        var secureMount: ControlRegistry.Mount!
+        var sensitiveMount: ControlRegistry.Mount!
+        var publicMount: ControlRegistry.Mount!
+        init() throws {
+            host = try Host()
+            secureMount = try host.registry.mount(id: "secrecy.secure", window: "settings", route: "general",
+                role: "secure_field", label: "Protected input", secure: true, verbs: ["type_text"], value: {
+                    self.secureGetterCalls += 1
+                    XCTFail("secure getter must not be evaluated")
+                    return Host.obj(["kind": .text("text"), "value": .text(self.secureText)])
+                }, invoke: { _ in XCTFail("read/event test invoked a command") })
+            sensitiveMount = try host.registry.mount(id: "secrecy.sensitive", window: "settings", route: "general",
+                role: "text_field", label: "Sensitive input", sensitive: true, verbs: ["type_text"], value: {
+                    self.sensitiveGetterCalls += 1
+                    XCTFail("sensitive getter must not be evaluated")
+                    return Host.obj(["kind": .text("text"), "value": .text(self.sensitiveText)])
+                }, invoke: { _ in XCTFail("read/event test invoked a command") })
+            publicMount = try host.registry.mount(id: "secrecy.public", window: "settings", route: "general",
+                role: "text_field", label: "Public input", verbs: ["type_text"], value: {
+                    self.publicGetterCalls += 1
+                    return Host.obj(["kind": .text("text"), "value": .text("PUBLIC_TRANSPORT_WITNESS")])
+                }, invoke: { _ in XCTFail("read/event test invoked a command") })
+        }
+        func observe(into mailbox: AppSurfaceMailbox) {
+            host.registry.onChange = { operation, payload in
+                do { try mailbox.observe(operation: operation, payload: payload) }
+                catch { XCTFail("real registry observation was refused") }
+            }
+        }
+        func changeProtectedInput(_ text: String) throws {
+            secureText = text; sensitiveText = text
+            // The actual registry projection supplies the event payload. Force
+            // announces a native edit even though its public value is unchanged.
+            try host.registry.controlChanged(secureMount, force: true)
+            try host.registry.controlChanged(sensitiveMount, force: true)
+        }
+        func assertGetters() {
+            XCTAssertEqual(secureGetterCalls, 0)
+            XCTAssertEqual(sensitiveGetterCalls, 0)
+            XCTAssertGreaterThan(publicGetterCalls, 0)
+        }
+    }
+    private var secrecyControlsArgs: W {
+        obj(["window": .text("settings"), "after": .null, "revision": .null, "limit": .unsigned(128)])
+    }
+    private let secrecyCanaries = ["TRANSPORT_SECRET_CANARY_56", String(repeating: "SYNTHETIC_PRIVATE_", count: 19)]
+    private func assertNoSecret(_ output: (bytes: [[UInt8]], values: [W])) throws {
+        XCTAssertEqual(output.bytes.count, output.values.count)
+        XCTAssertFalse(output.bytes.isEmpty)
+        for (bytes, value) in zip(output.bytes, output.values) {
+            for secret in secrecyCanaries {
+                XCTAssertNil(Data(bytes).range(of: Data(secret.utf8)), "secret bytes escaped")
+            }
+            // The actual socket payload must be precisely the decoded, closed
+            // CBOR envelope; recursive checks also reject length metadata.
+            XCTAssertEqual(try CogletTypes.CBORCodec.encodeProfile(value), bytes)
+            assertNoSecretFields(value)
+        }
+    }
+    private func assertNoSecretFields(_ value: W) {
+        switch value {
+        case .map(let fields):
+            for field in fields {
+                XCTAssertNotEqual(field.key, "length")
+                assertNoSecretFields(field.value)
+            }
+        case .array(let values): for value in values { assertNoSecretFields(value) }
+        case .text(let text):
+            for secret in secrecyCanaries { XCTAssertFalse(text.contains(secret), "secret value escaped") }
+        default: break
+        }
+    }
+    private func assertSecrecyControls(_ frame: W) throws {
+        XCTAssertEqual(frame["body"]?["ok"], .boolean(true))
+        guard case .array(let controls)? = frame["body"]?["value"]?["controls"] else {
+            return XCTFail("missing real controls page")
+        }
+        for id in ["secrecy.secure", "secrecy.sensitive", "secrecy.public"] {
+            let row = try XCTUnwrap(controls.first { $0["id"] == .text(id) })
+            let expected: W = id == "secrecy.public"
+                ? .map([.init("kind", .text("text")), .init("value", .text("PUBLIC_TRANSPORT_WITNESS"))])
+                : obj(["kind": .text("redacted")])
+            XCTAssertEqual(row["value"], expected) // exact shape: no value/length side channel
+        }
+    }
+    func testProtectedGettersNeverRunAndSocketReadsAreIdenticalForEmptyAndNonemptyStorage() async throws {
+        let fixture = try await MainActor.run { try SecrecyFixture() }
+        let capture = try await MainActor.run { try fixture.host.adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+        let emptyPage = try await h.readWithBytes("softmax.app.controls", args: secrecyControlsArgs)
+        let emptyState = try await h.readWithBytes("softmax.app.state")
+        try assertSecrecyControls(XCTUnwrap(emptyPage.values.first))
+        try assertNoSecret(emptyPage); try assertNoSecret(emptyState)
+        XCTAssertEqual(emptyState.values.first?["body"]?["ok"], .boolean(true))
+        XCTAssertEqual(emptyState.values.first?["body"]?["value"]?["settings"]?["appearance"], .text("System"))
+        for secret in secrecyCanaries {
+            let next = try await MainActor.run {
+                // Change only backing private storage, not public metadata or
+                // revision, to compare the complete replies byte-for-byte.
+                fixture.secureText = secret; fixture.sensitiveText = secret
+                return try fixture.host.adapter.capture()
+            }
+            try await h.publish(next)
+            let page = try await h.readWithBytes("softmax.app.controls", args: secrecyControlsArgs)
+            let state = try await h.readWithBytes("softmax.app.state")
+            try assertSecrecyControls(XCTUnwrap(page.values.first))
+            try assertNoSecret(page); try assertNoSecret(state)
+            XCTAssertEqual(page.values, emptyPage.values); XCTAssertEqual(page.bytes, emptyPage.bytes)
+            XCTAssertEqual(state.values, emptyState.values); XCTAssertEqual(state.bytes, emptyState.bytes)
+        }
+        await MainActor.run { fixture.assertGetters() }
+        try await h.close()
+    }
+    func testActualControlChangedEventsRedactSecretInputBeforeMailboxAndSocket() async throws {
+        let fixture = try await MainActor.run { try SecrecyFixture() }
+        let capture = try await MainActor.run { try fixture.host.adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+        await MainActor.run { fixture.observe(into: h.mailbox) }
+        var emptyValues: [W] = []
+        for text in [""] + secrecyCanaries {
+            try await MainActor.run { try fixture.changeProtectedInput(text) }
+            let events = try await h.eventsWithBytes()
+            try assertNoSecret(events)
+            XCTAssertEqual(events.values.count, 2)
+            var projected: [W] = []
+            for (index, id) in ["secrecy.secure", "secrecy.sensitive"].enumerated() {
+                let event = try XCTUnwrap(events.values.dropFirst(index).first)
+                XCTAssertEqual(event["type"], .text("event"))
+                XCTAssertEqual(event["body"]?["kind"], .text("softmax.app.control_changed"))
+                XCTAssertEqual(event["body"]?["payload"]?["control"], .text(id))
+                let value = try XCTUnwrap(event["body"]?["payload"]?["value"])
+                XCTAssertEqual(value, obj(["kind": .text("redacted")]))
+                projected.append(value)
+            }
+            if text.isEmpty { emptyValues = projected }
+            else {
+                XCTAssertEqual(projected, emptyValues)
+                XCTAssertEqual(try projected.map { try CogletTypes.CBORCodec.encodeProfile($0) },
+                               try emptyValues.map { try CogletTypes.CBORCodec.encodeProfile($0) })
+            }
+        }
+        // Positive event control goes through the very same callback/SDK/socket.
+        try await MainActor.run { try fixture.host.registry.controlChanged(fixture.publicMount, force: true) }
+        let publicEvent = try await h.eventsWithBytes()
+        try assertNoSecret(publicEvent)
+        XCTAssertEqual(publicEvent.values.count, 1)
+        XCTAssertEqual(publicEvent.values.first?["body"]?["payload"]?["control"], .text("secrecy.public"))
+        XCTAssertEqual(publicEvent.values.first?["body"]?["payload"]?["value"],
+                       .map([.init("kind", .text("text")), .init("value", .text("PUBLIC_TRANSPORT_WITNESS"))]))
+        await MainActor.run { fixture.assertGetters(); fixture.host.registry.onChange = nil }
+        try await h.close()
+    }
+    func testReplacedCustodyNeverEntersDrainedPrivatePayloadCallbackAndFreshConnectionWorks() async throws {
+        for speech in [false, true] {
+            let fixture = try await MainActor.run { try SecrecyFixture() }
+            let capture = try await MainActor.run { try fixture.host.adapter.capture() }
+            let old = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+            let drained = try await old.queuedControlsRead(secrecyControlsArgs)
+            XCTAssertEqual(drained.count, 1)
+            try assertSecrecyControls(SurfaceWire.decode(XCTUnwrap(drained.first), from: .surface, contractProfile: .surface02))
+            let before = try await old.privatePayloadAttempt(drained)
+            XCTAssertEqual(before.calls, 1); XCTAssertFalse(before.refused)
+            if speech { try await old.replaceSpeech() } else { try await old.replaceExtension() }
+            for _ in 0..<2 {
+                let stale = try await old.privatePayloadAttempt(drained)
+                XCTAssertEqual(stale.calls, 0); XCTAssertTrue(stale.refused)
+            }
+            try await old.close()
+            // Mailbox activation is one-shot. Reconnect uses a NEW session and
+            // mailbox, not illicit reactivation of the retired instance.
+            let successor = try BackendHarness(capture: capture, clock: BackendClock(), withConnection: true)
+            let page = try await successor.readWithBytes("softmax.app.controls", args: secrecyControlsArgs)
+            try assertSecrecyControls(XCTUnwrap(page.values.first)); try assertNoSecret(page)
+            await MainActor.run { fixture.observe(into: successor.mailbox) }
+            try await MainActor.run { try fixture.changeProtectedInput(self.secrecyCanaries[0]) }
+            let events = try await successor.eventsWithBytes()
+            XCTAssertEqual(events.values.count, 2); try assertNoSecret(events)
+            for event in events.values {
+                XCTAssertEqual(event["body"]?["kind"], .text("softmax.app.control_changed"))
+                XCTAssertEqual(event["body"]?["payload"]?["value"], obj(["kind": .text("redacted")]))
+            }
+            let fresh = try await successor.privatePayloadAttempt(page.bytes)
+            XCTAssertEqual(fresh.calls, 1); XCTAssertFalse(fresh.refused)
+            // Reconnecting must not revive a callback retaining old payloads.
+            let stillStale = try await old.privatePayloadAttempt(drained)
+            XCTAssertEqual(stillStale.calls, 0); XCTAssertTrue(stillStale.refused)
+            await MainActor.run { fixture.assertGetters(); fixture.host.registry.onChange = nil }
+            try await successor.close()
+        }
+    }
+
     @MainActor private final class Suspension {
         let entered = XCTestExpectation(description: "native async command started")
         var waits: [CheckedContinuation<Void, Never>] = []
