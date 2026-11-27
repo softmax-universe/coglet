@@ -34,6 +34,35 @@ them. Consumers needing head qualification must use the authenticated bridge,
 not infer it from a green required Rust check. The merge-group and subsequent
 main runs qualify their own actual source identities, not the old PR head.
 
+## Selected-profile workflow generation
+
+The selected-profile peer step was introduced by PR171 at immutable boundary
+`ebad856289393a2a770478a038fe12296bc29385`. Applicability is computed from
+that commit's ancestry in the **actual selected SHA**, after the unchanged source
+selector runs. This is independent of the older transform/exact-head boundary.
+A head between the two boundaries still runs both architectures and the Rust
+aggregate on its exact head; only the newer selected-profile step and its
+artifact are not applicable. The summary records the boundary and explicitly
+says that selected-profile qualification was **not executed or qualified**. A
+green check on such a head is not evidence of selected-profile qualification.
+Its modern merge-group and subsequent main execution must run that qualification.
+No checkout, manifest identity or publication scope is substituted or relabeled.
+
+For sources descending from the boundary, the source job first requires regular
+Git blobs for the bridge, its daemon test, the selected-profile registry and the
+expect-close test. Deletions, directories, symlinks, malformed or unavailable
+commit objects and shallow ancestry fail closed; they never switch applicability
+off or select another source. The profile step remains required for modern
+sources, and its artifact upload still runs on failure with missing-file errors.
+The workflow output is compared explicitly with `'true'`, never as a truthy
+string. This compatibility classification is not a waiver for modern trees.
+
+PR191's exact head `f6393be19f20e1f8b9eb069f247e94ad4a46f78b` is between
+these boundaries. Run45710926076 applied PR171's newer step to it and failed
+opening an absent bridge test, before that qualification executed. The repair
+preserves that old head instead of backporting unrelated runtime code or treating
+missing files as permission to skip a modern test.
+
 ## Regression
 
 ```

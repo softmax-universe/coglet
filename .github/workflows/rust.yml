@@ -20,6 +20,8 @@ jobs:
     outputs:
       sha: ${{ steps.select.outputs.sha }}
       scope: ${{ steps.select.outputs.scope }}
+      profile-required: ${{ steps.select.outputs.profile-required }}
+      profile-boundary: ${{ steps.select.outputs.profile-boundary }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -239,6 +241,7 @@ jobs:
           path: tools/visualizer/proof/native/
           if-no-files-found: error
       - name: Production runtime selected-profile peer qualification
+        if: needs.source.outputs.profile-required == 'true'
         env:
           TMPDIR: ${{ runner.temp }}
         run: |
@@ -248,7 +251,7 @@ jobs:
           uv run --no-project --python 3.12 python -m unittest discover -s conformance/tests -p test_expect_close.py -v
           uv run --no-project --python 3.12 python conformance/run --registry conformance/impls-surface02-runtime.toml --contract-profile surface-0.2 --junit target/runtime-surface02.xml
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: needs.source.outputs.profile-required == 'true' && always()
         with:
           name: runtime-surface02-${{ inputs.bundle-mode || 'normal' }}
           path: target/runtime-surface02.xml
