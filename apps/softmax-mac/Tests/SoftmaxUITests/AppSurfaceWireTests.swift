@@ -1,6 +1,7 @@
 import XCTest
 import Darwin
 import CogletTypes
+import CoreFoundation
 
 private struct WireTestFailure: Swift.Error {}
 
@@ -84,6 +85,53 @@ final class AppSurfaceWireTests: XCTestCase {
     private func containsCanary(_ bytes: Data, canaries: [String]) -> Bool {
         canaries.contains { bytes.range(of: Data($0.utf8)) != nil }
     }
+    // Fail closed on schema drift or arbitrary error/native text in diagnostics.
+    private func closedDiagnostic(_ bytes: Data) -> Bool {
+        guard bytes.count <= 4096,
+              let value = (try? JSONSerialization.jsonObject(with: bytes)) as? [String: Any],
+              Set(value.keys) == ["phase", "category", "native"] || Set(value.keys) == ["phase", "category"],
+              let phase = value["phase"] as? String, let category = value["category"] as? String else { return false }
+        let phases: Set<String> = ["prepare", "accept", "ledger", "sessionStart", "transportEnqueue", "transportFlush",
+            "transportReceive", "sdkReceive", "activate", "nativeCheck", "nativeAttach", "nativeRefresh", "adapterCapture",
+            "nativePublish", "nativeObserve", "nativeWitness", "sdkValidate", "sdkReconcile", "sdkEvents", "sdkTick",
+            "statusWrite", "wait", "cancelled"]
+        let categories: Set<String> = ["registrationLatch", "retired", "notTesting", "runtimeActive", "invariant", "cancelled",
+            "registryConflict", "registryInvalidRegistration", "registryDuplicate", "registryUnavailable",
+            "registryPermissionDenied", "registryUnsupported", "registryExhausted", "adapterConflict", "adapterUnavailable",
+            "adapterInvalidArguments", "adapterPermissionDenied", "adapterUnsupported", "adapterExhausted", "adapterInternal", "surfaceClosed",
+            "surfaceInvalidFrame", "surfaceProtocol", "surfaceSystem", "surfaceUnauthenticated", "surfaceExhausted", "other"]
+        guard phases.contains(phase), categories.contains(category) else { return false }
+        if let native = value["native"] {
+            guard let context = native as? [String: Any], Set(context.keys) == ["hasUnqualifiedAppModal", "modalWindowPresent",
+                "visibleAttachedSheet", "pairingOwnerMatches", "pairingRoutePresent", "pairingOwnerVisible", "registrationFailed"] else { return false }
+            return context.values.allSatisfy {
+                guard let number = $0 as? NSNumber else { return false }
+                return CFGetTypeID(number) == CFBooleanGetTypeID()
+            }
+        }
+        return true
+    }
+    func testClosedFailureDiagnosticSchema() throws {
+        let context: [String: Any] = ["hasUnqualifiedAppModal": true, "modalWindowPresent": false,
+            "visibleAttachedSheet": true, "pairingOwnerMatches": false, "pairingRoutePresent": true,
+            "pairingOwnerVisible": false, "registrationFailed": true]
+        let valid: [String: Any] = ["phase": "nativeCheck", "category": "registrationLatch", "native": context]
+        func encoded(_ value: [String: Any]) throws -> Data { try JSONSerialization.data(withJSONObject: value) }
+        XCTAssertTrue(closedDiagnostic(try encoded(valid)))
+        XCTAssertTrue(closedDiagnostic(try encoded(["phase": "transportReceive", "category": "surfaceClosed"])))
+        for key in ["phase", "category", "description"] {
+            var invalid = valid; invalid[key] = "untrusted-text"
+            XCTAssertFalse(closedDiagnostic(try encoded(invalid)))
+        }
+        for replacement in ["untrusted-text", 1, NSNull()] as [Any] {
+            var invalid = valid, changed = context; changed["pairingOwnerMatches"] = replacement; invalid["native"] = changed
+            XCTAssertFalse(closedDiagnostic(try encoded(invalid)))
+        }
+        var invalid = valid; var changed = context; changed["extra"] = false; invalid["native"] = changed
+        XCTAssertFalse(closedDiagnostic(try encoded(invalid)))
+        XCTAssertFalse(closedDiagnostic(Data(repeating: 32, count: 4097)))
+        XCTAssertFalse(closedDiagnostic(Data("not-json".utf8)))
+    }
     func testEvidenceCanonicalizationAndCanaryDetection() {
         let first = "  TextField, 0x600abc, {{1, 2}, {30, 40}}, identifier: 'semantic-0x123', value: 'old-0x456', Disabled, Focused"
         let second = "  TextField, 0x700def, {{1, 2}, {30, 40}}, identifier: 'semantic-0x123', value: 'old-0x456', Disabled, Focused"
@@ -142,18 +190,47 @@ final class AppSurfaceWireTests: XCTestCase {
         app.launchEnvironment["TMPDIR"] = temp.path
         app.launch()
         defer { app.terminate() }
+        let secretCanaries = [id() + id(), id() + id()]
+        var retainedFinalLedger = false
+        func safeAttachmentBytes(_ bytes: Data) -> Data {
+            let leaked = containsCanary(bytes, canaries: secretCanaries)
+            XCTAssertFalse(leaked, "generated secret leaked into evidence")
+            return leaked ? Data("Evidence withheld: generated secret detected.".utf8) : bytes
+        }
+        // Installed before socket/peer readiness, so early throws retain evidence.
+        // Observe only: never close the session, terminate twice or relax gates.
+        defer {
+            if let bytes = try? Data(contentsOf: directory.appendingPathComponent("failure.json")) {
+                let safe = safeAttachmentBytes(bytes)
+                let valid = closedDiagnostic(safe)
+                XCTAssertTrue(valid, "wire failure diagnostic must have a closed schema")
+                let attachment = XCTAttachment(data: valid ? safe : Data("Diagnostic withheld: invalid schema.".utf8),
+                    uniformTypeIdentifier: "public.json")
+                attachment.name = "live-app-wire-failure-diagnostic"; attachment.lifetime = .keepAlways; add(attachment)
+            }
+            if let bytes = try? Data(contentsOf: directory.appendingPathComponent("status")),
+               bytes == Data("active".utf8) || bytes == Data("closed".utf8) || bytes == Data("close_failed".utf8) {
+                let attachment = XCTAttachment(data: safeAttachmentBytes(bytes), uniformTypeIdentifier: "public.plain-text")
+                attachment.name = "live-app-wire-terminal-status"; attachment.lifetime = .keepAlways; add(attachment)
+                // Preserve only an actually closed, decoded durable ledger. The
+                // successful path retains its existing assertions/attachment.
+                if !retainedFinalLedger, bytes == Data("closed".utf8),
+                   let ledger = try? Data(contentsOf: directory.appendingPathComponent("l/ledger.cbor")),
+                   let saved = try? CogletTypes.CBORCodec.decodeProfile(Array(ledger)),
+                   case .map(let entries) = saved,
+                   entries.first(where: { $0.key == "running" })?.value == .boolean(false),
+                   entries.first(where: { $0.key == "killed" })?.value == .boolean(false) {
+                    let retained = XCTAttachment(data: safeAttachmentBytes(ledger), uniformTypeIdentifier: "public.data")
+                    retained.name = "live-app-wire-failure-closed-ledger"; retained.lifetime = .keepAlways; add(retained)
+                }
+            }
+        }
         let pathFile = directory.appendingPathComponent("socket-path")
         try wait { FileManager.default.fileExists(atPath: pathFile.path) }
         let socket = try String(contentsOf: pathFile, encoding: .utf8)
         XCTAssertLessThan(socket.utf8.count, 100)
         let errorFile = directory.appendingPathComponent("peer-stderr")
         let peer = try AppMockPeer(executable: executable, socket: socket, errors: errorFile)
-        let secretCanaries = [id() + id(), id() + id()]
-        func safeAttachmentBytes(_ bytes: Data) -> Data {
-            let leaked = containsCanary(bytes, canaries: secretCanaries)
-            XCTAssertFalse(leaked, "generated secret leaked into evidence")
-            return leaked ? Data("Evidence withheld: generated secret detected.".utf8) : bytes
-        }
         defer {
             let raw = XCTAttachment(data: safeAttachmentBytes(peer.bytes()), uniformTypeIdentifier: "public.jsonl")
             raw.name = "live-app-coglet-mock-wire"; raw.lifetime = .keepAlways; add(raw)
@@ -590,5 +667,6 @@ final class AppSurfaceWireTests: XCTestCase {
         try scanCanaries(ledger)
         let retained = XCTAttachment(data: safeAttachmentBytes(ledger), uniformTypeIdentifier: "public.data")
         retained.name = "live-app-wire-final-ledger"; retained.lifetime = .keepAlways; add(retained)
+        retainedFinalLedger = true
     }
 }

@@ -630,6 +630,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     try self.synchronizeNativeWindowControls()
                     try self.model.appControls.nativeStateChanged()
                     try self.model.appControls.synchronizeNativeState(windows: Self.appWindows)
+                }, diagnosticContext: { [weak self] in
+                    // Closed Boolean context only; never expose route strings,
+                    // sheet/control text, window identity or registration values.
+                    let sheets = NSApp.windows.compactMap { $0.attachedSheet }.filter { $0.isVisible }
+                    return WireProofNativeContext(
+                        hasUnqualifiedAppModal: self?.hasUnqualifiedAppModal ?? true,
+                        modalWindowPresent: NSApp.modalWindow != nil,
+                        visibleAttachedSheet: !sheets.isEmpty,
+                        pairingOwnerMatches: sheets.contains { $0 === self?.model.hubPairingNativeWindow },
+                        pairingRoutePresent: self?.model.hubPairingRoute != nil,
+                        pairingOwnerVisible: self?.model.hubPairingNativeWindow?.isVisible == true,
+                        registrationFailed: self?.model.appControlRegistrationFailed == true)
                 })
             wireProof = proof; proof.start()
         } catch { model.appControlFailure(.unavailable) }

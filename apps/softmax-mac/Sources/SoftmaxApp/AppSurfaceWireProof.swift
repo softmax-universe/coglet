@@ -6,6 +6,75 @@ import SoftmaxAppSurface
 
 private struct WireProofFailure: Swift.Error {}
 
+// Closed DEBUG-only evidence; never serialize error descriptions or native objects.
+struct WireProofNativeContext: Codable, Sendable {
+    let hasUnqualifiedAppModal: Bool
+    let modalWindowPresent: Bool
+    let visibleAttachedSheet: Bool
+    let pairingOwnerMatches: Bool
+    let pairingRoutePresent: Bool
+    let pairingOwnerVisible: Bool
+    let registrationFailed: Bool
+}
+
+fileprivate enum WireProofPhase: String, Codable, Sendable {
+    case prepare, accept, ledger, sessionStart, transportEnqueue, transportFlush
+    case transportReceive, sdkReceive, activate, nativeCheck, nativeAttach
+    case nativeRefresh, adapterCapture, nativePublish, nativeObserve, nativeWitness
+    case sdkValidate, sdkReconcile, sdkEvents, sdkTick, statusWrite, wait, cancelled
+}
+fileprivate enum WireProofCategory: String, Codable, Sendable {
+    case registrationLatch, retired, notTesting, runtimeActive, invariant, cancelled
+    case registryConflict, registryInvalidRegistration, registryDuplicate, registryUnavailable
+    case registryPermissionDenied, registryUnsupported, registryExhausted
+    case adapterConflict, adapterUnavailable, adapterInvalidArguments, adapterPermissionDenied
+    case adapterUnsupported, adapterExhausted, adapterInternal
+    case surfaceClosed, surfaceInvalidFrame, surfaceProtocol, surfaceSystem
+    case surfaceUnauthenticated, surfaceExhausted, other
+
+    static func classify(_ error: Swift.Error) -> Self {
+        if error is CancellationError { return .cancelled }
+        if let failure = error as? ControlRegistryFailure {
+            switch failure {
+            case .conflict: return .registryConflict
+            case .invalidRegistration: return .registryInvalidRegistration
+            case .duplicate: return .registryDuplicate
+            case .unavailable: return .registryUnavailable
+            case .permissionDenied: return .registryPermissionDenied
+            case .unsupported: return .registryUnsupported
+            case .exhausted: return .registryExhausted
+            }
+        }
+        if let failure = error as? AppSurfaceFailure {
+            switch failure {
+            case .conflict: return .adapterConflict
+            case .unavailable: return .adapterUnavailable
+            case .invalidArguments: return .adapterInvalidArguments
+            case .permissionDenied: return .adapterPermissionDenied
+            case .unsupported: return .adapterUnsupported
+            case .exhausted: return .adapterExhausted
+            case .internal: return .adapterInternal
+            }
+        }
+        if let failure = error as? SurfaceFailure {
+            switch failure {
+            case .closed: return .surfaceClosed
+            case .invalidFrame: return .surfaceInvalidFrame
+            case .protocolViolation: return .surfaceProtocol // discard associated text
+            case .system: return .surfaceSystem // discard errno
+            case .unauthenticated: return .surfaceUnauthenticated
+            case .exhausted: return .surfaceExhausted
+            }
+        }
+        return error is WireProofFailure ? .invariant : .other
+    }
+}
+fileprivate struct WireProofDiagnostic: Swift.Error, Codable, Sendable {
+    let phase: WireProofPhase
+    let category: WireProofCategory
+    let native: WireProofNativeContext?
+}
+
 /// Test-only owner of the EXISTING native app registry, not a second app model.
 /// The runtime installation is excluded for this exact isolated proof launch.
 @MainActor
@@ -13,16 +82,20 @@ final class AppSurfaceWireProof {
     private let model: ShellModel
     private let adapter: AppSurfaceAdapter
     private let refresh: @MainActor () throws -> Void
+    private let diagnosticContext: (@MainActor () -> WireProofNativeContext)?
+    private var firstFailure: WireProofDiagnostic?
     private let mailbox = AppSurfaceMailbox()
     private let directory: URL
     private var task: Task<Void, Never>?
     private var attached = false
     private var retired = false
 
-    init(model: ShellModel, directory: URL, refresh: @escaping @MainActor () throws -> Void) throws {
+    init(model: ShellModel, directory: URL, refresh: @escaping @MainActor () throws -> Void,
+         diagnosticContext: (@MainActor () -> WireProofNativeContext)? = nil) throws {
         guard model.testing, model.runtime.state == .stopped, model.appControls.onChange == nil,
               let adapter = model.appSurface else { throw WireProofFailure() }
         self.model = model; self.adapter = adapter; self.directory = directory; self.refresh = refresh
+        self.diagnosticContext = diagnosticContext
     }
     func start() {
         guard task == nil else { return }
@@ -35,33 +108,65 @@ final class AppSurfaceWireProof {
         }
     }
     func stop() { mailbox.retire(); retired = true; task?.cancel(); detach() }
+    // Snapshot at the failing native operation, before teardown. A previously
+    // latched registration failure has unknown origin; never clear the latch.
+    fileprivate func failure(_ error: Swift.Error, phase: WireProofPhase) -> WireProofDiagnostic {
+        if let firstFailure { return firstFailure }
+        let result = (error as? WireProofDiagnostic) ?? WireProofDiagnostic(
+            phase: phase, category: .classify(error), native: diagnosticContext?())
+        firstFailure = result
+        return result
+    }
+    private func diagnosed<T>(_ phase: WireProofPhase, _ operation: () throws -> T) throws -> T {
+        do { return try operation() } catch { throw failure(error, phase: phase) }
+    }
     private func check() throws {
-        guard !retired, model.testing, model.runtime.state == .stopped,
-              !model.appControlRegistrationFailed else { throw WireProofFailure() }
+        if let firstFailure { throw firstFailure }
+        let category: WireProofCategory?
+        if retired { category = .retired }
+        else if !model.testing { category = .notTesting }
+        else if model.runtime.state != .stopped { category = .runtimeActive }
+        else if model.appControlRegistrationFailed { category = .registrationLatch }
+        else { category = nil }
+        if let category {
+            throw failure(WireProofDiagnostic(phase: .nativeCheck, category: category,
+                native: diagnosticContext?()), phase: .nativeCheck)
+        }
     }
     func capture() throws -> AppSurfaceCapture {
-        try check(); try refresh(); return try adapter.capture()
+        try check()
+        try diagnosed(.nativeRefresh) { try refresh() }
+        return try diagnosed(.adapterCapture) { try adapter.capture() }
     }
     func attach(incarnation: UInt64) throws {
         try check()
-        guard !attached, model.appControls.onChange == nil else { throw WireProofFailure() }
-        model.appControls.onChange = { [mailbox] operation, payload in
+        guard !attached, model.appControls.onChange == nil else {
+            throw failure(WireProofFailure(), phase: .nativeAttach)
+        }
+        model.appControls.onChange = { [weak self, mailbox] operation, payload in
             do { try mailbox.observe(operation: operation, payload: payload) }
-            catch { mailbox.retire() }
+            catch {
+                _ = self?.failure(error, phase: .nativeObserve)
+                mailbox.retire()
+            }
         }
         attached = true
         // This post-attachment baseline MUST precede capabilities/grants egress.
-        try mailbox.publish(capture(), incarnation: incarnation)
+        let snapshot = try capture()
+        try diagnosed(.nativePublish) { try mailbox.publish(snapshot, incarnation: incarnation) }
     }
     func pump(incarnation: UInt64) throws {
         try check()
-        guard attached else { throw WireProofFailure() }
+        guard attached else { throw failure(WireProofFailure(), phase: .nativeAttach) }
         for ticket in mailbox.queuedCommands() { mailbox.execute(ticket, adapter: adapter) }
-        try mailbox.publish(capture(), incarnation: incarnation)
+        let snapshot = try capture()
+        try diagnosed(.nativePublish) { try mailbox.publish(snapshot, incarnation: incarnation) }
         // Independent witness in the real shared native button handler. Not an
         // adapter observation, outcome, test proxy or duplicate side-effect path.
-        try Data(String(model.wireProofShortcutPresses).utf8)
-            .write(to: directory.appendingPathComponent("native-press-count"), options: .atomic)
+        try diagnosed(.nativeWitness) {
+            try Data(String(model.wireProofShortcutPresses).utf8)
+                .write(to: directory.appendingPathComponent("native-press-count"), options: .atomic)
+        }
     }
     func detach() {
         // Retire synchronously BEFORE dropping the listener or closing the stream.
@@ -85,6 +190,7 @@ private actor WireProofExecutor {
     private var catalog: TrustedExtensionCatalog?
     private var running = false
     private var pathValidated = false
+    private var phase: WireProofPhase = .prepare
     init(directory: URL, mailbox: AppSurfaceMailbox) { self.directory = directory; self.mailbox = mailbox }
     private func now() -> UInt64 { DispatchTime.now().uptimeNanoseconds / 1_000 }
 
@@ -115,16 +221,19 @@ private actor WireProofExecutor {
         try Data(listener!.path.utf8).write(to: directory.appendingPathComponent("socket-path"), options: .atomic)
     }
     private func accept() throws -> Bool {
+        phase = .accept
         guard let accepted = try listener?.acceptConnection() else { return false }
         transport = accepted; listener?.close(); listener = nil
         // Ledger child is NEW, never the installed runtime directory/host.lock.
         let ledger = directory.appendingPathComponent("l")
+        phase = .ledger
         let store = try FileSurfaceLedger(directory: ledger, newIdentity: true)
         let owner = "coglet:" + String(repeating: "b", count: 64)
         let authority = EffectiveSurfaceGrant(coglet: owner, operations: Set(operations.map(\.name)),
             resources: ["softmax.app_control"], expires: now() + 600_000_000)
         grant = authority
         let native = AppSurfaceBackend(mailbox: mailbox); backend = native
+        phase = .sessionStart
         let surface = try SurfaceSession(identity: "surface:" + String(repeating: "a", count: 64),
             boundCoglets: [owner], operations: operations, store: store, backend: native,
             contractProfile: .surface02, trustedCatalog: catalog, initialGrants: [authority],
@@ -133,19 +242,24 @@ private actor WireProofExecutor {
         try surface.start()
         let hello = surface.drain()
         guard hello.count == 1 else { throw WireProofFailure() }
+        phase = .transportEnqueue
         try accepted.enqueue(hello[0])
         // A blocked/partial writer is terminal. Never retain it across an await.
+        phase = .transportFlush
         guard try accepted.flush() else { throw WireProofFailure() }
         return true
     }
     private func select() throws -> Bool {
+        phase = .transportReceive
         guard let session, let transport else { throw WireProofFailure() }
         guard let selection = try transport.receive() else { return false }
+        phase = .sdkReceive
         try session.receive(selection)
         // Capabilities/grants queued by receive stay INSIDE SDK until attach.
         return true
     }
     private func activate(capture: AppSurfaceCapture) throws -> UInt64 {
+        phase = .activate
         guard let session, let grant else { throw WireProofFailure() }
         let active = try AppSurfaceConnection(session: session, mailbox: mailbox,
             grant: grant, operations: operations, capture: capture)
@@ -153,25 +267,37 @@ private actor WireProofExecutor {
         return active.incarnation
     }
     private func flush() throws {
+        phase = .sdkValidate
         guard let session, let transport, let connection else { throw WireProofFailure() }
         try connection.validate(session)
         let custody = session.egressCustody
+        phase = .transportEnqueue
         for frame in session.drain() { try transport.enqueue(frame) }
+        phase = .sdkValidate
         try connection.validate(session)
+        phase = .transportFlush
         guard session.egressCustody == custody, try transport.flush() else { throw WireProofFailure() }
+        phase = .sdkValidate
         try connection.validate(session)
     }
     private func pump() throws {
+        phase = .sdkValidate
         guard let session, let transport, let connection, let backend else { throw WireProofFailure() }
         try connection.validate(session)
         // Native receipts and events are copied by the preceding MainActor turn.
+        phase = .sdkReconcile
         try backend.reconcile(session)
+        phase = .sdkEvents
         try connection.publishEvents(session)
         for _ in 0..<64 {
+            phase = .transportReceive
             guard let frame = try transport.receive() else { break }
+            phase = .sdkReceive
             try session.receive(frame)
+            phase = .sdkValidate
             try connection.validate(session)
         }
+        phase = .sdkTick
         try session.tick()
         try flush()
     }
@@ -183,11 +309,13 @@ private actor WireProofExecutor {
             let acceptUntil = now() + 30_000_000
             while try !accept() {
                 guard now() < acceptUntil else { throw WireProofFailure() }
+                phase = .wait
                 try await Task.sleep(for: .milliseconds(20))
             }
             let selectUntil = now() + 2_500_000
             while try !select() {
                 guard now() < selectUntil else { throw WireProofFailure() }
+                phase = .wait
                 try await Task.sleep(for: .milliseconds(10))
             }
             // No socket read, flush or tick can interleave these MainActor hops:
@@ -196,14 +324,25 @@ private actor WireProofExecutor {
             let incarnation = try activate(capture: capture)
             try await native.attach(incarnation: incarnation)
             try flush()
+            phase = .statusWrite
             try Data("active".utf8).write(to: directory.appendingPathComponent("status"), options: .atomic)
             while !Task.isCancelled {
                 try await native.pump(incarnation: incarnation)
                 try pump()
+                phase = .wait
                 try await Task.sleep(for: .milliseconds(20))
             }
+            phase = .cancelled
             throw WireProofFailure()
         } catch {
+            // Preserve the original native failure (including mailbox-observe
+            // retirement) before cleanup can replace it with a closed error.
+            if pathValidated {
+                let diagnostic = await native.failure(error, phase: phase)
+                if let bytes = try? JSONEncoder().encode(diagnostic), bytes.count <= 4096 {
+                    try? bytes.write(to: directory.appendingPathComponent("failure.json"), options: .atomic)
+                }
+            }
             mailbox.retire()
             await native.detach()
             session?.disconnect()
