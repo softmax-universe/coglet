@@ -285,6 +285,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             grants: [.init(coglet: owner, operations: Set(ops.map(\.name)), resources: ["audio.mic", "audio.speaker", "display.face"],
                            expires: 1_000_000_000_000)], clock: { [self] in clockUS() })
         try host.start()
+        healthNext = 0
         let hello = try SurfaceWire.decode(host.drain()[0], from: .surface)
         try host.receive(SurfaceWire.encode(.message("hello_reply", .record([("selection", .record([("version", .text("0.1"))])),
             ("correlation_id", hello["body"]!["correlation_id"]!)])), from: .runtime))
@@ -307,9 +308,19 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             evs.append(Ev(t: nowNS(), kind: kind, payload: b["payload"]))
         }
     }
+    var healthNext: UInt64 = 0
+    /// The runtime peer owes the surface a health frame at least every 3 s (SDK session rule).
+    func sendHealth(_ host: FaceSurfaceHost) throws {
+        let now = nowNS()
+        guard now >= healthNext else { return }
+        healthNext = now + 500_000_000
+        try host.receive(SurfaceWire.encode(.message("health", .record([("state", .text("ready")), ("clock", .unsigned(clockUS())),
+            ("pending", .unsigned(0)), ("correlation_id", .text(hex32()))])), from: .runtime))
+    }
     /// Pump the host (as its 20 ms timer would, but at 1 ms for resolution) until `deadline`.
     func pump(_ host: FaceSurfaceHost, until deadline: UInt64, into evs: inout [Ev]) async throws {
         while nowNS() < deadline {
+            try sendHealth(host)
             try host.pump(); drainEvents(host, into: &evs)
             await sleepMS(1)
         }
