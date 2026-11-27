@@ -381,7 +381,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         let startAt = steps.first { $0["input"] as? String == "start" }?["at_ms"] as? Int ?? 0
         let hasPlay = steps.contains { $0["input"] as? String == "play" }
         let shift = hasPlay ? offset - startAt : 0
-        let t0 = nowNS(); var tAct: UInt64 = 0, tPress: UInt64 = 0, tRelease: UInt64 = 0, tEndDelivered: UInt64 = 0
+        let t0 = nowNS(); var tAct: UInt64 = 0, tPress: UInt64 = 0, tPressDone: UInt64 = 0, tRelease: UInt64 = 0, tEndDelivered: UInt64 = 0
         var finalDeliver: UInt64 = 0
         let item = hex32(), stream = hex32()
         var recvErr: String?
@@ -396,6 +396,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             case "start":
                 tPress = nowNS()
                 _ = try host.beginCapture(recognition: rec, positionMS: UInt64(step["position_ms"] as? Int ?? 0))
+                tPressDone = nowNS()
             case "partial":
                 try rec.receive?(.init(revision: UInt64(step["revision"] as! Int), text: step["text"] as! String, final: false, positionMS: 0))
             case "end":
@@ -411,12 +412,18 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         // Observe the tail: acoustic stop + ring-down.
         try await pump(host, until: nowNS() + (hasPlay ? 1_500_000_000 : 300_000_000), into: &evs)
         let discarded = backend.discardedRecognitionUpdates
-        let kinds = evs.map(\.kind)
+        // speech.position is reported every native tick while audio plays; the frozen
+        // timeline lists one per transition, so collapse consecutive repeats.
+        var kinds: [String] = []
+        var collapsed: [Ev] = []
+        for e in evs where !(e.kind == "speech.position" && kinds.last == "speech.position") { kinds.append(e.kind); collapsed.append(e) }
+        let positionEvents = evs.filter { $0.kind == "speech.position" }.count
         let wantKinds = expected["events"] as? [String] ?? []
         // The first speech.position may arrive before/after; compare ordered kinds exactly.
         var conformant = kinds == wantKinds && Int(discarded) == (expected["discarded"] as? Int ?? -1)
         var r: [String: Any] = ["kind": kind, "timeline": name, "index": index, "offset_ms": offset,
-                                "events": evs.map { ["t_ms": round3(msBetween(t0, $0.t)), "kind": $0.kind] },
+                                "events": collapsed.map { ["t_ms": round3(msBetween(t0, $0.t)), "kind": $0.kind] },
+                                "position_events": positionEvents,
                                 "discarded": discarded, "recv_error": recvErr as Any]
         // PTT metrics (adapter + capture path).
         if let fa = rec.firstAppendNS { r["ptt_press_to_first_capture_ms"] = round3(msBetween(tPress, fa)) }
@@ -424,6 +431,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         if let e = evs.first(where: { $0.kind == "speech.end" }) { r["ptt_release_to_end_event_ms"] = round3(msBetween(tRelease, e.t)) }
         r["ptt_final_delivery_call_ms"] = round3(msBetween(finalDeliver, tEndDelivered))
         r["capture_samples"] = tap.samples.count
+        r["ptt_press_call_ms"] = round3(msBetween(tPress, tPressDone))
         if hasPlay {
             let times = tap.sampleTimes()
             let env = envelope(samples: tap.samples, times: times, freq: 1000)
@@ -474,8 +482,8 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
 
     /// Stimulus (user-voice stand-in) onset -> first capture frames carrying it.
     func stimulusRun(index: Int) async throws -> [String: Any] {
-        let (host, _, rec) = try makeHost()
         let stim = try Stimulus()
+        let (host, _, rec) = try makeHost()
         var evs: [Ev] = []
         try await pump(host, until: nowNS() + 800_000_000, into: &evs)
         tap.beginRun()
