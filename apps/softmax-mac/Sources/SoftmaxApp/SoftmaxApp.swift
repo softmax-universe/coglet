@@ -100,7 +100,25 @@ func settingsArrowCapture(_ phase: SettingsArrowCapture.Phase,
     }
 }
 
+/// Process entry. Registers app defaults before SwiftUI creates NSApplication
+/// or the delegate, then hands control to the SwiftUI app.
 @main
+enum SoftmaxEntry {
+    @MainActor static func main() {
+        // macOS 26 AppKit AutoFill heuristics start a per-app
+        // SafariPlatformSupport.Helper on text input. Every native failure of
+        // testSettingsFocusedSearchArrowNavigation lost the first Down while
+        // that helper was starting (XCTest synthesis stalled ~5 s). Softmax has
+        // no account login; its only secure fields hold pairing secrets that are
+        // pasted or imported, so system AutoFill suggestions are unwanted.
+        // NSAutoFillHeuristicsEnabled is an undocumented AppKit default: the
+        // registration domain keeps user/argument overrides possible, and
+        // testSettingsSearchDoesNotStartAutoFillHelper goes red if it stops working.
+        UserDefaults.standard.register(defaults: ["NSAutoFillHeuristicsEnabled": false])
+        SoftmaxApp.main()
+    }
+}
+
 struct SoftmaxApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 

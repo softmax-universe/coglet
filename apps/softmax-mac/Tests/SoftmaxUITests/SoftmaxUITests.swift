@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 
 final class SoftmaxUITests: XCTestCase {
@@ -266,6 +267,95 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(settings.buttons["General"].exists)
     }
 
+    /// Matched enabled/default experiment for the AutoFill helper that appeared
+    /// before every lost first Down in native failures. Phase E (argument domain
+    /// re-enables AutoFill heuristics) qualifies the detector and records the
+    /// same boundaries as Phase D, which must never start the helper and must
+    /// navigate on immediate input. Mechanism evidence only; not a race reproducer.
+    @MainActor
+    func testSettingsSearchDoesNotStartAutoFillHelper() {
+        let helperID = "com.apple.SafariPlatformSupport.Helper"
+        func current() -> Set<Int32> {
+            Set(NSRunningApplication.runningApplications(withBundleIdentifier: helperID).map(\.processIdentifier))
+        }
+        func waitUntil(_ seconds: TimeInterval, _ condition: () -> Bool) -> Bool {
+            let deadline = ProcessInfo.processInfo.systemUptime + seconds
+            while ProcessInfo.processInfo.systemUptime < deadline {
+                if condition() { return true }
+                RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+            }
+            return condition()
+        }
+        var evidence: [[String: Any]] = []
+        defer {
+            if let data = try? JSONSerialization.data(withJSONObject: ["schema": 1, "phases": evidence], options: [.sortedKeys]) {
+                let attachment = XCTAttachment(data: data, uniformTypeIdentifier: "public.json")
+                attachment.name = "settings-autofill-helper.json"; attachment.lifetime = .keepAlways; add(attachment)
+            } else { XCTFail("Unable to encode AutoFill helper evidence") }
+        }
+        // Returns new helper PIDs (relative to the pre-launch baseline) and the
+        // selection result after the original immediate Down/Return sequence.
+        func phase(_ name: String, enableAutoFill: Bool) -> (helpers: Set<Int32>, hotkey: Bool) {
+            let baseline = current()
+            let sampler = AutoFillHelperSampler(bundleID: helperID)
+            let app = XCUIApplication()
+            app.launchArguments = ["--ui-testing", "-appearance", "Light", "-textScale", "1.0"]
+                + (enableAutoFill ? ["-NSAutoFillHeuristicsEnabled", "YES"] : [])
+            app.launch()
+            var record: [String: Any] = ["phase": name, "baseline": baseline.sorted()]
+            let onboarding = app.windows["Welcome to Softmax"]
+            XCTAssertTrue(onboarding.waitForExistence(timeout: 10))
+            onboarding.buttons["Open Settings…"].click()
+            let settings = app.windows["Softmax Settings"]
+            XCTAssertTrue(settings.waitForExistence(timeout: 5))
+            let field = settings.textFields["Search settings"]
+            settings.typeText("/")
+            settings.typeText("o")
+            let filterEnd = ProcessInfo.processInfo.systemUptime
+            if enableAutoFill {
+                // Positive control: aim Down at the helper start window seen in failures.
+                let seen = waitUntil(5) { !current().subtracting(baseline).isEmpty }
+                record["positiveControlSeen"] = seen
+                XCTAssertTrue(seen, "Detector unqualified: re-enabled AutoFill never showed its helper")
+            }
+            record["focusBeforeDown"] = (field.value(forKey: "hasKeyboardFocus") as? Bool).map { $0 as Any } ?? NSNull()
+            record["settingsExistsBeforeDown"] = settings.exists
+            let downBegin = ProcessInfo.processInfo.systemUptime
+            settings.typeKey(.downArrow, modifierFlags: [])
+            let downEnd = ProcessInfo.processInfo.systemUptime
+            settings.typeKey(.return, modifierFlags: [])
+            let hotkey = settings.buttons["Record Hotkey…"].exists
+            record["filterToDown"] = downBegin - filterEnd
+            record["downDuration"] = downEnd - downBegin
+            record["hotkeySelected"] = hotkey
+            // Equal 5 s observation window from the end of filter input.
+            _ = waitUntil(max(0, filterEnd + 5 - ProcessInfo.processInfo.systemUptime)) { false }
+            app.terminate()
+            let (samples, overflow) = sampler.stop()
+            let started = samples.reduce(into: Set<Int32>()) { $0.formUnion($1.pids) }.subtracting(baseline)
+            let running = NSRunningApplication.runningApplications(withBundleIdentifier: helperID)
+            record["newHelpers"] = started.sorted().map { pid -> [String: Any] in
+                let launch = running.first { $0.processIdentifier == pid }?.launchDate?.timeIntervalSince1970
+                return ["pid": pid, "launchDate": launch.map { $0 as Any } ?? NSNull(),
+                        "firstSeenAfterFilter": (samples.first { $0.pids.contains(pid) }?.uptime ?? filterEnd) - filterEnd]
+            }
+            // Attribution: helpers started for this app exit after it terminates.
+            let exited = waitUntil(10) { current().isDisjoint(with: started) }
+            record["newHelpersExitedAfterTerminate"] = exited
+            record["samples"] = samples.count
+            record["samplerOverflow"] = overflow
+            XCTAssertFalse(overflow, "Helper sampler overflow is inconclusive")
+            if enableAutoFill { XCTAssertTrue(exited, "Positive-control helper not attributable to the app") }
+            evidence.append(record)
+            return (started, hotkey)
+        }
+        let enabled = phase("autoFillEnabled", enableAutoFill: true)
+        XCTAssertFalse(enabled.helpers.isEmpty, "Detector unqualified: no helper sampled with AutoFill enabled")
+        let product = phase("productDefault", enableAutoFill: false)
+        XCTAssertTrue(product.helpers.isEmpty, "Settings search must not start the AutoFill helper")
+        XCTAssertTrue(product.hotkey, "Immediate focused search Down must select Hotkey")
+    }
+
     @MainActor
     func testContrastCalibration() throws {
         let app = XCUIApplication()
@@ -359,6 +449,11 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(sheet.secureTextFields["Pairing code"].exists)
         XCTAssertTrue(sheet.buttons["Import QR image…"].exists)
         XCTAssertFalse(sheet.buttons["Connect router"].isEnabled, "An empty code must never enroll")
+        // AutoFill heuristics are off; the secure pairing field must still accept typed input.
+        let code = sheet.secureTextFields["Pairing code"]
+        code.click()
+        code.typeText("abc")
+        XCTAssertFalse((code.value as? String ?? "").isEmpty, "Pairing code must accept typed input")
         sheet.buttons["Cancel"].click()
         XCTAssertFalse(sheet.exists)
         onboarding.buttons["Open Settings…"].click()
@@ -399,5 +494,35 @@ final class SoftmaxUITests: XCTestCase {
         XCTAssertTrue(automatic.exists)
         XCTAssertFalse(automatic.isEnabled)
         app.terminate()
+    }
+}
+
+/// Samples AutoFill helper PIDs off the XCUI input path (20 ms, bounded).
+private final class AutoFillHelperSampler: @unchecked Sendable {
+    private let lock = NSLock()
+    private var samples: [(uptime: TimeInterval, pids: [Int32])] = []
+    private var overflow = false
+    private let timer = DispatchSource.makeTimerSource(queue: .global(qos: .userInitiated))
+
+    init(bundleID: String) {
+        samples.reserveCapacity(1024)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(20))
+        timer.setEventHandler { [weak self] in
+            let pids = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+                .map(\.processIdentifier).sorted()
+            self?.append(ProcessInfo.processInfo.systemUptime, pids)
+        }
+        timer.resume()
+    }
+
+    private func append(_ uptime: TimeInterval, _ pids: [Int32]) {
+        lock.lock(); defer { lock.unlock() }
+        if samples.count < 1024 { samples.append((uptime, pids)) } else { overflow = true }
+    }
+
+    func stop() -> (samples: [(uptime: TimeInterval, pids: [Int32])], overflow: Bool) {
+        timer.cancel()
+        lock.lock(); defer { lock.unlock() }
+        return (samples, overflow)
     }
 }
