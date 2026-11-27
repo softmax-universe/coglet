@@ -78,7 +78,7 @@ final class AppSurfaceWireTests: XCTestCase {
     // Only XCTest's element-address slot is unstable. Preserve identifiers,
     // geometry, values, enabled state, focus and hex-looking semantic content.
     private func canonicalAX(_ tree: String) -> String {
-        tree.replacingOccurrences(of: #"(?m)(^[ \t]*[A-Za-z][A-Za-z0-9 ]*, )0x[0-9a-fA-F]+(?=, \{\{)"#,
+        tree.replacingOccurrences(of: #"(?m)(^[ \t]*(?:Attributes: )?(?:→[ \t]*)?[A-Za-z][A-Za-z0-9 ()]*, )0x[0-9a-fA-F]+(?=, (?:\{\{|pid:))"#,
             with: "$1<address>", options: .regularExpression)
     }
     private func containsCanary(_ bytes: Data, canaries: [String]) -> Bool {
@@ -95,6 +95,20 @@ final class AppSurfaceWireTests: XCTestCase {
             second.replacingOccurrences(of: ", Focused", with: "")] {
             XCTAssertFalse(canonicalAX(first) == canonicalAX(changed), "semantic AX changes must remain visible")
         }
+        // Actual parent-run formats: a PID-bearing Attributes header, arrow
+        // path root and parenthesized main-window element. Not just TextField.
+        let actualFormats = """
+        Attributes: Application, 0x737642800, pid: 60015, title: 'Softmax', Disabled
+         →Application, 0x737642800, pid: 60015, title: 'Softmax', Disabled
+            Window (Main), 0x737643200, {{132.0, 57.0}, {760.0, 572.0}}, identifier: 'softmax.settings', title: 'Softmax Settings', Disabled
+        """
+        let movedObjects = actualFormats.replacingOccurrences(of: "0x737642800", with: "0x837642800")
+            .replacingOccurrences(of: "0x737643200", with: "0x837643200")
+        XCTAssertTrue(canonicalAX(actualFormats) == canonicalAX(movedObjects), "actual AX address slots must be stable")
+        XCTAssertFalse(canonicalAX(actualFormats) == canonicalAX(movedObjects.replacingOccurrences(of: "pid: 60015", with: "pid: 60016")),
+            "process identity must remain visible")
+        XCTAssertFalse(canonicalAX(actualFormats) == canonicalAX(movedObjects.replacingOccurrences(of: "softmax.settings", with: "softmax.changed")),
+            "window identity must remain visible")
         let synthetic = ["synthetic-marker-one", "synthetic-marker-two"]
         for marker in synthetic {
             XCTAssertTrue(containsCanary(Data(("prefix" + marker + "suffix").utf8), canaries: synthetic),

@@ -38,7 +38,11 @@ const SENSITIVE: &str = "softmax.app.invoke_sensitive";
 const S01: &str = "surface::surface-message";
 const S02: &str = "surface02::s02-surface-message";
 const MAX_LINE: usize = 64 * 1024;
-const MAX_RETAINED: usize = 64;
+/// Test-peer lifetime cap on retained commands (acts are kept for exact replay, completed reads
+/// are kept as evidence; nothing is ever evicted). 256 covers the native wire test's inventory
+/// (>= 75 loop commands, ~95 expected, + readiness reads <= 64 + original ~20) with headroom and
+/// stays small and fixed. This is a runtime-side TEST peer only, not a production runtime bound.
+const MAX_RETAINED: usize = 256;
 const MAX_QUEUE: usize = 128;
 const DEADLINE_AHEAD_US: u64 = 5_000_000;
 const HEALTH_EVERY: Duration = Duration::from_millis(500);
@@ -1109,7 +1113,7 @@ mod tests {
         for i in 0..MAX_RETAINED {
             p.command(act(&full("navigate"), nav(), &format!("{i:032x}"))).unwrap();
         }
-        assert!(p.command(act(&full("navigate"), nav(), &format!("{:032x}", 99))).is_err(), "65th command refused");
+        assert!(p.command(act(&full("navigate"), nav(), &format!("{:032x}", 9999))).is_err(), "257th command refused");
         assert!(p.command(act(&full("navigate"), nav(), &format!("{:032x}", 3))).is_err(), "duplicate id");
         let mut o = peer_at(u64::MAX - 1);
         let mut g = grant_json();
@@ -1123,6 +1127,42 @@ mod tests {
         let b = decode_s02(&h.health(5).unwrap())["body"]["clock"].as_u64().unwrap();
         assert_eq!((a, b), (HELLO_CLOCK + 10, HELLO_CLOCK + 10), "health never decreases");
         assert!(Peer::new(Catalog::load().unwrap(), WINDOW).health(1).is_err());
+    }
+
+    #[test]
+    fn retention_boundary_256_unique_reads_retained_257th_refused_retry_identical_no_eviction() {
+        assert_eq!(MAX_RETAINED, 256);
+        let rid = |i: usize| format!("{:032x}", 0x1000 + i);
+        let args = || json!({"window": "main", "after": null, "limit": 1, "revision": null});
+        let rd = |id: &str| s02(json!({"type": "read_reply", "body": {"correlation_id": id, "ok": true,
+            "value": {"revision": 1, "window": "main", "controls": [], "next": null}, "snapshot": 1}}));
+        let mut p = ready_peer();
+        // One act, completed (accept + outcome), then 255 unique completed reads: exactly 256.
+        let first = p.command(act(&full("navigate"), nav(), ID1)).unwrap();
+        p.on_frame(&accept_frame(ID1, true)).unwrap();
+        p.on_frame(&outcome_event(1, ID1, "succeeded")).unwrap();
+        for i in 0..MAX_RETAINED - 1 {
+            let id = rid(i);
+            p.command(Cmd::Read { op: full("controls"), args: args(), id: id.clone() }).unwrap();
+            p.on_frame(&rd(&id)).unwrap();
+        }
+        assert_eq!(p.retained.len(), MAX_RETAINED, "all 256 unique commands retained");
+        assert!(p.unanswered().is_empty());
+        let before: Vec<String> = p.retained.keys().cloned().collect();
+        // The 257th unique read is refused; nothing is inserted or evicted.
+        let over = p.command(Cmd::Read { op: full("controls"), args: args(), id: rid(MAX_RETAINED) });
+        assert!(over.is_err_and(|e| e.contains("retained command limit reached")));
+        assert_eq!(p.retained.keys().cloned().collect::<Vec<_>>(), before, "no eviction, no insertion");
+        // A completed action retry at capacity is byte-identical, evicts nothing, and requires a replayed outcome.
+        let again = p.command(Cmd::Retry { id: ID1.into() }).unwrap();
+        assert_eq!(again, first, "retry bytes identical at capacity");
+        assert_eq!(p.retained.keys().cloned().collect::<Vec<_>>(), before);
+        assert!(p.unanswered().contains(&ID1), "completed retry must replay terminal bytes");
+        p.on_frame(&accept_frame(ID1, true)).unwrap();
+        p.on_frame(&outcome_event(2, ID1, "succeeded")).unwrap();
+        assert!(p.unanswered().is_empty());
+        assert!(p.command(Cmd::Read { op: full("controls"), args: args(), id: rid(MAX_RETAINED + 1) }).is_err());
+        assert_eq!(p.retained.len(), MAX_RETAINED);
     }
 
     #[test]
