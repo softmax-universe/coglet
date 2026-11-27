@@ -1,5 +1,5 @@
 {
-  "version": "0.1",
+  "version": "1.0",
   "id": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "subscriptions": ["speech.start", "speech.partial", "speech.end", "speech.barge_in"],
   "required_capabilities": ["speech.speak_chunk"],
