@@ -502,8 +502,9 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
                         let a = o + UInt64(k * wordPeriodMS + 30) * 1_000_000, b = o + UInt64(k * wordPeriodMS + 470) * 1_000_000
                         let pe = we.per[k]
                         let idx = (0..<pe.v.count).filter { pe.t[$0] >= a && pe.t[$0] <= b }
-                        // -12 dB re the calibrated tone level: room standing waves fade a steady tone by several dB.
-                        let frac = idx.count > 300 ? Double(idx.filter { pe.v[$0] > 0.5 * thrWords[k] }.count) / Double(idx.count) : 0
+                        // -6 dB re the calibrated tone level (thrWords = half of the tone's p10): a ring-down tail after the cut is
+                        // weaker than that within a few ms, a word that really played is not.
+                        let frac = idx.count > 300 ? Double(idx.filter { pe.v[$0] > thrWords[k] }.count) / Double(idx.count) : 0
                         fracs.append(round3(frac))
                         if frac >= 0.97 { full += 1 }
                     }
