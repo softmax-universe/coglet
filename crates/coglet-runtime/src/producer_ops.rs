@@ -89,13 +89,39 @@ fn admitted_capabilities(handler: &DeviceHandler, setup: &Value) -> Result<Vec<S
     Ok(names.into_iter().collect())
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
+type BoundListeners = crate::policy_local::LocalListener;
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
+type BoundListeners = std::convert::Infallible;
+
+/// The producer listener pair, bound but not yet accepting (ADR-0043). `None`
+/// inside: no profile, so neither socket exists.
+pub struct ProducerEndpoint(Option<BoundListeners>);
+impl ProducerEndpoint {
+    /// Start both accept workers, or neither. Errors abort startup; dropping
+    /// the endpoint unlinks only the sockets this startup created.
+    pub fn start(self) -> Result<()> {
+        match self.0 {
+            None => Ok(()),
+            #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
+            Some(listeners) => listeners.start(),
+            #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
+            Some(never) => match never {},
+        }
+    }
+}
+
 impl DeviceHandler {
-    /// Start the opt-in endpoint. Call after `recover_running` and BEFORE hub
-    /// connection so emergency revoke is available when the hub is not. Output
-    /// gates already exist and are closed. Errors abort startup.
-    pub fn start_producer_endpoint(&self, runtime: tokio::runtime::Handle) -> Result<()> {
+    /// Validate and bind BOTH producer sockets. Call before `recover_running`
+    /// (which may expose an adapter listener) and before the hub connection, so
+    /// no adapter or lease exists without the emergency endpoint. Output gates
+    /// already exist and are closed. Errors abort startup.
+    pub fn bind_producer_endpoint(
+        &self,
+        runtime: tokio::runtime::Handle,
+    ) -> Result<ProducerEndpoint> {
         let Some(profile) = self.inner.config.profile.clone() else {
-            return Ok(());
+            return Ok(ProducerEndpoint(None));
         };
         #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
         {
@@ -106,12 +132,8 @@ impl DeviceHandler {
                 handler: self.clone(),
                 runtime,
             });
-            let listener = crate::policy_local::LocalListener::bind(Arc::new(profile), ops)?;
-            std::thread::Builder::new()
-                .name("cogletd-producer".into())
-                .spawn(move || listener.serve_forever())
-                .map_err(|e| e.to_string())?;
-            Ok(())
+            crate::policy_local::LocalListener::bind(Arc::new(profile), ops)
+                .map(|listeners| ProducerEndpoint(Some(listeners)))
         }
         #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
         {
@@ -404,16 +426,21 @@ impl DeviceHandler {
     }
 
     /// The runtime mutex is held by a guest or WAL write. The gate is already
-    /// closed; a worker records durable stop-pending when custody frees up. Until
-    /// then (and if it fails) this instance reports pending/uncertain and never
-    /// re-enables.
+    /// closed; ONE worker per target (ADR-0043) records durable stop-pending when
+    /// custody frees up. Until then (and if it fails) this instance reports
+    /// pending/uncertain and never re-enables.
     fn persist_revoke_later(&self, target: &str, gate: &Arc<OutputGate>) -> &'static str {
         let handler = self.clone();
-        let (target, gate) = (target.to_owned(), gate.clone());
-        let on_fail = gate.clone();
-        let spawned = std::thread::Builder::new()
-            .name("cogletd-revoke-record".into())
-            .spawn(move || {
+        let target = target.to_owned();
+        defer_record(
+            gate,
+            |work| {
+                std::thread::Builder::new()
+                    .name("cogletd-revoke-record".into())
+                    .spawn(work)
+                    .map(drop)
+            },
+            move |gate| {
                 let recorded = handler
                     .local_service(&target)
                     .and_then(|service| {
@@ -422,20 +449,16 @@ impl DeviceHandler {
                             &mut locked,
                             &target,
                             &handler.inner.daemon_instance,
-                            &gate,
+                            gate,
                         ))
                     })
                     .unwrap_or("uncertain");
                 if recorded == "uncertain" {
-                    gate.mark_uncertain();
                     eprintln!("cogletd: revoke for {target} could not be durably recorded");
                 }
-            });
-        if spawned.is_err() {
-            on_fail.mark_uncertain();
-            return "uncertain";
-        }
-        "pending"
+                recorded
+            },
+        )
     }
 
     fn record_revoke(
@@ -533,6 +556,43 @@ impl DeviceHandler {
     }
 }
 
+/// ADR-0043 bounded deferred recording, shared by both listeners: the gate's
+/// single recorder slot is reserved atomically BEFORE any spawn. While a
+/// recorder is queued or running, further revokes report `pending` without
+/// another worker. The slot is released after completion, error or panic (a
+/// panic also marks the gate uncertain); a failed spawn marks the gate
+/// uncertain and releases it. Nothing here can reopen the gate or clear
+/// uncertainty.
+fn defer_record(
+    gate: &Arc<OutputGate>,
+    spawn: impl FnOnce(Box<dyn FnOnce() + Send>) -> std::io::Result<()>,
+    record: impl FnOnce(&OutputGate) -> &'static str + Send + 'static,
+) -> &'static str {
+    struct Release(Arc<OutputGate>, bool);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            if !self.1 {
+                self.0.mark_uncertain();
+            }
+            self.0.release_recorder();
+        }
+    }
+    if !gate.reserve_recorder() {
+        return "pending";
+    }
+    let worker = gate.clone();
+    let work = Box::new(move || {
+        let mut slot = Release(worker, false);
+        slot.1 = record(&slot.0) != "uncertain";
+    });
+    if spawn(work).is_err() {
+        gate.mark_uncertain();
+        gate.release_recorder();
+        return "uncertain";
+    }
+    "pending"
+}
+
 pub(super) fn random_hex32() -> Result<String> {
     let mut bytes = [0u8; 32];
     #[cfg(unix)]
@@ -547,5 +607,99 @@ pub(super) fn random_hex32() -> Result<String> {
     {
         let _ = &mut bytes;
         Err("daemon instance entropy unavailable".into())
+    }
+}
+
+#[cfg(test)]
+mod recorder_tests {
+    //! Deterministic unit seam for ADR-0043 recorder coalescing. The native
+    //! proof is `repeated_revoke_coalesces_pending_recorder` (real cogletd).
+    use super::*;
+    use std::sync::mpsc;
+
+    type Work = Box<dyn FnOnce() + Send>;
+
+    fn revoked() -> Arc<OutputGate> {
+        let gate = OutputGate::new_closed();
+        gate.enable().unwrap();
+        gate.revoke().unwrap();
+        gate
+    }
+
+    #[test]
+    fn one_pending_recorder_is_coalesced_and_its_slot_reclaimed() {
+        let gate = revoked();
+        let (queue, queued) = mpsc::channel::<Work>();
+        let spawn = |work: Work| {
+            queue.send(work).unwrap();
+            Ok(())
+        };
+        assert_eq!(defer_record(&gate, spawn, |_| "recorded"), "pending");
+        // Queued, not yet run: every repeat coalesces without another worker.
+        for _ in 0..32 {
+            let never = |_: Work| -> std::io::Result<()> { panic!("second recorder spawned") };
+            assert_eq!(defer_record(&gate, never, |_| "recorded"), "pending");
+        }
+        queued.try_recv().unwrap()();
+        assert!(
+            queued.try_recv().is_err(),
+            "exactly one recorder was queued"
+        );
+        assert_eq!(gate.state(), LeaseState::Revoked);
+        // Completion reclaimed the slot: a later recorder may be queued again.
+        assert_eq!(defer_record(&gate, spawn, |_| "uncertain"), "pending");
+        queued.try_recv().unwrap()();
+        assert_eq!(
+            gate.state(),
+            LeaseState::Uncertain,
+            "recorder error is sticky"
+        );
+        // The error also reclaimed the slot, and nothing clears uncertainty.
+        assert_eq!(defer_record(&gate, spawn, |_| "recorded"), "pending");
+        queued.try_recv().unwrap()();
+        assert_eq!(gate.state(), LeaseState::Uncertain);
+        assert!(gate.enable().is_err());
+    }
+
+    #[test]
+    fn spawn_failure_marks_uncertain_and_releases_the_slot() {
+        let gate = revoked();
+        let fail = |_: Work| Err(std::io::Error::other("no thread"));
+        assert_eq!(defer_record(&gate, fail, |_| "recorded"), "uncertain");
+        assert_eq!(gate.state(), LeaseState::Uncertain);
+        assert!(gate.enable().is_err(), "no retry may reopen the gate");
+        let (queue, queued) = mpsc::channel::<Work>();
+        let spawn = |work: Work| {
+            queue.send(work).unwrap();
+            Ok(())
+        };
+        assert_eq!(defer_record(&gate, spawn, |_| "recorded"), "pending");
+        queued.try_recv().unwrap()();
+        assert_eq!(
+            gate.state(),
+            LeaseState::Uncertain,
+            "never silently cleared"
+        );
+    }
+
+    #[test]
+    fn panicking_recorder_releases_the_slot() {
+        let gate = revoked();
+        let (queue, queued) = mpsc::channel::<Work>();
+        let spawn = |work: Work| {
+            queue.send(work).unwrap();
+            Ok(())
+        };
+        assert_eq!(
+            defer_record(&gate, spawn, |_| panic!("recorder")),
+            "pending"
+        );
+        let work = queued.try_recv().unwrap();
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(work)).is_err());
+        assert_eq!(gate.state(), LeaseState::Uncertain, "unrecorded revoke");
+        assert!(
+            gate.reserve_recorder(),
+            "slot leaked by a panicking recorder"
+        );
     }
 }

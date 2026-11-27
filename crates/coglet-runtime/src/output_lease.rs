@@ -52,6 +52,8 @@ impl LeaseState {
 pub struct OutputGate {
     state: AtomicU8,
     publication: Mutex<()>,
+    /// ADR-0043: one deferred revoke recorder per target (queued or running).
+    recorder: std::sync::atomic::AtomicBool,
 }
 impl OutputGate {
     /// Always CLOSED: there is intentionally no constructor from stored state.
@@ -59,7 +61,16 @@ impl OutputGate {
         Arc::new(Self {
             state: AtomicU8::new(CLOSED),
             publication: Mutex::new(()),
+            recorder: std::sync::atomic::AtomicBool::new(false),
         })
+    }
+    /// Atomically reserve the single deferred-recorder slot; `false` while one
+    /// is already queued or running. In-memory work coalescing only.
+    pub(crate) fn reserve_recorder(&self) -> bool {
+        !self.recorder.swap(true, Ordering::SeqCst)
+    }
+    pub(crate) fn release_recorder(&self) {
+        self.recorder.store(false, Ordering::SeqCst);
     }
     pub fn state(&self) -> LeaseState {
         match self.state.load(Ordering::SeqCst) {

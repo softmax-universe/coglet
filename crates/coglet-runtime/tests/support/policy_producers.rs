@@ -10,6 +10,7 @@ use tokio::net::UnixStream;
 include!("policy_reply_schema.rs");
 include!("policy_producer_helpers.rs");
 include!("policy_producer_cases.rs");
+include!("policy_emergency_cases.rs");
 
 struct Daemon {
     env: Env,
@@ -194,6 +195,14 @@ impl Daemon {
                 ),
                 ("COGLET_FAULT_LEFT", "4".into()),
                 (
+                    "COGLET_FAULT_STALL",
+                    root.join("fault-stall").display().to_string(),
+                ),
+                (
+                    "COGLET_FAULT_STALLED",
+                    root.join("fault-stalled").display().to_string(),
+                ),
+                (
                     "COGLET_FAULT_CLOCK",
                     root.join("fault-clock").display().to_string(),
                 ),
@@ -334,11 +343,14 @@ impl Daemon {
         let frame = self.frame(method, params);
         self.raw(frame).await
     }
-    async fn install(&mut self, wat: &str) -> Bundle {
-        let manifest = serde_json::to_vec(&json!({"version":"1.0","id":self.env.coglet,
+    fn manifest(&self) -> Vec<u8> {
+        serde_json::to_vec(&json!({"version":"1.0","id":self.env.coglet,
             "subscriptions":["speech.start"],"required_capabilities":operations(self.action),
             "exclusive_outputs":["audio.mic","audio.speaker"],"budgets":{"compute":10000,
-            "compute_mode":native_compute_mode(),"memory_pages":2,"wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}})).unwrap();
+            "compute_mode":native_compute_mode(),"memory_pages":2,"wall_time_us":2_000_000,"max_events":16,"host_bytes":65536}})).unwrap()
+    }
+    async fn install(&mut self, wat: &str) -> Bundle {
+        let manifest = self.manifest();
         let bundle = self
             .env
             .bundle_wasm(1, None, &[("manifest.json", &manifest)], wat);
@@ -568,6 +580,7 @@ async fn health_counters_bound_to_generation_and_reject_stale() {
     assert_eq!(after["ok"], true, "{after}");
     assert_eq!(after["result"]["counters"], stable["result"]["counters"]);
     assert_eq!(after["result"]["output_lease_state"], "closed");
+    superseded_generation_health().await;
     // Independent real signed activations exercise trap and budget outcomes.
     // Each is crash/reopened too; no synthetic counter injection.
     for (seed, body, budget) in [
@@ -612,6 +625,152 @@ async fn health_counters_bound_to_generation_and_reject_stale() {
             stable["result"]["counters"]
         );
     }
+}
+
+/// ADR-0043 P2 oracle: a successor signed generation with DIFFERENT executable
+/// bytes is actually applied by the real daemon. The superseded pin is refused,
+/// the new activation counts only its own attempts, and the exact quiescent
+/// counters survive a SIGKILL + WAL reopen. Counts are taken without a stop:
+/// quiescence is "every event fed so far was attempted and resolved", which is
+/// exact because the test is the only event source.
+async fn superseded_generation_health() {
+    /// Poll the real producer until exactly `want` attempts are resolved.
+    async fn settled(d: &mut Daemon, pins: &Value, want: u64) -> Value {
+        let mut last = Value::Null;
+        let done = tokio::time::timeout(Duration::from_secs(15), async {
+            loop {
+                let sample = d.local("observe_health", pins.clone()).await;
+                assert_eq!(sample["ok"], true, "{sample}");
+                let counters = &sample["result"]["counters"];
+                assert!(counters["attempted"].as_u64().unwrap() <= want, "{sample}");
+                last = sample;
+                if last["result"]["counters"]["committed"] == want
+                    && last["result"]["attempt_fence"] == "clear"
+                {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        })
+        .await;
+        assert!(
+            done.is_ok(),
+            "fed events never settled: {last}\ndaemon log: {}",
+            std::fs::read_to_string(d.root.join("restart.log")).unwrap_or_default()
+        );
+        last
+    }
+    let exact = |n: u64| json!({"attempted":n,"committed":n,"failed":0,"budget_exceeded":0});
+    let mut d = Daemon::new(0x99).await;
+    let a = &d.install(WASM_WAT).await;
+    // Two real events are fed to generation 1.
+    let link = d.execute(a).await;
+    let a_pins = d.pins(a);
+    let a_final = &settled(&mut d, &a_pins, 2).await;
+    assert_eq!(a_final["result"]["counters"], exact(2), "{a_final}");
+    // Different executable bytes, same behavior: only `abi_alloc` changes.
+    let wat = WASM_WAT.replacen("i32.const 0) ", "i32.const 16) ", 1);
+    assert_ne!(wat, WASM_WAT);
+    let manifest = d.manifest();
+    let b = d.env.bundle_wasm(
+        2,
+        Some(&a.tip),
+        &[("manifest.json", &manifest), ("revision", b"B")],
+        &wat,
+    );
+    let (push_id, pushing) = begin_push(&mut d.env, &b);
+    assert_eq!(pushing.await.unwrap()["result"]["state"], "applied");
+    let b_pins = d.pins(&b);
+    assert_eq!(b_pins["generation"], 2);
+    assert_ne!(b_pins["commit"], a_pins["commit"]);
+    assert_ne!(
+        b_pins["executable_sha256"], a_pins["executable_sha256"],
+        "successor must carry different executable bytes"
+    );
+    let attested = d.local("attest_applied", b_pins.clone()).await;
+    assert_eq!(attested["ok"], true, "{attested}");
+    assert_eq!(attested["result"]["code"]["operation_id"], push_id);
+    // The superseded generation is refused for health AND attestation, with
+    // its formerly valid pins, and so are cross-generation pin mixtures.
+    let superseded = d.local("observe_health", a_pins.clone()).await;
+    assert_eq!(producer_code(&superseded), "conflict", "{superseded}");
+    let superseded = d.local("attest_applied", a_pins.clone()).await;
+    assert_eq!(producer_code(&superseded), "conflict", "{superseded}");
+    for pin in ["generation", "commit", "executable_sha256"] {
+        let mut mixed = b_pins.clone();
+        mixed[pin] = a_pins[pin].clone();
+        let reply = d.local("observe_health", mixed).await;
+        assert_eq!(reply["ok"], false, "stale {pin} accepted: {reply}");
+    }
+    // Counter separation at the cut: no event is outstanding, so the new
+    // activation has attempted NOTHING although generation 1 committed work.
+    let fresh = d.local("observe_health", b_pins.clone()).await;
+    assert_eq!(fresh["ok"], true, "{fresh}");
+    assert_eq!(
+        fresh["result"]["counters"],
+        exact(0),
+        "successor inherited the superseded generation's counters: {fresh}"
+    );
+    assert_eq!(fresh["result"]["activation"]["kind"], "code", "{fresh}");
+    assert_eq!(fresh["result"]["applied_operation_id"], push_id);
+    assert_ne!(
+        fresh["result"]["activation"], a_final["result"]["activation"],
+        "{fresh}"
+    );
+    // The lease was bound to generation 1's exact pins: the cut revoked it, and
+    // a revoked gate never re-enables in this process.
+    assert_eq!(fresh["result"]["output_lease_state"], "revoked", "{fresh}");
+    drop(link);
+    // Generation 1's retained stop is resolved under its original context; a
+    // new lease then needs a fresh stop ID (policy-local-interface: Custody).
+    let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
+    assert_eq!(reconciled["result"]["state"], "stopped", "{reconciled}");
+    // WAL reopen #1: the cut itself is durable, still with zero attempts.
+    d.restart_with(|config| {
+        config["profile"]["principals"][0]["stop"]["operation_id"] = json!(correlation(0xeef0));
+    })
+    .await;
+    let reopened = d.local("observe_health", b_pins.clone()).await;
+    assert_eq!(reopened["result"]["counters"], exact(0), "{reopened}");
+    assert_eq!(
+        reopened["result"]["activation"],
+        fresh["result"]["activation"]
+    );
+    let superseded = d.local("observe_health", a_pins.clone()).await;
+    assert_eq!(producer_code(&superseded), "conflict", "{superseded}");
+    // Real WAMR execution of the successor bytes moves only ITS counters.
+    applied(&d.env.simple("hub.start").await);
+    d.enable(&b).await;
+    let link = restart_adapter::events(&d.socket, &d.surface, &d.env.coglet, 2, 3).await;
+    let stable = settled(&mut d, &b_pins, 2).await;
+    assert_eq!(stable["result"]["counters"], exact(2), "{stable}");
+    assert_eq!(stable["result"]["lifecycle"], "running", "{stable}");
+    assert_eq!(stable["result"]["output_lease_state"], "enabled");
+    let n = |sample: &Value, k: &str| sample["result"]["counters"][k].as_u64().unwrap();
+    drop(link);
+    // Exact quiescent reference across SIGKILL and a real WAL reopen.
+    let records = d.restart().await;
+    assert_eq!(
+        records.len() as u64,
+        n(a_final, "committed") + n(&stable, "committed"),
+        "WAL step records are the sum of both activations' commits"
+    );
+    let reopened = d.local("observe_health", b_pins.clone()).await;
+    assert_eq!(reopened["ok"], true, "{reopened}");
+    assert_eq!(reopened["result"]["counters"], stable["result"]["counters"]);
+    assert_eq!(
+        reopened["result"]["activation"],
+        stable["result"]["activation"]
+    );
+    assert_eq!(reopened["result"]["output_lease_state"], "closed");
+    assert_ne!(
+        reopened["result"]["producer_instance"],
+        stable["result"]["producer_instance"]
+    );
+    let superseded = d.local("observe_health", a_pins.clone()).await;
+    assert_eq!(producer_code(&superseded), "conflict", "{superseded}");
+    let superseded = d.local("attest_applied", a_pins).await;
+    assert_eq!(producer_code(&superseded), "conflict", "{superseded}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -675,7 +834,7 @@ async fn emergency_output_revoke_is_synchronous_without_router() {
     let db = rusqlite::Connection::open(d.root.join("authority.sqlite")).unwrap();
     db.execute_batch("BEGIN EXCLUSIVE;").unwrap();
     let start = tokio::time::Instant::now();
-    let revoked = d.local("revoke_output_lease", json!({})).await;
+    let revoked = d.reserved("revoke_output_lease", json!({})).await;
     assert!(
         start.elapsed() < Duration::from_secs(2),
         "revoke waited for SQL: {revoked}"
@@ -721,7 +880,7 @@ async fn emergency_stop_reconciles_original_context_after_restart() {
     let mut d = Daemon::new(0x94).await;
     let a = d.install(WASM_WAT).await;
     let link = d.execute(&a).await;
-    let revoked = d.local("revoke_output_lease", json!({})).await;
+    let revoked = d.reserved("revoke_output_lease", json!({})).await;
     assert_eq!(revoked["ok"], true, "{revoked}");
     drop(link);
     let records = d.restart().await;
@@ -748,6 +907,18 @@ async fn emergency_stop_reconciles_original_context_after_restart() {
     assert_eq!(
         d.raw(wrong_actor).await["error"]["code"],
         "permission_denied"
+    );
+    // Immediately after the wrong-actor attempt, BEFORE any authorized
+    // recovery: the original stop is still not applied.
+    let unapplied = receipt_of(&mut d.env, &correlation(0xeeee)).await;
+    assert!(
+        unapplied["type"] == "error" || unapplied["result"]["state"] != "applied",
+        "wrong-actor reconcile applied the stop: {unapplied}"
+    );
+    assert_eq!(
+        d.env.simple("hub.status").await["result"]["state"],
+        "running",
+        "wrong-actor reconcile stopped the coglet"
     );
     let reconciled = d.local("reconcile_emergency_stop", json!({})).await;
     assert_eq!(reconciled["ok"], true, "{reconciled}");
