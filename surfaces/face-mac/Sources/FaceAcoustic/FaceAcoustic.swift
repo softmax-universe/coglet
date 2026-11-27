@@ -161,8 +161,16 @@ func onsetTime(_ e: Envelope, from: UInt64, thr: Double, need: Int = 3) -> UInt6
     }
     return nil
 }
-/// Start of the first low run of >= `minLowMS` at/after `from` (acoustic stop; word gaps are 100 ms,
-/// so the default must exceed them only when the stream is truly finished, see `lowRunMS`).
+/// First time at/after `from` where the envelope drops below `frac` x `ref` for `need` consecutive
+/// windows (a fall relative to the run's own pre-barge tone level, robust to ambient 1 kHz noise bursts).
+func fallTime(_ e: Envelope, from: UInt64, ref: Double, frac: Double = 0.25, need: Int = 3) -> UInt64? {
+    var run = 0, start = 0
+    for i in 0..<e.v.count where e.t[i] >= from {
+        if e.v[i] < frac * ref { if run == 0 { start = i }; run += 1; if run >= need { return e.t[start] } } else { run = 0 }
+    }
+    return nil
+}
+/// Start of the first low run of >= `minLowMS` at/after `from`.
 func lowRunStart(_ e: Envelope, from: UInt64, thr: Double, minLowMS: Int) -> UInt64? {
     var run = 0, start = 0
     for i in 0..<e.v.count where e.t[i] >= from {
@@ -448,13 +456,12 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             if let lr = lastRender { r["barge_to_render_stop_ms"] = round3(msBetween(tPress, lr)) }
             var on = onsetTime(env, from: tAct, thr: thr)
             if let o = on { on = o; r["play_to_acoustic_onset_ms"] = round3(msBetween(tAct, o)) }
-            let tonePresentAtBarge: Bool = {
-                for i in 0..<env.v.count where env.t[i] >= tPress && env.t[i] < tPress + 15_000_000 && env.v[i] > thr { return true }
-                return false
-            }()
-            r["tone_present_at_barge"] = tonePresentAtBarge
-            // Acoustic stop: first low run of >= 150 ms (> the 100 ms word gap) after the barge.
-            let stop = lowRunStart(env, from: tPress, thr: thr, minLowMS: 150)
+            let refSamples = (0..<env.v.count).filter { env.t[$0] >= tPress - 60_000_000 && env.t[$0] < tPress }.map { env.v[$0] }
+            let ref = percentile(refSamples, 0.5)
+            let tonePresentAtBarge = ref > thr
+            r["tone_present_at_barge"] = tonePresentAtBarge; r["barge_ref_level"] = round3(ref)
+            // Acoustic stop: first fall below 25% of the run's own pre-barge level (>= 3 ms low).
+            let stop = fallTime(env, from: tPress, ref: ref)
             if let st = stop, tonePresentAtBarge { r["barge_to_acoustic_stop_ms"] = round3(msBetween(tPress, st)) }
             if let o = on, let st = stop {
                 let heard = msBetween(o, st); r["acoustic_heard_ms"] = round3(heard)
