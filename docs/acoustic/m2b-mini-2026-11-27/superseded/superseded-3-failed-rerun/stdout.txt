@@ -1,0 +1,101 @@
+barge rep=0 off=100 conformant=true ack=44.039
+barge rep=0 off=997 conformant=true ack=46.131
+barge rep=0 off=1493 conformant=true ack=50.278
+barge rep=0 off=2088 conformant=true ack=41.243
+barge rep=1 off=100 conformant=true ack=37.376
+barge rep=1 off=1012 conformant=true ack=47.959
+barge rep=1 off=1482 conformant=true ack=53.253
+barge rep=1 off=2117 conformant=true ack=49.834
+barge rep=2 off=100 conformant=true ack=44.711
+barge rep=2 off=981 conformant=true ack=60.314
+barge rep=2 off=1515 conformant=true ack=48.065
+barge rep=2 off=2098 conformant=true ack=49.306
+barge rep=3 off=100 conformant=true ack=46.259
+barge rep=3 off=987 conformant=true ack=55.961
+barge rep=3 off=1496 conformant=true ack=55.836
+barge rep=3 off=2100 conformant=true ack=47.39
+barge rep=4 off=100 conformant=true ack=46.516
+barge rep=4 off=1017 conformant=true ack=55.968
+barge rep=4 off=1497 conformant=true ack=49.689
+barge rep=4 off=2117 conformant=true ack=44.549
+barge rep=5 off=100 conformant=true ack=43.877
+barge rep=5 off=991 conformant=true ack=43.413
+barge rep=5 off=1515 conformant=true ack=49.751
+barge rep=5 off=2085 conformant=true ack=51.322
+barge rep=6 off=100 conformant=true ack=49.585
+barge rep=6 off=995 conformant=true ack=56.043
+barge rep=6 off=1517 conformant=true ack=48.887
+barge rep=6 off=2081 conformant=true ack=56.498
+barge rep=7 off=100 conformant=true ack=43.974
+barge rep=7 off=1002 conformant=true ack=41.891
+barge rep=7 off=1520 conformant=true ack=47.897
+barge rep=7 off=2120 conformant=true ack=43.774
+barge rep=8 off=100 conformant=true ack=43.643
+barge rep=8 off=996 conformant=true ack=47.472
+barge rep=8 off=1489 conformant=true ack=46.057
+barge rep=8 off=2087 conformant=true ack=41.325
+barge rep=9 off=100 conformant=true ack=46.045
+barge rep=9 off=998 conformant=true ack=49.953
+barge rep=9 off=1515 conformant=true ack=53.733
+barge rep=9 off=2116 conformant=true ack=51.317
+barge rep=10 off=100 conformant=true ack=44.587
+barge rep=10 off=1002 conformant=true ack=47.552
+barge rep=10 off=1509 conformant=true ack=48.673
+barge rep=10 off=2099 conformant=true ack=42.468
+barge rep=11 off=100 conformant=true ack=43.684
+barge rep=11 off=995 conformant=true ack=55.795
+barge rep=11 off=1488 conformant=true ack=50.364
+barge rep=11 off=2116 conformant=true ack=46.713
+barge rep=12 off=100 conformant=true ack=51.294
+barge rep=12 off=1015 conformant=true ack=46.238
+barge rep=12 off=1514 conformant=true ack=42.442
+barge rep=12 off=2097 conformant=true ack=41.336
+barge rep=13 off=100 conformant=true ack=41.309
+barge rep=13 off=989 conformant=true ack=50.052
+barge rep=13 off=1487 conformant=true ack=48.884
+barge rep=13 off=2106 conformant=true ack=45.4
+barge rep=14 off=100 conformant=true ack=42.596
+barge rep=14 off=1015 conformant=true ack=54.855
+barge rep=14 off=1488 conformant=true ack=49.237
+barge rep=14 off=2116 conformant=true ack=48.398
+capture 0 conformant=true
+capture 1 conformant=true
+capture 2 conformant=true
+capture 3 conformant=true
+capture 4 conformant=true
+capture 5 conformant=true
+capture 6 conformant=true
+capture 7 conformant=true
+capture 8 conformant=true
+capture 9 conformant=true
+capture 10 conformant=true
+capture 11 conformant=true
+capture 12 conformant=true
+capture 13 conformant=true
+capture 14 conformant=true
+capture 15 conformant=true
+capture 16 conformant=true
+capture 17 conformant=true
+capture 18 conformant=true
+capture 19 conformant=true
+stimulus 0 20.071
+stimulus 1 21.172
+stimulus 2 21.595
+stimulus 3 20.075
+stimulus 4 20.741
+stimulus 5 21.556
+stimulus 6 -42.631
+stimulus 7 20.922
+stimulus 8 21.396
+stimulus 9 21.42
+stimulus 10 21.582
+stimulus 11 20.883
+stimulus 12 21.681
+stimulus 13 21.665
+stimulus 14 21.816
+stimulus 15 21.983
+stimulus 16 20.695
+stimulus 17 22.059
+stimulus 18 21.29
+stimulus 19 21.087
+complete

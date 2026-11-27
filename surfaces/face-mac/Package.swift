@@ -15,6 +15,7 @@ let package = Package(
     products: [
         .library(name: "FaceMac", targets: ["FaceMac"]),
         .executable(name: "face-mac", targets: ["FaceMacHost"]),
+        .executable(name: "face-acoustic", targets: ["FaceAcoustic"]),
         .library(name: "FaceAudioKit", targets: ["FaceAudioKit"])
     ],
     dependencies: [.package(path: "../../sdk/surface-swift")],
@@ -22,6 +23,7 @@ let package = Package(
         .target(name: "FaceMac", dependencies: faceDependencies),
         .target(name: "FaceMacEmbeddingExample", dependencies: ["FaceMac", "FaceAudioKit", .product(name: "CogletSurface", package: "surface-swift")], path: "Examples"),
         .executableTarget(name: "FaceMacHost", dependencies: ["FaceMac", .product(name: "CogletSurface", package: "surface-swift"), .product(name: "CogletTypes", package: "surface-swift")]),
+        .executableTarget(name: "FaceAcoustic", dependencies: ["FaceMac", "FaceAudioKit", .product(name: "CogletSurface", package: "surface-swift"), .product(name: "CogletTypes", package: "surface-swift")]),
         .testTarget(name: "FaceMacTests", dependencies: ["FaceMac"]),
         .target(name: "CAudioRing", publicHeadersPath: "include"),
         .target(name: "FaceAudioKit", dependencies: ["CAudioRing"]),
@@ -31,6 +33,6 @@ let package = Package(
 #if !os(macOS)
 // Portable semantic tests do not compile AVFoundation. Native CI still builds
 // both audio targets and exercises the real production callbacks.
-package.targets.removeAll { ["FaceAudioKit", "FaceAudioKitTests", "CAudioRing", "FaceMacEmbeddingExample"].contains($0.name) }
-package.products.removeAll { $0.name == "FaceAudioKit" }
+package.targets.removeAll { ["FaceAudioKit", "FaceAudioKitTests", "CAudioRing", "FaceMacEmbeddingExample", "FaceAcoustic"].contains($0.name) }
+package.products.removeAll { ["FaceAudioKit", "face-acoustic"].contains($0.name) }
 #endif

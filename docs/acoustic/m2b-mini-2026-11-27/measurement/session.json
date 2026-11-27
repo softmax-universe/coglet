@@ -1,0 +1,63 @@
+{
+  "acoustic_coupling_ok" : true,
+  "aec" : false,
+  "calibration" : {
+    "noise_1000_p99" : 0.00108,
+    "noise_1400_p99" : 0.00064999999999999997,
+    "noise_1800_p99" : 0.00050000000000000001,
+    "noise_2200_p99" : 0.00055999999999999995,
+    "noise_2600_p99" : 0.00040999999999999999,
+    "noise_stim_p99" : 0.00034000000000000002,
+    "snr_1000_db" : 33.646000000000001,
+    "snr_1400_db" : 45.067999999999998,
+    "snr_1800_db" : 48.512,
+    "snr_2200_db" : 57.923999999999999,
+    "snr_2600_db" : 62.923000000000002,
+    "snr_min_db" : 33.646000000000001,
+    "snr_stim_db" : 64.128,
+    "stim_p10" : 0.55169999999999997,
+    "threshold_1000" : 0.026040000000000001,
+    "threshold_1400" : 0.057840000000000003,
+    "threshold_1800" : 0.067129999999999995,
+    "threshold_2200" : 0.22184000000000001,
+    "threshold_2600" : 0.28489999999999999,
+    "threshold_stim" : 0.01376,
+    "tone_1000_p10" : 0.052089999999999997,
+    "tone_1400_p10" : 0.11568000000000001,
+    "tone_1800_p10" : 0.13425999999999999,
+    "tone_2200_p10" : 0.44368000000000002,
+    "tone_2600_p10" : 0.56979999999999997
+  },
+  "devices" : [
+    {
+      "in" : false,
+      "name" : "LG ULTRAWIDE",
+      "out" : true,
+      "uid" : "1E6DE476-0000-0000-0A1D-0104B5502278"
+    },
+    {
+      "in" : true,
+      "name" : "Unknown USB Audio Device",
+      "out" : false,
+      "uid" : "AppleUSBAudioEngine:Unknown Manufacturer:Unknown USB Audio Device:9EDD88D0:3"
+    },
+    {
+      "in" : false,
+      "name" : "Mac mini Speakers",
+      "out" : true,
+      "uid" : "BuiltInSpeakerDevice"
+    }
+  ],
+  "host" : "daveey-mini-1.local",
+  "label" : "measure",
+  "offsets_ms" : [
+    100,
+    1000,
+    1500,
+    2100
+  ],
+  "os" : "Version 27.2.1 (Build 26B131)",
+  "seed" : 31,
+  "started" : "2026-11-27T21:36:09Z",
+  "tool" : "face-acoustic"
+}
