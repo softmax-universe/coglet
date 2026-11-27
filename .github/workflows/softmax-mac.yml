@@ -158,6 +158,20 @@ jobs:
           strings "$binary" > build-release/wire-proof-strings.txt
           test -s build-release/wire-proof-strings.txt
           if grep -F -- '--sdk-wire-proof-directory' build-release/wire-proof-strings.txt; then exit 1; fi
+          python3 scripts/tests/test_wire_proof_release.py
+          python3 scripts/audit-wire-proof-release.py \
+            --release build-release/Build/Products/Release/Softmax.app \
+            --debug build/Build/Products/Debug/Softmax.app \
+            --output build-release/ReleaseEvidence/audit
+          ditto -c -k --sequesterRsrc --keepParent \
+            build-release/Build/Products/Release/Softmax.app \
+            build-release/ReleaseEvidence/Softmax-Release.app.zip
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Softmax-release-wire-proof-exclusion
+          path: apps/softmax-mac/build-release/ReleaseEvidence
+          if-no-files-found: error
       - name: Export live accessibility screenshots and audit evidence
         if: ${{ !cancelled() }}
         working-directory: apps/softmax-mac
