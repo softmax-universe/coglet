@@ -155,8 +155,41 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
         var visible = Set(entries.filter(\.visible).map(\.id))
         if let restrict = restrictRegisteredTo { visible = visible.intersection(restrict) }
         let failures = catalogMembershipFailures(actual: actual, registered: visible)
-        let evidence: [String: Any] = ["checkpoint": checkpoint, "request": fresh.nonce, "ax": records,
+        var evidence: [String: Any] = ["checkpoint": checkpoint, "request": fresh.nonce, "ax": records,
             "membership_failures": failures, "anchors": anchors, "absent": absent]
+        // Removable run49 measurement only: never feeds actual/visible or the comparator.
+        // Scope-local snapshots use untouched UI-test defaults; omit field values.
+        if ["command_palette", "hub_pairing", "chat"].contains(owner) {
+            let debugLimit = 24_000, scrollBarLimit = 8, buttonLimit = 32
+            let description = scope.debugDescription.replacingOccurrences(
+                of: "(?im)\\bvalue:.*$", with: "value: <omitted>", options: .regularExpression)
+            evidence["ax_debug_description"] = String(description.prefix(debugLimit))
+            evidence["ax_debug_description_truncated"] = description.count > debugLimit
+            let scrollBars = scope.descendants(matching: .scrollBar)
+            var scrollBarRecords: [[String: Any]] = []
+            for (parentIndex, scrollBar) in scrollBars.allElementsBoundByIndex.prefix(scrollBarLimit).enumerated() {
+                let parentFrame = scrollBar.frame
+                // Independent query under this specific scrollBar, NOT a geometry-based inference
+                // from the census. Empty results and truncation remain explicit evidence.
+                let buttons = scrollBar.descendants(matching: .button)
+                var buttonRecords: [[String: Any]] = []
+                for (descendantIndex, button) in buttons.allElementsBoundByIndex.prefix(buttonLimit).enumerated() {
+                    let frame = button.frame
+                    buttonRecords.append(["parent_scrollbar_index": parentIndex,
+                        "descendant_index": descendantIndex, "type": String(describing: button.elementType),
+                        "raw_id": button.identifier,
+                        "frame": [frame.origin.x, frame.origin.y, frame.size.width, frame.size.height]])
+                }
+                scrollBarRecords.append(["scrollbar_index": parentIndex,
+                    "type": String(describing: scrollBar.elementType), "raw_id": scrollBar.identifier,
+                    "frame": [parentFrame.origin.x, parentFrame.origin.y, parentFrame.size.width, parentFrame.size.height],
+                    "descendant_button_count": buttons.count, "descendant_buttons": buttonRecords,
+                    "descendant_buttons_truncated": buttons.count > buttonLimit])
+            }
+            evidence["scrollbar_count"] = scrollBars.count
+            evidence["scrollbars_truncated"] = scrollBars.count > scrollBarLimit
+            evidence["scrollbar_descendants"] = scrollBarRecords
+        }
         let audit = XCTAttachment(data: try JSONSerialization.data(withJSONObject: evidence, options: [.sortedKeys]),
             uniformTypeIdentifier: "public.json")
         audit.name = checkpoint + "-ax-membership"; audit.lifetime = .keepAlways; add(audit)
@@ -366,7 +399,8 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
         let triangle = triangles.firstMatch
         XCTAssertTrue(toggleDisclosure(triangle, expect: 1), "licence disclosure did not expand")
         try captureCoverage(scope: about, owner: "about", route: "about", tag: "expanded",
-            sentinel: about.staticTexts["Sparkle — MIT licence and third-party notices. Full Sparkle licence texts ship with this app. Softmax and Coglet source is available from the repository."],
+            sentinel: about.staticTexts.matching(NSPredicate(format: "label == %@",
+                "Sparkle — MIT licence and third-party notices. Full Sparkle licence texts ship with this app. Softmax and Coglet source is available from the repository.")).firstMatch,
             anchors: base + ["about.sparkle_license"], expecting: expecting)
         XCTAssertTrue(toggleDisclosure(triangle, expect: 0), "licence disclosure did not collapse")
         XCTAssertTrue(about.descendants(matching: .any).matching(identifier: "about.sparkle_license")
@@ -452,6 +486,14 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
             app.typeKey(.escape, modifierFlags: [])
             XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
             XCTAssertTrue(chat.exists, "dismissing the menu must not close the conversation")
+            // Same owner and route before any secondary gesture: discriminate a close-time
+            // leak from a later route-change remount, with the full strict census unchanged.
+            try captureCoverage(scope: chat, owner: "chat", route: "chat", tag: "menu-closed",
+                sentinel: chat.textViews["Message draft"], anchors: ["chat.mode", "chat.draft", "chat.send"],
+                absent: ["chat.clear_draft", "chat.hide_orb"],
+                expecting: ["chat.mode": (role: "picker", verbs: ["select"], sensitive: false),
+                            "chat.draft": (role: "text_editor", verbs: ["type_text"], sensitive: false),
+                            "chat.send": (role: "button", verbs: ["press"], sensitive: false)])
         } else {
             XCTFail("conversation menu trigger not exposed by the AX tree: \(chat.debugDescription)")
         }
