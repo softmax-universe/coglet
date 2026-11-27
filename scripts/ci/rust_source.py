@@ -22,6 +22,19 @@ PROFILE_INPUTS = (
     "conformance/impls-surface02-runtime.toml",
     "conformance/tests/test_expect_close.py",
 )
+# PR206 first requires the R3 publication/runtime closure in this workflow. Older
+# exact heads, even with coincidentally present files, never qualify for it.
+R3_BOUNDARY = "e88fc139b3fd2b43b84136f2e7a33fb8c0f33a54"
+R3_INPUTS = (
+    "crates/coglet-hub/check_r3.py",
+    "crates/coglet-hub/test_check_r3.py",
+    "crates/coglet-hub/Cargo.toml",
+    "crates/coglet-hub/tests/build/qualified-ci.json",
+    "crates/coglet-hub/tests/build/r3.rs",
+    "crates/coglet-hub/tests/build/r3_live.rs",
+    "crates/coglet-hub/tests/build/r3_guest.rs",
+    "crates/coglet-hub/tests/build/r3_runtime.rs",
+)
 
 
 def git(repo, *args):
@@ -61,29 +74,40 @@ def select_source(repo, event, run_sha, head_sha="", *, contract=CONTRACT):
     return selected, scope
 
 
-def profile_required(repo, selected, *, boundary=PROFILE_BOUNDARY):
+def generation_required(repo, selected, boundary, inputs, what):
     """Classify the actual selected source, never the mutable base or file absence."""
     commit(repo, boundary)
     commit(repo, selected)
     # A locally present boundary object does not make truncated ancestry complete.
     if git(repo, "rev-parse", "--is-shallow-repository") != "false":
-        raise ValueError("profile generation requires complete source ancestry")
+        raise ValueError(f"{what} generation requires complete source ancestry")
     if not ancestor(repo, boundary, selected):
         return False
-    for path in PROFILE_INPUTS:
+    for path in inputs:
         entry = git(repo, "ls-tree", selected, "--", path).split()
         if len(entry) != 4 or entry[0] not in ("100644", "100755") or entry[1] != "blob" or entry[3] != path:
-            raise ValueError(f"required selected-profile input is not a regular blob: {path}")
+            raise ValueError(f"required selected-{what} input is not a regular blob: {path}")
     return True
+
+
+def profile_required(repo, selected, *, boundary=PROFILE_BOUNDARY):
+    return generation_required(repo, selected, boundary, PROFILE_INPUTS, "profile")
+
+
+def r3_required(repo, selected, *, boundary=R3_BOUNDARY):
+    return generation_required(repo, selected, boundary, R3_INPUTS, "r3")
 
 
 if __name__ == "__main__":
     sha, scope = select_source(Path.cwd(), os.environ["SOURCE_EVENT"], os.environ["SOURCE_RUN_SHA"], os.environ.get("SOURCE_PR_HEAD", ""))
     required = profile_required(Path.cwd(), sha)
+    r3 = r3_required(Path.cwd(), sha)
+    r3_status = "required" if r3 else f"NOT EXECUTED/QUALIFIED (selected source predates {R3_BOUNDARY})"
     profile_status = "required" if required else f"not applicable (selected source predates {PROFILE_BOUNDARY}); not executed or qualified"
     print(f"Required Rust source: {sha} ({scope})")
     print(f"Selected-profile qualification: {profile_status}")
+    print(f"R3 publication/runtime qualification: {r3_status}")
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-        output.write(f"sha={sha}\nscope={scope}\nprofile-required={str(required).lower()}\nprofile-boundary={PROFILE_BOUNDARY}\n")
+        output.write(f"sha={sha}\nscope={scope}\nprofile-required={str(required).lower()}\nprofile-boundary={PROFILE_BOUNDARY}\nr3-required={str(r3).lower()}\nr3-boundary={R3_BOUNDARY}\n")
     with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
-        summary.write(f"## Required Rust source\n\n- Event SHA: `{os.environ['SOURCE_RUN_SHA']}`\n- PR head: `{os.environ.get('SOURCE_PR_HEAD', '')}`\n- Actual selected checkout: `{sha}`\n- Scope: **{scope}**\n- Selected-profile generation boundary: `{PROFILE_BOUNDARY}`\n- Selected-profile qualification: **{profile_status}**\n\nBoth native architectures and the Rust aggregate use this SHA. Merge-integration-only artifacts do **not** qualify the PR head for transform publication. Manifest checkout identities and the publication verifier remain authoritative.\n")
+        summary.write(f"## Required Rust source\n\n- Event SHA: `{os.environ['SOURCE_RUN_SHA']}`\n- PR head: `{os.environ.get('SOURCE_PR_HEAD', '')}`\n- Actual selected checkout: `{sha}`\n- Scope: **{scope}**\n- Selected-profile generation boundary: `{PROFILE_BOUNDARY}`\n- Selected-profile qualification: **{profile_status}**\n- R3 generation boundary: `{R3_BOUNDARY}`\n- R3 publication/runtime qualification: **{r3_status}**\n\nBoth native architectures and the Rust aggregate use this SHA. Merge-integration-only artifacts do **not** qualify the PR head for transform publication. Manifest checkout identities and the publication verifier remain authoritative.\n")

@@ -63,6 +63,34 @@ opening an absent bridge test, before that qualification executed. The repair
 preserves that old head instead of backporting unrelated runtime code or treating
 missing files as permission to skip a modern test.
 
+## R3 publication/runtime workflow generation
+
+PR206 introduced the newer required R3 publication and runtime closure at
+immutable boundary `e88fc139b3fd2b43b84136f2e7a33fb8c0f33a54`. As with the
+selected-profile step, applicability is computed from that commit's ancestry in
+the **actual selected SHA** after the unchanged source selector runs, never from
+file existence: an older exact source whose tree coincidentally contains the files
+is still classified false. The two generations are independent; a head that has
+the selected-profile step but predates PR206 does not get the R3 steps.
+
+For sources descending from the boundary, the source job first requires complete
+(non-shallow) ancestry and regular Git blobs for `check_r3.py`,
+`test_check_r3.py`, the hub `Cargo.toml`, `tests/build/qualified-ci.json` and the
+`r3.rs`, `r3_live.rs`, `r3_guest.rs`, `r3_runtime.rs` build tests. Deletions,
+directories, symlinks, unknown commit objects and shallow history fail closed.
+
+The source job outputs `r3-required` and `r3-boundary`. The publication and ARM
+jobs stay unconditional (the strict all-needs success checks are unchanged), and
+each begins by reporting the actual SHA and boundary. For an older source it
+states R3 publication/runtime qualification was **NOT EXECUTED/QUALIFIED**. Only
+the R3 commands, artifact downloads and uploads, and the Rust aggregate's R3
+runtime-pair download and `check_r3.py --aggregate` are step-gated on
+`r3-required == 'true'`. All checkouts remain the selected SHA, and the native
+pair and selected-profile steps are untouched.
+
+**An older source gets no publication/runtime qualification from a green check.**
+Its actual modern merge-group (or subsequent main) execution must run R3.
+
 ## Regression
 
 ```

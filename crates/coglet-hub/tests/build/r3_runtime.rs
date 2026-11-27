@@ -2,6 +2,8 @@
 //! or synthetic CI construction occurs here; both hosts consume identical bytes.
 use coglet_hub::build::Artifact;
 use coglet_runtime::{NativeEngine, Runtime, RuntimeService, Snapshot};
+#[path = "../support/r3_diagnostics.rs"]
+mod r3_diagnostics;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
@@ -122,6 +124,10 @@ fn published_r3_runtime_journal_fs_trap_payload_chain() {
         std::env::var_os("COGLET_R3_RUNTIME_DIR")
             .expect("required proof retains raw runtime evidence"),
     );
+    // Immutable pins are hashed from the retained inputs before any execution.
+    let pins = r3_diagnostics::Pins::from_publication_dir(&dir).unwrap();
+    let diagnostics =
+        r3_diagnostics::Diagnostics::create(&out, std::env::consts::ARCH, pins).unwrap();
     fs::create_dir_all(&out).unwrap();
     let (setup, wasm) = admitted_fixture(&dir);
     let engine = || {
@@ -150,7 +156,10 @@ fn published_r3_runtime_journal_fs_trap_payload_chain() {
         service.enqueue(event).unwrap();
         context["logical_time"] = json!(10 + step);
         context["seed"] = json!(seed);
-        let result = service.run_next(&context, &mut engine()).unwrap().unwrap();
+        let outcome = service.run_next(&context, &mut engine());
+        // Retain the complete original outcome before any unwrap/assertion.
+        diagnostics.persist_or_panic(step, &context, &outcome);
+        let result = outcome.unwrap().unwrap();
         let r = &result["journal"];
         assert_eq!(r["step"], step);
         let approved: Value = serde_json::from_str(include_str!("qualified-ci.json")).unwrap();
