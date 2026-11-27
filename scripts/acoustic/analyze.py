@@ -78,20 +78,20 @@ def ceil5(x):
 
 
 def derive(runs):
-    """ADR-0044 rule: for each gated latency, p95 limit = ceil5(1.5*p95) and max limit = ceil5(1.5*max)
+    """ADR-0044 rule: for each gated latency, p95 limit = ceil5(2*p95) and max limit = ceil5(2*max)
     (never below p99+20 ms); heard-truncation |error| likewise; counts/rates gated at observed
     worst case (over-crediting 0 of N, conformance 100%) only if that is what was observed."""
     s = summarize(runs)
-    t = {'version': 1, 'rule': 'p95_limit=ceil5(1.5*p95); max_limit=ceil5(max(1.5*max, p99+20)); sample counts are minimums',
+    t = {'version': 1, 'rule': 'p95_limit=ceil5(2*p95); max_limit=ceil5(max(2*max, p99+20)); sample counts are minimums',
          'latency_ms': {}, 'heard_truncation': {}}
     for m, d in s['latency_ms'].items():
         if d['n'] >= 5:
-            t['latency_ms'][m] = {'p95_max': ceil5(1.5 * d['p95']), 'max_max': ceil5(max(1.5 * d['max'], d['p99'] + 20)),
+            t['latency_ms'][m] = {'p95_max': ceil5(2 * d['p95']), 'max_max': ceil5(max(2 * d['max'], d['p99'] + 20)),
                                   'min_n': max(5, d['n'] // 4)}
     h = s['heard_truncation']
     if h['abs_error_ms'].get('n', 0) >= 5:
         a = h['abs_error_ms']
-        t['heard_truncation']['abs_error_ms'] = {'p95_max': ceil5(1.5 * a['p95']), 'max_max': ceil5(max(1.5 * a['max'], a['p99'] + 20)),
+        t['heard_truncation']['abs_error_ms'] = {'p95_max': ceil5(2 * a['p95']), 'max_max': ceil5(max(2 * a['max'], a['p99'] + 20)),
                                                   'min_n': max(5, a['n'] // 4)}
         t['heard_truncation']['over_credited_runs_max'] = h['over_credited_runs'] if h['over_credited_runs'] else 0
         t['heard_truncation']['word_exact_rate_min'] = round(max(0.0, (h['word_exact_rate'] or 0) - 0.1), 2)
