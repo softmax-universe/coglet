@@ -32,21 +32,31 @@ struct SettingsView: View {
     private var tabs: [SettingsTab] {
         SettingsTab.allCases.filter { query.isEmpty || ($0.rawValue + " " + $0.keywords).localizedCaseInsensitiveContains(query) }
     }
+    private func capture(_ phase: SettingsArrowCapture.Phase) {
+        settingsArrowCapture(phase, selected: model.selectedTab, queryEmpty: query.isEmpty,
+                             matchCount: tabs.count, searchFocused: searchFocused)
+    }
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: SoftmaxDesignTokens.spacing[2]) {
                 TextField("Filter settings  /", text: $query).focused($searchFocused)
                     .modifier(SoftmaxSearchFieldFrame())
                     .accessibilityLabel("Search settings").onSubmit {
+                        capture(.submitEnter)
+                        defer { capture(.submitExit) }
                         if !tabs.contains(model.selectedTab), let tab = tabs.first { model.selectedTab = tab }
                     }
                     .onKeyPress(.downArrow) {
+                        capture(.downEnter)
+                        defer { capture(.downExit) }
                         guard !tabs.isEmpty else { return .handled }
                         let index = tabs.firstIndex(of: model.selectedTab) ?? 0
                         model.selectedTab = tabs[min(index + 1, tabs.count - 1)]
                         return .handled
                     }
                     .onKeyPress(.upArrow) {
+                        capture(.upEnter)
+                        defer { capture(.upExit) }
                         guard !tabs.isEmpty else { return .handled }
                         let index = tabs.firstIndex(of: model.selectedTab) ?? 0
                         model.selectedTab = tabs[max(index - 1, 0)]
@@ -124,6 +134,11 @@ struct SettingsView: View {
                 }.padding(SoftmaxDesignTokens.spacing[4]).frame(maxWidth: .infinity, alignment: .leading)
             }
         }.frame(minWidth: 760, minHeight: 540).modifier(SoftmaxTheme())
+            .onAppear { capture(.viewAppear) }
+            .onDisappear { capture(.viewDisappear) }
+            .onChange(of: model.selectedTab) { capture(.viewSelection) }
+            .onChange(of: query) { capture(.viewQuery) }
+            .onChange(of: searchFocused) { capture(.viewFocus) }
             .onReceive(NotificationCenter.default.publisher(for: .softmaxFilterInput)) { notification in
                 guard let characters = notification.object as? String else { return }
                 query += characters; searchFocused = true
