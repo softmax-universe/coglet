@@ -179,7 +179,11 @@ final class CogletMenuButtonTests: XCTestCase {
         try await assertQueuedRefusal("dismantle") { f, _ in f.view.dismantle() }
         try await assertQueuedRefusal("same-id successor", expected: .conflict) { f, _ in
             // Identity replacement retires the old mount and mounts a successor with the same id.
-            self.configure(f.view, registry: f.registry, route: "chat2", calls: f.calls)
+            f.state.route = "voice"
+            self.configure(f.view, registry: f.registry, route: "voice", calls: f.calls)
+            XCTAssertEqual(f.registry.registrationInventory().map(\.id), ["chat.menu"])
+            XCTAssertEqual(f.registry.registrationInventory().map(\.route), ["voice"])
+            XCTAssertTrue(f.view.isTriggerMounted)
         }
         try await assertQueuedRefusal("menu already open") { f, _ in
             if let menu = f.view.menu { f.view.menuWillOpen(menu) }
