@@ -1098,6 +1098,21 @@ mod tests {
             let mut line = String::new();
             matches!(BufReader::new(stream).read_line(&mut line), Ok(0) | Err(_)) && line.is_empty()
         }
+        /// The server neither replied to nor closed this connection yet.
+        fn still_held(stream: &UnixStream) -> bool {
+            use std::os::fd::AsRawFd;
+            let mut byte = 0u8;
+            // SAFETY: an open socket and one writable byte; non-blocking peek.
+            let n = unsafe {
+                libc::recv(
+                    stream.as_raw_fd(),
+                    std::ptr::from_mut(&mut byte).cast(),
+                    1,
+                    libc::MSG_PEEK | libc::MSG_DONTWAIT,
+                )
+            };
+            n < 0 && std::io::Error::last_os_error().kind() == std::io::ErrorKind::WouldBlock
+        }
 
         /// Unit/transport control for ADR-0043 (mock `LocalOps`); the real-daemon
         /// proof is `emergency_output_revoke_survives_ordinary_admission_saturation`.
@@ -1220,24 +1235,42 @@ mod tests {
             assert_eq!(ops.calls.load(std::sync::atomic::Ordering::SeqCst), 1);
             // Four idle/partial connections exhaust the reserved pool: the fifth
             // is closed, never queued and never moved to the ordinary pool.
-            let started = std::time::Instant::now();
-            let mut idle = vec![];
-            for i in 0..4 {
-                let mut stream = UnixStream::connect(&lane).unwrap();
-                // Set now: macOS refuses socket options once the peer closed.
-                stream
-                    .set_read_timeout(Some(std::time::Duration::from_secs(8)))
-                    .unwrap();
-                if i % 2 == 0 {
-                    stream.write_all(b"{\"version\":1,").unwrap();
-                }
-                idle.push(stream);
-            }
-            let mut fifth = UnixStream::connect(&lane).unwrap();
-            let _ = fifth.write_all(&frame(|_| {}));
-            let _ = fifth.write_all(b"\n");
-            assert!(closed_without_reply(fifth), "reserved pool is unbounded");
-            assert_eq!(ops.calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+            // A worker releases its slot only after its peer saw the reply or
+            // the close, so a slot of an exchange above may still be taken when
+            // the holders connect; the accept loop then closes one holder at
+            // once and admits the fifth. Accepts are serial, so a round whose
+            // four holders are all still connected after the fifth's outcome
+            // held all four slots throughout. Only such a round is judged.
+            let (started, idle) = (0..50)
+                .find_map(|_| {
+                    let calls = ops.calls.load(std::sync::atomic::Ordering::SeqCst);
+                    let started = std::time::Instant::now();
+                    let mut idle = vec![];
+                    for i in 0..4 {
+                        let mut stream = UnixStream::connect(&lane).unwrap();
+                        // Set now: macOS refuses socket options once the peer closed.
+                        stream
+                            .set_read_timeout(Some(std::time::Duration::from_secs(8)))
+                            .unwrap();
+                        if i % 2 == 0 {
+                            stream.write_all(b"{\"version\":1,").unwrap();
+                        }
+                        idle.push(stream);
+                    }
+                    let mut fifth = UnixStream::connect(&lane).unwrap();
+                    let _ = fifth.write_all(&frame(|_| {}));
+                    let _ = fifth.write_all(b"\n");
+                    let dropped = closed_without_reply(fifth);
+                    if !idle.iter().all(still_held) {
+                        drop(idle);
+                        std::thread::sleep(std::time::Duration::from_millis(20));
+                        return None;
+                    }
+                    assert!(dropped, "reserved pool is unbounded");
+                    assert_eq!(ops.calls.load(std::sync::atomic::Ordering::SeqCst), calls);
+                    Some((started, idle))
+                })
+                .expect("no round in which all four holders were admitted");
             // Each holder is closed at the 3 s request deadline without a reply,
             // which reclaims its slot for a subsequent valid revoke.
             for stream in idle {

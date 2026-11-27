@@ -28,6 +28,18 @@ fn is_socket_0600(path: &Path) -> bool {
         .is_ok_and(|m| m.file_type().is_socket() && m.permissions().mode() & 0o777 == 0o600)
 }
 
+/// The peer closed its end of `link` (queued unread bytes do not hide it).
+fn hung_up(link: &impl AsRawFd) -> bool {
+    let mut fd = libc::pollfd {
+        fd: link.as_raw_fd(),
+        events: 0,
+        revents: 0,
+    };
+    // SAFETY: one valid pollfd for an open socket and a zero timeout.
+    assert!(unsafe { libc::poll(&mut fd, 1, 0) } >= 0);
+    fd.revents & (libc::POLLHUP | libc::POLLERR) != 0
+}
+
 async fn wait_for(what: &str, mut ready: impl FnMut() -> bool) {
     tokio::time::timeout(Duration::from_secs(15), async {
         while !ready() {
@@ -88,6 +100,52 @@ impl Daemon {
             .filter(|comm| comm.trim_end() == &"cogletd-revoke-record"[..15])
             .count()
     }
+    /// Reserved-lane connection workers alive in the real daemon. (The accept
+    /// thread's truncated name, `cogletd-emerg-a`, is a different string.)
+    fn reserved_workers(&self) -> usize {
+        std::fs::read_dir(format!("/proc/{}/task", self.child.0.id()))
+            .unwrap()
+            .filter_map(|task| std::fs::read_to_string(task.ok()?.path().join("comm")).ok())
+            .filter(|comm| comm.trim_end() == "cogletd-emerg")
+            .count()
+    }
+    /// Stderr of the current daemon process, for failure messages.
+    fn daemon_log(&self) -> String {
+        std::fs::read_to_string(self.root.join("restart.log")).unwrap_or_default()
+    }
+    /// Wait on observable state until no guest step can be in flight, so a
+    /// following SIGKILL cannot land on an unresolved engine attempt (which
+    /// restart admission rightly refuses to resume). The daemon serves the
+    /// adapter on one thread that runs each fed event's step inline, so the
+    /// guest is quiescent once the attempt fence is clear and either every one
+    /// of the `fed` events is attempted and resolved, or the daemon has closed
+    /// the adapter session (a fenced publication ends it; the rest is unread).
+    async fn guest_quiescent(&mut self, link: &UnixStream, bundle: &Bundle, fed: u64) {
+        let mut last = Value::Null;
+        let done = tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                // Sampled before the health observation it is combined with.
+                let closed = hung_up(link);
+                let sample = self.health(bundle).await;
+                assert_eq!(sample["ok"], true, "{sample}");
+                let n = |k: &str| sample["result"]["counters"][k].as_u64().unwrap();
+                assert!(n("attempted") <= fed, "{sample}");
+                let resolved = n("committed") + n("failed");
+                let clear = sample["result"]["attempt_fence"] == "clear";
+                last = sample;
+                if clear && (closed || resolved == fed) {
+                    return;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+        assert!(
+            done.is_ok(),
+            "guest never became quiescent: {last}\ndaemon log: {}",
+            self.daemon_log()
+        );
+    }
     fn stall_files(&self) -> (PathBuf, PathBuf) {
         (
             self.root.join("fault-stall"),
@@ -104,7 +162,12 @@ impl Daemon {
         );
         // Recovery restarts the running coglet; nothing here starts it.
         let status = self.env.simple("hub.status").await;
-        assert_eq!(status["result"]["state"], "running", "{status}");
+        assert_eq!(
+            status["result"]["state"],
+            "running",
+            "{status}\ndaemon log: {}",
+            self.daemon_log()
+        );
         let attested = self.local("attest_applied", self.pins(bundle)).await;
         assert_eq!(attested["ok"], true, "{attested}");
         let mut params = self.pins(bundle);
@@ -261,7 +324,7 @@ async fn saturation_case(seed: u8, blocked: bool) {
     for seq in 3..=6 {
         let _ = feed(&mut link, &d.surface, seq).await;
     }
-    tokio::time::sleep(Duration::from_millis(700)).await;
+    d.guest_quiescent(&link, &a, 6).await;
     assert_eq!(queued_bytes(&link), queued, "output exposed after revoke");
     let mut raw = vec![0; queued];
     link.read_exact(&mut raw).await.unwrap();
@@ -398,6 +461,13 @@ async fn reserved_emergency_endpoint_rejects_non_revoke_and_forged_bindings() {
     assert_eq!(producer_code(&reply), "resource_exhausted", "{reply}");
     // Reserved capacity: four idle/partial connections exhaust it; a fifth
     // valid revoke is closed, never queued and never served elsewhere.
+    // A worker of an exchange above releases its slot only after its peer saw
+    // the reply, so wait until none is left: the next four connections are
+    // then exactly the pool's four slots, and all four are seen holding one.
+    wait_for("earlier reserved workers to retire", || {
+        d.reserved_workers() == 0
+    })
+    .await;
     let mut idle = vec![];
     for i in 0..4 {
         let mut stream = UnixStream::connect(d.lane()).await.unwrap();
@@ -406,10 +476,13 @@ async fn reserved_emergency_endpoint_rejects_non_revoke_and_forged_bindings() {
         }
         idle.push(stream);
     }
+    wait_for("four reserved holders", || d.reserved_workers() == 4).await;
     let fifth = d.frame("revoke_output_lease", json!({}));
+    let admitted = exchange_on(&d.lane(), &fifth).await;
+    let holding = idle.iter().filter(|stream| !hung_up(*stream)).count();
     assert!(
-        exchange_on(&d.lane(), &fifth).await.is_none(),
-        "reserved pool admitted a fifth connection"
+        admitted.is_none(),
+        "reserved pool admitted a fifth connection with {holding}/4 holders still connected"
     );
     // After ALL of the above the lease is still enabled and the real guest
     // still reaches the adapter: nothing closed the gate or enabled anything.
@@ -447,7 +520,7 @@ async fn reserved_emergency_endpoint_rejects_non_revoke_and_forged_bindings() {
     for seq in 4..=6 {
         let _ = feed(&mut link, &d.surface, seq).await;
     }
-    tokio::time::sleep(Duration::from_millis(700)).await;
+    d.guest_quiescent(&link, &a, 6).await;
     assert_eq!(queued_bytes(&link), queued, "output exposed after revoke");
     let mut params = d.pins(&a);
     params["daemon_instance"] = instance;
