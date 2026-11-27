@@ -3,11 +3,18 @@
 //! Use Runtime::replay with an independently pinned engine/program for replay.
 use super::*;
 
-/// An observed transition checker, never a Wasm engine. Only this private path
-/// accepts recorded deltas; it cannot be selected by a live runtime service.
+/// An observed transition checker, never a Wasm engine. Only private recovery
+/// and original detached-return validation accept recorded deltas; it cannot
+/// be selected as the live guest engine.
 struct ObservedTransition<'a>(&'a Value);
+#[cfg(test)]
+thread_local! {
+    pub(crate) static OBSERVED_STEPS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
 impl Engine for ObservedTransition<'_> {
     fn execute(&mut self, _: &Value, host: &mut StepHost) -> Result<EngineReport> {
+        #[cfg(test)]
+        OBSERVED_STEPS.with(|count| count.set(count.get() + 1));
         let record = self.0;
         // ABI 0.2 projections keep `db-host-call`s only as audit entries: the
         // database is never consulted when host state is re-derived. Ordinary
@@ -342,6 +349,19 @@ impl RuntimeService {
 }
 
 impl Runtime {
+    /// Verify one authenticated observation on an already validated live prefix.
+    /// The original coordinator fence is checked before this private clone is
+    /// made; clearing it here never permits a second guest attempt.
+    pub(super) fn observed_successor(&self, record: &Value) -> Result<Self> {
+        let mut runtime = self.clone();
+        runtime.unresolved_attempt = None;
+        let actual = runtime.step(record, &mut ObservedTransition(record))?;
+        if actual["journal"] != *record {
+            return Err("recovered step mismatch".into());
+        }
+        Ok(runtime)
+    }
+
     pub(super) fn reconstruct(initial: &Value, records: &[Value]) -> Result<Self> {
         historical_scope(legacy_version(&initial["manifest"]["version"]), || {
             Self::reconstruct_inner(initial, records)

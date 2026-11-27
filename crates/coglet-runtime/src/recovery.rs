@@ -1,5 +1,6 @@
 //! Queue-side recovery constraints in addition to journal host reconstruction.
 use super::*;
+use crate::phase_evidence::{Phase, mark};
 use std::collections::BTreeSet;
 
 impl RuntimeService {
@@ -77,10 +78,35 @@ impl RuntimeService {
             return Err("WAL must be reopened before attempt reconciliation".into());
         }
         let next = Self::reconcile_attempt(&self.state, self.store.records(), record)?;
-        self.store.commit(
-            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
-            Some(record),
-        )?;
+        self.publish_recovered_attempt(next, record)
+    }
+
+    /// Only the original in-process detached worker uses its validated live
+    /// prefix. External recovery and database collaborators still reconstruct
+    /// the full journal; no caller-supplied flag can select this route.
+    #[cfg(feature = "native-engine")]
+    pub(super) fn recover_detached_attempt(&mut self, record: &Value) -> Result<()> {
+        if self.state.contract_profile != crate::ContractProfile::Surface01
+            || legacy_version(&self.state.runtime.manifest["version"])
+        {
+            return self.recover_attempt(record);
+        }
+        if !self.store.is_healthy() {
+            return Err("WAL must be reopened before attempt reconciliation".into());
+        }
+        let phase = self.store.phase_sink();
+        mark(&phase, Phase::ReconcileEnter);
+        let result = Self::reconcile_attempt_inner(&self.state, self.store.records(), record, true);
+        let next = crate::phase_evidence::returned(&phase, Phase::ReconcileReturn, result)?;
+        self.publish_recovered_attempt(next, record)
+    }
+
+    fn publish_recovered_attempt(&mut self, next: ServiceState, record: &Value) -> Result<()> {
+        let phase = self.store.phase_sink();
+        mark(&phase, Phase::SerdeEnter);
+        let result = serde_json::to_value(&next).map_err(|e| e.to_string());
+        let value = crate::phase_evidence::returned(&phase, Phase::SerdeReturn, result)?;
+        self.store.commit(&value, Some(record))?;
         self.state = next;
         Ok(())
     }
@@ -93,6 +119,15 @@ impl RuntimeService {
         state: &ServiceState,
         journal: &[Value],
         record: &Value,
+    ) -> Result<ServiceState> {
+        Self::reconcile_attempt_inner(state, journal, record, false)
+    }
+
+    fn reconcile_attempt_inner(
+        state: &ServiceState,
+        journal: &[Value],
+        record: &Value,
+        live_prefix: bool,
     ) -> Result<ServiceState> {
         Self::attempted_ordinals(state)?;
         let inputs = state
@@ -124,10 +159,14 @@ impl RuntimeService {
         if state.router.batch(count)? != *inputs["events"].as_array().unwrap() {
             return Err("recovered attempt no longer matches retained router prefix".into());
         }
-        let offset = state.completed_segments.last().map_or(0, |s| s.end);
-        let mut records = journal[offset..].to_vec();
-        records.push(record.clone());
-        let mut recovered = Runtime::reconstruct(&state.runtime.initial_setup, &records)?;
+        let mut recovered = if live_prefix {
+            state.runtime.observed_successor(record)?
+        } else {
+            let offset = state.completed_segments.last().map_or(0, |s| s.end);
+            let mut records = journal[offset..].to_vec();
+            records.push(record.clone());
+            Runtime::reconstruct(&state.runtime.initial_setup, &records)?
+        };
         recovered.next_source_seq = recovered.next_source_seq.max(state.runtime.next_source_seq);
         recovered.time = recovered.time.max(state.runtime.time);
         recovered.retained_blobs = state.runtime.retained_blobs.clone();
@@ -302,3 +341,7 @@ impl RuntimeService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "live_replay_differential_tests.rs"]
+mod live_replay_differential_tests;

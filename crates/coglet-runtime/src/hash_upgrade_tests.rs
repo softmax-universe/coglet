@@ -209,6 +209,64 @@ fn hash_upgrade_defers_unknown_attempt_then_reconciles_without_guest_reentry() {
     assert_eq!(service.state.completed_segments.len(), 1);
 }
 
+#[cfg(feature = "native-engine")]
+#[test]
+fn integration_detached_legacy_recovery_routes_through_hash_upgrade() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("legacy-detached.wal");
+    let (setup, first) = old_wal(&path, None, true);
+    let mut service = RuntimeService::open(&path, &setup, 8).unwrap();
+    let inputs = service.state.runtime.unresolved_attempt.clone().unwrap();
+    let record = historical_scope(true, || {
+        let mut observer = service.state.runtime.clone();
+        observer.unresolved_attempt = None;
+        observer
+            .step(&inputs, &mut MockEngine::new(setup["guest_script"].clone()))
+            .unwrap()["journal"]
+            .clone()
+    });
+    service.recover_detached_attempt(&record).unwrap();
+    assert!(!hash_upgrade::historical());
+    assert_eq!(service.state.runtime.manifest["version"], "1.0");
+    assert!(service.state.runtime.unresolved_attempt.is_none());
+    assert_eq!(service.queued(), 0);
+    assert_eq!(service.store.records(), &[first, record]);
+    assert_eq!(service.state.completed_segments.len(), 1);
+    assert!(service.state.completed_segments[0].hash_upgrade);
+    drop(service);
+    let reopened = RuntimeService::open(&path, &setup, 8).unwrap();
+    assert_eq!(reopened.state.runtime.manifest["version"], "1.0");
+    assert_eq!(reopened.state.completed_segments.len(), 1);
+}
+
+#[test]
+fn integration_restore_maps_legacy_root_and_restores_cow_records() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("legacy-restore.wal");
+    let (setup, first) = old_wal(&path, None, true);
+    let store = DurableStore::open(&path).unwrap();
+    let configured = Runtime::from_fixture(&setup).unwrap();
+    let catalog = TrustedExtensionCatalog::default();
+    let saved = store.state().unwrap();
+    let state =
+        RuntimeService::restore(&store, &configured, saved, &catalog, &BTreeMap::new()).unwrap();
+    assert_eq!(state.runtime.records(), std::slice::from_ref(&first));
+    let mut cloned = state.runtime.clone();
+    assert!(std::sync::Arc::ptr_eq(
+        &state.runtime.records,
+        &cloned.records
+    ));
+    std::sync::Arc::make_mut(&mut cloned.records).clear();
+    assert_eq!(state.runtime.records(), std::slice::from_ref(&first));
+    assert!(cloned.records().is_empty());
+    let mut wrong = configured;
+    wrong.initial_setup["manifest"]["version"] = json!("1.1");
+    let error = RuntimeService::restore(&store, &wrong, saved, &catalog, &BTreeMap::new())
+        .err()
+        .unwrap();
+    assert_eq!(error, "recovery ABI version mapping differs");
+}
+
 #[test]
 fn hash_upgrade_rejects_changed_root_and_unmappable_final_tree_without_append() {
     for unmappable in [false, true] {
@@ -276,7 +334,7 @@ fn hash_upgrade_database_keeps_exact_historical_record_bytes() {
         record.as_object_mut().unwrap().remove("record_hash");
         record["record_hash"] = json!(digest(&cbor(&record).unwrap()));
         service.state.runtime.previous = record["record_hash"].clone();
-        service.state.runtime.records = vec![record.clone()];
+        service.state.runtime.records = vec![record.clone()].into();
         let raw = cbor(&record).unwrap();
         service
             .store
@@ -351,7 +409,7 @@ fn old_database_preparation(
         record.as_object_mut().unwrap().remove("record_hash");
         record["record_hash"] = json!(digest(&cbor(record).unwrap()));
         next.runtime.previous = record["record_hash"].clone();
-        next.runtime.records = vec![record.clone()];
+        next.runtime.records = vec![record.clone()].into();
         next.runtime.db_revision = Some(1);
         let raw = cbor(record).unwrap();
         coglet_types::decode("database::db-step-record", &raw).unwrap();
@@ -795,7 +853,7 @@ fn surface02_historical_database_record_keeps_exact_bytes() {
         record.as_object_mut().unwrap().remove("record_hash");
         record["record_hash"] = json!(digest(&cbor(&record).unwrap()));
         service.state.runtime.previous = record["record_hash"].clone();
-        service.state.runtime.records = vec![record.clone()];
+        service.state.runtime.records = vec![record.clone()].into();
         let raw = cbor(&record).unwrap();
         service
             .store

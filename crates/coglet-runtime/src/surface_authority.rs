@@ -29,8 +29,10 @@ impl SurfaceSession {
         let epoch = guard.surface_epoch(binding.surface());
         let catalog = guard.catalog.clone();
         let ceiling = guard.contract_profile();
+        let phase = guard.phase_sink();
         drop(guard);
         let mut session = Self::new(binding);
+        session.phase = phase;
         session.ceiling = ceiling;
         session.catalog = catalog;
         // A normal adapter constructor must not inherit fixture admission.

@@ -7,6 +7,10 @@ on:
     - cron: '23 */6 * * *'
   workflow_dispatch:
     inputs:
+      native_simulator:
+        description: 'Only native cartpole: 20 consecutive CPU-load live/replay passes (non-required)'
+        type: boolean
+        default: false
       repeats:
         description: 'iterations (1 or more; 0 or empty means 20)'
         type: number
@@ -21,6 +25,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   scheduler-stall:
+    if: ${{ !inputs.native_simulator }}
     # Deliberately non-required; execute the script directly, never Go's test cache.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -42,18 +47,21 @@ jobs:
           REPEATS: ${{ inputs.repeats || 20 }}
         run: python3 sdk/surface-go/stress_fixture_clock.py target/stability-go-surface --repeats "$REPEATS"
   quarantine-age:
+    if: ${{ !inputs.native_simulator }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Every quarantined test has an owner and is under 14 days old
         run: python3 scripts/ci/quarantine.py check --fail-expired
   conformance:
+    if: ${{ !inputs.native_simulator }}
     uses: ./.github/workflows/conformance.yml
     with:
       # workflow_dispatch can preserve numeric inputs as strings; workflow_call
       # strictly validates the callee's number type before creating any jobs.
       stability-repeats: ${{ fromJSON(format('{0}', inputs.repeats || 20)) }}
   rust-quarantined:
+    if: ${{ !inputs.native_simulator }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -86,3 +94,26 @@ jobs:
             cargo test --workspace --locked -- --include-ignored "${only[@]}"
             echo "::endgroup::"
           done
+  native-simulator:
+    # Opt-in qualification only; required rust runs the original suite once.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.native_simulator }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: astral-sh/setup-uv@v6
+      - name: Build and execute the ordinary native suite once
+        run: bash sim/check-native.sh
+      - name: Twenty consecutive cartpole live/replay passes under owned CPU load
+        run: python3 sim/qualify-native-stability.py --output "$RUNNER_TEMP/native-simulator-stability"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-simulator-stability-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/native-simulator-stability/
+            target/sandbox/native-junit.xml
+            target/sandbox/pytest/**/daemon.log
+            target/sandbox/pytest/**/native-failure.json
+          if-no-files-found: error

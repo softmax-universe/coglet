@@ -621,6 +621,67 @@ mod tests {
         );
     }
 
+    #[cfg(all(feature = "device", feature = "native-engine"))]
+    #[test]
+    fn integration_policy_detached_and_full_recovery_apply_result_once() {
+        // Fixture engine/coordinator proof only, not native daemon acceptance.
+        let (dir, setup, mut service) = installed();
+        service.managed_start().unwrap();
+        service
+            .enqueue(setup["inputs"]["events"][0].clone())
+            .unwrap();
+        struct Unknown;
+        impl Engine for Unknown {
+            fn execute(&mut self, _: &Value, _: &mut StepHost) -> Result<EngineReport> {
+                Err("unknown guest outcome".into())
+            }
+        }
+        assert!(service.run_next(&setup["inputs"], &mut Unknown).is_err());
+        let inputs = service.state.runtime.unresolved_attempt.clone().unwrap();
+        let before = &service
+            .state
+            .managed
+            .as_ref()
+            .unwrap()
+            .policy
+            .as_ref()
+            .unwrap()
+            .counters;
+        assert_eq!((before.attempted, before.committed), (1, 0));
+        let mut observer = service.state.runtime.clone();
+        observer.unresolved_attempt = None;
+        let journal = observer
+            .step(&inputs, &mut MockEngine::new(setup["guest_script"].clone()))
+            .unwrap()["journal"]
+            .clone();
+        let full =
+            RuntimeService::reconcile_attempt(&service.state, service.records(), &journal).unwrap();
+        service.recover_detached_attempt(&journal).unwrap();
+        assert_eq!(
+            serde_json::to_value(&service.state).unwrap(),
+            serde_json::to_value(&full).unwrap()
+        );
+        assert!(service.recover_detached_attempt(&journal).is_err());
+        assert!(service.recover_attempt(&journal).is_err());
+        let counters = &service
+            .state
+            .managed
+            .as_ref()
+            .unwrap()
+            .policy
+            .as_ref()
+            .unwrap()
+            .counters;
+        assert_eq!(
+            (counters.attempted, counters.committed, counters.failed),
+            (1, 1, 0)
+        );
+        let expected = serde_json::to_value(&service.state).unwrap();
+        drop(service);
+        let reopened = RuntimeService::open(&dir.path().join("policy.wal"), &setup, 8).unwrap();
+        assert_eq!(serde_json::to_value(&reopened.state).unwrap(), expected);
+    }
+
     #[cfg(feature = "device")]
     #[test]
     fn policy_missing_legacy_provenance_is_not_backfilled() {

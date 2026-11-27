@@ -45,7 +45,13 @@ impl SurfaceBinding {
     }
 }
 
+#[cfg(test)]
+type TestPumpHook = Box<dyn FnMut(&SurfaceSession, u64) + Send>;
+
 pub struct SurfaceSession {
+    #[cfg(test)]
+    test_pump_hook: Option<TestPumpHook>,
+    phase: Option<crate::phase_evidence::Sink>,
     catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
     /// Trusted local ceiling (what this runtime can validate), never peer input.
     ceiling: crate::ContractProfile,
@@ -83,6 +89,19 @@ pub struct SurfaceSession {
     gate: Option<std::sync::Arc<crate::output_lease::OutputGate>>,
 }
 impl SurfaceSession {
+    #[cfg(test)]
+    pub(crate) fn test_set_pump_hook(&mut self, hook: TestPumpHook) {
+        self.test_pump_hook = Some(hook);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_last_received(&self) -> u64 {
+        self.last_received
+    }
+
+    pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
+        self.phase.clone()
+    }
     pub fn with_output_gate(
         mut self,
         gate: std::sync::Arc<crate::output_lease::OutputGate>,
@@ -103,6 +122,9 @@ impl SurfaceSession {
     }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
+            #[cfg(test)]
+            test_pump_hook: None,
+            phase: None,
             catalog: std::sync::Arc::new(crate::TrustedExtensionCatalog::default()),
             ceiling: crate::ContractProfile::Surface01,
             wire: crate::ContractProfile::Surface01,
@@ -159,10 +181,23 @@ impl SurfaceSession {
         if !self.negotiated || self.closed {
             return Ok(());
         }
+        // D1 gates inside the pump, AFTER the transport's tick/sample. The
+        // callback cannot renew the already-sampled authority for this read.
+        #[cfg(test)]
+        if let Some(mut hook) = self.test_pump_hook.take() {
+            hook(self, now);
+            self.test_pump_hook = Some(hook);
+        }
         let Some(service) = self.service.clone() else {
             return Ok(());
         };
-        self.pump_supervisor_reads(now)?;
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::SupervisorEnter);
+        let result = self.pump_supervisor_reads(now);
+        crate::phase_evidence::returned(
+            &self.phase,
+            crate::phase_evidence::Phase::SupervisorReturn,
+            result,
+        )?;
         #[cfg(feature = "native-engine")]
         crate::RuntimeService::run_native(&service, self, now)?;
         // Execution and observation continue, but no new effect is prepared for
@@ -183,10 +218,16 @@ impl SurfaceSession {
                     now
                 }
             };
+            crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DispatchEnter);
             let next = service
                 .lock()
-                .map_err(|_| "runtime service poisoned")?
-                .next_dispatch(self, &self.sent_dispatches, now)?;
+                .map_err(|_| "runtime service poisoned".to_string())
+                .and_then(|mut guard| guard.next_dispatch(self, &self.sent_dispatches, now));
+            let next = crate::phase_evidence::returned(
+                &self.phase,
+                crate::phase_evidence::Phase::DispatchReturn,
+                next,
+            )?;
             let Some((id, bytes)) = next else {
                 break;
             };
@@ -225,6 +266,7 @@ impl SurfaceSession {
         self.output.pop_front()
     }
     pub fn disconnect(&mut self) {
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DisconnectEnter);
         if let Some(service) = &self.service
             && let Ok(mut service) = service.lock()
         {
@@ -241,6 +283,7 @@ impl SurfaceSession {
         self.read_results.clear();
         self.read_result_authority.clear();
         self.heard_reads.clear();
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DisconnectReturn);
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
         self.wire.validate("surface-message", &message)?;

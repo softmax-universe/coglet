@@ -25,6 +25,7 @@ mod heard;
 mod host;
 mod journal;
 mod output_lease;
+mod phase_evidence;
 #[cfg(feature = "device")]
 mod policy_local;
 mod router;
