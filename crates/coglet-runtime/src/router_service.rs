@@ -3,7 +3,7 @@ use coglet_proto::{
     authority::Authority,
     transport::{ALPN, Role, Session},
 };
-use coglet_runtime::{AdapterConfig, DeviceConfig, DeviceHandler, TargetPin};
+use coglet_runtime::{AdapterConfig, DeviceConfig, DeviceHandler, ProducerProfile, TargetPin};
 use iroh::{Endpoint, EndpointAddr, SecretKey, endpoint::presets};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -36,6 +36,9 @@ struct FileConfig {
     targets: BTreeMap<String, TargetPin>,
     #[serde(default)]
     adapter: Option<AdapterConfig>,
+    /// ADR-0033 opt-in local producer interface; absent = legacy behavior.
+    #[serde(default)]
+    profile: Option<ProducerProfile>,
 }
 
 pub fn run(path: &str) -> Result<(), String> {
@@ -68,6 +71,7 @@ async fn run_async(path: &Path) -> Result<(), String> {
             kill_switch: config.kill_switch,
             targets: config.targets,
             adapter: config.adapter,
+            profile: config.profile,
         },
         authority,
         &config.validator_path,
@@ -78,7 +82,13 @@ async fn run_async(path: &Path) -> Result<(), String> {
                 .map(|d| d.as_secs())
         }),
     )?;
+    // ADR-0043: validate and bind BOTH producer sockets before recovery can
+    // expose an adapter listener; all output gates are already closed.
+    let producers = handler.bind_producer_endpoint(tokio::runtime::Handle::current())?;
     handler.recover_running().await?;
+    // Accept on the emergency revoke endpoint BEFORE contacting the hub: custody
+    // must not depend on router connectivity.
+    producers.start()?;
     let endpoint = Endpoint::builder(presets::Minimal)
         .secret_key(key)
         .alpns(vec![ALPN.to_vec()])

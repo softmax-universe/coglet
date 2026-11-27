@@ -50,10 +50,22 @@ An authorized operator must:
    `gh run download RUN --name dependency-rust --dir DIR` (repeat the other name).
    Do not execute or extract the `.tar.gz` dependency archives. Inspect their JSON
    identities/digests and ensure they match the successful reviewed run.
-3. Create a prerelease `dependency-candidate-PR_HEAD_SHA`, targeted at that exact
-   head, with `--latest=false`. Upload only the named `.json`/`.tar.gz` assets with
-   `gh release upload`; never use `--clobber` or the main mirror tag. Record the
-   source run URL, merge SHA, PR head and independent review in release notes.
+3. Create a **draft** prerelease `dependency-candidate-PR_HEAD_SHA`, targeted at
+   that exact head, with `gh release create ... --draft --prerelease --latest=false`.
+   Upload only the named `.json`/`.tar.gz` assets with `gh release upload`; never use
+   `--clobber` or the main mirror tag. Read back every asset's name, size and digest
+   against the validated local files, then publish with
+   `gh release edit TAG --draft=false --prerelease --latest=false`. Read back the
+   published release and assets before rerunning CI. Record the source run URL,
+   merge SHA, PR head and independent review in release notes.
+   Publishing before uploading permanently locks an empty release when repository
+   release immutability is enabled. Do not disable immutability, move its tag, or
+   delete/recreate it: an immutable release's tag name cannot be reused. Preserve
+   that failed candidate as non-acceptance evidence and use a new reviewed head's
+   distinct candidate tag. Input-addressed archives may be reused only after
+   verifying every compatibility input is unchanged; retain their original names,
+   manifest source SHA, preparation run/artifact IDs and digests. The new head still
+   requires its own actual proof, not the old head's preparation-only success.
 4. Rerun the entire same run (`gh run rerun RUN`) so the candidate-existence gate
    is evaluated again; a failed-only rerun cannot reevaluate a successful gate.
    The reusable

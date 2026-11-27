@@ -127,6 +127,45 @@ impl AcceptedRefStore {
         Ok(applied)
     }
 
+    /// Trusted-local immutable admission custody for the exact completed initial
+    /// code push. This is not a remotely disclosed receipt or fresh authority.
+    pub fn preinstall_admission(
+        &self,
+        hub: EndpointId,
+        target: &str,
+        expected: &Value,
+    ) -> Result<Option<Value>> {
+        let state = self.authority.0.lock().map_err(|_| StoreError::Storage)?;
+        let row: Option<(String, String, String)> = state.db.query_row(
+            "SELECT a.signed,i.request,o.digest FROM proto_preinstall_boundaries b
+             JOIN proto_ref_audit a ON a.id=b.audit_id
+             JOIN proto_git_operations o ON o.peer=b.peer AND o.operation_id=b.operation_id AND o.target=b.target AND o.audit_id=a.id
+             JOIN proto_git_intents i ON i.peer=o.peer AND i.operation_id=o.operation_id AND i.target=o.target
+             WHERE a.hub=?1 AND a.coglet=?2 AND a.signed=?3
+             AND json_extract(o.receipt,'$.state')='applied'",
+            params![hub.to_string(), target, serde_json::to_string(expected).map_err(|_| StoreError::Storage)?],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        ).optional()?;
+        let Some((signed, request, retained_digest)) = row else {
+            return Ok(None);
+        };
+        let signed: Value = serde_json::from_str(&signed).map_err(|_| StoreError::Storage)?;
+        let request: Value = serde_json::from_str(&request).map_err(|_| StoreError::Storage)?;
+        let op = PushOperation::new(hub, &request)?;
+        if signed != *expected
+            || op.params["update"] != signed
+            || op.target != target
+            || op.digest != retained_digest
+        {
+            return Err(StoreError::Storage);
+        }
+        Ok(Some(
+            serde_json::json!({"signed_ref":signed,"operation_id":op.id,
+            "intent":op.digest,"scope":{"actor":op.context["actor"],
+            "ticket":op.context.get("ticket").cloned().unwrap_or(Value::Null),"method":"hub.git.push"}}),
+        ))
+    }
+
     /// Explicit completion evidence for the exact staged ref. No matching-tip or
     /// accepted-row heuristic. Install's later SQL guard re-pins the exact signed
     /// ref; completion custody itself is immutable.

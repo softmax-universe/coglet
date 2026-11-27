@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand};
 use coglet_cli::{
     checked, enrollment, inspect, package_setup, private_file, read, read_json, replay, run_daemon,
@@ -80,9 +80,56 @@ enum Commands {
         #[arg(long)]
         invite_file: Option<PathBuf>,
     },
-    /// Unavailable until the hub operator/device Git+lifecycle adapter is qualified
-    #[command(alias = "push")]
-    Deploy { package: PathBuf },
+    /// Build/sign, transfer, install and start through the router's local admin socket
+    Deploy(Deployment),
+    /// Build/sign and transfer only; does not install or start
+    Push(Deployment),
+    /// Obtain a durable runtime status observation (fresh ID for a fresh sample)
+    Status(Lifecycle),
+    /// Stop at a confirmed runtime boundary
+    Stop(Lifecycle),
+}
+
+#[derive(clap::Args)]
+struct Lifecycle {
+    /// Local ADR-0018 socket on the router host; never a forwarded socket
+    #[arg(long)]
+    operator_socket: PathBuf,
+    /// Stable 32-hex ID; retain and retry the SAME ID/intent after unknown outcomes
+    #[arg(long)]
+    operation_id: String,
+    #[arg(long)]
+    device: String,
+    #[arg(long)]
+    target: String,
+    #[arg(long, default_value_t = 30000, value_parser = clap::value_parser!(u64).range(1..=300000))]
+    timeout_ms: u64,
+}
+#[derive(clap::Args)]
+struct Deployment {
+    #[command(flatten)]
+    local: Lifecycle,
+    #[arg(long)]
+    source_commit: String,
+    /// Trusted router-provisioned recipe reference, not a local path or command
+    #[arg(long)]
+    build_profile: String,
+    #[arg(long)]
+    delegation_id: String,
+}
+async fn operator(
+    op: &str,
+    local: Lifecycle,
+    build: Option<(String, String, String)>,
+) -> Result<Value> {
+    let mut params = json!({"device":local.device,"target":local.target});
+    if let Some((commit, profile, delegation)) = build {
+        params["source_commit"] = json!(commit);
+        params["build_profile"] = json!(profile);
+        params["delegation_id"] = json!(delegation);
+    }
+    let request = coglet_cli::operator::request(op, &local.operation_id, local.timeout_ms, params)?;
+    coglet_cli::operator::call(&local.operator_socket, &request).await
 }
 
 async fn execute(cli: Cli) -> Result<Value> {
@@ -224,18 +271,42 @@ async fn execute(cli: Cli) -> Result<Value> {
                 .transpose()?;
             enrollment::enroll(&identity, hub.parse()?, address, invite.as_deref()).await
         }
-        Commands::Deploy { package } => {
-            package_setup(&package)?;
-            bail!(
-                "deployment unavailable: hub.git.push/install/start are hub-to-device operations; the reference hub has no qualified operator deployment adapter. No upload, registration or lifecycle mutation was attempted"
+        Commands::Deploy(d) => {
+            operator(
+                "deploy",
+                d.local,
+                Some((d.source_commit, d.build_profile, d.delegation_id)),
             )
+            .await
         }
+        Commands::Push(d) => {
+            operator(
+                "push",
+                d.local,
+                Some((d.source_commit, d.build_profile, d.delegation_id)),
+            )
+            .await
+        }
+        Commands::Status(local) => operator("status", local, None).await,
+        Commands::Stop(local) => operator("stop", local, None).await,
     }
 }
 #[tokio::main]
 async fn main() {
     match execute(Cli::parse()).await {
-        Ok(value) => println!("{}", serde_json::to_string(&value).expect("JSON value")),
+        Ok(value) => {
+            println!("{}", serde_json::to_string(&value).expect("JSON value"));
+            if value["version"] == "local-1" && !coglet_cli::operator::applied(&value) {
+                eprintln!(
+                    "coglet: operator operation not applied; retain this receipt and retry identical intent with the SAME operation ID (fresh ID only for a new operation)"
+                );
+                std::process::exit(if value["receipt"]["state"] == "queued" {
+                    3
+                } else {
+                    1
+                });
+            }
+        }
         Err(error) => {
             eprintln!("coglet: {error:#}");
             std::process::exit(1);

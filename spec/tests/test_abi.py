@@ -11,23 +11,20 @@ from reference_cddl import Schema, ValidationError
 from referencing import Registry, Resource
 
 from test_common import SPEC, decode, encode
+from state_hash import snapshot_hash as digest
 from heard_archive import HEARD_PATH, read_state, check_transition
 
 BASE = 'https://coglet.dev/spec/'
 
 
-def digest(value):
-    return hashlib.sha256(encode(value)).hexdigest()
-
-
 def record_hash(rec):
-    return digest({k: v for k, v in rec.items() if k != 'record_hash'})
+    return hashlib.sha256(encode({k: v for k, v in rec.items() if k != 'record_hash'})).hexdigest()
 
 
 def valid_path(path):
     parts = path.split('/')
     return (len(parts) >= 3 and parts[0] == '' and parts[1] in ('code', 'data', 'logs')
-            and all(p not in ('', '.', '..') and all(ord(c) >= 32 and ord(c) != 127 and c != '\\' for c in p) for p in parts[1:])
+            and all(p not in ('', '.', '..') and p.lower() != '.git' and all(ord(c) >= 32 and ord(c) != 127 and c != '\\' for c in p) for p in parts[1:])
             and str(PurePosixPath(path)) == path)
 
 
@@ -334,7 +331,7 @@ def check_trace(trace, manifest_validator=None):
             raise ValueError('compute mode changed')
         if any(rec['budgets'][k] > man['budgets'][k] for k in man['budgets'] if k != 'compute_mode'):
             raise ValueError('budget exceeds manifest')
-        if any(e['kind'] not in man['subscriptions'] and e['kind'] not in ('runtime.inbox', 'runtime.timer', 'runtime.debug_step') for e in rec['events']):
+        if any(e['kind'] not in man['subscriptions'] and e['kind'] not in ('runtime.inbox', 'runtime.timer', 'runtime.manage_step') for e in rec['events']):
             raise ValueError('unsubscribed event')
         if index and any(rec[k] != trace['records'][0][k] for k in ('code_hash', 'manifest_hash')):
             raise ValueError('trace code/manifest changed')
@@ -373,7 +370,7 @@ def check_trace(trace, manifest_validator=None):
                 raise ValueError('terminal must use inbox only')
             if event['kind'] in ('runtime.inbox', 'runtime.timer') and event['source'] != trace['coglet']:
                 raise ValueError('runtime wake source')
-            if event['kind'] == 'runtime.debug_step' and (event['payload'] != {} or event['source'] != rec['coglet'] or event['logical_time'] != rec['logical_time']):
+            if event['kind'] == 'runtime.manage_step' and (event['payload'] != {} or event['source'] != rec['coglet'] or event['logical_time'] != rec['logical_time']):
                 raise ValueError('debug step wake binding')
             if event['kind'] == 'runtime.inbox':
                 payload = event['payload']
@@ -561,7 +558,7 @@ class AbiFixtures(unittest.TestCase):
     def test_manifest_catalog_and_resource_admission(self):
         vectors = json.loads((SPEC / 'fixtures/abi/manifest-admission.fixture').read_text())
         from build_manifest_admission import cases
-        timelines = json.loads((SPEC.parent / 'conformance/abi/manifest-admission.json').read_text())
+        timelines = json.loads((SPEC / 'fixtures/abi/manifest-admission-timeline.fixture').read_text())
         self.assertEqual(timelines, cases())
         self.assertEqual(len(timelines), len(vectors['cases']))
         for case in vectors['cases']:
@@ -577,7 +574,7 @@ class AbiFixtures(unittest.TestCase):
                         check_manifest_admission(man, vectors['entries'], grant)
 
     def test_admission_memory_vectors(self):
-        cases = json.loads((SPEC.parent / 'conformance/abi/admission.json').read_text())
+        cases = json.loads((SPEC / 'fixtures/abi/admission-timeline.fixture').read_text())
         self.assertEqual({case['name'] for case in cases}, {
             'initial-memory-at-cap', 'initial-memory-over-cap', 'maximum-memory-over-cap'})
         for case in cases:
@@ -616,7 +613,7 @@ class AbiFixtures(unittest.TestCase):
         print(f'abi: {len(cases)} admission vectors (not engine execution)')
 
     def test_data_only_harness_timelines(self):
-        cases = json.loads((SPEC.parent / 'conformance/abi/cases.json').read_text())
+        cases = json.loads((SPEC / 'fixtures/abi/cases-timeline.fixture').read_text())
         self.assertEqual(len(cases), len({c['name'] for c in cases}))
         for case in cases:
             with self.subTest(case=case['name']):
@@ -624,7 +621,7 @@ class AbiFixtures(unittest.TestCase):
                 records = [step['expect']['journal'] for step in case['steps'] if 'expect' in step]
                 manifest_bytes = encode(first['manifest'])
                 code_bytes = bytes.fromhex(first['initial_files']['/code/bin/step.wasm'])
-                trace = dict(version='0.1', trace_id=records[0]['trace_id'], coglet=records[0]['coglet'],
+                trace = dict(version='1.0', trace_id=records[0]['trace_id'], coglet=records[0]['coglet'],
                              initial_hash=digest(first['initial_files']), records=records,
                              blobs={hashlib.sha256(code_bytes).hexdigest(): code_bytes.hex(),
                                     hashlib.sha256(manifest_bytes).hexdigest(): manifest_bytes.hex()},

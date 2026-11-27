@@ -4,6 +4,9 @@ use super::*;
 use coglet_types::Value as V;
 use std::{cell::Cell as StdCell, process::Command};
 
+#[path = "profile_tests.rs"]
+mod profile_tests;
+
 const OWNER: &str = "coglet:1111111111111111111111111111111111111111111111111111111111111111";
 const TRACE: &str = "55555555555555555555555555555555";
 
@@ -30,7 +33,24 @@ fn base_record() -> Vec<(V, V)> {
     m
 }
 fn decision(catalog_hash: &str, step: u64, before: u64, after: u64, artifacts: &[u8]) -> Decision {
-    let mut m = base_record();
+    decision_from(base_record(), catalog_hash, step, before, after, artifacts)
+}
+fn legacy_decision(catalog_hash: &str) -> Decision {
+    // Exact pre-ADR0035 golden bytes (including historical filesystem hashes).
+    let raw = hex::decode(include_str!("legacy_step_record.hex").trim()).unwrap();
+    let V::Map(m) = coglet_types_hub0::decode("database::db-step-record", &raw).unwrap() else {
+        panic!("legacy record")
+    };
+    decision_from(m, catalog_hash, 1, 0, 1, ARTIFACTS)
+}
+fn decision_from(
+    mut m: Vec<(V, V)>,
+    catalog_hash: &str,
+    step: u64,
+    before: u64,
+    after: u64,
+    artifacts: &[u8],
+) -> Decision {
     let int = |n: u64| V::Integer(n.into());
     for (k, v) in &mut m {
         let V::Text(name) = k else { continue };
@@ -150,6 +170,10 @@ fn run_step(root: &Path, journal: &mut FileJournal) -> Result<StepId> {
         4096,
     )
     .unwrap();
+    if std::env::var("COGLET_DB_MODE").is_ok_and(|m| m == "legacy") {
+        coordinator::legacy_complete_for_test(unit, &legacy_decision(&catalog_hash));
+        unreachable!();
+    }
     unit.complete(&decision(&catalog_hash, 1, 0, 1, ARTIFACTS), journal)
 }
 fn guest_runs(root: &Path) -> usize {
@@ -345,7 +369,7 @@ fn recovery_abort_overlay_matches_spec() {
     let abort = recovery_abort_record(&prepared.record).unwrap();
     let c = coglet_types::DatabaseDbStepRecord1::from_cbor(&prepared.record).unwrap();
     let a = coglet_types::DatabaseDbStepRecord2::from_cbor(&abort).unwrap();
-    assert_eq!(a.version, "0.2");
+    assert_eq!(a.version, "1.1");
     assert_eq!(a.status, "aborted");
     assert_eq!(a.db_after, a.db_before);
     assert_eq!(a.db_after, 5);
@@ -643,6 +667,118 @@ fn admit_err(result: Result<Unit<'_>>) -> String {
 }
 
 #[test]
+fn legacy_prepared_crash_recovery_preserves_bytes_and_abort_hashes() {
+    for (point, committed) in [("after_prepare", false), ("after_db_commit", true)] {
+        let root = tempfile::tempdir().unwrap();
+        drop(provision(root.path()));
+        assert_eq!(spawn_child(root.path(), point, "legacy"), Some(137));
+        assert_eq!(
+            spawn_child(
+                root.path(),
+                if committed {
+                    "recover_after_publish"
+                } else {
+                    "recover_after_abort_publish"
+                },
+                "recover"
+            ),
+            Some(137)
+        );
+        let mut db = Database::open(root.path(), OWNER).unwrap();
+        let expected = legacy_decision(&catalog().digest().unwrap());
+        let original = coordinator::validate_stored_committed(&expected.record).unwrap();
+        assert_eq!(original.version, "0.2");
+        assert!(
+            recovery_abort_record(&expected.record).is_err(),
+            "public overlay is current-only"
+        );
+        let mut journal = FileJournal::new(&root.path().join("journal"));
+        let result = db.recover(&mut journal).unwrap();
+        assert_eq!(matches!(result, Recovered::RolledForward(_)), committed);
+        assert_eq!(count(&db, "d"), i64::from(committed));
+        if committed {
+            assert_eq!(
+                journal.committed(1).unwrap(),
+                format!(
+                    "{}\n{}",
+                    hex::encode(&expected.record),
+                    hex::encode(ARTIFACTS)
+                )
+            );
+        } else {
+            let abort = journal.aborted(1).unwrap();
+            let value = coglet_types_hub0::decode("database::db-step-record", &abort).unwrap();
+            let a: coglet_types::DatabaseDbStepRecord2 = value.deserialized().unwrap();
+            assert_eq!(a.version, "0.2");
+            assert_eq!(a.output_hash, original.input_hash);
+            assert_eq!(a.input_hash, original.input_hash);
+            assert_eq!(a.before_hash, original.before_hash);
+            assert_eq!(a.output_files, original.input_files);
+            assert_eq!((a.db_before, a.db_after), (0, 0));
+            assert_eq!(a.record_hash, coordinator::record_hash_of(&abort).unwrap());
+            assert!(
+                matches!(&a.failure, V::Map(m) if m.iter().any(|(k,v)| matches!(k, V::Text(s) if s == "prepared_record_hash") && v == &V::Text(original.record_hash.clone())))
+            );
+        }
+        assert_eq!(guest_runs(root.path()), 1);
+        db.dispatch_fence().unwrap();
+        assert_eq!(db.recover(&mut journal).unwrap(), Recovered::Nothing);
+    }
+}
+
+#[test]
+fn stored_legacy_validation_rejects_unknown_fields_and_bad_hashes() {
+    let original = legacy_decision(&catalog().digest().unwrap());
+    let V::Map(mut fields) = coglet_types::decode_profile(&original.record).unwrap() else {
+        panic!("record")
+    };
+    fields.push((V::Text("unrecognized".into()), V::Null));
+    let forged = decision_from(fields, &catalog().digest().unwrap(), 1, 0, 1, ARTIFACTS);
+    assert!(
+        coordinator::validate_stored_committed(&forged.record).is_err(),
+        "a correct hash cannot bypass the frozen closed schema"
+    );
+    let V::Map(mut fields) = coglet_types::decode_profile(&original.record).unwrap() else {
+        panic!("record")
+    };
+    for (k, v) in &mut fields {
+        if matches!(k, V::Text(s) if s == "record_hash") {
+            *v = V::Text("0".repeat(64));
+        }
+    }
+    assert!(
+        coordinator::validate_stored_committed(
+            &coglet_types::encode_profile(&V::Map(fields)).unwrap()
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn legacy_decision_is_rejected_before_public_completion_persists_anything() {
+    let root = tempfile::tempdir().unwrap();
+    let mut db = provision(root.path());
+    let cat = catalog();
+    let old = legacy_decision(&cat.digest().unwrap());
+    let mut journal = FileJournal::new(&root.path().join("journal"));
+    let a = admission(&db, &cat);
+    let mut unit = db.admit(&cat, CODE, a).unwrap();
+    unit.statement(
+        "put",
+        Mode::Write,
+        &[Cell::Text("x".into()), Cell::Text("y".into())],
+        1,
+        4096,
+    )
+    .unwrap();
+    assert!(unit.complete(&old, &mut journal).is_err());
+    assert_eq!(count(&db, "x"), 0);
+    assert!(db.pending_files().unwrap().is_empty());
+    assert_eq!(db.unpublished_markers().unwrap(), 0);
+    assert_eq!(journal.published, 0);
+}
+
+#[test]
 fn recovery_journal_failure_is_held_and_preserves_the_decision() {
     for (point, committed) in [("after_db_commit", true), ("after_prepare", false)] {
         let root = tempfile::tempdir().unwrap();
@@ -667,4 +803,61 @@ fn recovery_journal_failure_is_held_and_preserves_the_decision() {
             ));
         }
     }
+}
+
+#[test]
+fn stored_historical_surface02_record_keeps_bytes_and_public_paths_reject_it() {
+    use super::ContractProfile::{Surface01, Surface02};
+    // Real historical golden bytes whose only change is a dotted event kind (valid
+    // for surface-0.2, refused by the frozen hub grammar), rehashed as the old writer would.
+    let golden = legacy_decision(&catalog().digest().unwrap());
+    let V::Map(mut fields) = coglet_types::decode_profile(&golden.record).unwrap() else {
+        panic!("record")
+    };
+    for (k, v) in &mut fields {
+        if matches!(k, V::Text(t) if t == "events") {
+            let V::Array(events) = v else {
+                panic!("events")
+            };
+            let V::Map(event) = &mut events[0] else {
+                panic!("event")
+            };
+            for (ek, ev) in event {
+                if matches!(ek, V::Text(t) if t == "kind") {
+                    *ev = V::Text("softmax.app.view_changed".into());
+                }
+            }
+        }
+    }
+    let old = decision_from(fields, &catalog().digest().unwrap(), 1, 0, 1, ARTIFACTS);
+    let stored =
+        coordinator::validate_stored_committed_with_profile(&old.record, Surface02).unwrap();
+    assert_eq!(stored.version, "0.2");
+    assert_eq!(
+        coordinator::record_hash_of(&old.record).unwrap(),
+        stored.record_hash
+    );
+    assert!(coordinator::validate_stored_committed_with_profile(&old.record, Surface01).is_err());
+    assert!(coordinator::validate_committed(&old.record, Surface02).is_err());
+    assert!(recovery_abort_record_with_profile(&old.record, Surface02).is_err());
+    let abort = coordinator::stored_recovery_abort_record(&old.record, Surface02).unwrap();
+    let a: coglet_types::DatabaseDbStepRecord2 = coglet_types::decode_profile(&abort)
+        .unwrap()
+        .deserialized()
+        .unwrap();
+    assert_eq!(a.version, "0.2");
+    assert_eq!(a.record_hash, coordinator::record_hash_of(&abort).unwrap());
+    // A forged version is not mapped to the historical schema.
+    let V::Map(mut fields) = coglet_types::decode_profile(&old.record).unwrap() else {
+        panic!("record")
+    };
+    for (k, v) in &mut fields {
+        if matches!(k, V::Text(t) if t == "version") {
+            *v = V::Text("0.1".into());
+        }
+    }
+    let forged = decision_from(fields, &catalog().digest().unwrap(), 1, 0, 1, ARTIFACTS);
+    assert!(
+        coordinator::validate_stored_committed_with_profile(&forged.record, Surface02).is_err()
+    );
 }

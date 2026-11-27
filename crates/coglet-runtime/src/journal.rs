@@ -1,4 +1,5 @@
-use crate::{Result, cbor, digest, profile_value, validate};
+use crate::phase_evidence::{Phase, mark};
+use crate::{Result, cbor, digest, profile_value};
 use coglet_types::Value as V;
 use serde_json::{Value, json};
 #[cfg(unix)]
@@ -10,6 +11,9 @@ use std::{
 };
 
 const MAX_TRANSACTION: usize = 64 * 1024 * 1024;
+#[cfg(test)]
+#[path = "phase_wal_tests.rs"]
+mod phase_tests;
 
 /// Internal WAL, NOT the exported ABI journal. One fsynced frame atomically
 /// holds all runtime host state and an optional ABI record. The ABI stream is
@@ -32,6 +36,7 @@ const MAX_TRANSACTION: usize = 64 * 1024 * 1024;
 /// It participates in the WAL checksum/chain, never the ABI record or export.
 /// Older frames and direct/aborted database writes may omit this receipt.
 pub struct DurableStore {
+    phase: Option<crate::phase_evidence::Sink>,
     #[cfg(test)]
     pub(crate) before_commit: Option<Box<dyn FnMut() + Send>>,
     file: LockedFile,
@@ -71,6 +76,13 @@ impl std::ops::DerefMut for LockedFile {
 }
 
 impl DurableStore {
+    pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
+        self.phase.clone()
+    }
+    pub(crate) fn enable_phase_sink(&mut self) {
+        self.phase
+            .get_or_insert_with(crate::phase_evidence::Recorder::new);
+    }
     pub fn open(path: &Path) -> Result<Self> {
         let mut options = OpenOptions::new();
         options.read(true).write(true).create(true).truncate(false);
@@ -175,7 +187,10 @@ impl DurableStore {
                 if !record.is_null() {
                     return Err("WAL database frame also carries a JSON record".into());
                 }
-                let projection = database_projection(&bytes)?;
+                let profile = crate::ContractProfile::from_setup(&transaction["state"])?;
+                let projection = crate::hash_upgrade::historical_scope(true, || {
+                    database_projection_with_profile(&bytes, profile)
+                })?;
                 if db_artifacts_hash.is_some() && projection["status"] != "committed" {
                     return Err("WAL artifacts receipt on non-committed record".into());
                 }
@@ -183,7 +198,8 @@ impl DurableStore {
                 raw_records.push(Some(bytes));
                 db_artifacts_hashes.push(db_artifacts_hash);
             } else if !record.is_null() {
-                validate_record(record)?;
+                let profile = crate::ContractProfile::from_setup(&transaction["state"])?;
+                crate::hash_upgrade::historical_scope(true, || validate_record(record, profile))?;
                 journal.push(record.clone());
                 raw_records.push(None);
                 db_artifacts_hashes.push(None);
@@ -204,6 +220,7 @@ impl DurableStore {
             db_artifacts_hashes,
             previous,
             poisoned: false,
+            phase: None,
             #[cfg(test)]
             before_commit: None,
         })
@@ -217,12 +234,19 @@ impl DurableStore {
             hook();
         }
         if let Some(record) = record {
-            validate_record(record)?;
+            validate_record(record, crate::ContractProfile::from_setup(state)?)?;
         }
-        let mut transaction = json!({"state":state, "journal":record, "previous":self.previous});
-        let hash = digest(&cbor(&transaction)?);
-        transaction["hash"] = Value::String(hash.clone());
-        let raw = cbor(&transaction)?;
+        mark(&self.phase, Phase::EncodeEnter);
+        let encoded = (|| -> Result<_> {
+            let mut transaction =
+                json!({"state":state, "journal":record, "previous":self.previous});
+            let hash = digest(&cbor(&transaction)?);
+            transaction["hash"] = Value::String(hash.clone());
+            let raw = cbor(&transaction)?;
+            Ok((raw, hash))
+        })();
+        let (raw, hash) =
+            crate::phase_evidence::returned(&self.phase, Phase::EncodeReturn, encoded)?;
         self.append(&raw, hash, state)?;
         if let Some(record) = record {
             self.journal.push(record.clone());
@@ -256,7 +280,8 @@ impl DurableStore {
         record: &[u8],
         artifacts_hash: Option<String>,
     ) -> Result<()> {
-        let projection = database_projection(record)?;
+        let projection =
+            database_projection_with_profile(record, crate::ContractProfile::from_setup(state)?)?;
         if artifacts_hash.is_some() && projection["status"] != "committed" {
             return Err("artifacts receipt requires committed record".into());
         }
@@ -290,12 +315,20 @@ impl DurableStore {
             return Err("resource_exhausted: transaction too large".into());
         }
         self.poisoned = true;
+        mark(&self.phase, Phase::WalWriteEnter);
         self.file
             .write_all(&(raw.len() as u32).to_be_bytes())
             .and_then(|_| self.file.write_all(raw))
-            .and_then(|_| self.file.sync_all())
+            .and_then(|_| {
+                mark(&self.phase, Phase::WalWriteDone);
+                mark(&self.phase, Phase::WalSyncEnter);
+                self.file.sync_all()
+            })
             .map_err(|e| e.to_string())?;
+        mark(&self.phase, Phase::WalSyncDone);
+        mark(&self.phase, Phase::CacheEnter);
         self.state = Some(state.clone());
+        mark(&self.phase, Phase::CacheReturn);
         self.previous = Value::String(hash);
         self.poisoned = false;
         Ok(())
@@ -339,11 +372,11 @@ impl DurableStore {
     }
 }
 
-fn validate_record(record: &Value) -> Result<()> {
-    validate(
+fn validate_record(record: &Value, profile: crate::ContractProfile) -> Result<()> {
+    profile.validate(
         if record.get("step").is_some() {
             "step-record"
-        } else if record["version"] == "0.2" {
+        } else if crate::hash_upgrade::database_version(&record["version"]) {
             "database::db-boundary-record"
         } else {
             "boundary-record"
@@ -364,8 +397,23 @@ fn validate_record(record: &Value) -> Result<()> {
 
 /// Strictly validate exact ABI 0.2 record bytes (profile, closed schema,
 /// canonical encoding, correct hash) and derive their JSON projection.
-pub(crate) fn database_projection(raw: &[u8]) -> Result<Value> {
-    let record = coglet_types::decode("database::db-step-record", raw)?;
+pub(crate) fn database_projection_with_profile(
+    raw: &[u8],
+    profile: crate::ContractProfile,
+) -> Result<Value> {
+    let record = if profile == crate::ContractProfile::Surface01 {
+        // ADR-0035: only the private historical reader may decode the frozen
+        // 0.x pins; public admission requires the current hash identity.
+        let parsed = coglet_types::decode_profile(raw)?;
+        let version = project(&parsed, 0)?["version"].clone();
+        if crate::hash_upgrade::historical() && crate::hash_upgrade::legacy_version(&version) {
+            coglet_types::decode("database::db-step-record", raw)?
+        } else {
+            crate::hash_upgrade::decode_current("database::db-step-record", raw)?
+        }
+    } else {
+        crate::profile_codec::decode(profile.rule("database::db-step-record"), raw)?
+    };
     let V::Map(entries) = &record else {
         return Err("database record is not a map".into());
     };

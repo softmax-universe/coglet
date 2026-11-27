@@ -28,8 +28,12 @@ impl SurfaceSession {
         let guard = service.lock().map_err(|_| "runtime service poisoned")?;
         let epoch = guard.surface_epoch(binding.surface());
         let catalog = guard.catalog.clone();
+        let ceiling = guard.contract_profile();
+        let phase = guard.phase_sink();
         drop(guard);
         let mut session = Self::new(binding);
+        session.phase = phase;
+        session.ceiling = ceiling;
         session.catalog = catalog;
         // A normal adapter constructor must not inherit fixture admission.
         std::sync::Arc::make_mut(&mut session.catalog).echo_fixture = false;
@@ -101,6 +105,9 @@ impl SurfaceSession {
             {
                 return Err("sandbox requires exactly one supervisor-bound pilot".into());
             }
+            if self.withholds(name) {
+                return Err("extension entry unavailable at negotiated 0.1".into());
+            }
             if !entries.insert(name) {
                 return Err("duplicate capability entry".into());
             }
@@ -112,6 +119,9 @@ impl SurfaceSession {
             ] {
                 for value in entry[field].as_array().ok_or("missing operation list")? {
                     let name = value.as_str().ok_or("invalid operation")?;
+                    if self.withholds(name) {
+                        return Err("extension operation unavailable at negotiated 0.1".into());
+                    }
                     // Unsupported operations never gain authority. Fail closed rather
                     // than falling back to generic profile-map schema validation.
                     let (expected_entry, uri) = self.catalog.binding(name, direction)?;
@@ -147,6 +157,9 @@ impl SurfaceSession {
             }
             for resource in entry["exclusive"].as_array().ok_or("missing resources")? {
                 let resource = resource.as_str().ok_or("invalid resource")?;
+                if self.withholds(resource) {
+                    return Err("extension resource unavailable at negotiated 0.1".into());
+                }
                 let known = match name {
                     "expression.control" => resource == "display.face",
                     "speech.control" | "speech.session" => {
@@ -326,8 +339,11 @@ impl SurfaceSession {
     /// Calculate a NEW envelope only. Durable dispatch owns retry bytes; callers
     /// must not use this function to reconstruct an uncertain historical request.
     pub fn translate_action(&self, action: &Value, now: u64) -> Result<Value> {
-        validate("action", action)?;
+        self.wire.validate("action", action)?;
         let op = action["capability"].as_str().ok_or("missing capability")?;
+        if self.withholds(op) {
+            return Err("permission_denied: extension unavailable at negotiated 0.1".into());
+        }
         self.authorize(action["coglet"].as_str().unwrap(), op, "action", now)?;
         self.catalog.check(op, "action", false, &action["args"])?;
         if op == "speech.speak_chunk"
@@ -355,6 +371,8 @@ impl SurfaceSession {
             .ok_or("deadline overflow")?;
         let mut mapped = action.clone();
         mapped["deadline"] = json!(deadline);
-        Ok(json!({"type":"act","body":{"grant_epoch":self.epoch,"action":mapped}}))
+        let envelope = json!({"type":"act","body":{"grant_epoch":self.epoch,"action":mapped}});
+        self.wire.validate("surface-message", &envelope)?;
+        Ok(envelope)
     }
 }

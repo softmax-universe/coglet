@@ -1,5 +1,6 @@
 //! Queue-side recovery constraints in addition to journal host reconstruction.
 use super::*;
+use crate::phase_evidence::{Phase, mark};
 use std::collections::BTreeSet;
 
 impl RuntimeService {
@@ -45,7 +46,7 @@ impl RuntimeService {
             .as_array()
             .ok_or("invalid attempted grants")?
         {
-            validate("capability-name", grant)?;
+            state.contract_profile.validate("capability-name", grant)?;
         }
         let mut candidate = state.runtime.clone();
         candidate.unresolved_attempt = None;
@@ -67,14 +68,45 @@ impl RuntimeService {
     /// No missing usage is synthesized and no guest is invoked. Without such
     /// evidence the attempt remains fenced indefinitely.
     pub fn recover_attempt(&mut self, record: &Value) -> Result<()> {
+        let historical = legacy_version(&self.state.runtime.manifest["version"]);
+        historical_scope(historical, || self.recover_attempt_inner(record))?;
+        self.upgrade_hash_if_ready()
+    }
+
+    fn recover_attempt_inner(&mut self, record: &Value) -> Result<()> {
         if !self.store.is_healthy() {
             return Err("WAL must be reopened before attempt reconciliation".into());
         }
         let next = Self::reconcile_attempt(&self.state, self.store.records(), record)?;
-        self.store.commit(
-            &serde_json::to_value(&next).map_err(|e| e.to_string())?,
-            Some(record),
-        )?;
+        self.publish_recovered_attempt(next, record)
+    }
+
+    /// Only the original in-process detached worker uses its validated live
+    /// prefix. External recovery and database collaborators still reconstruct
+    /// the full journal; no caller-supplied flag can select this route.
+    #[cfg(feature = "native-engine")]
+    pub(super) fn recover_detached_attempt(&mut self, record: &Value) -> Result<()> {
+        if self.state.contract_profile != crate::ContractProfile::Surface01
+            || legacy_version(&self.state.runtime.manifest["version"])
+        {
+            return self.recover_attempt(record);
+        }
+        if !self.store.is_healthy() {
+            return Err("WAL must be reopened before attempt reconciliation".into());
+        }
+        let phase = self.store.phase_sink();
+        mark(&phase, Phase::ReconcileEnter);
+        let result = Self::reconcile_attempt_inner(&self.state, self.store.records(), record, true);
+        let next = crate::phase_evidence::returned(&phase, Phase::ReconcileReturn, result)?;
+        self.publish_recovered_attempt(next, record)
+    }
+
+    fn publish_recovered_attempt(&mut self, next: ServiceState, record: &Value) -> Result<()> {
+        let phase = self.store.phase_sink();
+        mark(&phase, Phase::SerdeEnter);
+        let result = serde_json::to_value(&next).map_err(|e| e.to_string());
+        let value = crate::phase_evidence::returned(&phase, Phase::SerdeReturn, result)?;
+        self.store.commit(&value, Some(record))?;
         self.state = next;
         Ok(())
     }
@@ -87,6 +119,15 @@ impl RuntimeService {
         state: &ServiceState,
         journal: &[Value],
         record: &Value,
+    ) -> Result<ServiceState> {
+        Self::reconcile_attempt_inner(state, journal, record, false)
+    }
+
+    fn reconcile_attempt_inner(
+        state: &ServiceState,
+        journal: &[Value],
+        record: &Value,
+        live_prefix: bool,
     ) -> Result<ServiceState> {
         Self::attempted_ordinals(state)?;
         let inputs = state
@@ -118,15 +159,23 @@ impl RuntimeService {
         if state.router.batch(count)? != *inputs["events"].as_array().unwrap() {
             return Err("recovered attempt no longer matches retained router prefix".into());
         }
-        let offset = state.completed_segments.last().map_or(0, |s| s.end);
-        let mut records = journal[offset..].to_vec();
-        records.push(record.clone());
-        let mut recovered = Runtime::reconstruct(&state.runtime.initial_setup, &records)?;
+        let mut recovered = if live_prefix {
+            state.runtime.observed_successor(record)?
+        } else {
+            let offset = state.completed_segments.last().map_or(0, |s| s.end);
+            let mut records = journal[offset..].to_vec();
+            records.push(record.clone());
+            Runtime::reconstruct(&state.runtime.initial_setup, &records)?
+        };
         recovered.next_source_seq = recovered.next_source_seq.max(state.runtime.next_source_seq);
         recovered.time = recovered.time.max(state.runtime.time);
         recovered.retained_blobs = state.runtime.retained_blobs.clone();
         let mut next = state.clone();
         next.runtime = recovered;
+        if let Some(managed) = &mut next.managed {
+            // The actual begin is already durable: reconcile only its outcome.
+            managed.policy_result(record)?;
+        }
         next.staged_boundary = None;
         next.fenced_staged_prefix = None;
         next.router.consume(count)?;
@@ -139,6 +188,12 @@ impl RuntimeService {
             next.dispatch_order
                 .push(action["id"].as_str().ok_or("missing action ID")?.to_owned());
         }
+        #[cfg(feature = "device")]
+        Self::receiver_finish_step(&mut next, &json!({"journal":record}), &state.runtime.files)?;
+        Self::finish_pending_stops(
+            &mut next,
+            journal.iter().filter(|r| r.get("step").is_some()).count() as u64,
+        )?;
         Ok(next)
     }
 
@@ -169,6 +224,13 @@ impl RuntimeService {
         for event in state.router.events() {
             observe(event)?;
         }
+        #[cfg(feature = "device")]
+        for event in Self::receiver_retired_wakes(state) {
+            if &event["source"] != owner {
+                return Err("invalid retired wake source".into());
+            }
+            observe(event)?;
+        }
         let runtime = state
             .staged_boundary
             .as_ref()
@@ -176,9 +238,10 @@ impl RuntimeService {
             .unwrap_or(&state.runtime);
         // Initial inbox contents are supplied state, not reservations made by
         // this coordinator. Later lines cannot be removed or rewritten.
-        let initial_count = crate::boundary::inbox(&root.files)?.len();
+        let initial_count =
+            crate::boundary::inbox_with_profile(&root.files, state.contract_profile)?.len();
         let mut external_reservations = BTreeSet::new();
-        for message in crate::boundary::inbox(&runtime.files)?
+        for message in crate::boundary::inbox_with_profile(&runtime.files, state.contract_profile)?
             .iter()
             .skip(initial_count)
         {
@@ -209,7 +272,7 @@ impl RuntimeService {
             .as_ref()
             .map(|s| &s.runtime)
             .unwrap_or(&state.runtime);
-        let inbox = crate::boundary::inbox(&runtime.files)?;
+        let inbox = crate::boundary::inbox_with_profile(&runtime.files, state.contract_profile)?;
         let mut inbox_indices = Vec::new();
         let mut timers = BTreeSet::new();
         let mut source_sequences = BTreeSet::new();
@@ -225,6 +288,12 @@ impl RuntimeService {
                 }
             }
             match kind {
+                #[cfg(feature = "device")]
+                "runtime.debug_step" => {
+                    if !Self::receiver_valid_debug_wake(state, event) {
+                        return Err("recovered debug-step wake has no original operation".into());
+                    }
+                }
                 "runtime.inbox" => {
                     let index = event["payload"]["index"]
                         .as_u64()
@@ -272,3 +341,7 @@ impl RuntimeService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "live_replay_differential_tests.rs"]
+mod live_replay_differential_tests;

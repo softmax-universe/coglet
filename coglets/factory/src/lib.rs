@@ -1,6 +1,9 @@
 //! Factory repository; every method's result is provisional until host step commit.
 //! There is deliberately no guest commit, DDL, SQL-text or migration capability.
 pub mod catalog;
+pub mod executive;
+pub mod goals;
+pub mod research;
 pub use coglet_guest_rust::database::DbHost;
 use coglet_guest_rust::database::{Client, DbError};
 use coglet_types::{DatabaseDbPage, DatabaseDbStatement, Value};
@@ -14,6 +17,7 @@ pub fn wake<H: coglet_guest_rust::Host + DbHost>(
     events: &[coglet_guest_rust::Event],
 ) -> std::result::Result<(), coglet_guest_rust::HostError> {
     for event in events {
+        executive::handle(context, event)?;
         if event.kind == "factory.transact" {
             transact(context, &event.payload)?;
             continue;
@@ -267,6 +271,13 @@ pub struct Repository<'a, H: DbHost> {
     client: Client<'a, H>,
 }
 impl<'a, H: DbHost> Repository<'a, H> {
+    /// Admission revision without paging or writing. Used to fence guest scans
+    /// even when their previous page did not return a continuation cursor.
+    pub fn revision(&mut self) -> Result<u64> {
+        Ok(self
+            .call("objects_get", vec![text("factory-policy")])?
+            .revision)
+    }
     pub fn new(host: &'a mut H) -> Self {
         Self {
             client: Client::new(host),
@@ -364,6 +375,20 @@ impl<'a, H: DbHost> Repository<'a, H> {
         )?;
         Ok(())
     }
+    pub fn create_relation(&mut self, relation: &Relation) -> Result<()> {
+        self.call(
+            "relations_create",
+            vec![
+                text(&relation.id),
+                text(&relation.source_id),
+                text(&relation.target_id),
+                text(&relation.relation_type),
+                text(&relation.data_json),
+                uint(relation.version)?,
+            ],
+        )?;
+        Ok(())
+    }
     pub fn append_event(&mut self, event: &SemanticEvent) -> Result<()> {
         self.call(
             "events_append",
@@ -393,4 +418,51 @@ impl<'a, H: DbHost> Repository<'a, H> {
         )?;
         Ok(())
     }
+    /// Authoritative scheduler row. Absent means the host has not leased this task.
+    pub fn get_work_queue(&mut self, task_id: &str) -> Result<Option<WorkQueueView>> {
+        let page = self.call("work_queue_get", vec![text(task_id)])?;
+        if page.rows.len() > 1 || page.next_cursor != Value::Null {
+            return Err(invalid());
+        }
+        page.rows.first().map(|row| row_queue(row)).transpose()
+    }
+}
+
+fn row_queue(row: &[Value]) -> Result<WorkQueueView> {
+    if row.len() != 7 {
+        return Err(invalid());
+    }
+    let text_at = |i: usize| row[i].as_text().map(str::to_owned).ok_or_else(invalid);
+    let int_at = |i: usize| {
+        row[i]
+            .as_integer()
+            .and_then(|n| u64::try_from(i128::from(n)).ok())
+            .ok_or_else(invalid)
+    };
+    let optional_text = |i: usize| match &row[i] {
+        Value::Null => Ok(None),
+        Value::Text(s) => Ok(Some(s.clone())),
+        _ => Err(invalid()),
+    };
+    let optional_until = |i: usize| match &row[i] {
+        Value::Null => Ok(None),
+        Value::Integer(n) => u64::try_from(i128::from(*n))
+            .map(Some)
+            .map_err(|_| invalid()),
+        _ => Err(invalid()),
+    };
+    Ok(WorkQueueView {
+        state: text_at(1)?,
+        lease_owner: optional_text(3)?,
+        lease_until: optional_until(4)?,
+        attempt: int_at(5)?,
+    })
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkQueueView {
+    pub state: String,
+    pub lease_owner: Option<String>,
+    pub lease_until: Option<u64>,
+    pub attempt: u64,
 }

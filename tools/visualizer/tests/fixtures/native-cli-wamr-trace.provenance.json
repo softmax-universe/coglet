@@ -1,73 +1,15 @@
 {
-  "producer_pr": "https://github.com/softmax-universe/coglet/pull/82",
-  "producer_sha": "866ede9b1ee7a1c20cc6e4afed723bfcb093ee4d",
+  "producer_sha": "3119a673bf310f63d232308672fa85bfbbb395be",
   "engine": "wamr",
-  "command": [
-    "coglet run PACKAGE --events batches.json --output RUN.json --cogletd cogletd"
-  ],
-  "trace_id": "116ea4fb808f301ec6eb75e39fdde662",
-  "coglet": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-  "code_hash": "ee6b114def477e20d0a69777fb3fb772bc83143f667bd7ce3df09b2e547a12c3",
-  "final_hash": "3e97a24dbfa7411b1c9976af3b04861e2a5dbfe0155aa093889abaa5358917f5",
-  "steps": 2,
-  "full_trace_sha256": "ca12cd9ed66a1c2fcef2bac9660da052bba9a624a57444e49c7f3756c033bbb2",
-  "records_only_sha256": "da125d679235d76c1bead812a6c640e0c4cc587492f075bb1372f579bf024097",
-  "full_trace_mode": "0o600",
+  "state_hash_definition": "git-sha256-tree-id (ADR-0035)",
+  "producer_command": "tools/visualizer/regenerate_state_hash_fixtures.py (real coglet build/run/replay)",
+  "full_trace_sha256": "d8d50e7acd2e81c97fb0683d269f49de4b749cd3a498b1a608ca6a5e77fc8d28",
+  "records_only_sha256": "eb1d900292143648caf5ddce3c10e8d0e107d01c7c469468349334669f2048ac",
+  "final_hash": "41e7aeb284f5678e1692db8ecf41141d4425f093fd9837f8c60d7e1f3c5c7648",
   "omitted_from_tree": [
     "initial_files",
-    "blobs"
+    "blobs",
+    "/code"
   ],
-  "note": "Actual child-cogletd WAMR sandbox run from unpublished PR82 binaries. Not merged main, not rc1 --mock-stdio, not hub debug. initial_files/blobs omitted because they are private even for this test guest.",
-  "record_output_hashes": [
-    "8be7803946b097cc03f8bd5af9621867254dc9098ff7987cd44c6d619763ef6d",
-    "3e97a24dbfa7411b1c9976af3b04861e2a5dbfe0155aa093889abaa5358917f5"
-  ],
-  "record_engines": [
-    {
-      "build": "0e47872fb4e57833dbeccf7c312a406fa2dac2bc+cumulative-v1",
-      "policy": "wamr-2.4.3-fast-cumulative-v1"
-    },
-    {
-      "build": "0e47872fb4e57833dbeccf7c312a406fa2dac2bc+cumulative-v1",
-      "policy": "wamr-2.4.3-fast-cumulative-v1"
-    }
-  ],
-  "record_file_paths": [
-    [
-      "/code/bin/step.wasm",
-      "/code/build/provenance.cbor",
-      "/data/inbox.jsonl",
-      "/logs/events.jsonl"
-    ],
-    [
-      "/code/bin/step.wasm",
-      "/code/build/provenance.cbor",
-      "/data/inbox.jsonl",
-      "/logs/events.jsonl"
-    ]
-  ],
-  "record_calls": [
-    [
-      {
-        "argument": {
-          "fields": {},
-          "level": "info",
-          "message": "visualizer native CLI WAMR proof"
-        },
-        "op": "log",
-        "result": 0
-      }
-    ],
-    [
-      {
-        "argument": {
-          "fields": {},
-          "level": "info",
-          "message": "visualizer native CLI WAMR proof"
-        },
-        "op": "log",
-        "result": 0
-      }
-    ]
-  ]
+  "note": "Synthetic test guest; projection copies observed hashes and /data verbatim."
 }

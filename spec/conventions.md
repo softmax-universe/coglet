@@ -12,7 +12,7 @@ rule is the standalone union of common messages.
 
 ## Encoding
 
-Wire and hashed values MUST be RFC 8949 §4.2.1 **core deterministic** CBOR:
+Wire values and values hashed as CBOR MUST be RFC 8949 §4.2.1 **core deterministic** CBOR:
 shortest integer/length encodings, definite lengths, and map keys sorted by
 bytewise lexicographic order of their deterministic encodings. This is NOT
 §4.2.3 length-first ordering (some libraries call that mode `canonical`).
@@ -38,6 +38,13 @@ are open text-key maps but remain restricted to profile values.
 
 ## Names and identities
 
+Filesystem state hashes are the Git SHA-256 tree object ids specified in
+[the ABI](abi.md#journal-and-trace-one-format), not hashes of CBOR snapshot maps
+([ADR-0035](../docs/adr/0035-state-hash-git-tree-id.md)). Files use mode `100644`,
+directories `40000`, Git entry ordering and raw 32-byte ids inside trees; ids
+elsewhere are 64 lowercase hex. The empty snapshot is the SHA-256 empty tree.
+Record, code, manifest and other non-filesystem hashes retain their definitions.
+
 All grammars are ASCII and case-sensitive; regexes match the whole string.
 
 | Definition | Grammar |
@@ -48,7 +55,7 @@ All grammars are ASCII and case-sensitive; regexes match the whole string.
 | `hub-id` | `hub:<node-id>` |
 | `component` | `[a-z][a-z0-9_]{0,31}` |
 | `capability-name` | `<component>.<component>` (e.g. `speech.speak`, `game.move`) |
-| `method-name` | 2..4 dot-separated components (e.g. `debug.data.read`) |
+| `method-name` | 2..4 dot-separated components (e.g. `manage.data.read`) |
 | `correlation-id`, `action-id` | `[0-9a-f]{32}`: opaque 128-bit ids |
 
 Each coglet has its own node key even when hosted by a shared runtime. Prefixes
@@ -126,8 +133,11 @@ not valid at 0.1; additions require a negotiated minor version.
 ## Versioning and negotiation
 
 A spec version is `MAJOR.MINOR`, each a decimal integer 0..9999 without leading
-zeros (except zero). This document defines **0.1**; there is no implicit 0.x
-compatibility exception. Major changes may break compatibility. Minor changes
+zeros (except zero). This document defines **0.1** common shapes. The router
+protocol separately negotiates **2.0** under ADR-0031 and ADR-0035; frozen router
+1.0 retains its original CBOR hash meaning. Other protocol specs define
+their own supported versions. There is no implicit 0.x compatibility exception.
+Major changes may break compatibility. Minor changes
 MUST be additive only: no removals, changed meanings, stricter bounds or new
 required fields in existing messages. A feature introduced at a higher minor
 MUST NOT be emitted at a lower selected version.

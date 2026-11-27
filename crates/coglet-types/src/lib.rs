@@ -250,8 +250,39 @@ pub fn decode_profile(raw: &[u8]) -> Result<Value, String> {
 
 // ---------------------------------------------------------------- IR
 
-struct Schema {
-    rules: BTreeMap<String, Json>,
+enum Schema {
+    Eager(BTreeMap<String, Json>),
+    Embedded(Vec<OnceLock<Result<Json, String>>>),
+}
+
+impl Schema {
+    fn embedded() -> Self {
+        Self::Embedded(
+            (0..generated::SCHEMA_RULES.len())
+                .map(|_| OnceLock::new())
+                .collect(),
+        )
+    }
+
+    fn rule(&self, name: &str) -> Result<&Json, String> {
+        match self {
+            Self::Eager(rules) => rules
+                .get(name)
+                .ok_or_else(|| format!("unknown rule `{name}`")),
+            Self::Embedded(cache) => {
+                let index = generated::SCHEMA_RULES
+                    .binary_search_by_key(&name, |(key, _)| *key)
+                    .map_err(|_| format!("unknown rule `{name}`"))?;
+                cache[index]
+                    .get_or_init(|| {
+                        serde_json::from_str(generated::SCHEMA_RULES[index].1)
+                            .map_err(|e| format!("bad schema IR: {e}"))
+                    })
+                    .as_ref()
+                    .map_err(Clone::clone)
+            }
+        }
+    }
 }
 
 fn parse_schema(src: &str) -> Result<Schema, String> {
@@ -259,16 +290,12 @@ fn parse_schema(src: &str) -> Result<Schema, String> {
     let Json::Object(m) = j else {
         return Err("schema IR must be an object of rule -> expr".into());
     };
-    Ok(Schema {
-        rules: m.into_iter().collect(),
-    })
+    Ok(Schema::Eager(m.into_iter().collect()))
 }
 
 fn embedded() -> Result<&'static Schema, String> {
-    static S: OnceLock<Result<Schema, String>> = OnceLock::new();
-    S.get_or_init(|| parse_schema(SCHEMA_JSON))
-        .as_ref()
-        .map_err(|e| e.clone())
+    static S: OnceLock<Schema> = OnceLock::new();
+    Ok(S.get_or_init(Schema::embedded))
 }
 
 fn regex_for(pattern: &str) -> Result<Regex, String> {
@@ -361,10 +388,7 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
         "ref" => {
             only_keys(e, &["op", "name"])?;
             let n = field(e, "name")?.as_str().ok_or("ref name")?;
-            let t = s
-                .rules
-                .get(n)
-                .ok_or_else(|| format!("unknown rule `{n}`"))?;
+            let t = s.rule(n)?;
             eval(s, t, v, depth + 1).map_err(|m| format!("{n}: {m}"))
         }
         "range" => {
@@ -564,6 +588,24 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
                     _ => Err("regexp bounded text mismatch".into()),
                 };
             }
+            if pattern == "^([0-9a-f]{2})*$" {
+                // Exactly the regex's language: even-length lowercase ASCII
+                // hex, empty allowed; `$` is end-of-text (no trailing \n).
+                return match v {
+                    Value::Text(t) if is_lower_hex_pairs(t) => Ok(()),
+                    Value::Text(_) => Err("regexp mismatch".into()),
+                    _ => Err("expected text".into()),
+                };
+            }
+            if let Value::Text(text) = v
+                && let Some(matches) = fixed_hex_pattern(pattern, text)
+            {
+                return if matches {
+                    Ok(())
+                } else {
+                    Err("regexp mismatch".into())
+                };
+            }
             let re = regex_for(pattern)?;
             match v {
                 Value::Text(t) if re.is_match(t) => Ok(()),
@@ -586,11 +628,25 @@ fn eval(s: &Schema, e: &Json, v: &Value, depth: usize) -> Result<(), String> {
 
 fn validate_in(s: &Schema, rule: &str, value: &Value) -> Result<(), String> {
     check_profile(value, 0)?;
-    let e = s
-        .rules
-        .get(rule)
-        .ok_or_else(|| format!("unknown rule `{rule}`"))?;
+    let e = s.rule(rule)?;
     eval(s, e, value, 0)
+}
+
+// Only these exact frozen regexp spellings are specialized. Other patterns
+// retain the general engine, including different lengths, alphabets or prefixes.
+fn fixed_hex_pattern(pattern: &str, text: &str) -> Option<bool> {
+    let (prefix, size) = match pattern {
+        "^coglet:[0-9a-f]{64}$" => ("coglet:", 64),
+        "^surface:[0-9a-f]{64}$" => ("surface:", 64),
+        "^hub:[0-9a-f]{64}$" => ("hub:", 64),
+        "^[0-9a-f]{64}$" => ("", 64),
+        "^[0-9a-f]{32}$" => ("", 32),
+        _ => return None,
+    };
+    Some(
+        text.strip_prefix(prefix)
+            .is_some_and(|hex| hex.len() == size && is_lower_hex_pairs(hex)),
+    )
 }
 
 // ---------------------------------------------------------------- public API
@@ -625,4 +681,248 @@ pub fn encode_typed<T: Serialize>(rule: &str, value: &T) -> Result<Vec<u8>, Stri
 
 pub fn decode_typed<T: DeserializeOwned>(rule: &str, raw: &[u8]) -> Result<T, String> {
     decode(rule, raw)?.deserialized().map_err(|e| e.to_string())
+}
+
+/// Fast path for the portable `^([0-9a-f]{2})*$` regexp: even-length, lowercase
+/// ASCII hex only. Non-ASCII bytes can never match `[0-9a-f]`.
+fn is_lower_hex_pairs(t: &str) -> bool {
+    // Fixed-size, non-short-circuit byte reduction permits vectorization while
+    // still validating every byte and bounding work before early rejection.
+    t.len().is_multiple_of(2)
+        && t.as_bytes().chunks(64).all(|chunk| {
+            chunk.iter().fold(0u8, |bad, &b| {
+                bad | u8::from(!((b.wrapping_sub(b'0') <= 9) | (b.wrapping_sub(b'a') <= 5)))
+            }) == 0
+        })
+}
+
+#[cfg(test)]
+mod hex_pattern_tests {
+    use super::*;
+
+    #[test]
+    fn fixed_hex_patterns_match_independent_regex_language() {
+        for (pattern, prefix, size) in [
+            ("^coglet:[0-9a-f]{64}$", "coglet:", 64),
+            ("^surface:[0-9a-f]{64}$", "surface:", 64),
+            ("^hub:[0-9a-f]{64}$", "hub:", 64),
+            ("^[0-9a-f]{64}$", "", 64),
+            ("^[0-9a-f]{32}$", "", 32),
+        ] {
+            let oracle = regex_for(pattern).unwrap();
+            let valid = format!("{prefix}{}", "a".repeat(size));
+            assert_eq!(fixed_hex_pattern(pattern, &valid), Some(true));
+            let compare = |text: &str| {
+                assert_eq!(
+                    fixed_hex_pattern(pattern, text),
+                    Some(oracle.is_match(text)),
+                    "{pattern} {text:?}"
+                );
+                assert_eq!(
+                    check(pattern, &Value::Text(text.to_owned())).is_ok(),
+                    oracle.is_match(text)
+                );
+            };
+            for len in 0..=valid.len() + 2 {
+                compare(&"0".repeat(len));
+                compare(&format!("{prefix}{}", "f".repeat(len)));
+            }
+            for pos in 0..valid.len() {
+                for byte in 0..=255u8 {
+                    let mut bytes = valid.as_bytes().to_vec();
+                    bytes[pos] = byte;
+                    if let Ok(text) = std::str::from_utf8(&bytes) {
+                        compare(text);
+                    }
+                }
+            }
+            for suffix in ["\n", "\r", "\0", "é", "🦀"] {
+                compare(&format!("{valid}{suffix}"));
+                compare(&format!("{suffix}{valid}"));
+            }
+            assert!(check(pattern, &Value::Null).is_err());
+        }
+        for pattern in [
+            "^[0-9a-f]{63}$",
+            "^[0-9A-F]{64}$",
+            "^(?:[0-9a-f]{64})$",
+            "^other:[0-9a-f]{64}$",
+        ] {
+            assert_eq!(fixed_hex_pattern(pattern, ""), None);
+        }
+    }
+
+    const FAST: &str = "^([0-9a-f]{2})*$";
+
+    #[test]
+    fn chunked_hex_matches_scalar_across_chunk_boundaries() {
+        for len in 0..130 {
+            assert_eq!(is_lower_hex_pairs(&"0".repeat(len)), len % 2 == 0);
+            for pos in 0..len {
+                for byte in 0..=255u8 {
+                    let mut bytes = vec![b'0'; len];
+                    bytes[pos] = byte;
+                    if let Ok(text) = std::str::from_utf8(&bytes) {
+                        let expected = len % 2 == 0
+                            && text.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
+                        assert_eq!(is_lower_hex_pairs(text), expected, "{len}/{pos}/{byte}");
+                    }
+                }
+            }
+        }
+        assert!(!is_lower_hex_pairs("é"));
+        assert!(!is_lower_hex_pairs("🦀"));
+    }
+    // Same language, different spelling: forces the general regex engine.
+    const REGEX: &str = "^(?:[0-9a-f]{2})*$";
+
+    fn check(pattern: &str, v: &Value) -> Result<(), String> {
+        let ir = serde_json::json!({"r": {"op": "regexp", "pattern": pattern}});
+        validate_in(&parse_schema(&ir.to_string()).unwrap(), "r", v)
+    }
+
+    fn text(s: &str) -> Value {
+        Value::Text(s.to_string())
+    }
+
+    #[test]
+    fn fast_path_matches_regex_engine_on_exhaustive_short_and_adversarial_text() {
+        // Every one- and two-byte ASCII string, plus all-ASCII 3-/4-char
+        // strings drawn from the boundary characters of each class.
+        let mut cases: Vec<String> = vec![String::new()];
+        let alphabet: Vec<char> = (0u8..128).map(char::from).collect();
+        for &a in &alphabet {
+            cases.push(a.to_string());
+            for &b in &alphabet {
+                cases.push(format!("{a}{b}"));
+            }
+        }
+        let edge = ['0', '9', 'a', 'f', 'g', 'A', 'F', '/', ':', '`', '\n', ' '];
+        for &a in &edge {
+            for &b in &edge {
+                for &c in &edge {
+                    cases.push(format!("{a}{b}{c}"));
+                    for &d in &edge {
+                        cases.push(format!("{a}{b}{c}{d}"));
+                    }
+                }
+            }
+        }
+        for s in [
+            "00ff",
+            "00FF",
+            "00fF",
+            "0",
+            "abc",
+            "00\n",
+            "0\n",
+            "00ff\n",
+            "\n00",
+            " 00",
+            "00 ",
+            "0x00",
+            "é",
+            "éé",
+            "0é",
+            "é0",
+            "ée",               // 3 bytes, odd length
+            "\u{ff10}\u{ff10}", // fullwidth digits
+            "\u{0660}\u{0661}", // Arabic-Indic digits
+            "00\u{0}",
+            "\u{0}\u{0}",
+            "😀",
+            "00😀",
+        ] {
+            cases.push(s.into());
+        }
+        cases.push("a".repeat(1 << 16));
+        cases.push("a".repeat((1 << 16) + 1));
+        cases.push(format!("{}g", "0f".repeat(4096)));
+        cases.push("0f".repeat(4096));
+        let mut accepted = 0;
+        for s in &cases {
+            let fast = check(FAST, &text(s));
+            assert_eq!(fast, check(REGEX, &text(s)), "{s:?}");
+            accepted += usize::from(fast.is_ok());
+        }
+        assert!(accepted > 256, "differential set must include accepts");
+    }
+
+    #[test]
+    fn fast_path_accepts_and_rejects_exact_cases() {
+        for ok in ["", "00", "ff", "0a9f", "deadbeef"] {
+            assert_eq!(check(FAST, &text(ok)), Ok(()), "{ok:?}");
+        }
+        for bad in [
+            "0", "abc", "FF", "0F", "g0", "0g", "00\n", "\n00", "é", "0é", "0x", " 00",
+        ] {
+            assert_eq!(
+                check(FAST, &text(bad)),
+                Err("regexp mismatch".into()),
+                "{bad:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn fast_path_rejects_non_text_like_regex_engine() {
+        for v in [
+            Value::Null,
+            Value::Bool(true),
+            Value::Integer(0u8.into()),
+            Value::Array(vec![]),
+        ] {
+            assert_eq!(check(FAST, &v), Err("expected text".into()), "{v:?}");
+            assert_eq!(check(FAST, &v), check(REGEX, &v));
+        }
+    }
+
+    #[test]
+    fn fast_path_is_only_for_the_exact_pattern_string() {
+        // Look-alike patterns have different languages and must still use the
+        // regex engine, not the fast path.
+        let plus = "^([0-9a-f]{2})+$";
+        assert_eq!(check(plus, &text("")), Err("regexp mismatch".into()));
+        assert_eq!(check(plus, &text("00")), Ok(()));
+        let upper = "^([0-9A-F]{2})*$";
+        assert_eq!(check(upper, &text("00")), Ok(()));
+        assert_eq!(check(upper, &text("ff")), Err("regexp mismatch".into()));
+        let one_more = "^([0-9a-f]{2})*x$";
+        assert_eq!(check(one_more, &text("00")), Err("regexp mismatch".into()));
+    }
+}
+
+#[cfg(test)]
+mod lazy_schema_tests {
+    use super::*;
+
+    #[test]
+    fn fresh_schema_parses_only_reached_rules_and_rejects_unknown() {
+        let schema = Schema::embedded();
+        // The runtime is also compiled against generated, non-Coglet schemas.
+        // Parsing one rule must not eagerly parse the rest of that schema.
+        let rule = generated::SCHEMA_RULES.first().unwrap().0;
+        schema.rule(rule).unwrap();
+        let Schema::Embedded(cache) = &schema else {
+            unreachable!()
+        };
+        let parsed = cache.iter().filter(|slot| slot.get().is_some()).count();
+        assert!(parsed == 1, "parsed {parsed} of {} rules", cache.len());
+        assert_eq!(
+            schema.rule("not-a-rule"),
+            Err("unknown rule `not-a-rule`".into())
+        );
+    }
+
+    #[test]
+    fn generated_rule_table_is_exact_sorted_and_unique() {
+        let all: BTreeMap<String, Json> = serde_json::from_str(SCHEMA_JSON).unwrap();
+        assert_eq!(generated::SCHEMA_RULES.len(), all.len());
+        let mut previous = None;
+        for &(name, raw) in generated::SCHEMA_RULES {
+            assert!(previous.is_none_or(|p| p < name));
+            assert_eq!(serde_json::from_str::<Json>(raw).unwrap(), all[name]);
+            previous = Some(name);
+        }
+    }
 }

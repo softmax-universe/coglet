@@ -2,7 +2,8 @@
 
 `coglet-surface` is a Python 3.11+ uv package. It builds on the generated
 `coglet_surface.generated` records and their strict deterministic CBOR codec.
-It implements the **surface** side of `spec/surface-protocol.md` 0.1; it is not a
+It implements the **surface** side of `spec/surface-protocol.md` 0.1 and explicit
+ADR-0030 surface-0.2 provisioning; it is not a
 runtime, hub, speech provider or native embedded-runtime C ABI implementation.
 
 ```sh
@@ -75,6 +76,60 @@ BSD-style `getpeereid` is supported for UID checks; if PID binding is requested
 but unavailable, authentication fails closed. Same-UID hostile code is outside
 the protocol's isolation boundary. Native iOS buffer/ownership semantics are
 not implemented or claimed by this package.
+
+### Local contract profile and pinned catalogs
+
+`Surface(..., contract_profile="surface-0.1", trusted_catalog=None)` retains the
+existing built-in and legacy two-component extension behavior by default. Only
+the exact explicit string `surface-0.2` enables the additional
+`softmax.app.<component>` operation-name alternative and offers wire versions
+`["0.2", "0.1"]`. Empty/unknown profiles are errors, not fallbacks. Peer messages
+and schema maps cannot select the local profile.
+
+```python
+from coglet_surface import TrustedExtensionCatalog
+
+catalog = TrustedExtensionCatalog.from_pinned_bytes(
+    reviewed_catalog_bytes, separately_provisioned_sha256,
+    contract_profile="surface-0.2",
+)
+surface = Surface(
+    surface_identity, permitted_coglet_ids, fresh_ledger_path,
+    create=True, stop=renderer.stop_all,
+    contract_profile="surface-0.2", trusted_catalog=catalog,
+)
+```
+
+The immutable catalog verifies exact bytes, closed artifact version 1 and finite
+local schema IR before opening the ledger. It never fetches a URI. Register
+catalog operations with the exact input/output **URI strings** from the artifact;
+advertisements preserve those URIs. The SDK validates their selected local rules
+before prepare/dispatch and before publication, including selected-read event
+sibling schemas and the intersection of event/read grants. Existing
+`extensions=`/`schemas=` cannot provision app operations or override pinned rules.
+
+Catalog regex rules deliberately accept a portable subset, not the complete
+Rust Unicode regex dialect. Use explicit character classes and ordinary
+repetitions; shorthand classes/boundaries, inline flags, lookaround,
+backreferences, nested/set-algebra/POSIX classes and possessive repetitions fail
+catalog admission rather than being interpreted with Python's different
+semantics. The exact counted universal form `^[\s\S]{min,max}$` is supported.
+This restriction does not change frozen generated validators. Entry/resource
+names remain two-component under both profiles.
+
+The existing SQLite ledger atomically retains the catalog bytes, digest and
+normalized profile on creation. Reopen requires the same catalog/profile pair;
+profile-less legacy ledgers mean exactly `surface-0.1`. A change requires a fresh
+explicitly selected ledger, never rewriting old receipts. A wire `0.1` downgrade
+keeps the provisioned catalog but exposes only built-in Face/speech operations;
+it clears old connection grants/queued publications and requires fresh grants on
+reconnection. SDK manifest admission is not implemented; manifest-format profile
+proofs belong to runtime consumers.
+
+`tests/test_contract_profile.py` includes the applicable ADR-reserved local
+profile proofs plus authenticated fragmented AF_UNIX 0.2 reads, retained-catalog
+reopen and live 0.1 Face/speech actions. Frozen 0.1 generated IR/catalog files and
+the existing conformance cases remain unchanged.
 
 ### Ledger and clocks
 

@@ -45,8 +45,20 @@ impl SurfaceBinding {
     }
 }
 
+#[cfg(test)]
+type TestPumpHook = Box<dyn FnMut(&SurfaceSession, u64) + Send>;
+
 pub struct SurfaceSession {
+    #[cfg(test)]
+    test_pump_hook: Option<TestPumpHook>,
+    phase: Option<crate::phase_evidence::Sink>,
     catalog: std::sync::Arc<crate::TrustedExtensionCatalog>,
+    /// Trusted local ceiling (what this runtime can validate), never peer input.
+    ceiling: crate::ContractProfile,
+    /// Negotiated wire minor; selects every surface-message/action/event rule.
+    wire: crate::ContractProfile,
+    /// Provisioned catalog withheld from a downgraded (ceiling 0.2, wire 0.1) link.
+    withheld: Option<std::sync::Arc<crate::TrustedExtensionCatalog>>,
     binding: SurfaceBinding,
     negotiated: bool,
     closed: bool,
@@ -71,8 +83,32 @@ pub struct SurfaceSession {
     read_expiry_diagnostics: VecDeque<Value>,
     service: Option<std::sync::Arc<std::sync::Mutex<crate::RuntimeService>>>,
     sent_dispatches: BTreeSet<String>,
+    /// ADR-0033 output custody. `None` is the legacy ungated behavior; with a
+    /// gate no new dispatch is even prepared while it is not enabled, and the
+    /// transport re-checks it at the physical write (see `socket.rs`).
+    gate: Option<std::sync::Arc<crate::output_lease::OutputGate>>,
 }
 impl SurfaceSession {
+    #[cfg(test)]
+    pub(crate) fn test_set_pump_hook(&mut self, hook: TestPumpHook) {
+        self.test_pump_hook = Some(hook);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_last_received(&self) -> u64 {
+        self.last_received
+    }
+
+    pub(crate) fn phase_sink(&self) -> Option<crate::phase_evidence::Sink> {
+        self.phase.clone()
+    }
+    pub fn with_output_gate(
+        mut self,
+        gate: std::sync::Arc<crate::output_lease::OutputGate>,
+    ) -> Self {
+        self.gate = Some(gate);
+        self
+    }
     pub(crate) fn transport_now(&self, probe_clock: std::time::Instant) -> Result<u64> {
         if let Some(service) = &self.service {
             service
@@ -86,7 +122,13 @@ impl SurfaceSession {
     }
     pub fn new(binding: SurfaceBinding) -> Self {
         Self {
+            #[cfg(test)]
+            test_pump_hook: None,
+            phase: None,
             catalog: std::sync::Arc::new(crate::TrustedExtensionCatalog::default()),
+            ceiling: crate::ContractProfile::Surface01,
+            wire: crate::ContractProfile::Surface01,
+            withheld: None,
             binding,
             negotiated: false,
             closed: false,
@@ -111,25 +153,58 @@ impl SurfaceSession {
             read_expiry_diagnostics: VecDeque::new(),
             service: None,
             sent_dispatches: BTreeSet::new(),
+            gate: None,
         }
     }
     pub fn is_closed(&self) -> bool {
         self.closed
+    }
+    /// Wire minor selected by hello; `Surface01` before negotiation.
+    pub fn wire_profile(&self) -> crate::ContractProfile {
+        self.wire
+    }
+    /// Trusted extension operations/names are usable unless the local ceiling
+    /// is 0.2 but this link selected 0.1 (only built-in Face/speech remain).
+    pub(crate) fn extensions_enabled(&self) -> bool {
+        self.withheld.is_none()
+    }
+    pub(crate) fn catalog(&self) -> &crate::TrustedExtensionCatalog {
+        &self.catalog
+    }
+    pub(crate) fn withholds(&self, name: &str) -> bool {
+        self.withheld
+            .as_ref()
+            .is_some_and(|catalog| catalog.is_extension_name(name))
     }
     /// Native transport pump. Reconnect automatically reconciles saved IDs.
     pub fn pump_dispatch(&mut self, now: u64) -> Result<()> {
         if !self.negotiated || self.closed {
             return Ok(());
         }
+        // D1 gates inside the pump, AFTER the transport's tick/sample. The
+        // callback cannot renew the already-sampled authority for this read.
+        #[cfg(test)]
+        if let Some(mut hook) = self.test_pump_hook.take() {
+            hook(self, now);
+            self.test_pump_hook = Some(hook);
+        }
         let Some(service) = self.service.clone() else {
             return Ok(());
         };
-        self.pump_supervisor_reads(now)?;
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::SupervisorEnter);
+        let result = self.pump_supervisor_reads(now);
+        crate::phase_evidence::returned(
+            &self.phase,
+            crate::phase_evidence::Phase::SupervisorReturn,
+            result,
+        )?;
         #[cfg(feature = "native-engine")]
-        service
-            .lock()
-            .map_err(|_| "runtime service poisoned")?
-            .run_native(self, now)?;
+        crate::RuntimeService::run_native(&service, self, now)?;
+        // Execution and observation continue, but no new effect is prepared for
+        // exposure unless the output lease is currently enabled.
+        if self.gate.as_ref().is_some_and(|gate| !gate.is_open()) {
+            return Ok(());
+        }
         while self.output.len() < SURFACE_QUEUE {
             // Guest execution and fsync can outlive the admission lease. Native
             // routes recheck the supervised clock for EACH new dispatch, never
@@ -143,10 +218,16 @@ impl SurfaceSession {
                     now
                 }
             };
+            crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DispatchEnter);
             let next = service
                 .lock()
-                .map_err(|_| "runtime service poisoned")?
-                .next_dispatch(self, &self.sent_dispatches, now)?;
+                .map_err(|_| "runtime service poisoned".to_string())
+                .and_then(|mut guard| guard.next_dispatch(self, &self.sent_dispatches, now));
+            let next = crate::phase_evidence::returned(
+                &self.phase,
+                crate::phase_evidence::Phase::DispatchReturn,
+                next,
+            )?;
             let Some((id, bytes)) = next else {
                 break;
             };
@@ -178,10 +259,14 @@ impl SurfaceSession {
     pub fn front(&self) -> Option<&[u8]> {
         self.output.front().map(Vec::as_slice)
     }
+    pub(crate) fn output_depth(&self) -> usize {
+        self.output.len()
+    }
     pub fn pop(&mut self) -> Option<Vec<u8>> {
         self.output.pop_front()
     }
     pub fn disconnect(&mut self) {
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DisconnectEnter);
         if let Some(service) = &self.service
             && let Ok(mut service) = service.lock()
         {
@@ -198,9 +283,10 @@ impl SurfaceSession {
         self.read_results.clear();
         self.read_result_authority.clear();
         self.heard_reads.clear();
+        crate::phase_evidence::mark(&self.phase, crate::phase_evidence::Phase::DisconnectReturn);
     }
     fn enqueue(&mut self, message: Value) -> Result<()> {
-        validate("surface-message", &message)?;
+        self.wire.validate("surface-message", &message)?;
         let bytes = cbor(&message)?;
         if bytes.len() > SURFACE_MAX_FRAME {
             return Err("response too large".into());
@@ -283,7 +369,8 @@ impl SurfaceSession {
     }
     fn receive(&mut self, raw: &[u8], now: u64) -> Result<()> {
         let decoded = coglet_types::decode_profile(raw)?;
-        coglet_types::validate("surface-message", &decoded)?;
+        // Hello is common to both minors; afterwards the selected minor governs.
+        crate::profile_codec::validate(self.wire.rule("surface-message"), &decoded)?;
         let message: Value = decoded.deserialized().map_err(|e| e.to_string())?;
         let body = &message["body"];
         let kind = message["type"].as_str().ok_or("missing type")?;
@@ -297,15 +384,39 @@ impl SurfaceSession {
             if body["surface"] != self.binding.surface {
                 return self.error("unauthenticated", &body["correlation_id"]);
             }
-            if !body["offer"]["versions"]
+            let offered = body["offer"]["versions"]
                 .as_array()
-                .ok_or("offer required")?
-                .iter()
-                .any(|v| v == "0.1")
+                .ok_or("offer required")?;
+            // Highest common minor bounded by the trusted local ceiling.
+            let selected = if self.ceiling == crate::ContractProfile::Surface02
+                && offered.iter().any(|v| v == "0.2")
             {
+                crate::ContractProfile::Surface02
+            } else if offered.iter().any(|v| v == "0.1") {
+                crate::ContractProfile::Surface01
+            } else {
                 return self.error("unsupported_version", &body["correlation_id"]);
+            };
+            self.wire = selected;
+            if self.ceiling == crate::ContractProfile::Surface02
+                && selected == crate::ContractProfile::Surface01
+            {
+                // Keep provisioned identity in the service; this link sees
+                // only built-ins, with no extension names in any direction.
+                let echo = self.catalog.echo_fixture;
+                let mut builtin = crate::TrustedExtensionCatalog::without_artifact(selected);
+                builtin.echo_fixture = echo;
+                self.withheld = Some(std::mem::replace(
+                    &mut self.catalog,
+                    std::sync::Arc::new(builtin),
+                ));
             }
-            self.enqueue(json!({"type":"hello_reply","body":{"selection":{"version":"0.1"},"correlation_id":body["correlation_id"]}}))?;
+            let version = if selected == crate::ContractProfile::Surface02 {
+                "0.2"
+            } else {
+                "0.1"
+            };
+            self.enqueue(json!({"type":"hello_reply","body":{"selection":{"version":version},"correlation_id":body["correlation_id"]}}))?;
             self.negotiated = true;
             self.last_health = now;
             self.peer_clock = body["clock"].as_u64();

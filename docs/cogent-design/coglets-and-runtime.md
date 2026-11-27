@@ -12,9 +12,9 @@ streaming logs to its manager.
 The policy is whatever decides what the coglet does: **symbolic code**, **LLM
 prompts** and **skills**, or any mix of them. A patch can change any of it.
 
-![A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.](diagrams/coglet.svg)
+![A coglet in the middle, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.](diagrams/coglet.svg)
 
-*The coglet in the centre. Apps and hardware, reached through adapters, on the
+*The coglet in the middle. Apps and hardware, reached through adapters, on the
 left. What the runtime provides below. Its manager on the right, with patches
 coming in and logs going out.*
 
@@ -46,7 +46,7 @@ Coglet
 
 | | Front end | Manage port |
 |---|---|---|
-| Who uses it | The runtime, on behalf of adapters and other coglets | Its manager: a person, or a cogent coglet such as the fast loop or the optimizer |
+| Who uses it | The runtime, on behalf of adapters and other coglets | Its manager: a person, or a cogent coglet such as a router or an optimizer |
 | What it is for | Doing the work | Changing and inspecting the coglet |
 | Needs | The capabilities named in the manifest | A separate grant for each operation; reads are off unless granted |
 | The coglet's own code | Is what runs | Does nothing; the runtime serves these between events |
@@ -197,7 +197,7 @@ LogEntry
 ## Manage port
 
 The manage port is how a coglet's manager changes it and watches it. The
-manager can be a person, or another coglet such as the fast loop or the
+manager can be a person, or another coglet such as a router or the
 optimizer applying a patch.
 
 The coglet's own policy does nothing to serve the manage port. The runtime
@@ -260,23 +260,29 @@ OnBehalfOf
 
 ## Runtime
 
-A runtime supports running a set of coglets. It manages routing events,
-executing the coglet code, and providing and managing capabilities.
+A runtime supports running a set of coglets. It exposes one or more unforged
+repositories and runs each coglet in one as a **user**, with its own refs and
+grants. It manages routing events, executing the coglet code, and providing and
+managing capabilities, and it mounts each adapter it connects to under
+`/net/<adapter>/` ([ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md)).
 
 ```idl
 Runtime
-  run(coglet)
-      Load a coglet and run its event loop.
+  repositories() -> [Repo]
+  run(coglet, Repo)
+      Add the coglet as a user of the repository and run its event loop.
   stop(coglet)
   connect(adapter)
-      Open a link to an adapter and learn its capabilities and grants.
-  join(router)
-      Make itself known to a cogent, so the cogent can run coglets here.
+      Open a link to an adapter, learn its capabilities and grants, and mount it.
+  join(cogent)
+      Start this runtime's hub, a router and an optimizer, and peer it with the
+      cogent's other hubs.
 ```
 
-A runtime can be its own process next to an app, or be built into one. It can
-be connected to several adapters at once, and it can have several execution
-engines, one per language a policy's code is written in.
+Any app can host a runtime: it can be its own process next to an app, or be
+built into one. It can be connected to several adapters at once, and it can
+have several execution engines, one per language a policy's code is written
+in.
 
 ### Where a request goes
 
@@ -286,8 +292,8 @@ whoever provides it.
 | The coglet asked for | The runtime sends it to | The coglet later sees |
 |---|---|---|
 | An action on an adapter | That adapter | The adapter's outcome |
-| A message to a coglet in the same runtime | That coglet's inbox, directly | The outcome, as soon as it is delivered |
-| A message to a coglet in another runtime | The router | The outcome, as soon as the router accepts it |
+| A message to a coglet in the same runtime | Its hub's router, in process, which puts it in that coglet's inbox | The outcome, as soon as it is delivered |
+| A message to a coglet in another runtime | Its hub's router, which passes it to the router of the other runtime's hub | The outcome, as soon as the router accepts it |
 | A model call | The LLM capability | An `llm.reply` |
 | A timer, a log line, a database query | Itself | A timer wake; nothing; the query's rows |
 
@@ -298,8 +304,8 @@ A refusal from any of them becomes a `runtime.action_rejected` in the inbox.
 A message is an `Action` whose `capability` is a message name such as
 `intent.request`. The coglet does not need to know where the other coglet runs.
 
-- **Same runtime.** The runtime checks the grant and puts the message straight
-  into the other coglet's inbox.
+- **Same runtime.** The runtime checks the grant and hands the message to its
+  hub's router, in process, which puts it into the other coglet's inbox.
 - **Different runtimes.** The runtime hands the message to the router, which
   checks the grant and delivers it to the other runtime.
 
@@ -344,7 +350,10 @@ MessageGrants
 
 ### Runtime and router
 
-What passes between a runtime and the cogent's router.
+What passes between a runtime and a router. Since every runtime runs its own
+hub, this is mostly the runtime and its own hub's router; peered routers pass
+the same operations to each other for coglets on their runtimes. The wire names
+are today's; the router protocol changes for peering come with their own ADR.
 
 ```idl
 RuntimeToRouter
@@ -512,7 +521,7 @@ older names for the same things:
 | Here | In `spec/` |
 |---|---|
 | adapter | surface |
-| router | hub |
+| router | hub (the `hub.*` protocol; in prose a hub is now a router plus an optimizer) |
 | runtime | device, runtime |
 | message between coglets | not defined yet |
 | manage port | the `debug.*` and `hub.git.*` methods, to become `manage.*` under [ADR-0031](../adr/0031-manage-port-and-filesystem-patches.md) |

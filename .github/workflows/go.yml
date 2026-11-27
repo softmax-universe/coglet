@@ -25,6 +25,22 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - run: go test -race ./...
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+      - name: Local contract profile preflight and shared 0.2 wire cases
+        working-directory: .
+        run: |
+          python3 -m unittest discover -s conformance/tests -p test_contract_profile.py -v
+          mkdir -p target
+          (cd sdk/surface-go && go build -o ../../target/coglet-go-surface ./cmd/conformance)
+          uv run --locked --project sdk/surface-python python conformance/run --registry conformance/impls-surface02.toml --contract-profile surface-0.2 --junit target/surface02.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: surface02-python-go-conformance
+          path: target/surface02.xml
+          if-no-files-found: error
       - name: Go emitter keyword and collision regressions
         working-directory: .
         run: python3 -m unittest discover -s codegen -p test_go.py -v

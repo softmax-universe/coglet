@@ -84,7 +84,10 @@ fails. No recorded output files or return values are fed into guest execution.
 The primary ABI baseline does not qualify full ABI. Operational Linux surface
 qualification is documented separately in [qualification.md](qualification.md),
 with exact native test names, ownership and supported bounds. The small frozen
-negotiation corpus alone is not operational evidence.
+negotiation corpus alone is not operational evidence. See also the
+[ready-output C ABI qualification matrix](READY_OUTPUT_QUALIFICATION.md) for
+ADR-0034's post-tick ordering guarantee, actual Swift SDK counterexample/control,
+bounded timing and explicit non-real-time/platform limits.
 `every_primary_abi_case_is_executed` also independently replays
 all 21 primary cases and compares every per-step state hash.
 
@@ -114,8 +117,11 @@ The unimplemented boundaries remain explicit:
   The default probe modes remain negotiation-only. Linux native clock continuity uses
   BOOTTIME (including suspension/downtime), not per-link elapsed time or wall-clock
   guesses. A changed boot identity, old unanchored dispatch ledger or poisoned WAL
-  fails closed. macOS/iOS use `kern.bootsessionuuid` and `mach_continuous_time`;
-  unavailable kernel identity/clock data fails closed without a wall-clock fallback.
+  fails closed. macOS uses `kern.bootsessionuuid`; iOS uses a race-safe OS-entropy
+  process epoch ([ADR-0039](../../docs/adr/0039-ios-process-runtime-clock.md)).
+  Both use checked `mach_continuous_time`. iOS anchored WALs refuse cross-process
+  reopen before engine admission; same-process reopen retains elapsed time.
+  Entropy/clock failure has no fallback. This is not physical-device qualification.
   See [Apple evidence](native-engine.md#apple-platform-evidence) for execution vs link scope.
   Dispatch order is retained/checked against initial intent order and committed action
   arrays, not sorted IDs. Expired undispatched intents receive durable local rejections.

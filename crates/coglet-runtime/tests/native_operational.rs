@@ -261,6 +261,23 @@ impl Link {
             );
         }
     }
+    fn health_barrier(&mut self, correlation: &str) -> Value {
+        self.send(
+            "health",
+            json!({"state":"ready","clock":1500,"pending":0,"correlation_id":correlation}),
+        );
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            let reply = self.recv_until("health");
+            if reply["body"]["correlation_id"] == correlation {
+                return reply;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "health barrier reply missing"
+            );
+        }
+    }
     fn hello(&mut self) {
         self.send("hello",json!({"surface":S,"offer":{"versions":["0.1"]},"clock":1000,"correlation_id":"1".repeat(32)}));
         assert_eq!(self.recv_until("hello_reply")["type"], "hello_reply");
@@ -276,6 +293,24 @@ impl Drop for Link {
             unsafe { coglet_surface_close(*l) };
         }
     }
+}
+#[test]
+fn socket_health_barrier_ignores_preexisting_periodic_health() {
+    let (client, mut server) = UnixStream::pair().unwrap();
+    client
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .unwrap();
+    let correlation = "9".repeat(32);
+    // Queue the periodic notification before the reply, exactly the schedule
+    // that previously let teardown kill a daemon with unprocessed input.
+    for id in ["0".repeat(32), correlation.clone()] {
+        let raw = cbor(&json!({"type":"health","body":{"state":"ready","clock":1500,"pending":0,"correlation_id":id}})).unwrap();
+        server.write_all(&(raw.len() as u32).to_be_bytes()).unwrap();
+        server.write_all(&raw).unwrap();
+    }
+    let mut link = Link::Socket(client);
+    let reply = link.health_barrier(&correlation);
+    assert_eq!(reply["body"]["correlation_id"], correlation);
 }
 fn exercise(ffi: bool, name: &str) {
     let _guard = FFI_LOCK.lock().unwrap_or_else(|e| e.into_inner());

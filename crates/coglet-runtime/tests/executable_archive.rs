@@ -256,18 +256,20 @@ mod native {
 
     #[test]
     fn frozen_archive_corpus_and_spec_v0_remain_unchanged() {
+        // ADR-0035 regenerates state/record identities, not inventory or semantics.
+        // Pins below bind that regenerated corpus; the original spec-v0 tag stays.
         for (name, expected) in [
             (
                 "boundary-receipts",
-                "7ad5a96bf025ff4a9602f0889373fb425a3d8c3c49a745bd22de8f404941d681",
+                "f71273c8c95fe68e5d2f1f7aa0744eccf44257f2878ea0adb5c45b77c42ed78b",
             ),
             (
                 "provenance",
-                "15191cea57ebebb5adceb2aa734e79dca61665bf4db73431d1afecdd398753fb",
+                "2cfd07fd8ca9ba64b88996102c155a3a4eb065980d101116f6f649a5c45b52ba",
             ),
             (
                 "heard-archive",
-                "0ab10b7a7359ffbbbf0def962ca60bc20baad2162b07a23356adbd8c0938b2c2",
+                "efa862a38b6b8012b194b61bf6866e9dbd017ebf39f33370fe191b2230a3721f",
             ),
         ] {
             assert_eq!(

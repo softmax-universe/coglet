@@ -41,7 +41,7 @@ final class RuntimeHostTests: XCTestCase {
         await host.start()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         XCTAssertEqual(host.coglets.count, 1)
-        XCTAssertEqual(host.coglets.first?.version, "0.1")
+        XCTAssertEqual(host.coglets.first?.version, "1.0")
         let text = "Native Swift SDK → Wasm → speak — 世界"
         await host.submitTranscript(text, generation: host.generation)
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")

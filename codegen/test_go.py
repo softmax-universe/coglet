@@ -109,7 +109,9 @@ class GoEmitterTests(unittest.TestCase):
             'thing = {type: tstr, func: tstr, range: tstr, go: tstr, chan: [* uint], ? select: bool}\n'
             'uint = 0..18446744073709551615\n'
             'pick = {kind: "a", v: uint} / {kind: "b", w: tstr}\n'
-            'blob = {* tstr => thing}\nfree = thing / uint\n')
+            'blob = {* tstr => thing}\nfree = thing / uint\n'
+            'surface02-s02-capability-name = tstr\n'
+            'long = {required: [* surface02-s02-capability-name], ? optional: [* surface02-s02-capability-name], nested: [* [* surface02-s02-capability-name]], mapped: {* tstr => [* surface02-s02-capability-name]}}\n')
         with tempfile.TemporaryDirectory(dir=os.environ.get('TMPDIR')) as temp:
             mod = Path(temp)
             shutil.copytree(ROOT / 'sdk/surface-go/codec', mod / 'codec', ignore=shutil.ignore_patterns('*_test.go'))
@@ -134,6 +136,13 @@ class GoEmitterTests(unittest.TestCase):
             result = subprocess.run([str(find_go()), 'test', './...', '-run', 'TestTyped|TestV2', '-count=1'],
                                     cwd=mod, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            go = find_go()
+            assert go is not None
+            gofmt = Path(go).with_name('gofmt')
+            self.assertTrue(gofmt.exists(), 'qualification requires sibling gofmt')
+            result = subprocess.run([str(gofmt), '-l', 'types/generated.go'], cwd=mod,
+                                    capture_output=True, text=True, check=True)
+            self.assertEqual(result.stdout, '', 'full generated schema corpus must be canonical')
 
     @unittest.skipUnless(find_go(), 'go toolchain not available')
     def test_v2_generated_native_conversions(self):

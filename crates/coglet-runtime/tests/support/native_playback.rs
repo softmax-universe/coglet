@@ -120,11 +120,7 @@ fn exercise_playback(ffi: bool, name: &str, provider: bool) {
             l.send("read_reply",json!({"correlation_id":read["body"]["correlation_id"],"ok":true,"snapshot":seq,"value":{"item":item,"played_ms":payload["played_ms"],"text":"heard"}}));
         }
     }
-    l.send(
-        "health",
-        json!({"state":"ready","clock":1500,"pending":0,"correlation_id":"9".repeat(32)}),
-    );
-    assert_eq!(l.recv_until("health")["type"], "health");
+    l.health_barrier(&"9".repeat(32));
     if !ffi {
         host.stop();
     }

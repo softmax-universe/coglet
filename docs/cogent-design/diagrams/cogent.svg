@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="580" viewBox="0 0 1040 580" role="img" aria-label="A cogent sits at the centre: a set of coglets plus a router. Around it are devices and hosted apps, and for each one it runs coglets that talk to the apps through their adapters.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="762" viewBox="0 0 1040 762" role="img" aria-label="A cogent has no centre: every runtime it uses, on a laptop, a robot, a phone, in the Softmax Universe and on a Softmax-hosted runtime, runs a hub (a router and an optimizer), and the hubs&#x27; routers peer. Devices run Face and the coglets for their apps; the hosted runtime runs the factory, memory and a database. The cogent is present on Face and Blender on the laptop; the rest run on their own.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -19,6 +19,7 @@
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -39,31 +40,17 @@
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
 </style>
 <defs><marker id="cogent-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-ink-h"/></marker><marker id="cogent-ink-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-ink-h"/></marker><marker id="cogent-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-teal-h"/></marker><marker id="cogent-teal-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-teal-h"/></marker><marker id="cogent-warm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-warm-h"/></marker><marker id="cogent-warm-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-warm-h"/></marker><marker id="cogent-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="dg-blue-h"/></marker><marker id="cogent-blue-s" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10 0L0 5L10 10z" class="dg-blue-h"/></marker></defs>
-<rect x="0.5" y="0.5" width="1039" height="579" rx="12" class="dg-bg"/>
-<g transform="translate(0,190)">
-<rect x="330" y="30" width="380" height="280" rx="14" class="dg-group"/>
-<rect x="350" y="44" width="18" height="13" rx="3" class="dg-ink" stroke-width="1.5"/><path d="M359 44V39" class="dg-ink" stroke-width="1.5"/><circle cx="359" cy="37.5" r="1.6" class="dg-ink" stroke-width="1.5"/><circle cx="355" cy="50" r="1.4" class="dg-ink-h"/><circle cx="363" cy="50" r="1.4" class="dg-ink-h"/><path d="M347 48V53M371 48V53" class="dg-ink" stroke-width="1.5"/>
-<text x="380" y="55" text-anchor="start" class="dg-cap">THE COGENT</text>
-<rect x="345" y="146" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="430.0" y="173.0" text-anchor="middle" class="dg-b">FastLoop</text>
-<text x="430.0" y="189.0" text-anchor="middle" class="dg-m">responds, or forwards</text>
-<rect x="525" y="146" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="610.0" y="173.0" text-anchor="middle" class="dg-b">Factory</text>
-<text x="610.0" y="189.0" text-anchor="middle" class="dg-m">tickets in, patches out</text>
-<rect x="345" y="218" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="430.0" y="245.0" text-anchor="middle" class="dg-b">Optimizer</text>
-<text x="430.0" y="261.0" text-anchor="middle" class="dg-m">watches, improves</text>
-<rect x="525" y="218" width="170" height="60" rx="8" class="dg-coglet"/>
-<text x="610.0" y="245.0" text-anchor="middle" class="dg-b">Memory</text>
-<text x="610.0" y="261.0" text-anchor="middle" class="dg-m">what the cogent knows</text>
-<rect x="345" y="70" width="350" height="62" rx="8" class="dg-coglet"/>
-<text x="520.0" y="98.0" text-anchor="middle" class="dg-b">Router</text>
-<text x="520.0" y="114.0" text-anchor="middle" class="dg-m">finds devices, carries messages and patches</text>
+<rect x="0.5" y="0.5" width="1039" height="761" rx="12" class="dg-bg"/>
+<g transform="translate(0,222)">
+<rect x="385" y="135" width="270" height="62" rx="8" class="dg-hub"/>
+<text x="520.0" y="163.0" text-anchor="middle" class="dg-b">Routers peer</text>
+<text x="520.0" y="179.0" text-anchor="middle" class="dg-m">each hub&#x27;s router reaches the others</text>
 <rect x="20" y="30" width="270" height="280" rx="12" class="dg-bg"/>
 <rect x="37" y="43" width="16" height="11" rx="1.5" class="dg-ink" stroke-width="1.5"/><path d="M34 57H56" class="dg-ink" stroke-width="1.5"/>
 <text x="64" y="55" text-anchor="start" class="dg-cap">LAPTOP</text>
@@ -83,10 +70,6 @@
 <rect x="132" y="210" width="12" height="38" rx="5" class="dg-adapter"/>
 <text x="83" y="233" text-anchor="middle" class="dg-t">Minecraft</text>
 <line x1="146" y1="229" x2="176" y2="229" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
-<rect x="34" y="256" width="110" height="38" rx="8" class="dg-world"/>
-<rect x="132" y="256" width="12" height="38" rx="5" class="dg-adapter"/>
-<text x="83" y="279" text-anchor="middle" class="dg-t">Mindustry</text>
-<line x1="146" y1="275" x2="176" y2="275" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
 <rect x="178" y="72" width="98" height="38" rx="8" class="dg-coglet"/>
 <text x="227.0" y="95.0" text-anchor="middle" class="dg-b">Face</text>
 <rect x="178" y="118" width="98" height="38" rx="8" class="dg-coglet"/>
@@ -95,8 +78,13 @@
 <text x="227.0" y="187.0" text-anchor="middle" class="dg-b">Browser</text>
 <rect x="178" y="210" width="98" height="38" rx="8" class="dg-coglet"/>
 <text x="227.0" y="233.0" text-anchor="middle" class="dg-b">Minecraft</text>
-<rect x="178" y="256" width="98" height="38" rx="8" class="dg-coglet"/>
-<text x="227.0" y="279.0" text-anchor="middle" class="dg-b">Mindustry</text>
+<path d="M276 91.0H283" class="dg-blue" stroke-width="1.6" fill="none"/>
+<path d="M276 137.0H283" class="dg-blue" stroke-width="1.6" fill="none"/>
+<path d="M276 183.0H283" class="dg-blue" stroke-width="1.6" fill="none"/>
+<path d="M276 229.0H283" class="dg-blue" stroke-width="1.6" fill="none"/>
+<path d="M283 91.0V279H34" class="dg-blue" stroke-width="1.6" fill="none"/>
+<rect x="34" y="262" width="242" height="34" rx="8" class="dg-hub"/>
+<text x="155.0" y="283.0" text-anchor="middle" class="dg-t">Hub: router + optimizer</text>
 <rect x="750" y="30" width="270" height="280" rx="12" class="dg-bg"/>
 <path d="M775 37V40" class="dg-ink" stroke-width="1.5"/><circle cx="775" cy="36" r="1.3" class="dg-ink-h"/><rect x="768.5" y="40" width="13" height="9" rx="3" class="dg-ink" stroke-width="1.5"/><circle cx="772.5" cy="44.5" r="1.2" class="dg-ink-h"/><circle cx="777.5" cy="44.5" r="1.2" class="dg-ink-h"/><rect x="770" y="51" width="10" height="8" rx="2.5" class="dg-ink" stroke-width="1.5"/><path d="M767 52V57M783 52V57" class="dg-ink" stroke-width="1.5"/>
 <text x="794" y="55" text-anchor="start" class="dg-cap">ROBOT</text>
@@ -117,18 +105,21 @@
 <rect x="896" y="210" width="12" height="38" rx="5" class="dg-adapter"/>
 <text x="957" y="233" text-anchor="middle" class="dg-t">Wheels</text>
 <line x1="864" y1="234" x2="894" y2="234" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
-<rect x="896" y="256" width="110" height="38" rx="8" class="dg-world"/>
-<rect x="896" y="256" width="12" height="38" rx="5" class="dg-adapter"/>
-<text x="957" y="279" text-anchor="middle" class="dg-t">Hand</text>
-<line x1="864" y1="275" x2="894" y2="275" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
 <rect x="764" y="72" width="98" height="130" rx="8" class="dg-coglet"/>
 <text x="813.0" y="141.0" text-anchor="middle" class="dg-b">Face</text>
-<rect x="764" y="210" width="98" height="84" rx="8" class="dg-coglet"/>
-<text x="813.0" y="256.0" text-anchor="middle" class="dg-b">Controller</text>
-<line x1="343" y1="101" x2="292" y2="101" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
-<line x1="697" y1="101" x2="748" y2="101" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<rect x="764" y="210" width="98" height="38" rx="8" class="dg-coglet"/>
+<text x="813.0" y="233.0" text-anchor="middle" class="dg-b">Controller</text>
+<path d="M764 137.0H757" class="dg-blue" stroke-width="1.6" fill="none"/>
+<path d="M764 229.0H757" class="dg-blue" stroke-width="1.6" fill="none"/>
+<path d="M757 137.0V279H1006" class="dg-blue" stroke-width="1.6" fill="none"/>
+<rect x="764" y="262" width="242" height="34" rx="8" class="dg-hub"/>
+<text x="885.0" y="283.0" text-anchor="middle" class="dg-t">Hub: router + optimizer</text>
+<line x1="383" y1="166" x2="292" y2="166" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="657" y1="166" x2="748" y2="166" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<rect x="174" y="68" width="106" height="46" rx="9" class="dg-present"/>
+<rect x="174" y="114" width="106" height="46" rx="9" class="dg-present"/>
 </g>
-<rect x="213" y="20" width="344" height="168" rx="12" class="dg-bg"/>
+<rect x="213" y="20" width="344" height="200" rx="12" class="dg-bg"/>
 <text x="259" y="45" text-anchor="start" class="dg-cap">SOFTMAX UNIVERSE</text>
 <rect x="227.0" y="60" width="100.0" height="42" rx="8" class="dg-world"/>
 <rect x="227.0" y="90" width="100.0" height="12" rx="5" class="dg-adapter"/>
@@ -136,20 +127,25 @@
 <line x1="277.0" y1="104" x2="277.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
 <rect x="227.0" y="134" width="100.0" height="42" rx="8" class="dg-coglet"/>
 <text x="277.0" y="159.0" text-anchor="middle" class="dg-b">Paintbot</text>
+<path d="M277.0 176V186" class="dg-blue" stroke-width="1.6" fill="none"/>
 <rect x="335.0" y="60" width="100.0" height="42" rx="8" class="dg-world"/>
 <rect x="335.0" y="90" width="100.0" height="12" rx="5" class="dg-adapter"/>
 <text x="385.0" y="80" text-anchor="middle" class="dg-t">GOTA</text>
 <line x1="385.0" y1="104" x2="385.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
 <rect x="335.0" y="134" width="100.0" height="42" rx="8" class="dg-coglet"/>
 <text x="385.0" y="159.0" text-anchor="middle" class="dg-b">GOTA</text>
+<path d="M385.0 176V186" class="dg-blue" stroke-width="1.6" fill="none"/>
 <rect x="443.0" y="60" width="100.0" height="42" rx="8" class="dg-world"/>
 <rect x="443.0" y="90" width="100.0" height="12" rx="5" class="dg-adapter"/>
 <text x="493.0" y="80" text-anchor="middle" class="dg-t">PudgeWars</text>
 <line x1="493.0" y1="104" x2="493.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
 <rect x="443.0" y="134" width="100.0" height="42" rx="8" class="dg-coglet"/>
 <text x="493.0" y="159.0" text-anchor="middle" class="dg-b">PudgeWars</text>
+<path d="M493.0 176V186" class="dg-blue" stroke-width="1.6" fill="none"/>
+<rect x="227" y="186" width="316" height="26" rx="8" class="dg-hub"/>
+<text x="385.0" y="203.0" text-anchor="middle" class="dg-t">Hub: router + optimizer</text>
 <circle cx="238" cy="40" r="6" class="dg-ink" stroke-width="1.5"/><ellipse cx="238" cy="40" rx="11" ry="3.6" transform="rotate(-20 238 40)" class="dg-ink" stroke-width="1.5"/>
-<rect x="587" y="20" width="240" height="168" rx="12" class="dg-bg"/>
+<rect x="587" y="20" width="240" height="200" rx="12" class="dg-bg"/>
 <text x="633" y="45" text-anchor="start" class="dg-cap">PHONE</text>
 <rect x="601.0" y="60" width="102.0" height="42" rx="8" class="dg-world"/>
 <rect x="601.0" y="90" width="102.0" height="12" rx="5" class="dg-adapter"/>
@@ -157,24 +153,48 @@
 <line x1="652.0" y1="104" x2="652.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
 <rect x="601.0" y="134" width="102.0" height="42" rx="8" class="dg-coglet"/>
 <text x="652.0" y="159.0" text-anchor="middle" class="dg-b">Face</text>
+<path d="M652.0 176V186" class="dg-blue" stroke-width="1.6" fill="none"/>
 <rect x="711.0" y="60" width="102.0" height="42" rx="8" class="dg-world"/>
 <rect x="711.0" y="90" width="102.0" height="12" rx="5" class="dg-adapter"/>
 <text x="762.0" y="80" text-anchor="middle" class="dg-t">A phone app</text>
 <line x1="762.0" y1="104" x2="762.0" y2="132" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)" marker-start="url(#cogent-warm-s)"/>
 <rect x="711.0" y="134" width="102.0" height="42" rx="8" class="dg-coglet"/>
 <text x="762.0" y="159.0" text-anchor="middle" class="dg-b">App coglet</text>
+<path d="M762.0 176V186" class="dg-blue" stroke-width="1.6" fill="none"/>
+<rect x="601" y="186" width="212" height="26" rx="8" class="dg-hub"/>
+<text x="707.0" y="203.0" text-anchor="middle" class="dg-t">Hub: router + optimizer</text>
 <rect x="607" y="31" width="10" height="17" rx="2.5" class="dg-ink" stroke-width="1.5"/><path d="M610.5 45H613.5" class="dg-ink" stroke-width="1.5"/>
-<line x1="500" y1="190" x2="500" y2="258" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
-<line x1="650" y1="190" x2="650" y2="258" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
-<text x="488" y="209" text-anchor="end" class="dg-m">installs, patches, messages</text>
-<line x1="40" y1="545" x2="74" y2="545" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)"/>
-<text x="82" y="549" text-anchor="start" class="dg-m">the cogent reaches a device</text>
-<line x1="262" y1="545" x2="296" y2="545" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)"/>
-<text x="304" y="549" text-anchor="start" class="dg-m">a coglet uses an app through its adapter</text>
-<rect x="680" y="535" width="20" height="20" rx="4" class="dg-coglet"/>
-<text x="708" y="549" text-anchor="start" class="dg-m">coglet</text>
-<rect x="776" y="535" width="20" height="20" rx="4" class="dg-adapter"/>
-<text x="804" y="549" text-anchor="start" class="dg-m">adapter</text>
-<rect x="878" y="535" width="20" height="20" rx="4" class="dg-world"/>
-<text x="906" y="549" text-anchor="start" class="dg-m">app or hardware</text>
+<line x1="450" y1="222" x2="450" y2="355" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="600" y1="222" x2="600" y2="355" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<text x="462" y="294" text-anchor="start" class="dg-m">installs, patches, messages</text>
+<rect x="250" y="552" width="540" height="150" rx="12" class="dg-bg"/>
+<text x="264" y="577" text-anchor="start" class="dg-cap">SOFTMAX-HOSTED RUNTIME</text>
+<text x="776" y="577" text-anchor="end" class="dg-m">running on their own; the cogent checks in</text>
+<rect x="264.0" y="592" width="165.33333333333334" height="60" rx="8" class="dg-coglet"/>
+<text x="346.6666666666667" y="619.0" text-anchor="middle" class="dg-b">Factory</text>
+<text x="346.6666666666667" y="635.0" text-anchor="middle" class="dg-m">builds patches</text>
+<path d="M346.6666666666667 652V664" class="dg-blue" stroke-width="1.6" fill="none"/>
+<rect x="437.33333333333337" y="592" width="165.33333333333334" height="60" rx="8" class="dg-coglet"/>
+<text x="520.0" y="619.0" text-anchor="middle" class="dg-b">Memory</text>
+<text x="520.0" y="635.0" text-anchor="middle" class="dg-m">what it knows</text>
+<path d="M520.0 652V664" class="dg-blue" stroke-width="1.6" fill="none"/>
+<rect x="610.6666666666667" y="592" width="165.33333333333334" height="60" rx="8" class="dg-coglet"/>
+<text x="693.3333333333334" y="619.0" text-anchor="middle" class="dg-b">Database</text>
+<text x="693.3333333333334" y="635.0" text-anchor="middle" class="dg-m">structured data</text>
+<path d="M693.3333333333334 652V664" class="dg-blue" stroke-width="1.6" fill="none"/>
+<rect x="264" y="664" width="512" height="28" rx="8" class="dg-hub"/>
+<text x="520.0" y="682.0" text-anchor="middle" class="dg-t">Hub: router + optimizer</text>
+<line x1="520" y1="421" x2="520" y2="550" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)" marker-start="url(#cogent-blue-s)"/>
+<line x1="40" y1="737" x2="74" y2="737" class="dg-blue" stroke-width="1.6" marker-end="url(#cogent-blue)"/>
+<text x="82" y="741" text-anchor="start" class="dg-m">routers carry it</text>
+<line x1="196" y1="737" x2="230" y2="737" class="dg-warm" stroke-width="1.6" marker-end="url(#cogent-warm)"/>
+<text x="238" y="741" text-anchor="start" class="dg-m">a coglet uses an app through its adapter</text>
+<rect x="500" y="727" width="22" height="20" rx="5" class="dg-present"/>
+<text x="530" y="741" text-anchor="start" class="dg-m">present</text>
+<rect x="610" y="727" width="20" height="20" rx="4" class="dg-coglet"/>
+<text x="638" y="741" text-anchor="start" class="dg-m">coglet</text>
+<rect x="706" y="727" width="20" height="20" rx="4" class="dg-adapter"/>
+<text x="734" y="741" text-anchor="start" class="dg-m">adapter</text>
+<rect x="808" y="727" width="20" height="20" rx="4" class="dg-world"/>
+<text x="836" y="741" text-anchor="start" class="dg-m">app or hardware</text>
 </svg>

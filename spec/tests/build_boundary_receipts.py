@@ -7,6 +7,8 @@ import json
 from test_common import SPEC
 from test_abi import digest, record_hash
 
+WRITE_METHOD = 'manage.write'
+
 
 def clone(value):
     return copy.deepcopy(value)
@@ -47,7 +49,7 @@ def generate(write_files=True):
                 output.pop(change['path'], None)
             else:
                 output[change['path']] = change['after']
-        record = dict(version='0.1', trace_id=sample['trace_id'], coglet=coglet,
+        record = dict(version='1.0', trace_id=sample['trace_id'], coglet=coglet,
                       logical_time=20, previous=sample['records'][-1]['record_hash'] if sample['records'] else None,
                       before_hash=digest(before), output_hash=digest(output), output_files=output, boundary=changes)
         sample['trailing_boundary'] = seal(record)
@@ -55,7 +57,7 @@ def generate(write_files=True):
         return sample
 
     def write(path, before, after):
-        return dict(actor=hub, audit_id='6'*32, ticket=None, method='debug.write',
+        return dict(actor=hub, audit_id='6'*32, ticket=None, method=WRITE_METHOD,
                     target=coglet, path=path, before=before, after=after)
 
     standalone = clone(trace)
@@ -231,7 +233,7 @@ def generate(write_files=True):
             dict(send=dict(operation='abi.validate_trace', trace=vector['value'])),
             dict(expect=result, within_ms=200)]))
     if write_files:
-        (SPEC.parent / 'conformance/abi/boundary-receipts.json').write_text(json.dumps(timelines, indent=2)+'\n')
+        (SPEC / 'fixtures/abi/boundary-receipts-timeline.fixture').write_text(json.dumps(timelines, indent=2)+'\n')
     return vectors, timelines
 
 

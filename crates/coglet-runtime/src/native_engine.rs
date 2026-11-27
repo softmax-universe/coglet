@@ -1,6 +1,5 @@
 //! Opt-in, qualified interpreter route. No ambient host I/O.
-#[path = "wasi.rs"]
-mod wasi;
+use crate::wasi;
 use crate::{Engine, EngineReport, Result, StepHost, cbor, digest, validate};
 use coglet_engine::{
     Engine as SharedEngine, GuestMemory, Host, Instance, Limits, StepBudget, StepInput,
@@ -11,6 +10,8 @@ use std::time::{Duration, Instant};
 
 pub struct NativeEngine {
     code: Vec<u8>,
+    /// Immutable admission proof for `code`; every step still gets a fresh native instance.
+    module: coglet_engine_wamr::Module,
     runtime_bytes: u32,
     stack_bytes: u32,
     prepared: Option<(coglet_engine_wamr::WamrInstance, StepInput, Instant, u32)>,
@@ -22,18 +23,27 @@ impl NativeEngine {
         runtime_bytes: u32,
         stack_bytes: u32,
     ) -> Result<Self> {
-        let engine = Self {
+        let limits = Self::limits_for(budgets, runtime_bytes, stack_bytes, Instant::now())?;
+        let module = Wamr::interpreter()
+            .load(&code, &limits)
+            .map_err(|e| e.to_string())?;
+        Ok(Self {
             code,
+            module,
             runtime_bytes,
             stack_bytes,
             prepared: None,
-        };
-        Wamr::interpreter()
-            .load(&engine.code, &engine.limits(budgets, Instant::now())?)
-            .map_err(|e| e.to_string())?;
-        Ok(engine)
+        })
     }
     fn limits(&self, budgets: &Value, started: Instant) -> Result<Limits> {
+        Self::limits_for(budgets, self.runtime_bytes, self.stack_bytes, started)
+    }
+    fn limits_for(
+        budgets: &Value,
+        runtime_bytes: u32,
+        stack_bytes: u32,
+        started: Instant,
+    ) -> Result<Limits> {
         validate("budgets", budgets)?;
         Ok(Limits {
             compute_mode: budgets["compute_mode"]
@@ -44,8 +54,8 @@ impl NativeEngine {
             memory_pages: u32::try_from(budgets["memory_pages"].as_u64().ok_or("memory pages")?)
                 .map_err(|_| "memory pages overflow")?,
             host_bytes: budgets["host_bytes"].as_u64().ok_or("host bytes")?,
-            runtime_bytes: self.runtime_bytes,
-            stack_bytes: self.stack_bytes,
+            runtime_bytes,
+            stack_bytes,
             deadline: started
                 .checked_add(Duration::from_micros(
                     budgets["wall_time_us"].as_u64().ok_or("wall time")?,
@@ -110,18 +120,22 @@ impl Engine for NativeEngine {
     fn admit(&mut self, inputs: &Value, host: &StepHost) -> Result<()> {
         self.prepared = None;
         let started = Instant::now();
-        if host.files.files().get("/code/bin/step.wasm") != Some(&hex::encode(&self.code)) {
+        if !host
+            .files
+            .decoded_fs()?
+            .read("/code/bin/step.wasm")
+            .is_ok_and(|bytes| bytes == self.code.as_slice())
+        {
             return Err("native engine code pin mismatch".into());
         }
         let limits = self.limits(&inputs["budgets"], started)?;
         let memory_pages = limits.memory_pages;
         let engine = Wamr::interpreter();
         // Admission failures return before any guest attempt/batch consumption.
-        let module = engine
-            .load(&self.code, &limits)
-            .map_err(|e| e.to_string())?;
+        // The engine rechecks static policy if it differs from the cached proof and
+        // always checks mode/compute/deadline; the instance is fresh every step.
         let instance = engine
-            .instantiate(&module, limits)
+            .instantiate(&self.module, limits)
             .map_err(|e| e.to_string())?;
         let input = StepInput {
             events: cbor(&inputs["events"])?,
@@ -170,6 +184,148 @@ pub(super) fn engine_failure(error: coglet_engine::Error) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn pin_fixture() -> (NativeEngine, Value, StepHost) {
+        let code = wat::parse_str(
+            "(module (memory (export \"memory\") 1 2)
+                (func (export \"abi_alloc\") (param i32) (result i32) i32.const 0)
+                (func (export \"handle\") (param i32 i32 i64 i64 i64) (result i32) i32.const 0))",
+        )
+        .unwrap();
+        let budgets = json!({"compute_mode":coglet_engine_wamr::COMPUTE_MODE,
+            "compute":100_000,"memory_pages":2,"host_bytes":1_000_000,
+            "wall_time_us":5_000_000,"max_events":1});
+        let inputs = json!({"budgets":budgets,"events":[],"step":0,"logical_time":0,"seed":7});
+        let files = crate::Snapshot::new(std::collections::BTreeMap::from([(
+            "/code/bin/step.wasm".into(),
+            hex::encode(&code),
+        )]))
+        .unwrap();
+        let host = StepHost::new(
+            files,
+            Default::default(),
+            &inputs,
+            crate::ContractProfile::Surface01,
+        );
+        let engine = NativeEngine::new(code, &budgets, 8_388_608, 65_536).unwrap();
+        (engine, inputs, host)
+    }
+
+    #[test]
+    fn decoded_code_pin_accepts_exact_bytes_with_cold_and_reused_snapshots() {
+        let (mut engine, inputs, mut host) = pin_fixture();
+        engine.admit(&inputs, &host).unwrap();
+        assert!(
+            engine
+                .execute(&inputs, &mut host)
+                .unwrap()
+                .failure
+                .is_none()
+        );
+        // Exercise the immutable decoded cache and an unchanged projection.
+        let decoded = host.files.decoded_fs().unwrap().clone();
+        host.files = host.files.project_fs(decoded).unwrap();
+        for _ in 0..2 {
+            engine.admit(&inputs, &host).unwrap();
+            assert!(
+                engine
+                    .execute(&inputs, &mut host)
+                    .unwrap()
+                    .failure
+                    .is_none()
+            );
+        }
+    }
+
+    #[test]
+    fn decoded_code_pin_rejects_same_length_foreign_bytes_after_cached_projection() {
+        let (mut engine, inputs, mut host) = pin_fixture();
+        engine.admit(&inputs, &host).unwrap();
+        let original = host.files.clone();
+        let mut files = original
+            .decoded_fs()
+            .unwrap()
+            .files()
+            .map(|(path, bytes)| (path.to_owned(), bytes.to_vec()))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        let foreign = files.get_mut("/code/bin/step.wasm").unwrap();
+        foreign[0] ^= 1;
+        assert_eq!(foreign.len(), engine.code.len());
+        assert_ne!(foreign.as_slice(), engine.code.as_slice());
+        host.files = original
+            .project_fs(coglet_fs::Snapshot::from_files(files).unwrap())
+            .unwrap();
+        assert_eq!(
+            engine.admit(&inputs, &host).unwrap_err(),
+            "native engine code pin mismatch"
+        );
+        assert_eq!(
+            engine.execute(&inputs, &mut host).err().unwrap(),
+            "native execution requires successful admission"
+        );
+        // A rejected replacement cannot poison the original immutable snapshot.
+        host.files = original;
+        engine.admit(&inputs, &host).unwrap();
+    }
+
+    #[test]
+    fn decoded_code_pin_rejects_missing_code_after_cached_projection() {
+        let (mut engine, inputs, mut host) = pin_fixture();
+        engine.admit(&inputs, &host).unwrap();
+        let mut files = host
+            .files
+            .decoded_fs()
+            .unwrap()
+            .files()
+            .map(|(path, bytes)| (path.to_owned(), bytes.to_vec()))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        files.remove("/code/bin/step.wasm");
+        host.files = host
+            .files
+            .project_fs(coglet_fs::Snapshot::from_files(files).unwrap())
+            .unwrap();
+        assert_eq!(
+            engine.admit(&inputs, &host).unwrap_err(),
+            "native engine code pin mismatch"
+        );
+        assert!(engine.prepared.is_none());
+    }
+
+    #[test]
+    fn decoded_code_pin_preserves_snapshot_hex_validation() {
+        let (engine, _, _) = pin_fixture();
+        let upper = hex::encode_upper(&engine.code);
+        assert_ne!(upper, hex::encode(&engine.code));
+        // Uppercase is NOT schema-equivalent here: Snapshot requires lowercase.
+        for encoded in ["0".to_owned(), "gg".to_owned(), upper] {
+            let files =
+                std::collections::BTreeMap::from([("/code/bin/step.wasm".to_owned(), encoded)]);
+            assert_eq!(
+                crate::Snapshot::new(files.clone()).unwrap_err(),
+                "snapshot requires lowercase even-length hex"
+            );
+            assert!(serde_json::from_value::<crate::Snapshot>(json!(files)).is_err());
+        }
+    }
+
+    #[test]
+    fn decoded_code_pin_does_not_bypass_reused_admission_budget_checks() {
+        let (mut engine, inputs, host) = pin_fixture();
+        for (field, value) in [
+            ("compute_mode", json!("unqualified")),
+            ("compute", json!(0)),
+            ("memory_pages", json!(1)),
+            ("wall_time_us", json!(0)),
+            ("compute", json!("malformed")),
+        ] {
+            engine.admit(&inputs, &host).unwrap();
+            let mut invalid = inputs.clone();
+            invalid["budgets"][field] = value;
+            assert!(engine.admit(&invalid, &host).is_err(), "{field}");
+            assert!(engine.prepared.is_none());
+        }
+        engine.admit(&inputs, &host).unwrap();
+    }
+
     #[test]
     fn guest_exit_is_guest_return_abort_including_zero_status() {
         // Mapping proof only: proc_exit is intercepted before the file host.
@@ -195,11 +351,14 @@ impl crate::RuntimeService {
         self.native.is_some() && self.managed_running()
     }
     pub fn enable_native(&mut self, mut config: NativeSchedule) -> Result<()> {
+        if self.detached_execution {
+            return Err("runtime execution already reserved".into());
+        }
         if self
             .state
             .completed_segments
             .iter()
-            .any(|s| s.code_revision.is_some())
+            .any(|s| s.code_revision.is_some() || s.hash_upgrade)
         {
             config.trace_id = self
                 .state
@@ -231,30 +390,65 @@ impl crate::RuntimeService {
         self.native = Some((config, engine));
         Ok(())
     }
-    pub(crate) fn run_native(&mut self, session: &crate::SurfaceSession, now: u64) -> Result<()> {
-        if !self.managed_running()
-            || self.native.is_none()
-            || self.state.runtime.unresolved_attempt.is_some()
-            || self.surface_epoch(session.surface()) != session.grant_epoch()
-        {
-            return Ok(());
-        }
-        let manifest = &self.state.runtime.manifest;
-        let Some(grants) = session.execution_grants(manifest, now)? else {
+    pub(crate) fn run_native(
+        service: &std::sync::Arc<std::sync::Mutex<Self>>,
+        session: &crate::SurfaceSession,
+        now: u64,
+    ) -> Result<()> {
+        let Some((run, config, mut engine)) = ({
+            let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
+            if !locked.managed_running()
+                || locked.managed_paused()
+                || locked.code_pending()
+                || locked.receiver_pending_for_execution()
+                || locked.native.is_none()
+                || locked.detached_execution
+                || locked.state.runtime.unresolved_attempt.is_some()
+                || locked.surface_epoch(session.surface()) != session.grant_epoch()
+            {
+                None
+            } else {
+                let manifest = &locked.state.runtime.manifest;
+                if let Some(grants) = session.execution_grants(manifest, now)? {
+                    let config = &locked.native.as_ref().unwrap().0;
+                    let seed_bytes = cbor(&json!([config.seed, locked.state.runtime.step]))?;
+                    let seed = u64::from_str_radix(&digest(&seed_bytes)[..16], 16)
+                        .map_err(|e| e.to_string())?;
+                    let context = json!({"trace_id":config.trace_id,"logical_time":now,"seed":seed,
+                        "budgets":manifest["budgets"],"grants":grants,"boundary":[]});
+                    locked.prepare_detached(&context)?.map(|run| {
+                        let (config, engine) = locked.native.take().unwrap();
+                        (run, config, engine)
+                    })
+                } else {
+                    None
+                }
+            }
+        }) else {
             return Ok(());
         };
-        let Some((config, mut engine)) = self.native.take() else {
-            return Ok(());
-        };
-        // Derive seeds from supervisor seed + durable step. Restart never resets
-        // step identity. No OS randomness enters the guest or replay path.
-        let seed_bytes = cbor(&json!([config.seed, self.state.runtime.step]))?;
-        let hash = digest(&seed_bytes);
-        let seed = u64::from_str_radix(&hash[..16], 16).map_err(|e| e.to_string())?;
-        let context = json!({"trace_id":config.trace_id,"logical_time":now,"seed":seed,
-            "budgets":manifest["budgets"],"grants":grants,"boundary":[]});
-        let result = self.run_next(&context, &mut engine);
-        self.native = Some((config, engine));
-        result.map(|_| ())
+        let result = Self::execute_detached(
+            service,
+            run,
+            &mut engine,
+            &|fence| fence(),
+            &|locked, inputs| {
+                if locked.surface_epoch(session.surface()) != session.grant_epoch() {
+                    return Err("permission_denied".into());
+                }
+                let fresh = locked.supervised_now()?;
+                if session
+                    .execution_grants(&locked.state.runtime.manifest, fresh)?
+                    .is_none_or(|grants| json!(grants) != inputs["grants"])
+                {
+                    return Err("permission_denied".into());
+                }
+                Ok(())
+            },
+        );
+        let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
+        locked.native = Some((config, engine));
+        locked.detached_execution = false;
+        result
     }
 }

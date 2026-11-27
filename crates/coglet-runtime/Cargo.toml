@@ -18,25 +18,31 @@ m1-tests = ["native-engine"]
 ffi-test-hooks = []
 # Explicit build-dependent smoke: requires COGLET_ECHO_SMOKE_WASM.
 echo-smoke = ["native-engine"]
-native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:coglet-fs", "dep:wasmparser", "dep:coglet-db"]
+native-engine = ["dep:coglet-engine", "dep:coglet-engine-wamr", "dep:wasmparser", "dep:coglet-db"]
 
 [dependencies]
 coglet-db = { path = "../coglet-db", optional = true }
 coglet-engine = { path = "../coglet-engine", optional = true }
 coglet-engine-wamr = { path = "../coglet-engine-wamr", optional = true }
-coglet-fs = { path = "../coglet-fs", optional = true }
+coglet-fs = { path = "../coglet-fs" }
 wasmparser = { version = "=0.245.1", optional = true }
 libc = "0.2"
-coglet-types = { path = "../coglet-types" }
+# ADR-0031: existing implementation remains hub/0 until its separate migration.
+coglet-types = { package = "coglet-types-hub0", path = "../coglet-types-hub0" }
+# Current ABI and selected surface-0.2 roots use the current codec;
+# hub protocol validation remains pinned to the frozen hub/0 snapshot.
+coglet-types-current = { package = "coglet-types", path = "../coglet-types" }
 coglet-proto = { path = "../coglet-proto", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
 hex = "0.4"
 iroh = { version = "=1.5.0", default-features = false, features = ["tls-ring"], optional = true }
-tokio = { version = "1", features = ["io-util", "macros", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1", features = ["io-util", "io-std", "macros", "rt-multi-thread", "sync", "time"] }
 
 [dev-dependencies]
+coglet-factory-host = { path = "../../coglets/factory/host" }
+coglet-llm = { path = "../coglet-llm" }
 rusqlite = { version = "0.38", features = ["bundled"] }
 coglet-hub = { path = "../coglet-hub" }
 coglet-proto = { path = "../coglet-proto" }
@@ -61,6 +67,10 @@ required-features = ["native-engine"]
 
 [[example]]
 name = "generate_archive_companions"
+required-features = ["native-engine"]
+
+[[example]]
+name = "runtime_receiver_peer"
 required-features = ["native-engine"]
 
 [[test]]

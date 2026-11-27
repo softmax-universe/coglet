@@ -1,10 +1,14 @@
 //! Authenticated router→device lifecycle. Authority and accepted refs are never
 //! inferred from a remote proof. Boot admission precedes daemon readiness.
+use crate::output_lease::OutputGate;
+use crate::policy_local::ProducerProfile;
 use crate::{DurableStore, Result, RuntimeService, admit_manifest, digest, validate};
 #[path = "initial_push.rs"]
 mod initial_push;
 #[path = "installed_push.rs"]
 mod installed_push;
+#[path = "producer_ops.rs"]
+mod producer_ops;
 #[path = "receipt.rs"]
 mod receipt;
 use coglet_proto::{
@@ -20,11 +24,19 @@ use coglet_proto::{
 };
 use iroh::EndpointId;
 use receipt::receipt_scope;
+#[path = "back_channel.rs"]
+mod back_channel;
+pub use back_channel::BackChannelLimits;
+#[path = "receiver_fetch.rs"]
+mod receiver_fetch;
+pub use receiver_fetch::PublishedSnapshot;
+#[path = "receiver_actions.rs"]
+mod receiver_actions;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     future::Future,
     path::{Path, PathBuf},
     pin::Pin,
@@ -55,11 +67,19 @@ pub struct DeviceConfig {
     pub kill_switch: Option<PathBuf>,
     pub targets: BTreeMap<String, TargetPin>,
     pub adapter: Option<AdapterConfig>,
+    /// ADR-0033 opt-in producer profile. `None` keeps legacy behavior: no local
+    /// endpoint, no output gate. Never provisioned remotely.
+    pub profile: Option<ProducerProfile>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TargetPin {
+    /// Explicit publications only; empty by default. Keys are exact Git refs.
+    #[serde(default)]
+    pub fetch_snapshots: BTreeMap<String, PublishedSnapshot>,
+    #[serde(default)]
+    pub back_channel: BackChannelLimits,
     pub grant_generation: u64,
     pub delegation_generation: u64,
     #[serde(default)]
@@ -84,7 +104,16 @@ struct Inner {
     validator: PathBuf,
     clock: Arc<dyn Fn() -> Option<u64> + Send + Sync>,
     services: Mutex<BTreeMap<String, Arc<Mutex<RuntimeService>>>>,
+    receiver_drains: BTreeMap<String, Arc<tokio::sync::Mutex<()>>>,
     adapter_started: AtomicBool,
+    /// Per-target output gates; empty without a producer profile. Every gate is
+    /// created CLOSED here, before any adapter listener exists.
+    gates: BTreeMap<String, Arc<OutputGate>>,
+    /// Minted fresh per process; never persisted. Leases bind to it.
+    daemon_instance: String,
+    /// Targets whose emergency obligation THIS process retained.
+    retained_here: Mutex<BTreeSet<String>>,
+    producer_started: AtomicBool,
 }
 
 /// Session handler for `hub.git.push` / install / start / stop / status.
@@ -111,18 +140,37 @@ impl DeviceHandler {
         create_private_dir(&config.wal_root)?;
         create_private_dir(&config.quarantine)?;
         let store = AcceptedRefStore::new(authority.clone()).map_err(store_text)?;
+        let mut gates = BTreeMap::new();
+        if let Some(profile) = &config.profile {
+            profile.validate(&config.targets)?;
+            for target in config.targets.keys() {
+                gates.insert(target.clone(), OutputGate::new_closed());
+            }
+        }
+        let daemon_instance = producer_ops::random_hex32()?;
+        let receiver_drains = config
+            .targets
+            .keys()
+            .map(|id| (id.clone(), Arc::new(tokio::sync::Mutex::new(()))))
+            .collect();
         let handler = Self {
             inner: Arc::new(Inner {
                 config,
+                receiver_drains,
                 authority,
                 store,
                 validator: validator.as_ref().to_owned(),
                 clock,
                 services: Mutex::new(BTreeMap::new()),
                 adapter_started: AtomicBool::new(false),
+                gates,
+                daemon_instance,
+                retained_here: Mutex::new(BTreeSet::new()),
+                producer_started: AtomicBool::new(false),
             }),
         };
         handler.resume_initial_pushes()?;
+        handler.resume_receiver()?;
         Ok(handler)
     }
 
@@ -215,7 +263,9 @@ impl DeviceHandler {
                             },
                         )
                     })();
-                    if admission.is_err() {
+                    if let Err(error) = &admission {
+                        // The reason stays local: status reports only the fence.
+                        eprintln!("cogletd restart admission refused: {error}");
                         service
                             .lock()
                             .map_err(|_| "unavailable")?
@@ -431,6 +481,7 @@ impl DeviceHandler {
         request: &Value,
         setup: &Value,
         proof: &Value,
+        admission: Option<&Value>,
         gate: Gate<'_>,
     ) -> Result<Value> {
         if request["params"]["delegation"] != *proof {
@@ -454,7 +505,7 @@ impl DeviceHandler {
                 .ok_or("permission_denied")?,
         )
         .map_err(|_| "permission_denied".to_owned())?;
-        let identity = json!({
+        let mut identity = json!({
             "initial": request["params"]["initial"],
             "delegation": proof,
             "live_commit": request["params"]["initial"]["statement"]["new"],
@@ -465,6 +516,22 @@ impl DeviceHandler {
             }
         });
         let operation_id = request["correlation_id"].as_str().unwrap();
+        if let Some(code) = admission {
+            identity["policy_admission"] = json!({"router":self.inner.config.hub.to_string(),
+                "code":code,"install":{"operation_id":operation_id,
+                "intent":self.operation_intent(request)?,"scope":receipt_scope(request)}});
+        }
+        match self.peek_identity(coglet) {
+            Ok(saved) => {
+                if let Some(original) = saved.get("policy_admission") {
+                    identity["policy_admission"] = original.clone();
+                } else {
+                    identity.as_object_mut().unwrap().remove("policy_admission");
+                }
+            }
+            Err(e) if e == "not_installed" => {}
+            Err(e) => return Err(e),
+        }
         let receipt = {
             let mut services = self.inner.services.lock().map_err(|_| "unavailable")?;
             if let Some(service) = services.get(coglet) {
@@ -474,6 +541,15 @@ impl DeviceHandler {
                 // identity. Never bind new metadata to stale unmanaged bytes.
                 if locked.managed_identity().is_none() {
                     return Err("permission_denied".into());
+                }
+                // Retrying the same install never rewrites the original context.
+                if let Some(original) = locked
+                    .managed_identity()
+                    .and_then(|v| v.get("policy_admission"))
+                {
+                    identity["policy_admission"] = original.clone();
+                } else {
+                    identity.as_object_mut().unwrap().remove("policy_admission");
                 }
                 locked.managed_install_scoped(
                     &identity,
@@ -707,6 +783,13 @@ impl DeviceHandler {
             if adapter.coglet != coglet {
                 return;
             }
+            // With a producer profile an ungated adapter would bypass output
+            // custody: refuse to start it rather than expose it.
+            let gate = self.inner.gates.get(coglet).cloned();
+            if self.inner.config.profile.is_some() && gate.is_none() {
+                eprintln!("cogletd adapter listener: no output gate for target; not started");
+                return;
+            }
             if self.inner.adapter_started.swap(true, Ordering::SeqCst) {
                 return;
             }
@@ -718,7 +801,7 @@ impl DeviceHandler {
             let _ = std::thread::Builder::new()
                 .name("cogletd-adapter".into())
                 .spawn(move || {
-                    if let Err(error) = bind_adapter(adapter, service) {
+                    if let Err(error) = bind_adapter(adapter, service, gate) {
                         eprintln!("cogletd adapter listener: {error}");
                     }
                 });
@@ -728,6 +811,9 @@ impl DeviceHandler {
     }
 
     async fn handle_lifecycle(&self, context: RequestContext, request: Value) -> Value {
+        if validate("hub-request", &request).is_err() {
+            return fail(&request, "invalid_argument");
+        }
         if let Err(code) = self.pinned_peer(&context) {
             return fail(&request, code);
         }
@@ -738,10 +824,10 @@ impl DeviceHandler {
             return fail(&request, "invalid_argument");
         };
         match method {
-            "hub.install" | "hub.start" | "hub.stop" | "hub.status" | "hub.receipt" => {}
-            "hub.git.push" | "hub.git.fetch" | "hub.actions" | "hub.events" | "hub.inbox"
-            | "hub.health" | "hub.cancel" | "debug.read" | "debug.write" | "debug.pause"
-            | "debug.step" | "hub.enroll" => {
+            "hub.install" | "hub.start" | "hub.stop" | "hub.status" | "hub.receipt"
+            | "hub.inbox" | "hub.cancel" | "debug.read" | "debug.write" | "debug.pause"
+            | "debug.step" | "hub.actions" => {}
+            "hub.git.push" | "hub.git.fetch" | "hub.events" | "hub.health" | "hub.enroll" => {
                 return fail(&request, "permission_denied");
             }
             _ => return fail(&request, "invalid_argument"),
@@ -756,6 +842,45 @@ impl DeviceHandler {
             "hub.stop" => self.stop(context, request.clone(), coglet, pin).await,
             "hub.status" => self.status(context, request.clone(), coglet, pin).await,
             "hub.receipt" => self.receipt(context, request.clone(), coglet, pin).await,
+            "hub.actions" => {
+                self.receive_action(context, request.clone(), coglet, pin)
+                    .await
+            }
+            "debug.pause" | "debug.step" => {
+                let first = self
+                    .back_channel(
+                        context.clone(),
+                        request.clone(),
+                        coglet.clone(),
+                        pin.clone(),
+                    )
+                    .await;
+                match first {
+                    Ok(result) if result["state"] == "queued" => {
+                        match self.drain_receiver(&coglet).await {
+                            Ok(()) => {
+                                let result = self
+                                    .back_channel(context, request.clone(), coglet, pin)
+                                    .await;
+                                if result.as_ref().is_ok_and(|r| r["state"] == "queued") {
+                                    Err("unavailable".into())
+                                } else {
+                                    result
+                                }
+                            }
+                            Err(error) => Err(error),
+                        }
+                    }
+                    other => other,
+                }
+            }
+            "hub.inbox" | "hub.cancel" | "debug.read" | "debug.write" => {
+                // The owned retry driver drains durable queued work. Spawning
+                // one strong handler/permit waiter per admission would turn a
+                // full queue into an unbounded tail behind a single guest.
+                self.back_channel(context, request.clone(), coglet.clone(), pin)
+                    .await
+            }
             _ => Err("permission_denied".into()),
         };
         match result {
@@ -799,13 +924,18 @@ impl DeviceHandler {
             {
                 return Err("permission_denied".into());
             }
+            let admission = handler
+                .inner
+                .store
+                .preinstall_admission(handler.inner.config.hub, &coglet, metadata.signed())
+                .map_err(store_text)?;
             handler
                 .load_accepted(&coglet, metadata.signed())
-                .map(|(metadata, bytes)| (coglet, metadata, bytes))
+                .map(|(metadata, bytes)| (coglet, metadata, bytes, admission))
         })
         .await
         .map_err(|_| "unavailable".to_owned())??;
-        let (coglet, metadata, bytes) = loaded;
+        let (coglet, metadata, bytes, admission) = loaded;
         let setup = self.setup_from_bundle(&bytes, &metadata, &coglet).await?;
         let handler = self.clone();
         tokio::task::spawn_blocking(move || {
@@ -824,7 +954,14 @@ impl DeviceHandler {
                 |proof, recheck| {
                     let gate = || deadline_gate(&context, recheck);
                     gate()?;
-                    handler.apply_install(&coglet, &request, &setup, proof, &gate)
+                    handler.apply_install(
+                        &coglet,
+                        &request,
+                        &setup,
+                        proof,
+                        admission.as_ref(),
+                        &gate,
+                    )
                 },
             )
         })
@@ -870,6 +1007,34 @@ impl DeviceHandler {
     }
 
     async fn stop(
+        &self,
+        context: RequestContext,
+        request: Value,
+        coglet: String,
+        pin: TargetPin,
+    ) -> Result<Value> {
+        loop {
+            // A queued receipt durably fences new execution while the original
+            // detached guest finishes. Never wait with SQL/service custody held.
+            let receipt = self
+                .stop_once(
+                    context.clone(),
+                    request.clone(),
+                    coglet.clone(),
+                    pin.clone(),
+                )
+                .await?;
+            if receipt["state"] != "queued" {
+                return Ok(receipt);
+            }
+            if tokio::time::Instant::now() >= context.deadline {
+                return Err("unavailable".into());
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }
+
+    async fn stop_once(
         &self,
         context: RequestContext,
         request: Value,
@@ -945,14 +1110,22 @@ impl DeviceHandler {
 }
 
 #[allow(unreachable_code)]
-fn bind_adapter(adapter: AdapterConfig, service: Arc<Mutex<RuntimeService>>) -> Result<()> {
+fn bind_adapter(
+    adapter: AdapterConfig,
+    service: Arc<Mutex<RuntimeService>>,
+    gate: Option<Arc<OutputGate>>,
+) -> Result<()> {
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios"))]
     {
         let binding = crate::SurfaceBinding::from_config(
             &std::fs::read(&adapter.binding).map_err(|e| e.to_string())?,
         )?;
-        let server = crate::socket::SurfaceListener::bind(&adapter.socket, adapter.uid, binding)?
-            .with_service(service)?;
+        let mut server =
+            crate::socket::SurfaceListener::bind(&adapter.socket, adapter.uid, binding)?
+                .with_service(service)?;
+        if let Some(gate) = gate {
+            server = server.with_output_gate(gate);
+        }
         loop {
             if let Err(error) = server.serve_one() {
                 eprintln!("adapter connection: {error}");
@@ -961,7 +1134,7 @@ fn bind_adapter(adapter: AdapterConfig, service: Arc<Mutex<RuntimeService>>) -> 
     }
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios")))]
     {
-        let _ = (adapter, service);
+        let _ = (adapter, service, gate);
         Err("adapter listener requires a Unix socket transport".into())
     }
 }
@@ -1103,6 +1276,9 @@ impl OperationHandler for DeviceHandler {
         mut stream: GitStream<'a>,
     ) -> Pin<Box<dyn Future<Output = std::result::Result<Value, TransportError>> + Send + 'a>> {
         Box::pin(async move {
+            if request["method"] == "hub.git.fetch" {
+                return self.fetch_snapshot(context, request, stream).await;
+            }
             if request["method"] != "hub.git.push" {
                 return Ok(fail(&request, "permission_denied"));
             }

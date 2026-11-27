@@ -2,7 +2,7 @@
 
 `cogletd --router-service` awaits `DeviceHandler::recover_running` before binding
 its iroh endpoint or enrolling/advertising device readiness. Installed running
-intent is not authorization: recovery validates the signed **installed** audit
+intent is not authorization: recovery revalidates the signed **installed** audit
 bundle (not the newest staged ref), recovered code/manifest, original start
 operation/intent/scope, exact retained/config/current generations, current SQL
 scope/grant/delegation and trusted time, and local kill state. Native enable does
@@ -33,9 +33,13 @@ All commands are from the repository root; `--locked` is required.
 | Historical retry does not reverse stop after reopen | `lifecycle_operation_retries_cannot_reverse_later_transitions_after_restart` | Real iroh handler/WAL |
 | Newer staged artifact does not replace installed identity | `start_and_restart_revalidate_installed_artifact_not_newer_staged_ref` | Installed audit lookup, not latest accepted ref |
 
-Required `rust` CI runs `scripts/ci/cargo-test --locked -p coglet-runtime
---features native-engine --test device_lifecycle -- --test-threads=1` once,
-including both task-required names. Default workspace tests cover the managed
+Required `rust` CI runs the following command once:
+
+```sh
+RUST_TEST_THREADS=1 scripts/ci/cargo-test --locked -p coglet-runtime --features native-engine --test device_lifecycle
+```
+
+This includes both task-required names. Default workspace tests cover the managed
 persistence controls. Repeated stress is **not** a required-job retry:
 
 ```

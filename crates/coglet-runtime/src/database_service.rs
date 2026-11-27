@@ -14,8 +14,8 @@
 //! checks and is recomputed from the bytes on open. Artifacts are the
 //! deterministic CBOR of the JSON `ServiceState`, the same value the WAL stores.
 use super::*;
-use crate::database::{DatabaseHost, Deployment, admit};
-use crate::journal::database_projection;
+use crate::database::{DatabaseHost, Deployment, admit_with_profile, database_profile};
+use crate::journal::database_projection_with_profile;
 use coglet_db::{Catalog, Database, Decision, Journal, Recovered, StepId, Unit};
 use coglet_engine::{Engine as SharedEngine, Limits, StepInput};
 use coglet_types::Value as V;
@@ -101,7 +101,15 @@ impl<E: SharedEngine> Engine for DbAttempt<'_, E> {
             .ok_or("deployment already admitted")?;
         // Admission failures happen before guest entry and before any intent
         // fence: the batch stays retryable.
-        let (unit, instance) = admit(self.engine, self.code, deployment, db, self.catalog, limits)?;
+        let (unit, instance) = admit_with_profile(
+            self.engine,
+            self.code,
+            deployment,
+            db,
+            self.catalog,
+            limits,
+            host.contract_profile,
+        )?;
         self.db_before = unit.revision();
         self.unit = Some(unit);
         self.prepared = Some((
@@ -182,7 +190,7 @@ struct WalJournal<'s, 'g> {
 impl WalJournal<'_, '_> {
     fn check(&mut self, kind: Publication, id: &StepId) -> Result<()> {
         match &mut self.gate {
-            Some(gate) => gate(kind, id),
+            Some(gate) => historical_scope(false, || gate(kind, id)),
             None => Ok(()),
         }
     }
@@ -221,17 +229,23 @@ impl Journal for WalJournal<'_, '_> {
         if self.already(id, record, Some(&digest(artifacts)))? {
             return Ok(());
         }
-        let projection = database_projection(record)?;
+        let projection =
+            database_projection_with_profile(record, self.current()?.contract_profile)?;
         if projection["status"] != "committed" {
             return Err("committed publication carries a non-committed record".into());
         }
         let saved: Value = coglet_types::decode_profile(artifacts)?
             .deserialized()
             .map_err(|e| e.to_string())?;
-        let state: ServiceState =
-            serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+        // Snapshot's hash mode is deliberately not serialized. Rehydrate it
+        // against the validated prepared record's ABI, not an ambient caller's
+        // mode: old PREPARED artifacts carry CBOR snapshot hashes, never Git ids.
+        let state: ServiceState = historical_scope(legacy_version(&projection["version"]), || {
+            serde_json::from_value(saved).map_err(|e| e.to_string())
+        })?;
         let runtime = &state.runtime;
-        if runtime.unresolved_attempt.is_some()
+        if legacy_version(&runtime.manifest["version"]) != legacy_version(&projection["version"])
+            || runtime.unresolved_attempt.is_some()
             || runtime.previous != projection["record_hash"]
             || json!(runtime.step) != json!(projection["step"].as_u64().ok_or("step")? + 1)
             || json!(runtime.time) != projection["logical_time"]
@@ -270,7 +284,8 @@ impl Journal for WalJournal<'_, '_> {
         if self.already(id, record, None)? {
             return Ok(());
         }
-        let projection = database_projection(record)?;
+        let projection =
+            database_projection_with_profile(record, self.current()?.contract_profile)?;
         if projection["status"] != "aborted" || projection["failure"]["kind"] != "db_recovery_abort"
         {
             return Err("abort publication carries a non-recovery-abort record".into());
@@ -419,6 +434,9 @@ impl RuntimeService {
         let result = next.runtime.step(&inputs, &mut attempt);
         let entered = attempt.entered;
         if let Some(inputs) = entered {
+            if let Some(saved) = self.store.state() {
+                self.state = serde_json::from_value(saved.clone()).map_err(|e| e.to_string())?;
+            }
             self.state.runtime.unresolved_attempt = Some(inputs);
             self.state.fenced_staged_prefix = Some(
                 self.state
@@ -428,7 +446,7 @@ impl RuntimeService {
             );
         }
         let result = result?;
-        Self::consume_attempt(&mut next, &events, &result)?;
+        Self::consume_attempt(&mut next, &events, &result, &self.state.runtime.files)?;
         let state = serde_json::to_value(&next).map_err(|e| e.to_string())?;
         let Some(raw) = result["record_raw"].as_str() else {
             // No database call happened: ordinary ABI commit of a 0.1 record.
@@ -477,7 +495,15 @@ impl RuntimeService {
                 store: &mut self.store,
                 gate,
             };
-            db.recover(&mut journal)
+            historical_scope(
+                legacy_version(&self.state.runtime.manifest["version"]),
+                || {
+                    db.recover_with_profile(
+                        &mut journal,
+                        database_profile(self.state.contract_profile),
+                    )
+                },
+            )
         };
         if self.store.is_healthy() {
             let saved = self.store.state().ok_or("missing WAL state")?.clone();
@@ -488,6 +514,9 @@ impl RuntimeService {
                 &self.catalog,
                 &self.state.supervisor_reads,
             )?;
+        }
+        if result.is_ok() {
+            self.upgrade_hash_if_ready()?;
         }
         result
     }
@@ -564,7 +593,8 @@ mod tests {
             entered: None,
         };
         let result = next.runtime.step(&inputs, &mut attempt).unwrap();
-        RuntimeService::consume_attempt(&mut next, &events, &result).unwrap();
+        RuntimeService::consume_attempt(&mut next, &events, &result, &service.state.runtime.files)
+            .unwrap();
         let raw = hex::decode(result["record_raw"].as_str().unwrap()).unwrap();
         let artifacts = cbor(&serde_json::to_value(next).unwrap()).unwrap();
         let id = StepId {

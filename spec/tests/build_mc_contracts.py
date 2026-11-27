@@ -72,7 +72,7 @@ def heard_vectors():
             rec['record_hash'] = record_hash(rec)
             trace['records'] = [rec]
         elif changes:
-            rec = dict(version='0.1',trace_id=trace['trace_id'],coglet=trace['coglet'],logical_time=20,
+            rec = dict(version='1.0',trace_id=trace['trace_id'],coglet=trace['coglet'],logical_time=20,
                        previous=None,before_hash=trace['initial_hash'],output_hash=digest(files),
                        boundary=changes,output_files=files)
             rec['record_hash'] = record_hash(rec)
@@ -113,7 +113,7 @@ def heard_vectors():
         bad=copy.deepcopy(advanced); mutation(bad)
         add('heard-'+name,build([advanced,bad]),error)
     for name, mutation, error in [
-        ('hub-forgery',lambda c:c.update(method='debug.write'), 'heard runtime origin'),
+        ('hub-forgery',lambda c:c.update(method='manage.write'), 'heard runtime origin'),
         ('actor-forgery',lambda c:c.update(actor='hub:'+'3'*64), 'heard runtime origin'),
         ('ticket-forgery',lambda c:c.update(ticket='5'*32), 'heard runtime origin'),
         ('wrong-path',lambda c:c.update(path='/data/not-heard'), 'heard runtime origin'),
@@ -147,7 +147,7 @@ def outputs():
     return {'conformance/hub/event-retry-a-after-b.json':relay_case(),
             'spec/fixtures/abi/clock-domains.fixture':clock_vectors(),
             'spec/fixtures/abi/heard-archive.fixture':vectors,
-            'conformance/abi/heard-archive.json':timelines}
+            'spec/fixtures/abi/heard-archive-timeline.fixture':timelines}
 
 
 if __name__=='__main__':

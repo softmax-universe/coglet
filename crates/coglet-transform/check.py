@@ -27,9 +27,15 @@ EXPECTED = {
     "qualification": {
         "rewrite_component_changes_arithmetic_and_preserves_identity",
         "pinned_transform_fuzz_differential",
+        "production_transform_tool_native_proof",
+    },
+    "coglet_transform": {
+        "qualification::test_fixtures::tests::ci_qualification_bridge_accepts_trusted_exact_run",
+        "qualification::test_fixtures::tests::ci_qualification_rejects_fork_wrong_head_missing_or_skipped_job",
+        "qualification::test_fixtures::tests::ci_qualification_rejects_wrong_artifact_digest_or_mode",
     },
 }
-REQUIRED_FILES = {"rustc.txt", "Cargo.lock", "build.jsonl", "admission_regressions", "qualification", "admission_regressions.log", "qualification.log", "fuzz.corpus", "fuzz.results"}
+REQUIRED_FILES = {"rustc.txt", "Cargo.lock", "build.jsonl", "tool-build.jsonl", "gate-build.jsonl", "coglet-transform-gate", "coglet-transform", "transform.source", "fuzz.corpus", "fuzz.results"} | set(EXPECTED) | {f"{name}.log" for name in EXPECTED}
 
 
 def run(args, **kw):
@@ -41,7 +47,7 @@ def digest(path):
 
 
 def validate_report(text, expected):
-    rows = re.findall(r"^test (\w+) \.\.\. (\w+)$", text, re.M)
+    rows = re.findall(r"^test ([\w:]+) \.\.\. (\w+)$", text, re.M)
     assert len(rows) == len(expected), (rows, expected)
     assert {name for name, _ in rows} == expected, (rows, expected)
     assert all(result == "ok" for _, result in rows), rows
@@ -63,6 +69,7 @@ def verify_pair(root, head, run_id, attempt):
         arch = manifest["arch"]
         assert arch in {"x86_64", "aarch64"} and arch not in legs, "missing or duplicated architecture"
         assert manifest["mode"] == "native"
+        assert manifest["production_tool"] == "coglet-transform" and manifest["case_count"] == 960
         assert manifest["actual_checkout"] == head
         assert manifest["github_run"] == run_id and manifest["github_attempt"] == attempt
         assert manifest["tests"] == {key: sorted(value) for key, value in EXPECTED.items()}
@@ -74,6 +81,8 @@ def verify_pair(root, head, run_id, attempt):
             assert file.stat().st_size > 0 and digest(file) == expected, name
         for name, expected in EXPECTED.items():
             validate_report((path / f"{name}.log").read_text(), expected)
+        production_tool(path / "tool-build.jsonl")
+        production_tool(path / "gate-build.jsonl", "coglet-transform-gate")
         assert (path / "fuzz.results").stat().st_size == 960 * 80
         legs[arch] = path
     assert set(legs) == {"x86_64", "aarch64"}
@@ -94,7 +103,19 @@ def native_leg():
     head = run(["git", "rev-parse", "HEAD"], capture_output=True).stdout.strip()
     (out / "rustc.txt").write_text(run(["rustc", "-vV"], capture_output=True).stdout)
     shutil.copy2(ROOT / "Cargo.lock", out / "Cargo.lock")
-    built = run(["cargo", "test", "--locked", "-p", "coglet-transform", "--test", "admission_regressions", "--test", "qualification", "--no-run", "--message-format=json"], capture_output=True)
+    tool_build = run(["cargo", "build", "--locked", "-p", "coglet-transform", "--bin", "coglet-transform", "--message-format=json"], capture_output=True)
+    (out / "tool-build.jsonl").write_text(tool_build.stdout)
+    tool = production_tool(out / "tool-build.jsonl")
+    shutil.copy2(tool, out / "coglet-transform")
+    gate_build = run(["cargo", "build", "--locked", "-p", "coglet-transform", "--bin", "coglet-transform-gate", "--message-format=json"], capture_output=True)
+    (out / "gate-build.jsonl").write_text(gate_build.stdout)
+    shutil.copy2(production_tool(out / "gate-build.jsonl", "coglet-transform-gate"), out / "coglet-transform-gate")
+    env["COGLET_TRANSFORM_GATE"] = str(out / "coglet-transform-gate")
+    source = subprocess.run([str(out / "coglet-transform"), "--source"], cwd=ROOT, check=True, capture_output=True).stdout
+    assert source
+    (out / "transform.source").write_bytes(source)
+    env["COGLET_TRANSFORM_EXE"] = str(out / "coglet-transform")
+    built = run(["cargo", "test", "--locked", "-p", "coglet-transform", "--lib", "--test", "admission_regressions", "--test", "qualification", "--no-run", "--message-format=json"], capture_output=True)
     (out / "build.jsonl").write_text(built.stdout)
     bins = {}
     for line in built.stdout.splitlines():
@@ -117,11 +138,21 @@ def native_leg():
         "actual_checkout": head,
         "github_run": env.get("GITHUB_RUN_ID"), "github_attempt": env.get("GITHUB_RUN_ATTEMPT"),
         "arch": arch, "mode": "native",
+        "production_tool": "coglet-transform", "case_count": 960,
         "tests": {key: sorted(value) for key, value in EXPECTED.items()},
         "files": {name: digest(out / name) for name in sorted(REQUIRED_FILES)},
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("Component proof manifest:", out / "manifest.json")
+
+
+def production_tool(build_log, name="coglet-transform"):
+    candidates = [m for line in build_log.read_text().splitlines() if (m := json.loads(line)).get("reason") == "compiler-artifact" and m.get("executable")]
+    assert len(candidates) == 1
+    tool = candidates[0]
+    assert tool["target"]["name"] == name
+    assert tool["target"]["kind"] == ["bin"] and tool["profile"]["test"] is False
+    return Path(tool["executable"])
 
 
 if __name__ == "__main__":

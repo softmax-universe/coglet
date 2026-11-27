@@ -1,11 +1,15 @@
 # Cogent cognitive architecture
 
-Part of the [cogent design](README.md): which coglets sit at the cogent's
-centre and how they are wired.
+Part of the [cogent design](README.md): the coglets that do the cogent's
+thinking and learning, and how they are wired. None of them is a centre. Every
+runtime runs a **hub**, a router and an optimizer, and every other coglet
+reaches the rest through its hub's router
+([ADR-0036](../adr/0036-distributed-cogent-and-presence.md),
+[ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md)).
 
 ## Who talks to whom
 
-![Face exchanges intents with app coglets on the device and feature requests with the fast loop; in the cogent's centre the fast loop and the optimizer use memory and file tickets with the factory.](diagrams/calls.svg)
+![Face exchanges intents with app coglets on the device and feature requests with the router; the router and the optimizer use memory and file tickets with the factory, wherever those coglets run.](diagrams/calls.svg)
 
 *Teal arrows are families of messages between two coglets, with the calls
 listed beside them. Blue arrows are the manage port, which is separate: a
@@ -14,31 +18,39 @@ the table below.*
 
 | From | Message | Payload | To | Carried by |
 |---|---|---|---|---|
-| Face | `intent.request` | `UserIntent` | an app coglet | the Softmax app's runtime |
-| app coglet | `intent.report` | `IntentReport` | Face | the Softmax app's runtime |
-| Face | `feature.request` | `FeatureRequest` | fast loop | the router |
-| fast loop | `feature.update` | `FeatureUpdate` | Face | the router |
-| fast loop | `ticket.submit`, `.answer`, `.amend`, `.cancel`, `.replay` | ticket requests | factory | the cogent's runtime |
-| optimizer | `ticket.submit`, `.replay` | ticket requests | factory | the cogent's runtime |
-| factory | `ticket.receipt`, `.update`, `.result` | ticket reports | the submitter | the cogent's runtime |
-| fast loop, optimizer | `patch` | a `Candidate` | any coglet | the manage port, through the router |
-| optimizer | `tail_log`, `read_state` | | fast loop | the manage port |
-| fast loop, optimizer | `memory.write`, `memory.query` | `MemoryWrite`, `MemoryQuery` | memory | the cogent's runtime |
-| memory | `memory.result` | `MemoryResult` | the asker | the cogent's runtime |
+| Face | `intent.request` | `UserIntent` | an app coglet | their runtime's router |
+| app coglet | `intent.report` | `IntentReport` | Face | their runtime's router |
+| Face | `feature.request` | `FeatureRequest` | router | their runtime's router |
+| router | `feature.update` | `FeatureUpdate` | Face | their runtime's router |
+| router | `ticket.submit`, `.answer`, `.amend`, `.cancel`, `.replay` | ticket requests | factory | the routers of their hubs |
+| optimizer | `ticket.submit`, `.replay` | ticket requests | factory | the routers of their hubs |
+| factory | `ticket.receipt`, `.update`, `.result` | ticket reports | the submitter | the routers of their hubs |
+| router, optimizer | `patch` | a `Candidate` | any coglet | the manage port, through the router |
+| optimizer | `tail_log`, `read_state` | | its hub's router | the manage port |
+| router, optimizer | `memory.write`, `memory.query` | `MemoryWrite`, `MemoryQuery` | memory | the routers of their hubs |
+| memory | `memory.result` | `MemoryResult` | the asker | the routers of their hubs |
+| attending router, owner | `presence.set` | `PresenceChange` | router | the router |
+| any coglet, usually an absent one | `presence.request` | `PresenceRequest` | attending router | the router |
+| router | `presence.check_in` | `CheckIn` | attending router | the router |
 
 ## Where everything runs
 
-![The Softmax app on the user's machine runs Face and the coglets for its connected apps; the cogent's centre runs the fast loop, factory, optimizer and memory.](diagrams/deployment.svg)
+![The user's machine runs a hub (router and optimizer), Face and the coglets for its apps; a Softmax-hosted runtime runs a hub, the factory and memory; the two hubs' routers peer.](diagrams/deployment.svg)
 
-*One device in detail. The Softmax app runs Face and the coglets for its
-connected apps, next to their adapters. The cogent's centre runs in its own runtime, and
-the router joins them.*
+*One possible placement. On the user's machine, a runtime hosted by any app (the
+Softmax app here) runs a hub, Face and the coglets for its apps, next to their
+adapters. A Softmax-hosted runtime runs another hub, the factory and memory.
+Neither is the centre: the two hubs' routers peer, and any coglet could run on
+either runtime.*
 
 ## FaceCoglet
 
-The local half of the conversation. It subscribes to the Softmax app's
-push-to-talk and voice events, controls the floating orb, and talks to the
-user itself. Voice is transcribed on the user's machine or sent from there
+The coglet the user deals with. It listens to gestures and voice, records the
+screen (with the user's permission), and talks to the user itself. It can drive
+an app a little, for small and obvious things, but mostly it asks the right
+coglet to act. On a Mac with the Softmax app it subscribes to that app's
+push-to-talk and voice events and controls the floating orb; other host apps
+offer their own adapters. Voice is transcribed on the user's machine or sent from there
 straight to the speech provider; it does not pass through Softmax infrastructure.
 
 ### `FaceCoglet`
@@ -85,7 +97,7 @@ IntentReport
   question  str?                Present with `needs_help`: what the coglet does not know.
 
 FeatureRequest
-  # Face to the fast loop: an app coglet could not do something the user wants.
+  # Face to the router: an app coglet could not do something the user wants.
   request      Id
   coglet       CogletId         The app coglet that needs the new ability.
   text         str              What the user asked for.
@@ -94,59 +106,22 @@ FeatureRequest
                                 raw content.
 
 FeatureUpdate
-  # Fast loop to Face.
+  # Router to Face.
   to        CogletId
   request   Id
   state     "received" | "building" | "shipped" | "failed"
   summary   str                 One or two plain sentences Face can say aloud.
 ```
 
-> **Not settled:** whether the fast loop or the optimizer files tickets with
+> **Not settled:** whether the router or the optimizer files tickets with
 > the factory and applies the patches. Both are written below as able to; only
 > one may end up doing it.
-
-## FastLoopCoglet
-
-Handles events from other coglets: it responds, or forwards them on. Today
-that means taking feature requests from Face, checking memory,
-filing tickets with the factory, applying the patches that come back, and
-telling Face.
-
-### `FastLoopCoglet`
-
-```idl
-FastLoopCoglet
-  subscribes  (nothing)
-  needs       llm.complete, feature.update, ticket.submit, ticket.answer, ticket.amend,
-              ticket.cancel, ticket.replay, memory.write, memory.query
-  owns        (nothing)
-
-  provides  feature.request     FeatureRequest  bound
-            Ask memory. If the ability exists, patch it in. If not, file a ticket.
-  provides  ticket.receipt      TicketReceipt   addressed
-  provides  ticket.update       TicketUpdate    addressed
-            Pass progress on to Face.
-  provides  ticket.result       TicketResult    addressed
-            On `done`, apply the candidate to the target coglet through its manage port, then
-            send a FeatureUpdate.
-  calls     feature.update      FeatureUpdate   addressed
-  calls     ticket.submit       TicketSubmit    bound
-  calls     ticket.answer       TicketAnswer    bound
-  calls     ticket.amend        TicketAmend     bound
-  calls     ticket.cancel       TicketCancel    bound
-  calls     ticket.replay       TicketReplay    bound
-  provides  memory.result       MemoryResult    addressed
-  calls     memory.write        MemoryWrite     bound
-  calls     memory.query        MemoryQuery     bound
-```
-
-It also uses the manage port's `patch` on the coglets it is granted.
 
 ## FactoryCoglet
 
 Takes tickets and produces artifacts: a new skill, a changed coglet. It tests
 its work, for example against a local simulator of the target app, before it
-reports. It does not apply its own output; it returns a patch and the fast loop
+reports. It does not apply its own output; it returns a patch and the router
 or the optimizer applies it. The scheduler that does the work is reached
 through a factory adapter, so it can be replaced.
 
@@ -346,9 +321,10 @@ WorkerDone
 
 ## OptimizerCoglet
 
-Watches how the fast loop's interactions go, files tickets with the factory to
-make things better, and patches coglets as needed. It has no messages of its
-own: it reads through the manage port and files ordinary tickets.
+The other half of a hub. It watches how its hub's router routes and decides,
+files tickets with the factory to make it better, and patches the router's
+policy, and its own and other coglets' where it is granted. It has no messages
+of its own: it reads through the manage port and files ordinary tickets.
 
 ### `OptimizerCoglet`
 
@@ -369,13 +345,13 @@ OptimizerCoglet
   calls     memory.query        MemoryQuery     bound
 ```
 
-It uses the manage port's `tail_log` and `read_state` on the fast loop, and
+It uses the manage port's `tail_log` and `read_state` on its hub's router, and
 `patch` on the coglets it is granted.
 
 ## MemoryCoglet
 
 The cogent's memory: what it has learned about the user, the apps and what has
-worked, kept in one place so every coglet in the centre can read and add to it.
+worked, kept in one place so every coglet of the cogent can read and add to it.
 Each coglet still keeps its own working state in its own files; this is what is
 shared. Version 0 matches on tags and keywords and uses no model.
 
@@ -427,14 +403,63 @@ MemoryRecord
 
 ## RouterCoglet
 
-The coglet that reaches devices. It knows which runtimes the cogent may use,
-installs coglets on them, and carries two things between runtimes: messages
-from one coglet to another, and manage operations such as `patch`.
+The heart of a hub. It knows which runtimes the cogent may use, installs
+coglets on them, and carries messages and manage operations such as `patch`
+between coglets and to the routers of other hubs. It is also **smart**: it is
+the cogent's **fast loop** and **attention**
+([ADR-0040](../adr/0040-hubs-and-coglets-on-unforged.md)). It answers what
+present coglets send, takes feature requests from Face, checks memory, files
+tickets with the factory, applies the patches that come back, and tells Face.
+It holds presence: it decides where the cogent is present, holds what absent
+coglets send until their check-in, and reads those check-ins
+([ADR-0036](../adr/0036-distributed-cogent-and-presence.md)).
 
-It is a coglet like the others in the centre: it has a policy, memory and a
+There are several router implementations, from a table of rules on a small
+device to a model-driven router on a hosted runtime. They provide the same
+messages, so one can replace another by patch.
+
+### `RouterCoglet`
+
+```idl
+RouterCoglet
+  subscribes  presence.changed
+  needs       llm.complete, deliver, install, feature.update, ticket.submit, ticket.answer, ticket.amend,
+              ticket.cancel, ticket.replay, memory.write, memory.query, presence.get,
+              presence.set
+  owns        (nothing)
+
+  provides  feature.request     FeatureRequest  bound
+            Ask memory. If the ability exists, patch it in. If not, file a ticket.
+  provides  ticket.receipt      TicketReceipt   addressed
+  provides  ticket.update       TicketUpdate    addressed
+            Pass progress on to Face.
+  provides  ticket.result       TicketResult    addressed
+            On `done`, apply the candidate to the target coglet through its manage port, then
+            send a FeatureUpdate.
+  calls     feature.update      FeatureUpdate   addressed
+  calls     ticket.submit       TicketSubmit    bound
+  calls     ticket.answer       TicketAnswer    bound
+  calls     ticket.amend        TicketAmend     bound
+  calls     ticket.cancel       TicketCancel    bound
+  calls     ticket.replay       TicketReplay    bound
+  provides  memory.result       MemoryResult    addressed
+  calls     memory.write        MemoryWrite     bound
+  calls     memory.query        MemoryQuery     bound
+  provides  presence.request    PresenceRequest addressed
+            An absent coglet asks for attention. Decide whether to make it present.
+  provides  presence.check_in   CheckIn         addressed
+            What an absent coglet held for the cogent. Answer, manage it, or move on.
+  calls     presence.get        (none)          bound
+            Read the current presence and its revision before changing it.
+  calls     presence.set        PresenceChange  bound
+```
+
+It also uses the manage port's `patch` on the coglets it is granted.
+
+It is a coglet like the others: it has a policy, memory and a
 manage port, so it can be patched and watched the same way. What passes
 between it and a runtime is listed under
 [Runtime and router](coglets-and-runtime.md#runtime-and-router).
 
-Messages between two coglets on the same runtime do not go through the router;
-their runtime delivers them.
+Messages between two coglets on the same runtime go through that runtime's own
+router too, as an in-process hop; the runtime checks the grant first.

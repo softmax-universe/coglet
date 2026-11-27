@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="392" viewBox="0 0 1180 392" role="img" aria-label="Two runtimes joined by a network link. Each has pluggable execution engines and capabilities it provides, such as a database, a key-value store and random numbers; it runs coglets and connects to adapters outside it. Messages pass between coglets inside a runtime and between runtimes over the network.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="392" viewBox="0 0 1180 392" role="img" aria-label="Two runtimes joined by their routers. Each exposes an unforged repository in which every coglet is a user, mounts the adapters it connects to, and has pluggable execution engines and capabilities it provides, such as a database, a key-value store and random numbers. Messages pass between coglets inside a runtime and between runtimes through their routers.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -19,6 +19,7 @@
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -39,6 +40,7 @@
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -58,24 +60,26 @@
 <text x="92" y="290" text-anchor="middle" class="dg-t">Java</text>
 <rect x="50" y="310" width="84" height="32" rx="6" class="dg-e-llm"/>
 <text x="92" y="330" text-anchor="middle" class="dg-t">Python</text>
-<text x="346" y="128" text-anchor="middle" class="dg-cap">RUNTIME</text>
+<text x="346" y="128" text-anchor="middle" class="dg-cap">RUNTIME · UNFORGED REPO</text>
 <rect x="154" y="146" width="104" height="56" rx="8" class="dg-e-basic"/>
 <text x="206.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
-<text x="206.0" y="187.0" text-anchor="middle" class="dg-m">BASIC</text>
+<text x="206.0" y="187.0" text-anchor="middle" class="dg-m">user · BASIC</text>
 <rect x="294" y="146" width="104" height="56" rx="8" class="dg-e-llm"/>
 <text x="346.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
-<text x="346.0" y="187.0" text-anchor="middle" class="dg-m">Python</text>
+<text x="346.0" y="187.0" text-anchor="middle" class="dg-m">user · Python</text>
 <rect x="434" y="146" width="104" height="56" rx="8" class="dg-e-wasm"/>
 <text x="486.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
-<text x="486.0" y="187.0" text-anchor="middle" class="dg-m">WASM</text>
+<text x="486.0" y="187.0" text-anchor="middle" class="dg-m">user · WASM</text>
 <rect x="146" y="28" width="120" height="40" rx="8" class="dg-adapter"/>
 <text x="206.0" y="52.0" text-anchor="middle" class="dg-b">App adapter</text>
 <line x1="206" y1="70" x2="206" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
+<text x="214" y="92" text-anchor="start" class="dg-m">mounted</text>
 <rect x="426" y="28" width="120" height="40" rx="8" class="dg-adapter"/>
 <text x="486.0" y="52.0" text-anchor="middle" class="dg-b">Camera adapter</text>
 <line x1="486" y1="70" x2="486" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
+<text x="494" y="92" text-anchor="start" class="dg-m">mounted</text>
 <line x1="260" y1="174" x2="292" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
-<text x="276" y="164" text-anchor="middle" class="dg-m">local</text>
+<text x="276" y="164" text-anchor="middle" class="dg-m">router</text>
 <rect x="154" y="276" width="384" height="82" rx="10" class="dg-bg"/>
 <rect x="168.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
 <text x="210.25" y="309" text-anchor="middle" class="dg-t">Database</text>
@@ -100,21 +104,22 @@
 <text x="1088" y="210" text-anchor="middle" class="dg-t">Java</text>
 <rect x="1046" y="230" width="84" height="32" rx="6" class="dg-e-llm"/>
 <text x="1088" y="250" text-anchor="middle" class="dg-t">Python</text>
-<text x="834" y="128" text-anchor="middle" class="dg-cap">RUNTIME</text>
+<text x="834" y="128" text-anchor="middle" class="dg-cap">RUNTIME · UNFORGED REPO</text>
 <rect x="642" y="146" width="104" height="56" rx="8" class="dg-e-java"/>
 <text x="694.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
-<text x="694.0" y="187.0" text-anchor="middle" class="dg-m">Java</text>
+<text x="694.0" y="187.0" text-anchor="middle" class="dg-m">user · Java</text>
 <rect x="782" y="146" width="104" height="56" rx="8" class="dg-e-js"/>
 <text x="834.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
-<text x="834.0" y="187.0" text-anchor="middle" class="dg-m">JavaScript</text>
+<text x="834.0" y="187.0" text-anchor="middle" class="dg-m">user · JavaScript</text>
 <rect x="922" y="146" width="104" height="56" rx="8" class="dg-e-llm"/>
 <text x="974.0" y="171.0" text-anchor="middle" class="dg-b">Coglet</text>
-<text x="974.0" y="187.0" text-anchor="middle" class="dg-m">Python</text>
+<text x="974.0" y="187.0" text-anchor="middle" class="dg-m">user · Python</text>
 <rect x="634" y="28" width="120" height="40" rx="8" class="dg-adapter"/>
 <text x="694.0" y="52.0" text-anchor="middle" class="dg-b">Game adapter</text>
 <line x1="694" y1="70" x2="694" y2="144" class="dg-warm" stroke-width="1.6" marker-end="url(#runtime-warm)" marker-start="url(#runtime-warm-s)"/>
+<text x="702" y="92" text-anchor="start" class="dg-m">mounted</text>
 <line x1="748" y1="174" x2="780" y2="174" class="dg-teal" stroke-width="1.6" marker-end="url(#runtime-teal)" marker-start="url(#runtime-teal-s)"/>
-<text x="764" y="164" text-anchor="middle" class="dg-m">local</text>
+<text x="764" y="164" text-anchor="middle" class="dg-m">router</text>
 <rect x="642" y="276" width="384" height="82" rx="10" class="dg-bg"/>
 <rect x="656.0" y="288" width="84.5" height="34" rx="6" class="dg-runtime"/>
 <text x="698.25" y="309" text-anchor="middle" class="dg-t">KV store</text>
@@ -130,5 +135,5 @@
 <path d="M960 204V246H901.5V286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
 <line x1="984" y1="204" x2="984" y2="286" class="dg-ink" stroke-width="1.6" marker-end="url(#runtime-ink)"/>
 <line x1="540" y1="174" x2="640" y2="174" class="dg-blue" stroke-width="1.6" marker-end="url(#runtime-blue)" marker-start="url(#runtime-blue-s)"/>
-<text x="590.0" y="164" text-anchor="middle" class="dg-m dg-halo">network</text>
+<text x="590.0" y="164" text-anchor="middle" class="dg-m dg-halo">via their routers</text>
 </svg>

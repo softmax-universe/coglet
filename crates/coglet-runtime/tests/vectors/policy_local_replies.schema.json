@@ -1,0 +1,978 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:coglet:runtime:policy-local-replies:1",
+  "title": "ADR-0033 local producer reply (one JSON object per line, <= 65536 bytes)",
+  "description": "Closed shapes for every reply of the five local producer operations. Cross-field rules that JSON Schema cannot state live in docs section 'Semantic reply checks' and are enforced by policy_local::tests.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "method": {
+          "const": "attest_applied"
+        },
+        "nonce": {
+          "$ref": "#/$defs/nonce"
+        },
+        "principal": {
+          "$ref": "#/$defs/name"
+        },
+        "actor": {
+          "$ref": "#/$defs/name"
+        },
+        "target": {
+          "$ref": "#/$defs/name"
+        },
+        "ticket": {
+          "$ref": "#/$defs/ticket"
+        },
+        "daemon_instance": {
+          "$ref": "#/$defs/hex64"
+        },
+        "result": {
+          "$ref": "#/$defs/applied_generation"
+        }
+      },
+      "required": [
+        "version",
+        "ok",
+        "method",
+        "nonce",
+        "principal",
+        "actor",
+        "target",
+        "ticket",
+        "daemon_instance",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "method": {
+          "const": "observe_health"
+        },
+        "nonce": {
+          "$ref": "#/$defs/nonce"
+        },
+        "principal": {
+          "$ref": "#/$defs/name"
+        },
+        "actor": {
+          "$ref": "#/$defs/name"
+        },
+        "target": {
+          "$ref": "#/$defs/name"
+        },
+        "ticket": {
+          "$ref": "#/$defs/ticket"
+        },
+        "daemon_instance": {
+          "$ref": "#/$defs/hex64"
+        },
+        "result": {
+          "$ref": "#/$defs/health_sample"
+        }
+      },
+      "required": [
+        "version",
+        "ok",
+        "method",
+        "nonce",
+        "principal",
+        "actor",
+        "target",
+        "ticket",
+        "daemon_instance",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "method": {
+          "const": "enable_output_lease"
+        },
+        "nonce": {
+          "$ref": "#/$defs/nonce"
+        },
+        "principal": {
+          "$ref": "#/$defs/name"
+        },
+        "actor": {
+          "$ref": "#/$defs/name"
+        },
+        "target": {
+          "$ref": "#/$defs/name"
+        },
+        "ticket": {
+          "$ref": "#/$defs/ticket"
+        },
+        "daemon_instance": {
+          "$ref": "#/$defs/hex64"
+        },
+        "result": {
+          "$ref": "#/$defs/enable_result"
+        }
+      },
+      "required": [
+        "version",
+        "ok",
+        "method",
+        "nonce",
+        "principal",
+        "actor",
+        "target",
+        "ticket",
+        "daemon_instance",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "method": {
+          "const": "revoke_output_lease"
+        },
+        "nonce": {
+          "$ref": "#/$defs/nonce"
+        },
+        "principal": {
+          "$ref": "#/$defs/name"
+        },
+        "actor": {
+          "$ref": "#/$defs/name"
+        },
+        "target": {
+          "$ref": "#/$defs/name"
+        },
+        "ticket": {
+          "$ref": "#/$defs/ticket"
+        },
+        "daemon_instance": {
+          "$ref": "#/$defs/hex64"
+        },
+        "result": {
+          "$ref": "#/$defs/revoke_result"
+        }
+      },
+      "required": [
+        "version",
+        "ok",
+        "method",
+        "nonce",
+        "principal",
+        "actor",
+        "target",
+        "ticket",
+        "daemon_instance",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "ok": {
+          "const": true
+        },
+        "method": {
+          "const": "reconcile_emergency_stop"
+        },
+        "nonce": {
+          "$ref": "#/$defs/nonce"
+        },
+        "principal": {
+          "$ref": "#/$defs/name"
+        },
+        "actor": {
+          "$ref": "#/$defs/name"
+        },
+        "target": {
+          "$ref": "#/$defs/name"
+        },
+        "ticket": {
+          "$ref": "#/$defs/ticket"
+        },
+        "daemon_instance": {
+          "$ref": "#/$defs/hex64"
+        },
+        "result": {
+          "$ref": "#/$defs/reconcile_result"
+        }
+      },
+      "required": [
+        "version",
+        "ok",
+        "method",
+        "nonce",
+        "principal",
+        "actor",
+        "target",
+        "ticket",
+        "daemon_instance",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "$ref": "#/$defs/failure"
+    }
+  ],
+  "$defs": {
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:@-]{1,256}$"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "ticket": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      ]
+    },
+    "hex40": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "hex64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "hex128": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    },
+    "hex32": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "u64": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "u64_positive": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 18446744073709551615
+    },
+    "coglet_id": {
+      "type": "string",
+      "pattern": "^coglet:[0-9a-f]{64}$"
+    },
+    "receipt_scope": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "ticket": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "method": {
+          "enum": [
+            "hub.git.push",
+            "hub.install"
+          ]
+        }
+      },
+      "required": [
+        "actor",
+        "method"
+      ],
+      "additionalProperties": false
+    },
+    "signed_generation": {
+      "type": "object",
+      "properties": {
+        "statement": {
+          "type": "object",
+          "properties": {
+            "purpose": {
+              "const": "hub-ref"
+            },
+            "hub": {
+              "$ref": "#/$defs/hex64"
+            },
+            "coglet": {
+              "$ref": "#/$defs/coglet_id"
+            },
+            "ref": {
+              "const": "refs/heads/hub"
+            },
+            "old": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/hex40"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "new": {
+              "$ref": "#/$defs/hex40"
+            },
+            "archive_sha256": {
+              "$ref": "#/$defs/hex64"
+            },
+            "generation": {
+              "$ref": "#/$defs/u64"
+            }
+          },
+          "required": [
+            "purpose",
+            "hub",
+            "coglet",
+            "ref",
+            "old",
+            "new",
+            "archive_sha256",
+            "generation"
+          ],
+          "additionalProperties": false
+        },
+        "signer": {
+          "$ref": "#/$defs/hex64"
+        },
+        "signature": {
+          "$ref": "#/$defs/hex128"
+        }
+      },
+      "required": [
+        "statement",
+        "signer",
+        "signature"
+      ],
+      "additionalProperties": false
+    },
+    "admission": {
+      "type": "object",
+      "properties": {
+        "signed_ref": {
+          "$ref": "#/$defs/signed_generation"
+        },
+        "operation_id": {
+          "$ref": "#/$defs/hex32"
+        },
+        "intent": {
+          "$ref": "#/$defs/hex64"
+        },
+        "scope": {
+          "$ref": "#/$defs/receipt_scope"
+        }
+      },
+      "required": [
+        "signed_ref",
+        "operation_id",
+        "intent",
+        "scope"
+      ],
+      "additionalProperties": false
+    },
+    "install_context": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "$ref": "#/$defs/hex32"
+        },
+        "intent": {
+          "$ref": "#/$defs/hex64"
+        },
+        "scope": {
+          "$ref": "#/$defs/receipt_scope"
+        }
+      },
+      "required": [
+        "operation_id",
+        "intent",
+        "scope"
+      ],
+      "additionalProperties": false
+    },
+    "initial_admission": {
+      "type": "object",
+      "properties": {
+        "router": {
+          "$ref": "#/$defs/hex64"
+        },
+        "code": {
+          "$ref": "#/$defs/admission"
+        },
+        "install": {
+          "$ref": "#/$defs/install_context"
+        }
+      },
+      "required": [
+        "router",
+        "code",
+        "install"
+      ],
+      "additionalProperties": false
+    },
+    "applied_receipt": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "$ref": "#/$defs/hex32"
+        },
+        "state": {
+          "const": "applied"
+        },
+        "step": {
+          "$ref": "#/$defs/u64"
+        },
+        "error": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "operation_id",
+        "state",
+        "step",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "boundary": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "install"
+            },
+            "operation_id": {
+              "$ref": "#/$defs/hex32"
+            },
+            "step": {
+              "const": 0
+            }
+          },
+          "required": [
+            "kind",
+            "operation_id",
+            "step"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "code"
+            },
+            "trace_id": {
+              "$ref": "#/$defs/hex32"
+            },
+            "operation_id": {
+              "$ref": "#/$defs/hex32"
+            }
+          },
+          "required": [
+            "kind",
+            "trace_id",
+            "operation_id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "applied_generation": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "target": {
+          "$ref": "#/$defs/name"
+        },
+        "router": {
+          "$ref": "#/$defs/hex64"
+        },
+        "generation": {
+          "$ref": "#/$defs/u64"
+        },
+        "commit": {
+          "$ref": "#/$defs/hex40"
+        },
+        "executable_sha256": {
+          "$ref": "#/$defs/hex64"
+        },
+        "code": {
+          "$ref": "#/$defs/admission"
+        },
+        "initial": {
+          "$ref": "#/$defs/initial_admission"
+        },
+        "receipt": {
+          "$ref": "#/$defs/applied_receipt"
+        },
+        "boundary": {
+          "$ref": "#/$defs/boundary"
+        },
+        "record_offset": {
+          "$ref": "#/$defs/u64"
+        }
+      },
+      "required": [
+        "version",
+        "target",
+        "router",
+        "generation",
+        "commit",
+        "executable_sha256",
+        "code",
+        "initial",
+        "receipt",
+        "boundary",
+        "record_offset"
+      ],
+      "additionalProperties": false
+    },
+    "counters": {
+      "type": "object",
+      "properties": {
+        "attempted": {
+          "$ref": "#/$defs/u64"
+        },
+        "committed": {
+          "$ref": "#/$defs/u64"
+        },
+        "failed": {
+          "$ref": "#/$defs/u64"
+        },
+        "budget_exceeded": {
+          "$ref": "#/$defs/u64"
+        }
+      },
+      "required": [
+        "attempted",
+        "committed",
+        "failed",
+        "budget_exceeded"
+      ],
+      "additionalProperties": false
+    },
+    "clock": {
+      "type": "object",
+      "properties": {
+        "supervisor_boot": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "continuous_millis": {
+          "$ref": "#/$defs/u64"
+        },
+        "runtime_anchor": {
+          "$ref": "#/$defs/hex64"
+        },
+        "logical_millis": {
+          "$ref": "#/$defs/u64"
+        },
+        "runtime_boundary_millis": {
+          "$ref": "#/$defs/u64"
+        },
+        "anchor_continuous_millis": {
+          "$ref": "#/$defs/u64"
+        },
+        "anchor_logical_millis": {
+          "$ref": "#/$defs/u64"
+        }
+      },
+      "required": [
+        "supervisor_boot",
+        "continuous_millis",
+        "runtime_anchor",
+        "logical_millis",
+        "runtime_boundary_millis",
+        "anchor_continuous_millis",
+        "anchor_logical_millis"
+      ],
+      "additionalProperties": false
+    },
+    "capability_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,31}[.][a-z][a-z0-9_]{0,31}$"
+    },
+    "lease_state": {
+      "enum": [
+        "closed",
+        "enabled",
+        "revoked",
+        "uncertain"
+      ]
+    },
+    "health_sample": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "target": {
+          "$ref": "#/$defs/name"
+        },
+        "generation": {
+          "$ref": "#/$defs/u64"
+        },
+        "commit": {
+          "$ref": "#/$defs/hex40"
+        },
+        "applied_operation_id": {
+          "$ref": "#/$defs/hex32"
+        },
+        "executable_sha256": {
+          "$ref": "#/$defs/hex64"
+        },
+        "activation": {
+          "$ref": "#/$defs/boundary"
+        },
+        "counters": {
+          "$ref": "#/$defs/counters"
+        },
+        "observation_sequence": {
+          "$ref": "#/$defs/u64_positive"
+        },
+        "producer_instance": {
+          "$ref": "#/$defs/hex64"
+        },
+        "clock": {
+          "$ref": "#/$defs/clock"
+        },
+        "admitted_capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/capability_name"
+          },
+          "uniqueItems": true,
+          "maxItems": 4096
+        },
+        "integrity": {
+          "const": "verified"
+        },
+        "storage": {
+          "const": "available"
+        },
+        "attempt_fence": {
+          "enum": [
+            "clear",
+            "uncertain"
+          ]
+        },
+        "lifecycle": {
+          "enum": [
+            "running",
+            "stopped",
+            "faulted"
+          ]
+        },
+        "code_pending": {
+          "type": "boolean"
+        },
+        "output_lease_state": {
+          "$ref": "#/$defs/lease_state"
+        }
+      },
+      "required": [
+        "version",
+        "target",
+        "generation",
+        "commit",
+        "applied_operation_id",
+        "executable_sha256",
+        "activation",
+        "counters",
+        "observation_sequence",
+        "producer_instance",
+        "clock",
+        "admitted_capabilities",
+        "integrity",
+        "storage",
+        "attempt_fence",
+        "lifecycle",
+        "code_pending",
+        "output_lease_state"
+      ],
+      "additionalProperties": false
+    },
+    "enable_result": {
+      "type": "object",
+      "properties": {
+        "lease": {
+          "const": "enabled"
+        },
+        "generation": {
+          "$ref": "#/$defs/u64"
+        },
+        "commit": {
+          "$ref": "#/$defs/hex40"
+        },
+        "executable_sha256": {
+          "$ref": "#/$defs/hex64"
+        },
+        "daemon_instance": {
+          "$ref": "#/$defs/hex64"
+        },
+        "custody": {
+          "const": "retained"
+        }
+      },
+      "required": [
+        "lease",
+        "generation",
+        "commit",
+        "executable_sha256",
+        "daemon_instance",
+        "custody"
+      ],
+      "additionalProperties": false
+    },
+    "revoke_result": {
+      "type": "object",
+      "properties": {
+        "lease": {
+          "enum": [
+            "revoked",
+            "uncertain"
+          ]
+        },
+        "gate": {
+          "const": "closed"
+        },
+        "in_flight_drained": {
+          "type": "boolean"
+        },
+        "durable": {
+          "enum": [
+            "recorded",
+            "not_required",
+            "not_opened",
+            "pending",
+            "uncertain"
+          ]
+        },
+        "daemon_instance": {
+          "$ref": "#/$defs/hex64"
+        }
+      },
+      "required": [
+        "lease",
+        "gate",
+        "in_flight_drained",
+        "durable",
+        "daemon_instance"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "in_flight_drained": {
+                "const": false
+              }
+            },
+            "required": [
+              "in_flight_drained"
+            ]
+          },
+          "then": {
+            "properties": {
+              "lease": {
+                "const": "uncertain"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "durable": {
+                "const": "uncertain"
+              }
+            },
+            "required": [
+              "durable"
+            ]
+          },
+          "then": {
+            "properties": {
+              "lease": {
+                "const": "uncertain"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "reconcile_result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "state": {
+              "const": "stopped"
+            },
+            "operation_id": {
+              "$ref": "#/$defs/hex32"
+            }
+          },
+          "required": [
+            "state",
+            "operation_id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "failure": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "ok": {
+          "const": false
+        },
+        "nonce": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/nonce"
+            }
+          ]
+        },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "invalid_argument",
+                "permission_denied",
+                "conflict",
+                "resource_exhausted",
+                "unavailable",
+                "unauthenticated"
+              ]
+            },
+            "retryable": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "code",
+            "retryable"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "version",
+        "ok",
+        "nonce",
+        "error"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "unavailable",
+                      "resource_exhausted"
+                    ]
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "retryable": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "retryable": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

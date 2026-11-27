@@ -103,11 +103,13 @@ uv run --locked prepare_simulation.py \
 uv run --locked server.py --trace tests/fixtures/world-m2-gridbot-trace.json
 ```
 
-Gridbot's `max_steps` is part of its production snapshot hash (added in PR #108),
-so it is a required configuration pin. The older PR83 display trace
-(`native-m2-gridbot-trace.json`) predates that snapshot field: world replay
-refuses it with a mismatch instead of rewriting its recorded hashes. It remains
-the live-viewer `/data` fixture.
+Gridbot's `max_steps` is part of its production world snapshot hash, so it is a
+required configuration pin. Both Gridbot display fixtures were recaptured by
+`regenerate_state_hash_fixtures.py` for ADR-0035 with `max_steps=16`; mismatched
+configurations are refused, not adapted by rewriting recorded hashes. The
+generator runs the actual CLI and Gridbot WAMR producers and independent replay;
+provenance records the source revision, complete trace/proof digests and omitted
+private fields. World-state hashes retain their separate existing definition.
 
 Open the private launch URL and choose `world-replay.json` under **Load simulation
 archive**. No upload is made until that explicit selection; the archive stays

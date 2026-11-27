@@ -99,8 +99,17 @@ impl DiskStore {
             files.insert(path, data);
         }
         let snapshot = Snapshot::from_files(files).map_err(|_| invalid("invalid path/tree"))?;
-        if snapshot.tree_hash() != hash {
-            return Err(invalid("tree digest mismatch"));
+        let new_hash = snapshot.tree_hash();
+        if new_hash != hash {
+            // Only the verified historical identity is eligible for migration;
+            // never turn an arbitrary misnamed/corrupt tree into a valid one.
+            if digest(&snapshot.cbor()) != hash {
+                return Err(invalid("tree digest mismatch"));
+            }
+            // Reuse the durable publication sequence while retaining this lock.
+            // The old tree remains valid until CURRENT is atomically replaced;
+            // a crash after publishing the new tree can safely retry migration.
+            self.flush_locked(&snapshot, Some(&hash), |_| Ok(()))?;
         }
         Ok(Some(snapshot))
     }
@@ -113,9 +122,18 @@ impl DiskStore {
         &self,
         snapshot: &Snapshot,
         expected: Option<&str>,
-        mut hook: impl FnMut(FlushPoint) -> io::Result<()>,
+        hook: impl FnMut(FlushPoint) -> io::Result<()>,
     ) -> io::Result<String> {
         let _lock = self.lock()?;
+        self.flush_locked(snapshot, expected, hook)
+    }
+    // Caller must hold LOCK; recovery must not recursively acquire an OS lock.
+    fn flush_locked(
+        &self,
+        snapshot: &Snapshot,
+        expected: Option<&str>,
+        mut hook: impl FnMut(FlushPoint) -> io::Result<()>,
+    ) -> io::Result<String> {
         if self.current()?.as_deref() != expected {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
@@ -145,6 +163,14 @@ impl DiskStore {
         let index: BTreeMap<_, _> = snapshot.files.iter().map(|(p, b)| (p, &b.hash)).collect();
         let bytes = serde_json::to_vec(&index)?;
         let trees = self.root.join("trees");
+        // A prior interrupted publication may already have left this object.
+        // Validate it rather than concealing on-disk corruption by overwriting.
+        match fs::read(trees.join(&hash)) {
+            Ok(existing) if existing != bytes => return Err(invalid("existing tree corrupt")),
+            Ok(_) => (),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => (),
+            Err(e) => return Err(e),
+        }
         let mut tree = tempfile::NamedTempFile::new_in(&trees)?;
         tree.write_all(&bytes)?;
         hook(FlushPoint::TreeWritten)?;

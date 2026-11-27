@@ -121,7 +121,7 @@ nav .pages a.here { background: var(--accent); border-color: var(--accent); colo
 <nav>
   <div class="brand">Coglets and runtime</div>
   <div class="sub">Generated from coglets-and-runtime.md. Do not edit.</div>
-  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html" class="here">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a></div>
+  <div class="pages"><a href="index.html">Cogent</a><a href="coglets-and-runtime.html" class="here">Coglets and runtime</a><a href="app-integration.html">App integration</a><a href="softmax-app.html">The Softmax app</a><a href="cognitive-architecture.html">Cognitive architecture</a><a href="unforged.html">Coglets on unforged</a><a href="unforged-staging.html">Staged integration</a><a href="secrets.html">Secrets and adapters</a><a href="llms.html">LLMs on unforged</a></div>
   <input id="filter" type="search" placeholder="Filter types and APIs" aria-label="Filter">
   <ul>
   <li class="h2"><a href="#anatomy-of-a-coglet">Anatomy of a coglet</a></li><li class="h2"><a href="#front-end">Front end</a></li><li class="h3"><a href="#registering-the-manifest">Registering: the manifest</a></li><li class="h3"><a href="#handling-events">Handling events</a></li><li class="h3"><a href="#what-wakes-a-coglet">What wakes a coglet</a></li><li class="h3"><a href="#the-inbox">The inbox</a></li><li class="h3"><a href="#asking-for-things">Asking for things</a></li><li class="h2"><a href="#manage-port">Manage port</a></li><li class="h2"><a href="#runtime">Runtime</a></li><li class="h3"><a href="#where-a-request-goes">Where a request goes</a></li><li class="h3"><a href="#messages-between-coglets">Messages between coglets</a></li><li class="h3"><a href="#runtime-and-router">Runtime and router</a></li><li class="h2"><a href="#shared-types">Shared types</a></li><li class="h3"><a href="#scalars">Scalars</a></li><li class="h3"><a href="#event"><code>Event</code></a></li><li class="h3"><a href="#action"><code>Action</code></a></li><li class="h3"><a href="#accept"><code>Accept</code></a></li><li class="h3"><a href="#outcome"><code>Outcome</code></a></li><li class="h3"><a href="#error"><code>Error</code></a></li><li class="h3"><a href="#versions">Versions</a></li><li class="h2"><a href="#names-used-in-the-spec">Names used in the spec</a></li>
@@ -137,7 +137,7 @@ It handles events, and it has a <strong>manage port</strong> for receiving patch
 streaming logs to its manager.</p>
 <p>The policy is whatever decides what the coglet does: <strong>symbolic code</strong>, <strong>LLM
 prompts</strong> and <strong>skills</strong>, or any mix of them. A patch can change any of it.</p>
-<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="A coglet in the centre, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.">
+<figure class="diagram"><svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" role="img" aria-label="A coglet in the middle, with the apps it uses through adapters on the left, the capabilities its runtime provides below, and its manager on the right, sending patches and receiving logs.">
 <style>
 .dg-bg{fill:#fffdf8;stroke:#e2dccd}
 .dg-group{fill:#f3efe4}
@@ -158,6 +158,7 @@ prompts</strong> and <strong>skills</strong>, or any mix of them. A patch can ch
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -178,6 +179,7 @@ prompts</strong> and <strong>skills</strong>, or any mix of them. A patch can ch
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -238,7 +240,7 @@ prompts</strong> and <strong>skills</strong>, or any mix of them. A patch can ch
 <text x="685" y="244" text-anchor="middle" class="dg-m">each needs its own grant</text>
 </svg>
 </figure>
-<p><em>The coglet in the centre. Apps and hardware, reached through adapters, on the
+<p><em>The coglet in the middle. Apps and hardware, reached through adapters, on the
 left. What the runtime provides below. Its manager on the right, with patches
 coming in and logs going out.</em></p>
 <div class="codehilite idl"><pre><span class="nc">Coglet</span>
@@ -276,7 +278,7 @@ coming in and logs going out.</em></p>
 <tr>
 <td>Who uses it</td>
 <td>The runtime, on behalf of adapters and other coglets</td>
-<td>Its manager: a person, or a cogent coglet such as the fast loop or the optimizer</td>
+<td>Its manager: a person, or a cogent coglet such as a router or an optimizer</td>
 </tr>
 <tr>
 <td>What it is for</td>
@@ -394,6 +396,7 @@ has succeeded.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -414,6 +417,7 @@ has succeeded.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -573,7 +577,7 @@ the run succeeds, so the answer never comes back in the same run.</p>
   <span class="na">fields</span>   <span class="ty">ProfileMap</span></pre></div>
 <h2 id="manage-port">Manage port<a class="headerlink" href="#manage-port" title="Permanent link">#</a></h2>
 <p>The manage port is how a coglet's manager changes it and watches it. The
-manager can be a person, or another coglet such as the fast loop or the
+manager can be a person, or another coglet such as a router or the
 optimizer applying a patch.</p>
 <p>The coglet's own policy does nothing to serve the manage port. The runtime
 does it, between events, and keeps a record of every change. Each operation
@@ -630,19 +634,25 @@ needs its own grant, and reading is off unless granted.</p>
   <span class="na">manager</span>  <span class="ty">SourceId</span>  <span class="sd">Who is asking.</span>
   <span class="na">ticket</span>   <span class="ty">Id?</span>       <span class="sd">The factory ticket that authorizes it, if any.</span></pre></div>
 <h2 id="runtime">Runtime<a class="headerlink" href="#runtime" title="Permanent link">#</a></h2>
-<p>A runtime supports running a set of coglets. It manages routing events,
-executing the coglet code, and providing and managing capabilities.</p>
+<p>A runtime supports running a set of coglets. It exposes one or more unforged
+repositories and runs each coglet in one as a <strong>user</strong>, with its own refs and
+grants. It manages routing events, executing the coglet code, and providing and
+managing capabilities, and it mounts each adapter it connects to under
+<code>/net/&lt;adapter&gt;/</code> (<a href="../adr/0040-hubs-and-coglets-on-unforged.md">ADR-0040</a>).</p>
 <div class="codehilite idl"><pre><span class="nc">Runtime</span>
-  <span class="nf">run</span>(<span class="ty">coglet</span>)
-      <span class="sd">Load a coglet and run its event loop.</span>
+  <span class="nf">repositories</span>() -&gt; <span class="ty">[Repo]</span>
+  <span class="nf">run</span>(<span class="ty">coglet, Repo</span>)
+      <span class="sd">Add the coglet as a user of the repository and run its event loop.</span>
   <span class="nf">stop</span>(<span class="ty">coglet</span>)
   <span class="nf">connect</span>(<span class="ty">adapter</span>)
-      <span class="sd">Open a link to an adapter and learn its capabilities and grants.</span>
-  <span class="nf">join</span>(<span class="ty">router</span>)
-      <span class="sd">Make itself known to a cogent, so the cogent can run coglets here.</span></pre></div>
-<p>A runtime can be its own process next to an app, or be built into one. It can
-be connected to several adapters at once, and it can have several execution
-engines, one per language a policy's code is written in.</p>
+      <span class="sd">Open a link to an adapter, learn its capabilities and grants, and mount it.</span>
+  <span class="nf">join</span>(<span class="ty">cogent</span>)
+      <span class="sd">Start this runtime&#x27;s hub, a router and an optimizer, and peer it with the</span>
+      <span class="sd">cogent&#x27;s other hubs.</span></pre></div>
+<p>Any app can host a runtime: it can be its own process next to an app, or be
+built into one. It can be connected to several adapters at once, and it can
+have several execution engines, one per language a policy's code is written
+in.</p>
 <h3 id="where-a-request-goes">Where a request goes<a class="headerlink" href="#where-a-request-goes" title="Permanent link">#</a></h3>
 <p>After a run succeeds, the runtime sends each thing the coglet asked for to
 whoever provides it.</p>
@@ -662,12 +672,12 @@ whoever provides it.</p>
 </tr>
 <tr>
 <td>A message to a coglet in the same runtime</td>
-<td>That coglet's inbox, directly</td>
+<td>Its hub's router, in process, which puts it in that coglet's inbox</td>
 <td>The outcome, as soon as it is delivered</td>
 </tr>
 <tr>
 <td>A message to a coglet in another runtime</td>
-<td>The router</td>
+<td>Its hub's router, which passes it to the router of the other runtime's hub</td>
 <td>The outcome, as soon as the router accepts it</td>
 </tr>
 <tr>
@@ -687,8 +697,8 @@ whoever provides it.</p>
 <p>A message is an <code>Action</code> whose <code>capability</code> is a message name such as
 <code>intent.request</code>. The coglet does not need to know where the other coglet runs.</p>
 <ul>
-<li><strong>Same runtime.</strong> The runtime checks the grant and puts the message straight
-  into the other coglet's inbox.</li>
+<li><strong>Same runtime.</strong> The runtime checks the grant and hands the message to its
+  hub's router, in process, which puts it into the other coglet's inbox.</li>
 <li><strong>Different runtimes.</strong> The runtime hands the message to the router, which
   checks the grant and delivers it to the other runtime.</li>
 </ul>
@@ -713,6 +723,7 @@ whoever provides it.</p>
 .dg-warm{stroke:#a4531c;fill:none}.dg-warm-h{fill:#a4531c}
 .dg-blue{stroke:#1f4e8c;fill:none}.dg-blue-h{fill:#1f4e8c}
 .dg-dash{stroke-dasharray:6 4}
+.dg-present{fill:none;stroke:#b8860b;stroke-width:2.4}
 .dg-num{fill:#1d1b16}.dg-numt{font:600 10px 'Avenir Next',system-ui,sans-serif;fill:#fffdf8}
 .dg-e-basic{fill:#f6e7c1;stroke:#a87b12}.dg-e-wasm{fill:#e6dff5;stroke:#6a4bb0}.dg-e-js{fill:#e3efc8;stroke:#5d7a1c}
 .dg-e-java{fill:#f6d9d6;stroke:#b0463c}.dg-e-llm{fill:#d3ecf0;stroke:#19788a}
@@ -733,6 +744,7 @@ whoever provides it.</p>
 .dg-warm{stroke:#e8a06a}.dg-warm-h{fill:#e8a06a}
 .dg-blue{stroke:#8fb8f0}.dg-blue-h{fill:#8fb8f0}
 .dg-num{fill:#e9e6df}.dg-numt{fill:#1b1e24}
+.dg-present{stroke:#e5ff00}
 .dg-e-basic{fill:#3a2f14;stroke:#ecc56b}.dg-e-wasm{fill:#2b2440;stroke:#c3a2e8}.dg-e-js{fill:#26331a;stroke:#b9c97a}
 .dg-e-java{fill:#3d1f1d;stroke:#f0958a}.dg-e-llm{fill:#14323a;stroke:#6fd0e0}
 }
@@ -842,7 +854,10 @@ Delivery to the receiver is a separate step.</em></p>
   <span class="na">messages</span>  <span class="ty">[OpName]</span>
   <span class="na">expires</span>   <span class="ty">u64</span></pre></div>
 <h3 id="runtime-and-router">Runtime and router<a class="headerlink" href="#runtime-and-router" title="Permanent link">#</a></h3>
-<p>What passes between a runtime and the cogent's router.</p>
+<p>What passes between a runtime and a router. Since every runtime runs its own
+hub, this is mostly the runtime and its own hub's router; peered routers pass
+the same operations to each other for coglets on their runtimes. The wire names
+are today's; the router protocol changes for peering come with their own ADR.</p>
 <div class="codehilite idl"><pre><span class="nc">RuntimeToRouter</span>
   <span class="nf">join</span>(<span class="ty">JoinParams</span>) -&gt; <span class="ty">JoinResult</span>
       <span class="sd">Join a cogent with a one-time invite.</span>
@@ -986,7 +1001,7 @@ older names for the same things:</p>
 </tr>
 <tr>
 <td>router</td>
-<td>hub</td>
+<td>hub (the <code>hub.*</code> protocol; in prose a hub is now a router plus an optimizer)</td>
 </tr>
 <tr>
 <td>runtime</td>

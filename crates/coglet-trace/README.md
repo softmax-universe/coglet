@@ -1,7 +1,7 @@
 # Hub trace archive
 
 `coglet-trace::Store` is the hub's local, synchronous durable storage component.
-It accepts complete runtime-exported ABI 0.1 trace JSON bytes, not raw internal
+It accepts complete runtime-exported ABI 1.0/1.1 trace JSON bytes, not raw internal
 runtime WAL files or independently appended journal fragments. No legacy code,
 new wire method, network listener, or default remote debug grant is introduced.
 A runtime/visualizer backend uses `query` to obtain archive IDs and `fetch` to

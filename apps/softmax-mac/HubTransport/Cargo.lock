@@ -339,12 +339,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "coglet-engine-wamr"
+version = "0.1.0"
+dependencies = [
+ "cmake",
+ "coglet-engine",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "coglet-hub"
 version = "0.1.0"
 dependencies = [
  "coglet-engine",
  "coglet-proto",
+ "coglet-transform",
  "coglet-types",
+ "coglet-types-hub0",
+ "ed25519-dalek 2.2.0",
  "hex",
  "iroh",
  "libc",
@@ -391,7 +403,7 @@ name = "coglet-proto"
 version = "0.1.0"
 dependencies = [
  "ciborium",
- "coglet-types",
+ "coglet-types-hub0",
  "ed25519-dalek 2.2.0",
  "flate2",
  "hex",
@@ -419,10 +431,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "coglet-transform"
+version = "0.1.0"
+dependencies = [
+ "coglet-engine",
+ "coglet-engine-wamr",
+ "ed25519-dalek 2.2.0",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "wasm-encoder 0.245.1",
+ "wasmparser 0.245.1",
+ "zip",
+]
+
+[[package]]
 name = "coglet-types"
 version = "0.1.0"
 dependencies = [
  "ciborium",
+ "regex",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "coglet-types-hub0"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "coglet-types",
  "regex",
  "serde",
  "serde_json",
@@ -3517,6 +3556,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
+name = "typed-path"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54ec2755506471f54baf5e4bb5499d8e510cc1caf271270e778a736bd2d7336c"
+
+[[package]]
 name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3690,6 +3735,16 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
+version = "0.245.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f9dca005e69bf015e45577e415b9af8c67e8ee3c0e38b5b0add5aa92581ed5c"
+dependencies = [
+ "leb128fmt",
+ "wasmparser 0.245.1",
+]
+
+[[package]]
+name = "wasm-encoder"
 version = "0.263.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b883a26aea02eaabe2d2c3fba7eb039ef5cdcb5d5201ae5551e73d5e251a81f"
@@ -3745,7 +3800,7 @@ dependencies = [
  "leb128fmt",
  "memchr",
  "unicode-width",
- "wasm-encoder",
+ "wasm-encoder 0.263.0",
 ]
 
 [[package]]
@@ -4327,6 +4382,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "zip"
+version = "7.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc12baa6db2b15a140161ce53d72209dacea594230798c24774139b54ecaa980"
+dependencies = [
+ "crc32fast",
+ "flate2",
+ "indexmap",
+ "memchr",
+ "typed-path",
+ "zopfli",
+]
+
+[[package]]
 name = "zlib-rs"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4337,3 +4406,15 @@ name = "zmij"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
+
+[[package]]
+name = "zopfli"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aaf7fc5d30c28483d93805c4a5e12b05bbb52407fa67c5f8bd552374cd01fb11"
+dependencies = [
+ "bumpalo",
+ "crc32fast",
+ "log",
+ "simd-adler32",
+]

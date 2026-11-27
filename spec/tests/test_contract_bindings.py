@@ -95,7 +95,7 @@ class ContractBindings(unittest.TestCase):
     def test_reserved_and_illustrative_names_are_not_surface_bindings(self):
         # Name grammar grants no authority. These cannot acquire a surface
         # binding simply because an envelope or manifest parses.
-        reserved = {'runtime.inbox', 'runtime.timer', 'runtime.debug_step',
+        reserved = {'runtime.inbox', 'runtime.timer', 'runtime.manage_step',
                     'runtime.action_rejected', 'runtime.receipt', 'runtime.heard', 'action.outcome', 'llm.reply'}
         illustrative = {'sensor.tick', 'motor.move', 'other.write', 'hub.note', 'test.echo', 'speech.speak'}
         self.assertTrue((reserved | illustrative).isdisjoint(self.catalog))

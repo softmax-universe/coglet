@@ -1,4 +1,4 @@
-//! Actual Factory guest (wasm32-unknown-unknown, built from coglets/factory) through
+//! Actual Factory guest (wasm32-wasip1, built from coglets/factory) through
 //! the durable ABI 0.2 `RuntimeService`, on real WAMR and on the native mock.
 //! Real SQLite, real WAL, operator-approved host migration from the actual
 //! `0001.sql`, the actual Factory catalog, and offline recorded-result replay.
@@ -15,6 +15,7 @@ use coglet_mock::engine::{ClosureGuest, Context, MockEngine, NativeModule};
 use coglet_runtime::database::{DatabaseStep, Deployment};
 use coglet_runtime::{RuntimeService, cbor, digest};
 use coglet_types::Value as V;
+use coglet_types_current as coglet_types;
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
@@ -28,6 +29,10 @@ use std::{
 #[path = "../../../coglets/factory/src/lib.rs"]
 #[allow(dead_code)]
 mod factory;
+mod factory_dispatch_result;
+mod factory_goals;
+mod factory_research;
+use factory_dispatch_result::dispatch_result_consumed;
 #[rustfmt::skip]
 #[path = "../../../spikes/cross-engine-hash/host-wasmtime/src/nancanon.rs"]
 #[allow(dead_code)]
@@ -37,8 +42,8 @@ const C: &str = "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 const HISTORY: &str = "CREATE TABLE IF NOT EXISTS schema_migrations(version BIGINT PRIMARY KEY NOT NULL, applied_at BIGINT NOT NULL, migration_hash TEXT NOT NULL);";
 const OUT: u32 = 131072;
 
-/// Compile the real Factory guest for the shared engine: no WASI target, so no
-/// WASI imports. Cached for the whole test binary.
+/// Compile the actual guest with the frozen restricted WASI inbox reader.
+/// Cached for the whole test binary.
 fn factory_wasm() -> &'static (Vec<u8>, u32, u32) {
     static WASM: OnceLock<(Vec<u8>, u32, u32)> = OnceLock::new();
     WASM.get_or_init(|| {
@@ -52,17 +57,19 @@ fn factory_wasm() -> &'static (Vec<u8>, u32, u32) {
                 "-j2",
                 "--release",
                 "--target",
-                "wasm32-unknown-unknown",
+                "wasm32-wasip1",
             ])
             .arg("--manifest-path")
             .arg(&manifest)
             .env("CARGO_TARGET_DIR", &target)
-            .env("RUSTFLAGS", "-C link-arg=--max-memory=16777216")
+            .env(
+                "RUSTFLAGS",
+                "-C link-arg=--max-memory=16777216 -C strip=symbols",
+            )
             .status()
             .unwrap();
         assert!(status.success(), "factory guest build failed");
-        let code = std::fs::read(target.join("wasm32-unknown-unknown/release/coglet_factory.wasm"))
-            .unwrap();
+        let code = std::fs::read(target.join("wasm32-wasip1/release/coglet_factory.wasm")).unwrap();
         let (mut imports, mut exports, mut mem) = (vec![], vec![], (0u32, 0u32));
         for payload in wasmparser::Parser::new(0).parse_all(&code) {
             match payload.unwrap() {
@@ -86,9 +93,13 @@ fn factory_wasm() -> &'static (Vec<u8>, u32, u32) {
                 _ => {}
             }
         }
-        // Sandbox: only the frozen coglet_v0 imports; never WASI/ambient time/random.
+        // Engine admission validates the restricted WASI signatures and forbids
+        // ambient time/random/network.
         assert!(!imports.is_empty());
         for (module, name) in &imports {
+            if module == "wasi_snapshot_preview1" {
+                continue;
+            }
             assert_eq!(module, "coglet_v0", "unexpected import {module}.{name}");
             assert!(
                 ["db", "emit", "timer", "llm", "log", "blob"].contains(&name.as_str()),
@@ -113,6 +124,7 @@ fn catalog() -> Catalog {
         "text" => CellType::Text,
         "int64" => CellType::Integer,
         "nullable_text" => CellType::NullableText,
+        "nullable_int64" => CellType::NullableInteger,
         _ => panic!("unknown Factory catalog type"),
     };
     Catalog::approve_typed(
@@ -218,6 +230,7 @@ struct Fx {
     code: Vec<u8>,
     cat: Catalog,
     migration: Migration,
+    now: std::cell::Cell<u64>,
 }
 const GRANTS: [&str; 3] = ["db.read", "db.write", "factory.work"];
 impl Fx {
@@ -225,7 +238,7 @@ impl Fx {
         let (code, _, max_pages) = factory_wasm().clone();
         let root = tempfile::tempdir_in(std::env::temp_dir().canonicalize().unwrap()).unwrap();
         let cat = catalog();
-        let manifest = json!({"version":"0.2","id":C,"subscriptions":[],
+        let manifest = json!({"version":"1.1","id":C,"subscriptions":[],
             "required_capabilities":["db.read","db.write"],
             "exclusive_outputs":[],"budgets":{"compute_mode":mode,"compute":2_000_000_000u64,
             "memory_pages":max_pages,"host_bytes":4_000_000,"wall_time_us":60_000_000,"max_events":1},
@@ -247,7 +260,7 @@ impl Fx {
                 .unwrap(),
         )
         .unwrap();
-        let mut provenance: Value = coglet_types::decode("hub-build-record", &raw)
+        let mut provenance: Value = ::coglet_types::decode("hub-build-record", &raw)
             .unwrap()
             .deserialized()
             .unwrap();
@@ -315,6 +328,7 @@ impl Fx {
             code,
             cat,
             migration,
+            now: std::cell::Cell::new(10),
         }
     }
     fn service(&self) -> RuntimeService {
@@ -353,8 +367,8 @@ impl Fx {
         event
     }
     fn context(&self) -> Value {
-        json!({"trace_id":self.setup["inputs"]["trace_id"],"logical_time":10,"seed":7,
-            "budgets":self.manifest["budgets"],"grants":GRANTS,"boundary":[]})
+        json!({"trace_id":self.setup["inputs"]["trace_id"],"logical_time":self.now.get(),"seed":7,
+            "budgets":self.manifest["budgets"],"grants":self.grants,"boundary":[]})
     }
     fn step<E: SharedEngine>(
         &self,
@@ -372,7 +386,12 @@ impl Fx {
                 read: true,
                 write: true,
             },
-            intent_kinds: ["factory.work".to_string()].into(),
+            intent_kinds: self
+                .grants
+                .iter()
+                .filter(|g| g.starts_with("factory."))
+                .cloned()
+                .collect(),
         };
         service.run_next_database(
             &self.context(),
@@ -443,7 +462,7 @@ fn scenario<E: SharedEngine>(engine: E, fx: Fx) {
     let mut service = fx.service();
     service.enqueue(fx.event(0, "E1", "active")).unwrap();
     let result = fx.step(&mut service, &mut db, &engine).unwrap().unwrap();
-    assert_eq!(result["journal"]["version"], "0.2");
+    assert_eq!(result["journal"]["version"], "1.1");
     assert_eq!(result["journal"]["status"], "committed");
     db.dispatch_fence().unwrap();
     // Real DB effects of get/query/relations/update/append/enqueue in one commit.
@@ -540,7 +559,7 @@ fn scenario<E: SharedEngine>(engine: E, fx: Fx) {
     drop(service);
     let mut service = RuntimeService::open(&fx.wal, &fx.setup, 8).unwrap();
     let sealed = service.export_trace(&trace_id, 23).unwrap();
-    assert_eq!(sealed["trailing_boundary"]["version"], "0.2");
+    assert_eq!(sealed["trailing_boundary"]["version"], "1.1");
     assert_eq!(
         coglet_runtime::Runtime::import_trace(&sealed)
             .unwrap()
@@ -668,4 +687,297 @@ fn mock() -> (MockEngine, Fx) {
 fn mock_runs_factory_repository_against_real_database_host() {
     let (engine, fx) = mock();
     scenario(engine, fx);
+}
+
+/// Actual guest executive: task.failed stages an LLM request and the failed
+/// status survives dropping the runtime. The reply arrives as runtime.inbox,
+/// which this database harness cannot yet inject; dispatch consumption is
+/// proved on the host dispatcher tests.
+#[test]
+fn wasm_task_failed_stages_llm_and_survives_reopen() {
+    let engine = Wamr::interpreter().allow_db();
+    let mut fx = Fx::new(coglet_engine_wamr::COMPUTE_MODE);
+    fx.grants.push("llm.complete".into());
+    fx.grants.push("factory.dispatch".into());
+    let policy = serde_json::to_string(&factory::executive::Policy {
+        model: "mock".into(),
+        remaining_budget: 9,
+        available_workers: 2,
+        max_priority: 100,
+    })
+    .unwrap();
+    rusqlite::Connection::open(&fx.db_path)
+        .unwrap()
+        .execute(
+            "INSERT INTO objects VALUES('factory-policy','policy','active',?1,1,10,10)",
+            [policy],
+        )
+        .unwrap();
+    let mut event = fx.event(0, "Efail", "active");
+    event["kind"] = json!("task.failed");
+    event["payload"] = json!({"task_id":"T1","trace_artifact":"sha256:trace"});
+    let mut db = fx.db();
+    let mut service = fx.service();
+    service.enqueue(event).unwrap();
+    let result = fx.step(&mut service, &mut db, &engine).unwrap().unwrap();
+    assert_eq!(result["journal"]["status"], "committed");
+    assert!(
+        !result["journal"]["llm_requests"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    drop(service);
+    drop(db);
+    let _ = engine;
+    assert_eq!(fx.object("T1").0, "failed");
+}
+
+/// Router authentication is supplied by the embedding fixture, as for the
+/// existing migration approval fixture; this tests the actual boundary, not a
+/// second direct llm.reply enqueue.
+fn reply_scenario(stale: bool, duplicate: bool, dispatch: bool) {
+    let engine = Wamr::interpreter().allow_db();
+    let mut fx = Fx::new(coglet_engine_wamr::COMPUTE_MODE);
+    fx.grants.push("llm.complete".into());
+    fx.grants.push("factory.dispatch".into());
+    fx.observer()
+        .execute(
+            "INSERT INTO objects VALUES('factory-policy','policy','active',?1,1,10,10)",
+            [serde_json::to_string(&factory::executive::Policy {
+                model: "mock".into(),
+                remaining_budget: 9,
+                available_workers: 2,
+                max_priority: 100,
+            })
+            .unwrap()],
+        )
+        .unwrap();
+    let mut event = fx.event(0, "Efail", "active");
+    event["kind"] = json!("task.failed");
+    event["payload"] = json!({"task_id":"T1","trace_artifact":"sha256:trace"});
+    let mut db = fx.db();
+    let mut service = fx.service();
+    service.enqueue(event).unwrap();
+    let first = fx.step(&mut service, &mut db, &engine).unwrap().unwrap();
+    assert_eq!(first["journal"]["status"], "committed");
+    let request = &first["journal"]["llm_requests"][0];
+    let prompt: Value = serde_json::from_str(request["input"]["prompt"].as_str().unwrap()).unwrap();
+    let proposal = json!({"state_version":prompt["state_version"],"operations":[
+        {"op":"INVESTIGATE","task_id":"11111111111111111111111111111111",
+        "hypothesis_id":"22222222222222222222222222222222","description":"inspect trace"},
+        {"op":"DISPATCH","task_id":"11111111111111111111111111111111"}]});
+    use coglet_llm::{Admission, Completion, Gateway, Provider, Route};
+    use coglet_mock::llm::{MockLlm, Script};
+    let routes = [(
+        "mock".into(),
+        Route {
+            provider: "scripted".into(),
+            ceiling: 2,
+        },
+    )]
+    .into();
+    let gateway_path = fx.root.path().join("gateway.sqlite");
+    let mut gateway = Gateway::open(gateway_path.to_str().unwrap(), routes).unwrap();
+    gateway.set_budget(C, 10).unwrap();
+    gateway
+        .enqueue_at(
+            Admission {
+                coglet: C,
+                llm_complete_granted: true,
+            },
+            request,
+            1,
+        )
+        .unwrap();
+    drop(gateway); // reopen the committed pending gateway call before dispatch
+    let mut gateway = Gateway::open(
+        gateway_path.to_str().unwrap(),
+        [(
+            "mock".into(),
+            Route {
+                provider: "scripted".into(),
+                ceiling: 2,
+            },
+        )]
+        .into(),
+    )
+    .unwrap();
+    let mut mock = MockLlm::new([Script {
+        provider: "scripted".into(),
+        request: request.clone(),
+        result: Ok(Completion {
+            cost: 1,
+            reply: json!({"request_id":request["id"],"status":"succeeded","output":{"text":proposal.to_string()}}),
+        }),
+    }]);
+    gateway
+        .dispatch_next_checked(|_| Ok(()), |call| mock.complete(call))
+        .unwrap();
+    assert_eq!(mock.calls.len(), 1);
+    drop(gateway); // replay a durable reply without a second provider call
+    let gateway = Gateway::open(
+        gateway_path.to_str().unwrap(),
+        [(
+            "mock".into(),
+            Route {
+                provider: "scripted".into(),
+                ceiling: 2,
+            },
+        )]
+        .into(),
+    )
+    .unwrap();
+    let payload = coglet_types::decode(
+        "abi::llm-reply",
+        &gateway.replay(C, request["id"].as_str().unwrap()).unwrap(),
+    )
+    .unwrap();
+    if stale {
+        fx.observer()
+            .execute("UPDATE objects SET version=version+1 WHERE id='T1'", [])
+            .unwrap();
+    }
+    let mut reply = fx.event(1, "reply", "active");
+    reply["kind"] = json!("llm.reply");
+    reply["correlation_id"] = request["correlation_id"].clone();
+    reply["payload"] = payload.deserialized().unwrap();
+    let message = json!({"index":0,"id":"33333333333333333333333333333333","sender":reply["source"],"event":reply});
+    let after = hex::encode(format!("{}\n", message));
+    drop((service, db));
+    let mut service = fx.service();
+    service.seal_boundary(&fx.setup["inputs"]["trace_id"], 10, &[json!({
+        "actor":format!("hub:{}","a".repeat(64)),"audit_id":"44444444444444444444444444444444",
+        "ticket":null,"method":"hub.inbox","target":C,"path":"/data/inbox.jsonl","before":null,"after":after
+    })]).unwrap();
+    let next = json!("66666666666666666666666666666666");
+    service.start_segment(&next).unwrap();
+    fx.setup["inputs"]["trace_id"] = next;
+    drop(service);
+    let mut service = fx.service();
+    let mut db = fx.db();
+    let replay_start = service
+        .export_trace(&fx.setup["inputs"]["trace_id"], 10)
+        .unwrap();
+    let result = fx.step(&mut service, &mut db, &engine).unwrap().unwrap();
+    assert_eq!(
+        result["journal"]["status"], "committed",
+        "{:?}",
+        result["journal"]["failure"]
+    );
+    if stale {
+        assert_eq!(fx.count("outbox"), 0);
+        assert_eq!(
+            fx.observer()
+                .query_row(
+                    "SELECT count(*) FROM objects WHERE type='hypothesis'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            fx.observer()
+                .query_row(
+                    "SELECT count(*) FROM events WHERE event_type='decision.stale'",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            result["journal"]["llm_requests"].as_array().unwrap().len(),
+            1
+        );
+    } else {
+        assert_eq!(fx.object("22222222222222222222222222222222").0, "open");
+        assert_eq!(
+            fx.object("11111111111111111111111111111111").0,
+            "dispatched"
+        );
+        assert_eq!(fx.count("outbox"), 1);
+        let (kind, payload): (String, String) = fx
+            .observer()
+            .query_row("SELECT kind,payload_cbor_hex FROM outbox", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        assert_eq!(kind, "factory.dispatch");
+        assert_eq!(
+            field(
+                &coglet_types::decode_profile(&hex::decode(payload).unwrap()).unwrap(),
+                "task_id"
+            )
+            .as_text(),
+            Some("11111111111111111111111111111111")
+        );
+    }
+    if dispatch {
+        drop((service, db));
+        dispatch_result_consumed(&mut fx, &engine, &message, &after);
+        return;
+    }
+    if duplicate {
+        let before = fx.count("events");
+        // A fresh runtime event identity naming the same immutable line cannot
+        // apply the decision a second time, including after service/DB reopen.
+        drop((service, db));
+        service = fx.service();
+        db = fx.db();
+        let mut repeated = message.clone();
+        repeated["index"] = json!(1);
+        repeated["id"] = json!("77777777777777777777777777777777");
+        let appended = format!("{}\n{}\n", message, repeated);
+        let error = service.seal_boundary(&fx.setup["inputs"]["trace_id"], 10, &[json!({
+            "actor":format!("hub:{}","a".repeat(64)),"audit_id":"88888888888888888888888888888888",
+            "ticket":null,"method":"hub.inbox","target":C,"path":"/data/inbox.jsonl",
+            "before":after,"after":hex::encode(appended)
+        })]).unwrap_err();
+        assert!(error.contains("pending request"), "{error}");
+        assert_eq!(fx.count("events"), before);
+        assert_eq!(fx.count("outbox"), 1);
+    }
+    let frames = fx.journal(&service);
+    drop((service, db));
+    // Offline guest replay from the successor segment's initial snapshot;
+    // DB state and provider are not available to this execution.
+    std::fs::remove_file(&fx.db_path).unwrap();
+    let mut runtime = coglet_runtime::Runtime::import_trace(&replay_start).unwrap();
+    let refs: Vec<&[u8]> = frames
+        .iter()
+        .filter(|frame| {
+            let record = coglet_types::decode_profile(frame).unwrap();
+            field(&record, "trace_id").as_text() == fx.setup["inputs"]["trace_id"].as_str()
+        })
+        .map(Vec::as_slice)
+        .collect();
+    assert_eq!(refs.len(), 1);
+    runtime
+        .replay_database(&refs, &engine, 32 * 1024 * 1024, 65536)
+        .unwrap();
+    assert!(!fx.db_path.exists());
+}
+
+#[test]
+fn factory_wasm_llm_reply_produces_hypothesis() {
+    reply_scenario(false, false, false);
+}
+#[test]
+fn factory_wasm_stale_llm_reply_refused() {
+    reply_scenario(true, false, false);
+}
+#[test]
+fn factory_wasm_reply_survives_reopen() {
+    reply_scenario(false, true, false);
+}
+#[test]
+fn factory_wasm_reply_to_outbox_dispatch_intent() {
+    reply_scenario(false, false, false);
+}
+
+#[test]
+fn factory_wasm_outbox_dispatch_result_consumed() {
+    reply_scenario(false, false, true);
 }

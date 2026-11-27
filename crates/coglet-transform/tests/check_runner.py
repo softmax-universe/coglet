@@ -36,15 +36,17 @@ class PairGuard(unittest.TestCase):
             path.mkdir()
             for name in runner.REQUIRED_FILES:
                 (path / name).write_bytes(b"synthetic unit input, not execution evidence")
+            (path / "tool-build.jsonl").write_text(json.dumps({"reason": "compiler-artifact", "executable": "/fixture/coglet-transform", "target": {"name": "coglet-transform", "kind": ["bin"]}, "profile": {"test": False}}) + "\n")
+            (path / "gate-build.jsonl").write_text(json.dumps({"reason": "compiler-artifact", "executable": "/fixture/coglet-transform-gate", "target": {"name": "coglet-transform-gate", "kind": ["bin"]}, "profile": {"test": False}}) + "\n")
             (path / "fuzz.results").write_bytes(b"\0" * (960 * 80))
             (path / "rustc.txt").write_text("synthetic compiler\nhost: " + arch)
             for name, expected in runner.EXPECTED.items():
                 (path / f"{name}.log").write_text("\n".join(f"test {test} ... ok" for test in sorted(expected)) + f"\ntest result: ok. {len(expected)} passed; 0 failed; 0 ignored; 0 measured; 0 filtered out")
-            manifest = {"arch": arch, "mode": "native", "actual_checkout": "unit-head", "github_run": "unit-run", "github_attempt": "unit-attempt", "tests": {key: sorted(value) for key, value in runner.EXPECTED.items()}, "files": {name: hashlib.sha256((path / name).read_bytes()).hexdigest() for name in runner.REQUIRED_FILES}}
+            manifest = {"production_tool": "coglet-transform", "case_count": 960, "arch": arch, "mode": "native", "actual_checkout": "unit-head", "github_run": "unit-run", "github_attempt": "unit-attempt", "tests": {key: sorted(value) for key, value in runner.EXPECTED.items()}, "files": {name: hashlib.sha256((path / name).read_bytes()).hexdigest() for name in runner.REQUIRED_FILES}}
             (path / "manifest.json").write_text(json.dumps(manifest))
 
     def test_pair_guards(self):
-        for defect in (None, "missing", "arch", "mode", "head", "run", "attempt", "hash", "tests", "corpus"):
+        for defect in (None, "missing", "gate-missing", "gate-target", "arch", "mode", "head", "run", "attempt", "hash", "tests", "corpus"):
             with self.subTest(defect=defect), tempfile.TemporaryDirectory(prefix="transform-pair-unit-") as temp:
                 root = Path(temp)
                 self.fixtures(root)
@@ -52,6 +54,14 @@ class PairGuard(unittest.TestCase):
                 manifest = json.loads((path / "manifest.json").read_text())
                 if defect == "missing":
                     (path / "fuzz.corpus").unlink()
+                elif defect == "gate-missing":
+                    (path / "coglet-transform-gate").unlink()
+                elif defect == "gate-target":
+                    log = path / "gate-build.jsonl"
+                    value = json.loads(log.read_text())
+                    value["target"]["name"] = "coglet-transform"
+                    log.write_text(json.dumps(value))
+                    manifest["files"]["gate-build.jsonl"] = runner.digest(log)
                 elif defect in ("arch", "mode"):
                     manifest[defect] = "unexecuted"
                 elif defect in ("head", "run", "attempt"):

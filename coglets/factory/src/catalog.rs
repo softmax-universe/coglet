@@ -23,6 +23,17 @@ const OBJECT_COLUMNS: &[(&str, &str)] = &[
 ];
 pub const STATEMENTS: &[Statement] = &[
     Statement {
+        id: "relations_create",
+        sql: "INSERT INTO relations(id, source_id, target_id, type, data_json, version) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        mode: "write",
+        expected_affected: Some(1),
+        parameters: &["text", "text", "text", "text", "text", "int64"],
+        columns: &[],
+        table: "relations",
+        read_dependencies: &["objects"],
+        order: &[],
+    },
+    Statement {
         id: "objects_query",
         sql: "SELECT id, type, status, data_json, version, created_at, updated_at FROM objects WHERE type=?1 AND status=?2 ORDER BY id",
         mode: "read",
@@ -94,5 +105,24 @@ pub const STATEMENTS: &[Statement] = &[
         table: "objects",
         read_dependencies: &[],
         order: &[],
+    },
+    Statement {
+        id: "work_queue_get",
+        sql: "SELECT task_id, state, priority, lease_owner, lease_until, attempt, version FROM work_queue WHERE task_id=?1 ORDER BY task_id",
+        mode: "read",
+        expected_affected: None,
+        parameters: &["text"],
+        columns: &[
+            ("task_id", "text"),
+            ("state", "text"),
+            ("priority", "int64"),
+            ("lease_owner", "nullable_text"),
+            ("lease_until", "nullable_int64"),
+            ("attempt", "int64"),
+            ("version", "int64"),
+        ],
+        table: "work_queue",
+        read_dependencies: &[],
+        order: &["task_id"],
     },
 ];

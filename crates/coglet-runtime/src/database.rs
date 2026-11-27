@@ -6,7 +6,7 @@
 //! `RuntimeService::recover_database` (re-exported below): both publish through
 //! one idempotent WAL `Journal` collaborator, so live completion and no-guest
 //! recovery cannot diverge.
-use crate::{Result, StepHost, digest, profile_value, validate};
+use crate::{ContractProfile, Result, StepHost, digest, profile_value};
 use coglet_db::{Admission, CallResult, Catalog, Database, Pins, Unit};
 use coglet_engine::{
     Engine, Error, GuestMemory, Host, Instance, Limits, StepBudget, StepInput, StepOutcome,
@@ -33,14 +33,35 @@ pub fn admit<'a, E: Engine>(
     catalog: &'a Catalog,
     limits: Limits,
 ) -> Result<(Unit<'a>, E::Instance)> {
+    admit_with_profile(
+        engine,
+        code,
+        deployment,
+        db,
+        catalog,
+        limits,
+        ContractProfile::Surface01,
+    )
+}
+
+/// Selected only by trusted local provisioning, never by the manifest format.
+pub fn admit_with_profile<'a, E: Engine>(
+    engine: &E,
+    code: &[u8],
+    deployment: Deployment<'_>,
+    db: &'a mut Database,
+    catalog: &'a Catalog,
+    limits: Limits,
+    profile: ContractProfile,
+) -> Result<(Unit<'a>, E::Instance)> {
     let Deployment {
         manifest,
         grants,
         pins,
     } = deployment;
-    validate("database::db-manifest", manifest)?;
+    profile.validate("database::db-manifest", manifest)?;
     for grant in grants {
-        validate("capability-name", &serde_json::json!(grant))?;
+        profile.validate_name(grant)?;
     }
     if limits.compute_mode
         != manifest["budgets"]["compute_mode"]
@@ -76,7 +97,7 @@ pub fn admit<'a, E: Engine>(
     }
     // Static engine validation does not instantiate or execute the guest.
     let module = engine.load(code, &limits).map_err(|e| e.to_string())?;
-    let unit = db.admit(
+    let unit = db.admit_with_profile(
         catalog,
         &digest(code),
         Admission {
@@ -89,11 +110,19 @@ pub fn admit<'a, E: Engine>(
                 .ok_or("schema_max")?,
             deadline: limits.deadline,
         },
+        database_profile(profile),
     )?;
     let instance = engine
         .instantiate(&module, limits)
         .map_err(|e| e.to_string())?;
     Ok((unit, instance))
+}
+
+pub(crate) fn database_profile(profile: ContractProfile) -> coglet_db::ContractProfile {
+    match profile {
+        ContractProfile::Surface01 => coglet_db::ContractProfile::Surface01,
+        ContractProfile::Surface02 => coglet_db::ContractProfile::Surface02,
+    }
 }
 
 /// One invocation-order stream, retaining native profile values (including
@@ -103,6 +132,7 @@ pub struct DatabaseHost<'h, 'db> {
     ordinary: &'h mut StepHost,
     calls: Vec<V>,
     poisoned_return: bool,
+    wasi: Option<crate::wasi::Wasi>,
 }
 impl<'h, 'db> DatabaseHost<'h, 'db> {
     pub fn new(unit: &'h mut Unit<'db>, ordinary: &'h mut StepHost) -> Self {
@@ -111,6 +141,7 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
             ordinary,
             calls: vec![],
             poisoned_return: false,
+            wasi: None,
         }
     }
     pub fn calls(&self) -> &[V] {
@@ -132,6 +163,12 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
             self.poisoned_return = true;
             outcome.result = Err(Error::Trap("database unit conflict".into()));
         }
+        if outcome.result.is_ok()
+            && let Some(wasi) = self.wasi.take()
+            && let Err(error) = wasi.commit(&mut self.ordinary.files)
+        {
+            outcome.result = Err(Error::Trap(error));
+        }
         if outcome.result.is_err() {
             self.unit.abort();
         }
@@ -143,6 +180,7 @@ impl<'h, 'db> DatabaseHost<'h, 'db> {
 // or a clone of all guest memory. Recording never invents bytes after a fault.
 struct ObservedMemory<'a> {
     memory: &'a mut dyn GuestMemory,
+    profile: coglet_db::ContractProfile,
     argument: RefCell<Option<(bool, V)>>,
 }
 impl GuestMemory for ObservedMemory<'_> {
@@ -151,10 +189,11 @@ impl GuestMemory for ObservedMemory<'_> {
     }
     fn read(&self, ptr: u32, len: u32) -> coglet_engine::Result<Vec<u8>> {
         let bytes = self.memory.read(ptr, len)?;
-        let argument = match coglet_types::decode("database::db-request", &bytes) {
-            Ok(value) => (true, value),
-            Err(_) => (false, V::Text(hex::encode(&bytes))),
-        };
+        let argument =
+            match crate::profile_codec::decode(self.profile.rule("database::db-request"), &bytes) {
+                Ok(value) => (true, value),
+                Err(_) => (false, V::Text(hex::encode(&bytes))),
+            };
         *self.argument.borrow_mut() = Some(argument);
         Ok(bytes)
     }
@@ -175,6 +214,17 @@ impl Host for DatabaseHost<'_, '_> {
         budget: &mut StepBudget,
     ) -> coglet_engine::Result<u32> {
         budget.check_deadline()?;
+        if module == "wasi_snapshot_preview1" {
+            if self.wasi.is_none() {
+                self.wasi =
+                    Some(crate::wasi::Wasi::new(&self.ordinary.files).map_err(Error::Trap)?);
+            }
+            return self
+                .wasi
+                .as_mut()
+                .ok_or(Error::InvalidArgument)?
+                .call(name, args, memory, budget);
+        }
         if module != "coglet_v0" {
             return Err(Error::UnqualifiedModule);
         }
@@ -186,6 +236,13 @@ impl Host for DatabaseHost<'_, '_> {
             let len = u32::try_from(args[1]).map_err(|_| Error::InvalidPointer)?;
             let raw = memory.read(ptr, len)?;
             let result = self.ordinary.import(name, &raw).map_err(Error::Trap)?;
+            if name == "log"
+                && result == 0
+                && let Some(wasi) = self.wasi.as_mut()
+            {
+                wasi.sync_events_log(&self.ordinary.files)
+                    .map_err(Error::Trap)?;
+            }
             self.calls.push(
                 profile_value(self.ordinary.calls.last().ok_or(Error::InvalidArgument)?, 0)
                     .map_err(Error::Trap)?,
@@ -205,6 +262,7 @@ impl Host for DatabaseHost<'_, '_> {
             .map_err(|_| Error::InvalidArgument)?;
         let mut observed = ObservedMemory {
             memory,
+            profile: self.unit.contract_profile(),
             argument: RefCell::new(None),
         };
         let result = self.unit.call_engine(&mut observed, args, budget)?;
@@ -235,7 +293,11 @@ impl Host for DatabaseHost<'_, '_> {
             ));
         }
         let call = V::Map(call);
-        coglet_types::validate("database::db-host-call", &call).map_err(Error::Trap)?;
+        crate::profile_codec::validate(
+            self.unit.contract_profile().rule("database::db-host-call"),
+            &call,
+        )
+        .map_err(Error::Trap)?;
         self.calls.push(call);
         Ok(result)
     }
