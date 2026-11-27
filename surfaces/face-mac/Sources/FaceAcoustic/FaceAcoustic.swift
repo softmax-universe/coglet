@@ -497,13 +497,17 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
                     // Ground truth per word: word k is fully heard iff its own frequency stayed above its
                     // calibrated threshold for >= 97% of the word's 30..470 ms window (anchored at the
                     // acoustic onset). Per-word frequencies keep reverberation from merging neighbours.
-                    var full = 0
+                    var full = 0; var fracs: [Double] = []
                     for k in 0..<wordCount {
                         let a = o + UInt64(k * wordPeriodMS + 30) * 1_000_000, b = o + UInt64(k * wordPeriodMS + 470) * 1_000_000
                         let pe = we.per[k]
                         let idx = (0..<pe.v.count).filter { pe.t[$0] >= a && pe.t[$0] <= b }
-                        if idx.count > 300, Double(idx.filter { pe.v[$0] > thrWords[k] }.count) / Double(idx.count) >= 0.97 { full += 1 }
+                        // -12 dB re the calibrated tone level: room standing waves fade a steady tone by several dB.
+                        let frac = idx.count > 300 ? Double(idx.filter { pe.v[$0] > 0.5 * thrWords[k] }.count) / Double(idx.count) : 0
+                        fracs.append(round3(frac))
+                        if frac >= 0.97 { full += 1 }
                     }
+                    r["word_fractions"] = fracs
                     r["credited_words"] = credited; r["acoustic_full_words"] = full
                     r["over_credited_words"] = max(0, credited - full)
                     r["word_exact"] = credited == full
