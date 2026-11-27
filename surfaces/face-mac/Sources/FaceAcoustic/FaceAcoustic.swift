@@ -12,11 +12,11 @@ import CogletTypes
 // (FaceAudioKit, one shared AVAudioEngine graph on real hardware) from the frozen
 // conformance speech timelines (spec/fixtures/speech/timelines.json) and measures
 // the acoustic path through a physical microphone. Test seams, declared honestly:
-//   * synthesis route "acoustic-tone": deterministic 1 kHz word bursts with
+//   * synthesis route "acoustic-tone": deterministic five-frequency (800..2400 Hz) word bursts with
 //     time-aligned spans, NOT a voice;
 //   * recognition route "acoustic-scripted": delivers the timeline's scripted
 //     partial/final text, it is NOT speech recognition;
-//   * a second AVAudioEngine plays a 1.8 kHz stimulus standing in for the user's voice.
+//   * a second AVAudioEngine plays a 3.2 kHz stimulus standing in for the user's voice.
 // It must run from a signed .app bundle (microphone TCC grant); see
 // scripts/acoustic/run.sh. It is never shipped; it opens no network route.
 
@@ -25,6 +25,7 @@ import CogletTypes
 func nowNS() -> UInt64 { clock_gettime_nsec_np(CLOCK_UPTIME_RAW) }
 func msBetween(_ a: UInt64, _ b: UInt64) -> Double { (Double(b) - Double(a)) / 1e6 }
 func round3(_ x: Double) -> Double { (x * 1000).rounded() / 1000 }
+func round5(_ x: Double) -> Double { (x * 100000).rounded() / 100000 }
 
 // MARK: audio seams
 
@@ -84,10 +85,14 @@ func tone(freq: Double, ms: Int, amp: Double = 0.6, fadeMS: Int = 3) -> [Int16] 
 }
 /// 5 words of 500 ms tone followed by a 100 ms gap (period 600 ms, 3000 ms item).
 let wordPeriodMS = 600, wordToneMS = 500, wordCount = 5
+/// One frequency per word: each word's own Goertzel envelope identifies it even through room
+/// reverberation (a 1 kHz-only design merged words across the 100 ms gap in a real room).
+let wordFreqs: [Double] = [800, 1200, 1600, 2000, 2400]   // 200 Hz apart = exact Goertzel bins (5 ms window): no leakage
+let stimulusFreq = 3200.0
 func wordedItem() -> (samples: [Int16], spans: [SpeechObservations.Span]) {
     var s = [Int16](); var spans = [SpeechObservations.Span]()
     for k in 0..<wordCount {
-        s += tone(freq: 1000, ms: wordToneMS)
+        s += tone(freq: wordFreqs[k], ms: wordToneMS)
         s += [Int16](repeating: 0, count: (wordPeriodMS - wordToneMS) * 24)
         spans.append(.init(endMS: UInt64(k * wordPeriodMS + wordToneMS), text: k == wordCount - 1 ? "w\(k)" : "w\(k) "))
     }
@@ -148,6 +153,18 @@ func envelope(samples: [Int16], times: [UInt64], freq: Double) -> Envelope {
         e.t.append(times[i + win / 2]); i += hop
     }
     return e
+}
+/// Per-word-frequency envelopes on one time grid, plus the normalised "any word sounding" envelope
+/// max_k(env_k / thr_k) (so 1.0 is each word's own calibrated detection threshold).
+struct WordEnvelopes {
+    var per: [Envelope]
+    var combined: Envelope
+}
+func wordEnvelopes(samples: [Int16], times: [UInt64], thr: [Double]) -> WordEnvelopes {
+    let per = wordFreqs.map { envelope(samples: samples, times: times, freq: $0) }
+    var c = Envelope(); c.t = per[0].t
+    c.v = (0..<per[0].v.count).map { i in (0..<wordFreqs.count).map { per[$0].v[i] / thr[$0] }.max() ?? 0 }
+    return WordEnvelopes(per: per, combined: c)
 }
 func percentile(_ a: [Double], _ p: Double) -> Double {
     guard !a.isEmpty else { return 0 }
@@ -241,7 +258,7 @@ func appendLine(_ path: String, _ s: String) {
 
 struct Fail: Swift.Error, CustomStringConvertible { let description: String }
 
-/// Plays a 1.8 kHz burst on a second engine at a scheduled host time (user-voice stand-in).
+/// Plays a 3.2 kHz burst on a second engine at a scheduled host time (user-voice stand-in).
 @MainActor final class Stimulus {
     let engine = AVAudioEngine(); let player = AVAudioPlayerNode()
     let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)!
@@ -252,7 +269,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         engine.prepare(); try engine.start()
     }
     func schedule(atNS: UInt64, ms: Int) {
-        let s = tone(freq: 1800, ms: ms, amp: 0.6)
+        let s = tone(freq: stimulusFreq, ms: ms, amp: 0.6)
         let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(s.count))!
         buf.frameLength = AVAudioFrameCount(s.count)
         for i in 0..<s.count { buf.floatChannelData![0][i] = Float(s[i]) / 32768 }
@@ -268,7 +285,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
     let kit: FaceAudioKit
     let tap: TapDuplex
     var rng: SplitMix
-    var thr1k = 0.0, thr18k = 0.0
+    var thrWords: [Double] = [], thrStim = 0.0
     var cal: [String: Any] = [:]
     let startNS = nowNS()
     var timelines: [[String: Any]] = []
@@ -344,35 +361,40 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         tap.beginRun(); let tn0 = nowNS()
         try await pump(host, until: tn0 + 1_000_000_000, into: &evs)
         let times = tap.sampleTimes()
-        let nEnv1 = envelope(samples: tap.samples, times: times, freq: 1000)
-        let nEnv2 = envelope(samples: tap.samples, times: times, freq: 1800)
-        // Tone: 1.2 s continuous 1 kHz straight through the shared graph.
+        let noise = wordFreqs.map { envelope(samples: tap.samples, times: times, freq: $0) }
+        let nEnv2 = envelope(samples: tap.samples, times: times, freq: stimulusFreq)
+        // Tones: 450 ms at each word frequency, back to back, through the shared graph.
         tap.beginRun(); let tt0 = nowNS()
-        try tap.enqueue(tone(freq: 1000, ms: 1200))
-        try await pump(host, until: tt0 + 1_700_000_000, into: &evs)
+        for f in wordFreqs { try tap.enqueue(tone(freq: f, ms: 450)) }
+        try await pump(host, until: tt0 + 450_000_000 * UInt64(wordFreqs.count) + 500_000_000, into: &evs)
         let times2 = tap.sampleTimes()
-        let tEnv = envelope(samples: tap.samples, times: times2, freq: 1000)
-        let mid = tEnv.v.enumerated().filter { tEnv.t[$0.offset] > tt0 + 500_000_000 && tEnv.t[$0.offset] < tt0 + 1_100_000_000 }.map(\.element)
-        let n99 = percentile(nEnv1.v, 0.99), t10 = percentile(mid, 0.10), tmed = percentile(mid, 0.5)
-        thr1k = (n99 * t10).squareRoot()
-        cal["noise_1k_p50"] = round3(percentile(nEnv1.v, 0.5)); cal["noise_1k_p99"] = round3(n99)
-        cal["tone_1k_p10"] = round3(t10); cal["tone_1k_median"] = round3(tmed)
-        cal["snr_1k_db"] = round3(20 * log10(max(t10, 1e-9) / max(n99, 1e-9)))
-        cal["threshold_1k"] = round3(thr1k)
-        cal["noise_1.8k_p99"] = round3(percentile(nEnv2.v, 0.99))
+        var snrs: [Double] = []
+        thrWords = []
+        for (k, f) in wordFreqs.enumerated() {
+            let e = envelope(samples: tap.samples, times: times2, freq: f)
+            let a = tt0 + UInt64(k) * 450_000_000 + 150_000_000, b = tt0 + UInt64(k) * 450_000_000 + 400_000_000
+            let mid = (0..<e.v.count).filter { e.t[$0] > a && e.t[$0] < b }.map { e.v[$0] }
+            let n99 = percentile(noise[k].v, 0.99), t10 = percentile(mid, 0.10)
+            thrWords.append((n99 * t10).squareRoot())
+            let snr = 20 * log10(max(t10, 1e-9) / max(n99, 1e-9)); snrs.append(snr)
+            cal["noise_\(Int(f))_p99"] = round5(n99); cal["tone_\(Int(f))_p10"] = round5(t10)
+            cal["threshold_\(Int(f))"] = round5(thrWords[k]); cal["snr_\(Int(f))_db"] = round3(snr)
+        }
+        cal["snr_min_db"] = round3(snrs.min() ?? 0)
+        cal["noise_stim_p99"] = round5(percentile(nEnv2.v, 0.99))
         // Stimulus level through the second engine.
         let stim = try Stimulus()
         try await pump(host, until: nowNS() + 400_000_000, into: &evs)
         tap.beginRun(); let ts0 = nowNS() + 300_000_000
         stim.schedule(atNS: ts0, ms: 800)
         try await pump(host, until: ts0 + 1_300_000_000, into: &evs)
-        let sEnv = envelope(samples: tap.samples, times: tap.sampleTimes(), freq: 1800)
+        let sEnv = envelope(samples: tap.samples, times: tap.sampleTimes(), freq: stimulusFreq)
         let smid = sEnv.v.enumerated().filter { sEnv.t[$0.offset] > ts0 + 300_000_000 && sEnv.t[$0.offset] < ts0 + 700_000_000 }.map(\.element)
         stim.stop()
         let s10 = percentile(smid, 0.10), n99s = percentile(nEnv2.v, 0.99)
-        thr18k = (n99s * s10).squareRoot()
-        cal["stim_1.8k_p10"] = round3(s10); cal["snr_1.8k_db"] = round3(20 * log10(max(s10, 1e-9) / max(n99s, 1e-9)))
-        cal["threshold_1.8k"] = round3(thr18k)
+        thrStim = (n99s * s10).squareRoot()
+        cal["stim_p10"] = round5(s10); cal["snr_stim_db"] = round3(20 * log10(max(s10, 1e-9) / max(n99s, 1e-9)))
+        cal["threshold_stim"] = round5(thrStim)
         try? host.close()
     }
 
@@ -443,8 +465,9 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         r["ptt_press_call_ms"] = round3(msBetween(tPress, tPressDone))
         if hasPlay {
             let times = tap.sampleTimes()
-            let env = envelope(samples: tap.samples, times: times, freq: 1000)
-            let thr = thr1k
+            let we = wordEnvelopes(samples: tap.samples, times: times, thr: thrWords)
+            let env = we.combined   // normalised: 1.0 = each word's own calibrated detection threshold
+            let thr = 1.0
             let preNoise = (0..<env.v.count).filter { env.t[$0] < t0 }.map { env.v[$0] }.max() ?? 0
             r["pre_noise_max"] = round3(preNoise); r["noise_ok"] = preNoise < thr
             let swOnset = tap.renderLog.first { $0.frames > (tap.renderLog.first?.frames ?? 0) }
@@ -471,12 +494,16 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
                     r["reported_played_ms"] = played
                     r["played_minus_acoustic_ms"] = round3(Double(played) - heard)
                     let credited = (0..<wordCount).filter { UInt64($0 * wordPeriodMS + wordToneMS) <= played }.count
-                    let level = percentile((0..<env.v.count).filter { env.t[$0] >= o && env.t[$0] <= st }.map { env.v[$0] }, 0.9)
-                    // Per-run relative threshold and a 40 ms dropout merge (word gaps are 100 ms): standing-wave
-                    // fades in a real room must not split one 500 ms word into fragments.
-                    let bs = bursts(env, from: o, to: st + 50_000_000, thr: 0.35 * level, mergeMS: 40)
-                    // A burst is fully heard if it lasted >= 470 of its 500 ms.
-                    let full = bs.filter { msBetween($0.0, $0.1) >= 470 }.count
+                    // Ground truth per word: word k is fully heard iff its own frequency stayed above its
+                    // calibrated threshold for >= 97% of the word's 30..470 ms window (anchored at the
+                    // acoustic onset). Per-word frequencies keep reverberation from merging neighbours.
+                    var full = 0
+                    for k in 0..<wordCount {
+                        let a = o + UInt64(k * wordPeriodMS + 30) * 1_000_000, b = o + UInt64(k * wordPeriodMS + 470) * 1_000_000
+                        let pe = we.per[k]
+                        let idx = (0..<pe.v.count).filter { pe.t[$0] >= a && pe.t[$0] <= b }
+                        if idx.count > 300, Double(idx.filter { pe.v[$0] > thrWords[k] }.count) / Double(idx.count) >= 0.97 { full += 1 }
+                    }
                     r["credited_words"] = credited; r["acoustic_full_words"] = full
                     r["over_credited_words"] = max(0, credited - full)
                     r["word_exact"] = credited == full
@@ -486,7 +513,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             var dec: [[Double]] = []
             var i = 0
             while i < env.v.count { dec.append([round3(msBetween(tAct, env.t[i])), round3(env.v[i])]); i += 5 }
-            r["envelope_1k"] = dec
+            r["envelope_norm"] = dec
             r["barge_event_ok"] = evs.contains { $0.kind == "speech.barge_in" }
             conformant = conformant && (r["barge_event_ok"] as? Bool ?? false)
         }
@@ -511,9 +538,9 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         let tRelease = nowNS(); host.finishCapture()
         try rec.receive?(.init(revision: 1, text: "ok", final: true, positionMS: 700))
         try host.pump(); drainEvents(host, into: &evs)
-        let env = envelope(samples: tap.samples, times: tap.sampleTimes(), freq: 1800)
+        let env = envelope(samples: tap.samples, times: tap.sampleTimes(), freq: stimulusFreq)
         var r: [String: Any] = ["kind": "stimulus", "index": index]
-        if let on = onsetTime(env, from: sched - 50_000_000, thr: thr18k) {
+        if let on = onsetTime(env, from: sched - 50_000_000, thr: thrStim) {
             r["stimulus_scheduled_to_capture_ms"] = round3(msBetween(sched, on))
         } else { r["stimulus_missed"] = true }
         if let fa = rec.firstAppendNS { r["ptt_press_to_first_capture_ms"] = round3(msBetween(tPress, fa)) }
@@ -545,10 +572,10 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
                 "host": ProcessInfo.processInfo.hostName, "os": ProcessInfo.processInfo.operatingSystemVersionString,
                 "offsets_ms": o.offsets, "started": ISO8601DateFormatter().string(from: Date()),
                 "tool": "face-acoustic", "seed": o.seed]
-            let snr = h.cal["snr_1k_db"] as? Double ?? 0
+            let snr = h.cal["snr_min_db"] as? Double ?? 0
             session["acoustic_coupling_ok"] = snr >= 12
             try JSONSerialization.data(withJSONObject: session, options: [.sortedKeys, .prettyPrinted]).write(to: URL(fileURLWithPath: sessionPath))
-            if o.calibrateOnly { done(0, "calibration only: snr_1k_db=\(snr)") }
+            if o.calibrateOnly { done(0, "calibration only: snr_min_db=\(snr)") }
             if snr < 12 { done(4, "insufficient speaker->microphone coupling: SNR \(snr) dB < 12 dB; refusing to measure") }
             var idx = 0
             for rep in 0..<o.barge {

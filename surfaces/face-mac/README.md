@@ -265,10 +265,13 @@ The production render/tap callbacks are constructed on MainActor and invoked
 from a detached task with synthetic buffers, verifying actor-independent execution,
 playback/underrun output, capture conversion and meters without hardware.
 
-No hardware device is opened by these tests. Real MacBook Pro acoustic AEC
-attenuation, route switching, capture/output latency, barge-in audible tail,
-and hot-unplug recovery remain **untested** and belong to the later Face acoustic
-proof card. Unit CI is not acoustic proof.
+No hardware device is opened by these tests. Real-Mac acoustic evidence is separate:
+ADR-0044 records the Mac mini speaker-to-USB-microphone proof run by
+`scripts/acoustic/run.sh` (the `face-acoustic` harness in this package drives the real
+`FaceSurfaceHost` + `NativeFaceDuplex` from the frozen speech timelines; AEC off, scripted
+recognition, tone synthesis). Real MacBook Pro acoustic AEC attenuation, laptop route
+switching, a real speech recognizer/voice, and hot-unplug recovery remain **untested**.
+Unit CI is not acoustic proof.
 
 ## Provenance
 
