@@ -619,7 +619,19 @@ final class AppSurfaceWireTests: XCTestCase {
         guard triangle.exists else {
             XCTFail("owned manual disclosure triangle missing"); throw WireTestFailure()
         }
-        triangle.click()
+        // The macOS AX DisclosureTriangle frame includes its label: the
+        // default centre click hits text, not the native chevron. The retained
+        // bbab qualification records frame x=264,width=252.5 and chevron x=290.
+        // Keep the click relative to this identified element (26 points in),
+        // never an adapter toggle or a whole-group/label-centre click.
+        let triangleFrame = triangle.frame
+        guard triangleFrame.width > 52, triangleFrame.height > 0,
+              triangleFrame.width.isFinite, triangleFrame.height.isFinite else {
+            XCTFail("owned manual disclosure geometry unavailable"); throw WireTestFailure()
+        }
+        XCTAssertTrue((triangle.value as? String) == "0" || (triangle.value as? NSNumber)?.intValue == 0)
+        triangle.coordinate(withNormalizedOffset: CGVector(dx: 26 / triangleFrame.width, dy: 0.5)).click()
+        try wait { (triangle.value as? String) == "1" || (triangle.value as? NSNumber)?.intValue == 1 }
         let invitation = app.secureTextFields["settings.hub.pairing.invitation"]
         XCTAssertTrue(invitation.waitForExistence(timeout: 5))
         try observe("hub_pairing", route: "manual", anchors: ["settings.hub.pairing.invitation",
