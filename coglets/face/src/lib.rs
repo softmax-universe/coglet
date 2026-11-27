@@ -9,12 +9,23 @@ pub const STATE_PATH: &str = "/data/face-state.json";
 pub const MAX_STATE_BYTES: usize = 8192;
 pub const MAX_SOURCES: usize = 8;
 pub const MAX_TEXT_BYTES: usize = 4096;
+pub const INBOX_PATH: &str = "/data/inbox.jsonl";
+pub const MAX_INBOX_BYTES: usize = 512 * 1024;
+/// Inbox event kind a router uses to ask the Face to speak. Payload: `{text}`.
+pub const SAY_KIND: &str = "face.say";
 
 #[derive(Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct State {
     sources: BTreeMap<String, Capture>,
     last_step: Option<u64>,
+    /// Next unconsumed `/data/inbox.jsonl` index. Absent in states written
+    /// before router speech existed.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    inbox_cursor: u64,
+}
+fn is_zero(n: &u64) -> bool {
+    *n == 0
 }
 #[derive(Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -66,6 +77,104 @@ fn load<H: Host>(ctx: &mut Context<'_, H>) -> Result<State, HostError> {
     Ok(state)
 }
 
+/// Speak router-authored text. Only host-materialized `runtime.inbox` wakes
+/// authorize reading `/data/inbox.jsonl`; rows are consumed once, in order, up
+/// to the newest wake. Inbox structure is validated fail-closed; a row that is
+/// not a well-formed `face.say` from a router (`hub:` sender) is skipped, so a
+/// bad message cannot wedge the cursor.
+fn say_from_router<H: Host>(
+    ctx: &mut Context<'_, H>,
+    state: &mut State,
+    events: &[Event],
+) -> Result<(), HostError> {
+    let mut upto: Option<u64> = None;
+    for e in events
+        .iter()
+        .filter(|e| e.kind == "runtime.inbox" && e.source == ID)
+    {
+        let n = e
+            .payload
+            .get("index")
+            .and_then(Value::as_integer)
+            .and_then(|n| u64::try_from(n).ok())
+            .ok_or(HostError::InvalidArgument)?;
+        upto = Some(upto.map_or(n, |m| m.max(n)));
+    }
+    let Some(upto) = upto else {
+        return Ok(());
+    };
+    let raw = ctx.read_file(INBOX_PATH)?.unwrap_or_default();
+    if raw.len() > MAX_INBOX_BYTES {
+        return Err(HostError::ResourceExhausted);
+    }
+    if !raw.is_empty() && raw.last() != Some(&b'\n') {
+        return Err(HostError::InvalidArgument);
+    }
+    let end = upto.checked_add(1).ok_or(HostError::InvalidArgument)?;
+    let mut index = 0u64;
+    for line in raw.split_inclusive(|b| *b == b'\n') {
+        let line = &line[..line.len() - 1];
+        let row: serde_json::Value =
+            serde_json::from_slice(line).map_err(|_| HostError::InvalidArgument)?;
+        // Canonical bytes (sorted keys, no spaces) and dense indices.
+        if serde_json::to_vec(&row).map_err(|_| HostError::InvalidArgument)? != line
+            || row["index"].as_u64() != Some(index)
+            || row["sender"] != row["event"]["source"]
+        {
+            return Err(HostError::InvalidArgument);
+        }
+        if index >= state.inbox_cursor && index < end {
+            say_row(ctx, &row)?;
+        }
+        index += 1;
+    }
+    if end > index {
+        return Err(HostError::InvalidArgument);
+    }
+    state.inbox_cursor = state.inbox_cursor.max(end);
+    Ok(())
+}
+fn say_row<H: Host>(ctx: &mut Context<'_, H>, row: &serde_json::Value) -> Result<(), HostError> {
+    let event = &row["event"];
+    let router = event["source"]
+        .as_str()
+        .and_then(|s| s.strip_prefix("hub:"))
+        .is_some_and(|id| hex_id(id, 64));
+    let well_formed = event["kind"] == SAY_KIND
+        && event["payload"]
+            .as_object()
+            .is_some_and(|payload| payload.len() == 1);
+    let (true, true, Some(text), Some(correlation)) = (
+        router,
+        well_formed,
+        event["payload"]["text"].as_str(),
+        event["correlation_id"].as_str(),
+    ) else {
+        return Ok(());
+    };
+    if text.trim().is_empty() || text.len() > MAX_TEXT_BYTES {
+        return Ok(());
+    }
+    let id = ctx.next_id()?;
+    let stream = ctx.next_id()?;
+    ctx.emit(&Action {
+        id,
+        coglet: ID.into(),
+        capability: "speech.speak_chunk".into(),
+        args: BTreeMap::from([
+            ("stream".into(), Value::Text(stream)),
+            ("chunk".into(), Value::Integer(0.into())),
+            ("text".into(), Value::Text(text.into())),
+            ("final".into(), Value::Bool(true)),
+        ]),
+        deadline: ctx
+            .logical_time
+            .checked_add(30_000_000)
+            .ok_or(HostError::InvalidArgument)?,
+        correlation_id: correlation.into(),
+    })
+}
+
 #[coglet]
 pub fn wake<H: Host>(ctx: &mut Context<'_, H>, events: &[Event]) -> Result<(), HostError> {
     let mut state = load(ctx)?;
@@ -75,6 +184,7 @@ pub fn wake<H: Host>(ctx: &mut Context<'_, H>, events: &[Event]) -> Result<(), H
         return Err(HostError::Conflict);
     }
     state.last_step = Some(ctx.step);
+    say_from_router(ctx, &mut state, events)?;
     for event in events {
         if !matches!(
             event.kind.as_str(),
