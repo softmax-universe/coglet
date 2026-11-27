@@ -31,8 +31,12 @@ class SettingsTransitionPolicyTests(unittest.TestCase):
         self.assertNotIn('NSApp.sendEvent(', query_hook)
 
     def test_bounds_and_export_separation(self):
-        for value in ('maxTicks = 500', 'stepWall = 5.0', 'scenarioWall = 15.0', 'capacity = 128'):
+        for value in ('scenarioWall = 15.0', 'capacity = 128'):
             self.assertIn(value, PROBE)
+        tick = PROBE.split('private static func tick()', 1)[1].split('private static func run', 1)[0]
+        self.assertLess(tick.index('SettingsProbeDeadline.expired(now: now'), tick.index('let done = run'))
+        self.assertLess(tick.index('let done = run'), tick.index('let completedAt = ProcessInfo'))
+        self.assertLess(tick.index('SettingsProbeDeadline.expired(now: completedAt'), tick.index('if done {'))
         self.assertIn('let schema = 2', PROBE)
         self.assertIn('let boundary = "transitionScenarioEnd"', PROBE)
         self.assertEqual(PROBE.count('.write('), 1)

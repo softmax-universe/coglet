@@ -1,6 +1,7 @@
 #if DEBUG
 import AppKit
 import Foundation
+import SoftmaxCore
 
 /// Bounded DEBUG native harness for Settings arrow-key transition order (design revision 2).
 /// Never changes focus/selection, never calls handlers directly, never logs query text or responder addresses.
@@ -78,7 +79,7 @@ enum SettingsTransitionProbe {
     }
 
     // Bounds are harness-only: 10 ms ticks, 500 ticks and 5 s per checkpoint, 15 s per scenario.
-    private static let tickInterval = 0.01, maxTicks = 500, stepWall = 5.0, scenarioWall = 15.0
+    private static let tickInterval = 0.01, scenarioWall = 15.0
     private static let capacity = 128, settleTicks = 2
     private static let fixtureQuery = "o", noMatchQuery = "z"
 
@@ -173,14 +174,21 @@ enum SettingsTransitionProbe {
     private static func tick() {
         guard !finished else { timer?.invalidate(); return }
         let now = ProcessInfo.processInfo.systemUptime
-        if now - scenarioStart > scenarioWall { return finish("scenarioDeadline") }
+        if now - scenarioStart >= scenarioWall { return finish("scenarioDeadline") }
         guard index < steps.count else { return finish("complete") }
         if SettingsArrowCapture.outputURL == nil { return finish("collectorDisabled") }
         stepTicks += 1
+        if SettingsProbeDeadline.expired(now: now, start: stepStart, ticks: stepTicks) {
+            return finish("checkpointTimeout")
+        }
         let done = run(steps[index])
         if finished { return }
-        if done { index += 1; stepTicks = 0; settle = 0; stepStart = now }
-        else if stepTicks > maxTicks || now - stepStart > stepWall { finish("checkpointTimeout") }
+        let completedAt = ProcessInfo.processInfo.systemUptime
+        if completedAt - scenarioStart >= scenarioWall { return finish("scenarioDeadline") }
+        if SettingsProbeDeadline.expired(now: completedAt, start: stepStart, ticks: stepTicks) {
+            return finish("checkpointTimeout")
+        }
+        if done { index += 1; stepTicks = 0; settle = 0; stepStart = completedAt }
     }
 
     private static func run(_ step: Step) -> Bool {
