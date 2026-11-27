@@ -180,6 +180,110 @@ class ProfileGeneration(GitFixture):
             selector.profile_required(shallow, self.profile, boundary=self.contract)
 
 
+class R3Generation(GitFixture):
+    """R3 closure is classified by ancestry of the actual selected SHA, never by file presence."""
+
+    def setUp(self):
+        super().setUp()
+        # Old coincidental files: present before the boundary, still not R3-generation.
+        for name in selector.R3_INPUTS:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("coincidental")
+        self.coincidental = self.commit("coincidental old files", "coincidence", "x")
+        for name in selector.PROFILE_INPUTS:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("profile fixture input")
+        self.profile = self.commit("profile only generation", "profile-marker", "p")
+        self.r3 = self.commit("r3 generation", "r3-marker", "r3")
+
+    def required(self, selected, boundary=None):
+        return selector.r3_required(self.repo, selected, boundary=boundary or self.r3)
+
+    def test_default_boundary_is_pr206_closure(self):
+        self.assertEqual(selector.R3_BOUNDARY, "e88fc139b3fd2b43b84136f2e7a33fb8c0f33a54")
+        self.assertEqual(len(selector.R3_INPUTS), 8)
+        self.assertTrue(all(n.startswith("crates/coglet-hub/") for n in selector.R3_INPUTS))
+
+    def test_old_exact_source_false_even_with_all_files_present(self):
+        for name in selector.R3_INPUTS:
+            self.assertEqual(self.git("ls-tree", self.coincidental, "--", name).split()[1], "blob")
+        self.assertFalse(self.required(self.coincidental))
+        self.assertFalse(self.required(self.contract))
+
+    def test_profile_only_generation_precedes_r3(self):
+        self.assertTrue(selector.profile_required(self.repo, self.profile, boundary=self.profile))
+        self.assertFalse(self.required(self.profile))
+        self.assertTrue(self.required(self.r3))
+
+    def test_modern_exact_push_and_merge_group_true(self):
+        self.git("switch", "-c", "r3-pr")
+        head = self.commit("r3 head", "head", "change")
+        self.git("switch", "modern")
+        self.git("merge", "--no-ff", "-m", "r3 merge", head)
+        merge = self.git("rev-parse", "HEAD")
+        selected, scope = self.choose("pull_request", merge, head)
+        self.assertEqual((selected, scope), (head, "exact-head"))
+        self.assertTrue(self.required(selected))
+        for event in ("push", "merge_group"):
+            self.assertEqual(self.choose(event, head), (head, "exact-head"))
+            self.assertTrue(self.required(head))
+
+    def test_legacy_merge_integration_classifies_actual_merge(self):
+        self.git("switch", "-c", "r3-legacy", self.old)
+        head = self.commit("legacy again", "legacy-again", "c")
+        self.git("switch", "modern")
+        self.git("merge", "--no-ff", "-m", "legacy onto r3", head)
+        selected, scope = self.choose("pull_request", self.git("rev-parse", "HEAD"), head)
+        self.assertEqual(scope, "merge-integration-only")
+        self.assertTrue(self.required(selected))
+
+    def test_every_modern_deletion_refuses(self):
+        for name in selector.R3_INPUTS:
+            with self.subTest(name=name):
+                self.git("reset", "--hard", self.r3)
+                self.git("rm", name)
+                self.git("commit", "-qm", "delete required input")
+                with self.assertRaises(ValueError):
+                    self.required(self.git("rev-parse", "HEAD"))
+
+    def test_every_modern_nonregular_input_refuses(self):
+        for name in selector.R3_INPUTS:
+            for kind in ("directory", "symlink"):
+                with self.subTest(name=name, kind=kind):
+                    self.git("reset", "--hard", self.r3)
+                    path = self.repo / name
+                    path.unlink()
+                    if kind == "directory":
+                        path.mkdir()
+                        (path / "child").write_text("not regular")
+                    else:
+                        path.symlink_to("r3-marker")
+                    self.git("add", "-A")
+                    self.git("commit", "-qm", "replace required input")
+                    with self.assertRaises(ValueError):
+                        self.required(self.git("rev-parse", "HEAD"))
+
+    def test_unknown_or_malformed_objects_fail_closed(self):
+        for bad in ("main", "", "f" * 40, "--help"):
+            with self.subTest(bad=bad):
+                with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                    selector.r3_required(self.repo, self.r3, boundary=bad)
+                with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                    self.required(bad)
+
+    def test_shallow_history_with_available_boundary_hits_shallow_guard(self):
+        self.git("config", "uploadpack.allowAnySHA1InWant", "true")
+        shallow = self.repo / "shallow"
+        self.git("clone", "--depth", "1", self.repo.as_uri(), str(shallow))
+        subprocess.run(["git", "-C", str(shallow), "fetch", "--depth=1", self.repo.as_uri(), self.r3], check=True, capture_output=True)
+        self.assertEqual(selector.commit(shallow, self.r3), self.r3)
+        self.assertEqual(selector.git(shallow, "rev-parse", "--is-shallow-repository"), "true")
+        with self.assertRaisesRegex(ValueError, "complete source ancestry"):
+            selector.r3_required(shallow, self.r3, boundary=self.r3)
+
+
 class WorkflowBinding(unittest.TestCase):
     def test_profile_flag_binds_only_profile_step_and_failure_artifact(self):
         workflow = (ROOT / ".github/workflows/rust.yml").read_text()
@@ -225,7 +329,7 @@ class WorkflowBinding(unittest.TestCase):
         self.assertIn("test '${{ needs.source.result }}' = 'success'", aggregate)
         self.assertIn("test '${{ needs.transform-native.result }}' = 'success'", aggregate)
         for name in ("transform-publication", "transform-runtime-arm"):
-            self.assertNotRegex(jobs[name], r"(?m)^\s+if:")
+            self.assertNotRegex(jobs[name], r"(?m)^    if:")
             self.assertIn(f"test '${{{{ needs.{name}.result }}}}' = 'success'", aggregate)
         self.assertIn("check_r3.py --publication", jobs["transform-publication"])
         self.assertIn("check_r3.py --runtime", jobs["transform-publication"])
@@ -234,6 +338,74 @@ class WorkflowBinding(unittest.TestCase):
         self.assertLess(aggregate.index("needs.source.result"), aggregate.index("uses: actions/checkout"))
         self.assertIn("--aggregate-test", aggregate)
         self.assertIn("  merge_group:", workflow)
+
+
+    def test_r3_reporting_shell_fails_closed_on_missing_or_invalid_output(self):
+        workflow = (ROOT / ".github/workflows/rust.yml").read_text()
+        reports = workflow.split("      - name: Report R3 generation qualification\n")[1:]
+        self.assertEqual(len(reports), 2)
+        for report in reports:
+            block = report.split("        run: |\n", 1)[1].split("      - ", 1)[0]
+            script = "\n".join(line[10:] for line in block.splitlines())
+            for value in ("true", "false", "", "TRUE", "unknown"):
+                with self.subTest(value=value), tempfile.TemporaryDirectory(prefix="r3-report-") as temp:
+                    import os
+                    summary = Path(temp) / "summary"
+                    result = subprocess.run(["bash", "-e", "-c", script], capture_output=True, text=True,
+                                            env={**os.environ, "R3_REQUIRED": value, "R3_SHA": "a" * 40,
+                                                 "R3_BOUNDARY": selector.R3_BOUNDARY,
+                                                 "GITHUB_STEP_SUMMARY": str(summary)})
+                    if value in ("true", "false"):
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertIn("a" * 40, summary.read_text())
+                        self.assertEqual("NOT EXECUTED/QUALIFIED" in result.stdout, value == "false")
+                    else:
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn("Invalid or missing", result.stderr)
+                        self.assertFalse(summary.exists())
+
+    def test_r3_flag_gates_only_actual_r3_steps_and_every_job_reports(self):
+        workflow = (ROOT / ".github/workflows/rust.yml").read_text()
+        self.assertIn("r3-required: ${{ steps.select.outputs.r3-required }}", workflow)
+        self.assertIn("r3-boundary: ${{ steps.select.outputs.r3-boundary }}", workflow)
+        jobs = dict(re.findall(r"^  ([\w-]+):\n((?:^ {4}.*\n|^\n)*)", workflow, re.M))
+        gate = "\n        if: needs.source.outputs.r3-required == 'true'\n"
+
+        def steps(name):
+            return jobs[name].split("\n      - ")[1:]
+
+        def gated(name):
+            return [s for s in steps(name) if gate in s + "\n"]
+        self.assertEqual(workflow.count("needs.source.outputs.r3-required == 'true'"), 9)
+        expected = {
+            "transform-publication": ["check_r3.py --publication", "check_r3.py --runtime", "name: r3-publication-", "name: r3-runtime-x86_64-"],
+            "transform-runtime-arm": ["name: r3-publication-", "check_r3.py --runtime", "name: r3-runtime-aarch64-"],
+            "rust-core": ["pattern: r3-runtime-*", "check_r3.py --aggregate"],
+        }
+        for name, needles in expected.items():
+            found = gated(name)
+            self.assertEqual(len(found), len(needles), name)
+            for step, needle in zip(found, needles):
+                self.assertIn(needle, step)
+                self.assertNotIn("&&", step.split("needs.source.outputs.r3-required == 'true'")[1].split("\n")[0])
+        # Reporting is the first step of publication and ARM jobs, never gated.
+        for name in ("transform-publication", "transform-runtime-arm"):
+            first = steps(name)[0]
+            self.assertIn("NOT EXECUTED/QUALIFIED", first)
+            self.assertIn("needs.source.outputs.sha", first)
+            self.assertIn("needs.source.outputs.r3-boundary", first)
+            self.assertIn("needs.source.outputs.r3-required", first)
+            self.assertNotIn("if:", first)
+            self.assertEqual(len([s for s in steps(name) if s.startswith("uses: actions/checkout@v4")]), 1)
+        # Native pair, profile, publication/ARM jobs and strict success checks are not R3-gated.
+        for step in steps("rust-core"):
+            if "transform-native" in step or "profile-required" in step or "needs.source.result" in step:
+                self.assertNotIn("r3-required", step)
+        self.assertNotIn("r3-required", jobs["rust"])
+        for name in ("transform-native", "factory"):
+            self.assertNotIn("r3-required", jobs[name])
+        for name in ("source", "transform-native", "transform-publication", "transform-runtime-arm", "rust-core", "factory"):
+            self.assertIn(f"test '${{{{ needs.{name}.result }}}}' = 'success'", jobs["rust"])
 
 
 if __name__ == "__main__":
