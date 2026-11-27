@@ -20,24 +20,27 @@ struct HubSettings: View {
             Text(model.hubStatus).fontWeight(.semibold)
             if let name = model.hubConnection?.pairing?.name { Text(name).textSelection(.enabled) }
             if let device = model.hubConnection?.deviceID {
-                DisclosureGroup("Device identity", isExpanded: $identityExpanded) {
+                DisclosureGroup(isExpanded: $identityExpanded) {
                     Text(device).textSelection(.enabled).lineLimit(nil)
                     CogletButton("Copy device ID", id: "\(idPrefix).copy_device_id", registry: model.appControls,
                         window: window, route: route, failure: model.appControlFailure) {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(device, forType: .string)
                     }
+                } label: {
+                    // Keep the disclosure identifier off the expanded children.
+                    Text("Device identity")
+                        .coglet(id: "\(idPrefix).device_identity", registry: model.appControls, window: window, route: route,
+                            role: "disclosure", label: "Device identity", verbs: ["toggle"], value: {
+                                .map([.init("kind", .text("boolean")), .init("value", .boolean(identityExpanded))])
+                            }, failure: model.appControlFailure, invoke: { args in
+                                guard case .map(let fields) = args,
+                                      let field = fields.first(where: { $0.key == "value" }), case .boolean(let value) = field.value else {
+                                    throw ControlRegistryFailure.unsupported
+                                }
+                                identityExpanded = value
+                            })
                 }
-                .coglet(id: "\(idPrefix).device_identity", registry: model.appControls, window: window, route: route,
-                    role: "disclosure", label: "Device identity", verbs: ["toggle"], value: {
-                        .map([.init("kind", .text("boolean")), .init("value", .boolean(identityExpanded))])
-                    }, failure: model.appControlFailure, invoke: { args in
-                        guard case .map(let fields) = args,
-                              let field = fields.first(where: { $0.key == "value" }), case .boolean(let value) = field.value else {
-                            throw ControlRegistryFailure.unsupported
-                        }
-                        identityExpanded = value
-                    })
             }
             if let error = model.hubConnection?.errorMessage {
                 Text(error).modifier(SoftmaxErrorText())

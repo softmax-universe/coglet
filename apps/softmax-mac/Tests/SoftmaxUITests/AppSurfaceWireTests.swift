@@ -1086,6 +1086,14 @@ extension AppSurfaceWireTests {
         XCTAssertEqual(expanded["value"] as? Bool, true)
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "settings.hub.copy_device_id").firstMatch
             .waitForExistence(timeout: 5), "copy device control missing from native AX")
+        XCTAssertEqual(settings.disclosureTriangles.matching(identifier: "settings.hub.device_identity").count, 1,
+            "device disclosure must have one native header identity")
+        XCTAssertEqual(settings.buttons.matching(identifier: "settings.hub.copy_device_id").count, 1,
+            "copy device button must keep its own unique native identity")
+        XCTAssertEqual(settings.buttons.matching(identifier: "settings.hub.device_identity").count, 0,
+            "disclosure identity propagated to a child button")
+        XCTAssertEqual(settings.staticTexts.matching(identifier: "settings.hub.device_identity").count, 0,
+            "disclosure identity propagated to public device text")
         try scan()
         // 5. Clean shutdown: peer 0 + orderly close, fixture stop witness, closed ledger.
         let grants = try peer.snapshot().filter { $0["type"] as? String == "grants" }
