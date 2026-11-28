@@ -147,7 +147,7 @@ class _EvaluatorLink:
         self.parser, self.pending = Frames(), Output()
 
 
-def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1, coglet=C):
+def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1, coglet=C, archive=None):
     """Execute exact rewritten bytes, independently replay, check behavior.
 
     Caller pins tools, world and assertions. Returned data is unsigned, not a
@@ -169,6 +169,9 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
         raise ValueError('bounded max_steps required')
     name = world
     kind = Gridbot if name == 'gridbot' else Cartpole
+    # Hosted coordinator credentials have no role in local native acquisition.
+    native_env = {k: v for k, v in os.environ.items()
+                  if k not in ('CAOS_IROH_TICKET', 'UNFORGED_CAOS_URL')}
 
     make_world = lambda s: kind(s, max_steps=max_steps)
     with tempfile.TemporaryDirectory(prefix='eval-', dir=os.environ['TMPDIR']) as short:
@@ -195,7 +198,7 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
         try:
             child = subprocess.Popen([str(tools.daemon), '--surface-service-socket',
                 str(path / 'sock/control'), str(path / 'binding.json'), str(os.getuid()),
-                str(path / 'state.wal'), str(path / 'setup.json')], stderr=stderr)
+                str(path / 'state.wal'), str(path / 'setup.json')], stderr=stderr, env=native_env)
             deadline = time.monotonic() + 10
             while True:
                 assert child.poll() is None, 'daemon exited: ' + (tmp_path / 'daemon.log').read_text()
@@ -256,8 +259,10 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
             child.wait(timeout=5)
             proof = tmp_path / 'proof.json'
             phase = 'proof'
-            subprocess.run([str(tools.proof), str(path/'setup.json'), str(path/'state.wal'),
-                            str(proof)], check=True, timeout=90)
+            proof_command = [str(tools.proof), str(path/'setup.json'), str(path/'state.wal'), str(proof)]
+            if archive is not None:
+                proof_command.append(str(Path(archive).resolve()))
+            subprocess.run(proof_command, check=True, timeout=90, env=native_env)
             report = json.loads(proof.read_text())
             phase = 'replay'
             assert report['independent_guest_reexecution']

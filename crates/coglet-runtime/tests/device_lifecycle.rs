@@ -15,6 +15,8 @@
 
 #[path = "support/device_receiver.rs"]
 mod receiver_tests;
+#[path = "support/wal_snapshot.rs"]
+mod wal_snapshot;
 
 use coglet_mock::hub::MockHub;
 use coglet_proto::{
@@ -2382,7 +2384,12 @@ async fn original_push_daemon_crash(installed_target: bool) {
                 .join("wal")
                 .join(coglet_runtime::digest(env.coglet.as_bytes()))
                 .join("state.wal");
-            let before = std::fs::read(&wal).unwrap();
+            // The SQL terminal receipt precedes recovery's durable fence clear.
+            // Wait for that real transition before asserting a retry adds nothing.
+            // The returned baseline is exactly the validated complete capture.
+            let before = wal_snapshot::wait_unfenced_wal(&wal, Duration::from_secs(15))
+                .await
+                .expect("installed recovery fence clear before retry baseline");
             let retry = env.request_with(
                 "hub.git.push",
                 push_id.clone(),

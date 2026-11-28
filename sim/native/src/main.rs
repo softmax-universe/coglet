@@ -15,12 +15,12 @@ fn replay(setup: &Value, records: &[Value]) -> Result<Vec<String>, String> {
 }
 fn main() -> Result<(), String> {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    if args.len() != 3 {
-        return Err("usage: proof SETUP WAL OUTPUT".into());
+    if args.len() != 3 && args.len() != 4 {
+        return Err("usage: proof SETUP WAL OUTPUT [ARCHIVE]".into());
     }
     let setup: Value = serde_json::from_slice(&fs::read(&args[0]).map_err(|e| e.to_string())?)
         .map_err(|e| e.to_string())?;
-    let service = RuntimeService::open(Path::new(&args[1]), &setup, 128)?;
+    let mut service = RuntimeService::open(Path::new(&args[1]), &setup, 128)?;
     let records = service.records().to_vec();
     if records.is_empty() {
         return Err("no guest steps committed".into());
@@ -63,6 +63,15 @@ fn main() -> Result<(), String> {
     changed["initial_files"]["/code/bin/step.wasm"] = json!(hex::encode(wasm));
     if replay(&changed, &records).is_ok() {
         return Err("changed guest accepted".into());
+    }
+    if let Some(destination) = args.get(3) {
+        // Reuse the complete existing archive exporter, including any sealed
+        // trailing boundary. Local fixture acquisition is not an export grant.
+        let last = records.last().ok_or("no records")?;
+        let archive = service.export_trace(
+            &last["trace_id"], last["logical_time"].as_u64().ok_or("logical time")?)?;
+        fs::write(destination, serde_json::to_vec(&archive).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
     }
     fs::write(
         &args[2],
