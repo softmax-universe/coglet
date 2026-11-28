@@ -50,7 +50,7 @@ public enum AudioDevices {
     }
     // A nil UID keeps the engine's system default. Called before VoiceProcessingIO
     // is enabled, because enabling it can replace the underlying AudioUnit.
-    static func select(_ uid: String?, input: Bool, engine: AVAudioEngine) throws {
+    public static func select(_ uid: String?, input: Bool, engine: AVAudioEngine) throws {
         guard let uid else { return }
         let scope = input ? kAudioDevicePropertyScopeInput : kAudioDevicePropertyScopeOutput
         guard var id = try ids().first(where: {

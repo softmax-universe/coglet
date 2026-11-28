@@ -19,5 +19,7 @@ import FaceAudioKit
     public func enqueue(_ samples: [Int16]) throws { try kit.enqueuePlayback(samples) }
     public func flush() { kit.flushPlayback() }
     public func readCapture() -> [Int16] { kit.readCapture() }
+    public var supportsPlaybackGain: Bool { true }
+    public func setPlaybackGain(_ gain: Float) throws { try kit.setPlaybackGain(gain) }
 }
 #endif

@@ -15,6 +15,7 @@ LATENCY = {
     'barge_to_acoustic_stop_ms': 'barge', 'play_to_acoustic_onset_ms': 'barge',
     'ptt_press_call_ms': 'barge', 'ptt_press_to_first_capture_ms': 'capture',
     'ptt_release_to_end_event_ms': 'capture', 'stimulus_scheduled_to_capture_ms': 'stimulus',
+    'barge_to_acoustic_duck_ms': 'duck',
 }
 
 
@@ -45,7 +46,7 @@ def dist(values):
 
 
 def values(runs, metric, kind=None):
-    return [r[metric] for r in runs if metric in r and isinstance(r[metric], (int, float))
+    return [r[metric] for r in runs if metric in r and type(r[metric]) in (int, float) and math.isfinite(r[metric])
             and (kind is None or r.get('kind') == kind)]
 
 
@@ -63,9 +64,23 @@ def summarize(runs):
     }
     out['conformance'] = {k: {'runs': sum(1 for r in runs if r.get('kind') == k),
                               'conformant': sum(1 for r in runs if r.get('kind') == k and r.get('conformant'))}
-                          for k in ('barge', 'capture')}
+                          for k in ('barge', 'capture', 'duck')}
+    ducks = [r for r in runs if r.get('kind') == 'duck']
+    out['duck'] = {
+        'level_ratio': dist(values(ducks, 'duck_level_ratio')),
+        'late_level_ratio': dist(values(ducks, 'duck_late_level_ratio')),
+        'level_snr_db': dist(values(ducks, 'duck_level_snr_db')),
+        'late_snr_db': dist(values(ducks, 'duck_late_snr_db')),
+        'render_continued': sum(r.get('duck_render_continued') is True for r in ducks),
+        'tone_missing': sum(r.get('tone_present_at_barge') is not True for r in ducks),
+    }
     out['stimulus_missed'] = sum(1 for r in runs if r.get('stimulus_missed'))
     out['tone_missing_at_barge'] = sum(1 for r in barge if r.get('tone_present_at_barge') is False)
+    direct = [r for r in runs if r.get('kind') == 'ringdown']
+    out['direct_flush_diagnostic'] = {
+        str(f): dist(values([r for r in direct if r.get('frequency_hz') == f], 'flush_to_acoustic_stop_ms'))
+        for f in sorted({r['frequency_hz'] for r in direct})
+    }
     return out
 
 
@@ -82,8 +97,14 @@ def derive(runs):
     (never below p99+20 ms); heard-truncation |error| likewise; counts/rates gated at observed
     worst case (over-crediting 0 of N, conformance 100%) only if that is what was observed."""
     s = summarize(runs)
-    t = {'version': 1, 'rule': 'p95_limit=ceil5(2*p95); max_limit=ceil5(max(2*max, p99+20)); sample counts are minimums',
+    if s['duck']['level_ratio']['n'] < 5:
+        raise ValueError('derive requires at least five measured over-talk-duck runs')
+    if any(d['n'] < 5 for d in s['latency_ms'].values()):
+        raise ValueError('derive requires at least five samples of every latency metric')
+    t = {'version': 2, 'rule': 'p95_limit=ceil5(2*p95); max_limit=ceil5(max(2*max, p99+20)); sample counts are minimums',
          'latency_ms': {}, 'heard_truncation': {}}
+    t['duck'] = {'min_n': max(5, s['duck']['level_ratio']['n'] // 4),
+                 'level_ratio_min': 0.10, 'level_ratio_max': 0.45, 'snr_db_min': 12}
     for m, d in s['latency_ms'].items():
         if d['n'] >= 5:
             t['latency_ms'][m] = {'p95_max': ceil5(2 * d['p95']), 'max_max': ceil5(max(2 * d['max'], d['p99'] + 20)),
@@ -125,10 +146,33 @@ def check(thresholds, runs):
         ok = (h['word_exact_rate'] or 0) >= ht['word_exact_rate_min']
         (notes if ok else fails).append(f'word_exact_rate={h["word_exact_rate"]} min {ht["word_exact_rate_min"]}')
     for k, c in s['conformance'].items():
+        if k == 'duck' and 'duck' not in thresholds:
+            continue  # Historical version-1 sessions predate duck qualification.
         ok = c['runs'] > 0 and c['conformant'] / c['runs'] >= thresholds['conformance_rate_min']
         (notes if ok else fails).append(f'conformance {k}: {c["conformant"]}/{c["runs"]}')
     ok = s['stimulus_missed'] <= thresholds['stimulus_missed_max']
     (notes if ok else fails).append(f'stimulus_missed={s["stimulus_missed"]}')
+    if 'duck' in thresholds:
+        lim, d = thresholds['duck'], s['duck']
+        ratios = d['level_ratio']
+        if ratios['n'] < lim['min_n']:
+            fails.append(f'duck level: only {ratios["n"]} samples')
+        elif not (lim['level_ratio_min'] <= ratios['min'] <= ratios['max'] <= lim['level_ratio_max']):
+            fails.append(f'duck level ratio out of range: {ratios}')
+        if d['render_continued'] != s['conformance']['duck']['runs'] or d['tone_missing']:
+            fails.append('duck must have pre-barge tone and continued rendered playback in every run')
+        n = s['conformance']['duck']['runs']
+        if ratios['n'] != n or s['latency_ms']['barge_to_acoustic_duck_ms']['n'] != n:
+            fails.append('every accepted duck run must have finite latency and level measurements')
+        for name in ('late_level_ratio', 'level_snr_db', 'late_snr_db'):
+            metric = d[name]
+            if metric['n'] != n or n == 0:
+                fails.append(f'every duck run must have {name}')
+            elif name == 'late_level_ratio':
+                if not (lim['level_ratio_min'] <= metric['min'] <= metric['max'] <= lim['level_ratio_max']):
+                    fails.append('duck late level ratio out of range')
+            elif metric['min'] < lim['snr_db_min']:
+                fails.append(f'duck {name} below required SNR')
     return fails, notes
 
 

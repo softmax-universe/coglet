@@ -15,7 +15,17 @@ import CogletTypes
     func enqueue(_ samples: [Int16]) throws
     func flush()
     func readCapture() -> [Int16]
+    var supportsPlaybackGain: Bool { get }
+    func setPlaybackGain(_ gain: Float) throws
 }
+public extension FaceDuplexIO {
+    var supportsPlaybackGain: Bool { false }
+    func setPlaybackGain(_ gain: Float) throws {
+        guard gain == 1 else { throw NativeSurfaceError("unavailable") }
+    }
+}
+/// Trusted, immutable host configuration, never a guest-writable setting.
+public enum FaceBargeMode: String, Sendable { case stop, duck }
 public struct FaceSynthesizedAudio: Sendable {
     public let samples: [Int16] // canonical mono 24 kHz
     public let spans: [SpeechObservations.Span]
@@ -50,6 +60,8 @@ public struct FaceCompletion {
     private let sttRoute: String
     private let ttsRoute: String
     private let synthesis: any FaceSynthesis
+    private let bargeMode: FaceBargeMode
+    private var ducked = false
     public let renderer: FaceExpressionRenderer
     private var owner: String?
     private var epoch: UInt64 = 0
@@ -104,9 +116,10 @@ public struct FaceCompletion {
     public private(set) var discardedRecognitionUpdates: UInt64 = 0
     public private(set) var recognitionFailures: UInt64 = 0
     public init(audio: any FaceDuplexIO, synthesis: any FaceSynthesis, renderer: FaceExpressionRenderer,
-                sttRoute: String = "local", ttsRoute: String = "local") {
+                sttRoute: String = "local", ttsRoute: String = "local", bargeMode: FaceBargeMode = .stop) {
         self.audio = audio; self.synthesis = synthesis; self.renderer = renderer
         self.sttRoute = sttRoute; self.ttsRoute = ttsRoute
+        self.bargeMode = bargeMode
     }
     /// Install only after the SDK constructor's synchronous safety stop. Never
     /// expose persisted records belonging to a previous observation epoch.
@@ -129,6 +142,7 @@ public struct FaceCompletion {
     }
     func startDuplex() throws {
         guard history.isAvailable else { throw NativeSurfaceError("unavailable") }
+        guard bargeMode != .duck || audio.supportsPlaybackGain else { throw NativeSurfaceError("unavailable") }
         guard owner != nil else { throw NativeSurfaceError("permission_denied") }
         guard !sttRoute.isEmpty, !ttsRoute.isEmpty, synthesis.route == ttsRoute else { throw NativeSurfaceError("unavailable") }
         guard !synthesis.usesRemoteAudio || remoteAudioConsent else { throw NativeSurfaceError("permission_denied") }
@@ -368,12 +382,15 @@ public struct FaceCompletion {
         let played = frames / 24
         try history.playback(item: item.id, owner: item.owner, epoch: item.epoch, playedMS: played, stopped: frames == UInt64(data.samples.count))
         items[0].playedMS = played
-        try report(item: items[0], state: frames == UInt64(data.samples.count) ? "finished" : "playing")
+        try report(item: items[0], state: frames == UInt64(data.samples.count) ? "finished" : (ducked ? "ducked" : "playing"))
         if frames == UInt64(data.samples.count) {
             completions.append(.init(owner: item.owner, id: item.id, epoch: item.epoch, result: .succeeded(.map([]))))
             streamPosition += played; items.removeFirst(); cancellation = nil
             if !items.isEmpty { startSynthesis() }
-            else if inputClosed { closedStreams.insert(item.stream); stream = nil }
+            else if inputClosed {
+                closedStreams.insert(item.stream); stream = nil
+                ducked = false; try audio.setPlaybackGain(1)
+            }
         }
     }
     private func report(item: Item, state: String) throws {
@@ -382,6 +399,7 @@ public struct FaceCompletion {
             ("position_ms", .unsigned(streamPosition + item.playedMS)), ("state", .text(state))]))
     }
     private func validateSynthesisRoute() throws {
+        guard bargeMode != .duck || audio.supportsPlaybackGain else { throw NativeSurfaceError("unavailable") }
         guard !ttsRoute.isEmpty, synthesis.route == ttsRoute else { throw NativeSurfaceError("unavailable") }
         guard !synthesis.usesRemoteAudio || remoteAudioConsent else { throw NativeSurfaceError("permission_denied") }
     }
@@ -392,6 +410,7 @@ public struct FaceCompletion {
         }
         generation = UUID(); let cancel = cancellation; cancellation = nil
         audio.flush(); cancel?()
+        ducked = false; try? audio.setPlaybackGain(1)
         for (index, item) in items.enumerated() {
             do {
                 try history.playback(item: item.id, owner: item.owner, epoch: item.epoch, playedMS: item.playedMS, stopped: true)
@@ -417,21 +436,32 @@ public struct FaceCompletion {
                 items[0].playedMS = min(UInt64(data.samples.count), audio.renderedFrames - base) / 24
                 interrupted = items[0]
             }
-            // Invalidate callbacks BEFORE a synchronous cancellation hook.
-            generation = UUID(); let cancel = cancellation; cancellation = nil
-            audio.flush(); cancel?()
-            for item in items {
-                try history.playback(item: item.id, owner: item.owner, epoch: item.epoch, playedMS: item.playedMS, stopped: true)
-                completions.append(.init(owner: item.owner, id: item.id, epoch: item.epoch, result: .cancelled))
+            if bargeMode == .duck, let item = interrupted {
+                // Apply gain BEFORE publishing the reflex. Failed effects silence
+                // the stream instead of claiming a duck that never happened.
+                do { try audio.setPlaybackGain(0.25) }
+                catch { failStream(code: "unavailable"); throw error }
+                ducked = true
+                generation = UUID(); let cancel = cancellation; cancellation = nil; cancel?()
+                do {
+                    try history.playback(item: item.id, owner: item.owner, epoch: item.epoch, playedMS: item.playedMS, stopped: false)
+                } catch { failStream(code: "unavailable"); throw error }
+            } else if bargeMode == .stop {
+                generation = UUID(); let cancel = cancellation; cancellation = nil
+                audio.flush(); cancel?()
+                for item in items {
+                    try history.playback(item: item.id, owner: item.owner, epoch: item.epoch, playedMS: item.playedMS, stopped: true)
+                    completions.append(.init(owner: item.owner, id: item.id, epoch: item.epoch, result: .cancelled))
+                }
+                if let stream { closedStreams.insert(stream) }; stream = nil; items = []
             }
-            if let stream { closedStreams.insert(stream) }; stream = nil; items = []
         }
         try emit?("speech.start", .record([("utterance", .text(utterance)), ("position_ms", .unsigned(positionMS))]))
         if let item = interrupted {
             try emit?("speech.barge_in", .record([("utterance", .text(utterance)), ("stream", .text(item.stream)),
                 ("item", .text(item.id)), ("played_ms", .unsigned(item.playedMS)),
-                ("position_ms", .unsigned(streamPosition + item.playedMS)), ("reflex", .text("stopped"))]))
-            try report(item: item, state: "stopped")
+                ("position_ms", .unsigned(streamPosition + item.playedMS)), ("reflex", .text(bargeMode == .stop ? "stopped" : "ducked"))]))
+            try report(item: item, state: bargeMode == .stop ? "stopped" : "ducked")
         }
     }
     public func read(operation: String, args: CBORValue, owner: String, now: UInt64) throws -> CBORValue {
@@ -441,7 +471,7 @@ public struct FaceCompletion {
             let config = CBORValue.record([
                 ("stt", .record([("placement", .text("surface")), ("route", .text(sttRoute))])),
                 ("tts", .record([("placement", .text("surface")), ("route", .text(ttsRoute))])),
-                ("barge", .text("stop")), ("session_mode", .text("text"))])
+                ("barge", .text(bargeMode.rawValue)), ("session_mode", .text("text"))])
             try CBORCodec.validate("speech::speech-config", config)
             return config
         }

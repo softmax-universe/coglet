@@ -60,6 +60,8 @@ func round5(_ x: Double) -> Double { (x * 100000).rounded() / 100000 }
         _ = renderedFrames
         return s
     }
+    var supportsPlaybackGain: Bool { inner.supportsPlaybackGain }
+    func setPlaybackGain(_ gain: Float) throws { try inner.setPlaybackGain(gain) }
     func beginRun() { batches = []; samples = []; renderLog = [] }
     /// Estimated host time of every captured sample (newest sample ~ poll time).
     func sampleTimes() -> [UInt64] {
@@ -215,7 +217,9 @@ func bursts(_ e: Envelope, from: UInt64, to: UInt64, thr: Double, mergeMS: Int =
 struct Options {
     var timelines = "spec/fixtures/speech/timelines.json"
     var out = "."
-    var barge = 3, capture = 3, stimulus = 3
+    var barge = 3, duck = 3, capture = 3, stimulus = 3
+    var ringdown = 0 // separately labelled direct-flush diagnostic, never a timeline pass
+    var inputUID: String?, outputUID: String?
     var offsets = [100, 1000, 1500, 2100]
     var aec = false
     var label = "run"
@@ -231,6 +235,10 @@ func parse() -> Options {
         case "--timelines": o.timelines = v()
         case "--out": o.out = v()
         case "--barge-runs": o.barge = Int(v()) ?? o.barge
+        case "--duck-runs": o.duck = Int(v()) ?? o.duck
+        case "--ringdown-runs": o.ringdown = Int(v()) ?? o.ringdown
+        case "--input-uid": o.inputUID = v()
+        case "--output-uid": o.outputUID = v()
         case "--capture-runs": o.capture = Int(v()) ?? o.capture
         case "--stimulus-runs": o.stimulus = Int(v()) ?? o.stimulus
         case "--offsets": o.offsets = v().split(separator: ",").compactMap { Int($0) }
@@ -263,8 +271,9 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
     let engine = AVAudioEngine(); let player = AVAudioPlayerNode()
     let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)!
     var tb = mach_timebase_info_data_t()
-    init() throws {
+    init(outputUID: String?) throws {
         mach_timebase_info(&tb)
+        try AudioDevices.select(outputUID, input: false, engine: engine)
         engine.attach(player); engine.connect(player, to: engine.mainMixerNode, format: format)
         engine.prepare(); try engine.start()
     }
@@ -292,7 +301,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
     let owner = "coglet:" + String(repeating: "b", count: 64)
     init(_ o: Options) {
         self.o = o
-        kit = FaceAudioKit(configuration: .init(echoCancellation: o.aec))
+        kit = FaceAudioKit(configuration: .init(inputUID: o.inputUID, outputUID: o.outputUID, echoCancellation: o.aec))
         tap = TapDuplex(inner: NativeFaceDuplex(kit: kit))
         rng = SplitMix(s: o.seed)
     }
@@ -300,10 +309,10 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
     func sleepMS(_ ms: Double, until: UInt64? = nil) async { try? await Task.sleep(for: .microseconds(Int(ms * 1000))) }
 
     /// A fresh host per run: new graph, new ledger, new authority epoch.
-    func makeHost() throws -> (FaceSurfaceHost, FaceSurfaceBackend, ScriptedRecognition) {
+    func makeHost(bargeMode: FaceBargeMode = .stop) throws -> (FaceSurfaceHost, FaceSurfaceBackend, ScriptedRecognition) {
         let synth = ToneSynthesis(), rec = ScriptedRecognition()
         let backend = FaceSurfaceBackend(audio: tap, synthesis: synth, renderer: .init { _ in },
-                                         sttRoute: rec.route, ttsRoute: synth.route)
+                                         sttRoute: rec.route, ttsRoute: synth.route, bargeMode: bargeMode)
         let ops = FaceSurfaceHost.operations
         let host = try FaceSurfaceHost(identity: "surface:" + String(repeating: "a", count: 64), owner: owner,
             store: MemoryLedger(), backend: backend,
@@ -383,7 +392,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         cal["snr_min_db"] = round3(snrs.min() ?? 0)
         cal["noise_stim_p99"] = round5(percentile(nEnv2.v, 0.99))
         // Stimulus level through the second engine.
-        let stim = try Stimulus()
+        let stim = try Stimulus(outputUID: o.outputUID)
         try await pump(host, until: nowNS() + 400_000_000, into: &evs)
         tap.beginRun(); let ts0 = nowNS() + 300_000_000
         stim.schedule(atNS: ts0, ms: 800)
@@ -400,11 +409,40 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
 
     // MARK: runs
 
+    /// Bypass the speech backend, but retain the SAME native graph, microphone,
+    /// amplitude, frequency and fall detector. This isolates speaker/room/capture
+    /// tail from action/history/provider work. Not protocol conformance evidence.
+    func ringdownRun(frequency: Double, index: Int) async throws -> [String: Any] {
+        let (host, _, _) = try makeHost()
+        var evs: [Ev] = []
+        try await pump(host, until: nowNS() + 600_000_000, into: &evs)
+        tap.beginRun()
+        try await pump(host, until: nowNS() + 300_000_000, into: &evs)
+        let play = nowNS()
+        try tap.enqueue(tone(freq: frequency, ms: 2000))
+        try await pump(host, until: play + 700_000_000, into: &evs)
+        let flush = nowNS(); tap.flush(); let flushed = nowNS()
+        try await pump(host, until: flushed + 600_000_000, into: &evs)
+        let e = envelope(samples: tap.samples, times: tap.sampleTimes(), freq: frequency)
+        let ref = percentile((0..<e.v.count).filter { e.t[$0] >= flush - 100_000_000 && e.t[$0] < flush }.map { e.v[$0] }, 0.5)
+        let noise = percentile((0..<e.v.count).filter { e.t[$0] < play }.map { e.v[$0] }, 0.99)
+        var result: [String: Any] = ["kind": "ringdown", "frequency_hz": frequency, "index": index,
+            "flush_call_ms": round3(msBetween(flush, flushed)),
+            "snr_db": round3(20 * log10(max(ref, 1e-9) / max(noise, 1e-9))),
+            "envelope_norm": stride(from: 0, to: e.v.count, by: 5).map { [round3(msBetween(flush, e.t[$0])), round3(e.v[$0] / max(ref, 1e-9))] }]
+        if let fall = fallTime(e, from: flush, ref: ref) { result["flush_to_acoustic_stop_ms"] = round3(msBetween(flush, fall)) }
+        try? host.close()
+        return result
+    }
+
     /// One conformance timeline on the real graph. `offset` re-times the barge on the `play` timeline.
     func timelineRun(name: String, offset: Int, index: Int, kind: String) async throws -> [String: Any] {
         guard let tl = timelines.first(where: { $0["name"] as? String == name }),
               let steps = tl["steps"] as? [[String: Any]], let expected = tl["expected"] as? [String: Any] else { throw Fail(description: "no timeline \(name)") }
-        let (host, backend, rec) = try makeHost()
+        guard let config = tl["config"] as? [String: String], let mode = FaceBargeMode(rawValue: config["barge"] ?? "") else {
+            throw Fail(description: "unsupported timeline config")
+        }
+        let (host, backend, rec) = try makeHost(bargeMode: mode)
         var evs: [Ev] = []
         try await pump(host, until: nowNS() + 600_000_000, into: &evs) // pre-roll capture
         tap.beginRun()
@@ -441,21 +479,48 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
         }
         if tAct == 0 { tAct = t0 }
         // Observe the tail: acoustic stop + ring-down.
-        try await pump(host, until: nowNS() + (hasPlay ? 1_500_000_000 : 300_000_000), into: &evs)
+        let tailDeadline = mode == .duck ? max(nowNS() + 500_000_000, tAct + 3_500_000_000)
+            : nowNS() + (hasPlay ? 1_500_000_000 : 300_000_000)
+        try await pump(host, until: tailDeadline, into: &evs)
         let discarded = backend.discardedRecognitionUpdates
         // speech.position is reported every native tick while audio plays; the frozen
         // timeline lists one per transition, so collapse consecutive repeats.
         var kinds: [String] = []
         var collapsed: [Ev] = []
-        for e in evs where !(e.kind == "speech.position" && kinds.last == "speech.position") { kinds.append(e.kind); collapsed.append(e) }
+        var lastPosition: CBORValue?
+        for e in evs {
+            if e.kind == "speech.position" {
+                // Project periodic progress to state transitions, including
+                // across transcript updates. Preserve every non-position event.
+                let signature = CBORValue.array([e.payload?["item"] ?? .null, e.payload?["state"] ?? .null])
+                if signature == lastPosition { continue }
+                lastPosition = signature
+            }
+            kinds.append(e.kind); collapsed.append(e)
+        }
         let positionEvents = evs.filter { $0.kind == "speech.position" }.count
         let wantKinds = expected["events"] as? [String] ?? []
         // The first speech.position may arrive before/after; compare ordered kinds exactly.
         var conformant = kinds == wantKinds && Int(discarded) == (expected["discarded"] as? Int ?? -1)
+        let terminal = evs.last(where: { $0.kind == "action.outcome" })?.payload?["status"]
+        let output = evs.last(where: { $0.kind == "speech.position" })?.payload?["state"]
+        if hasPlay {
+            conformant = conformant && terminal == .text(expected["terminal"] as? String ?? "")
+                && output == .text(expected["output"] as? String ?? "")
+            let barges = collapsed.indices.filter { collapsed[$0].kind == "speech.barge_in" }
+            let reflex = mode == .duck ? "ducked" : "stopped"
+            if barges.count == 1, let b = barges.first, b + 1 < collapsed.count {
+                let barge = collapsed[b], paired = collapsed[b + 1]
+                conformant = conformant && barge.payload?["reflex"] == .text(reflex)
+                    && paired.kind == "speech.position" && paired.payload?["state"] == .text(reflex)
+                    && paired.payload?["played_ms"] == barge.payload?["played_ms"]
+                    && paired.payload?["item"] == barge.payload?["item"]
+            } else { conformant = false }
+        }
         var r: [String: Any] = ["kind": kind, "timeline": name, "index": index, "offset_ms": offset,
                                 "events": collapsed.map { ["t_ms": round3(msBetween(t0, $0.t)), "kind": $0.kind] },
                                 "position_events": positionEvents,
-                                "discarded": discarded, "recv_error": recvErr as Any]
+                                "discarded": discarded, "recv_error": recvErr as Any, "barge_mode": mode.rawValue]
         // PTT metrics (adapter + capture path).
         if let fa = rec.firstAppendNS { r["ptt_press_to_first_capture_ms"] = round3(msBetween(tPress, fa)) }
         if let s = evs.first(where: { $0.kind == "speech.start" }) { r["ptt_press_to_start_event_ms"] = round3(msBetween(tPress, s.t)) }
@@ -476,7 +541,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             let lastRender = tap.renderLog.last?.t
             if let fr = firstRender { r["play_to_first_render_ms"] = round3(msBetween(tAct, fr)) }
             _ = swOnset
-            if let lr = lastRender { r["barge_to_render_stop_ms"] = round3(msBetween(tPress, lr)) }
+            if let lr = lastRender, mode == .stop { r["barge_to_render_stop_ms"] = round3(msBetween(tPress, lr)) }
             // Onset: first 3 consecutive windows above every-word threshold-normalised level 1.0 (= half the tone level).
             _ = swOnset
             var on = onsetTime(env, from: tAct, thr: thr)
@@ -487,8 +552,34 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             r["tone_present_at_barge"] = tonePresentAtBarge; r["barge_ref_level"] = round3(ref)
             // Acoustic stop: first fall below 25% of the run's own pre-barge level (>= 3 ms low).
             let stop = fallTime(env, from: tPress, ref: ref)
-            if let st = stop, tonePresentAtBarge { r["barge_to_acoustic_stop_ms"] = round3(msBetween(tPress, st)) }
-            if let o = on, let st = stop {
+            if let st = stop, tonePresentAtBarge, mode == .stop { r["barge_to_acoustic_stop_ms"] = round3(msBetween(tPress, st)) }
+            if mode == .duck {
+                // Gain=0.25 has a nonzero floor: detect its halfway crossing,
+                // then score sustained reduced output separately (not a stop).
+                if let fall = fallTime(env, from: tPress, ref: ref, frac: 0.625) {
+                    r["barge_to_acoustic_duck_ms"] = round3(msBetween(tPress, fall))
+                }
+                let levels = (0..<env.v.count).filter {
+                    env.t[$0] >= tPress + 150_000_000 && env.t[$0] < tPress + 250_000_000
+                }.map { env.v[$0] / max(ref, 1e-9) }
+                r["duck_level_ratio"] = round3(percentile(levels, 0.5))
+                let noise = percentile((0..<env.v.count).filter { env.t[$0] < t0 }.map { env.v[$0] }, 0.99)
+                r["duck_level_snr_db"] = round3(20 * log10(max(percentile(levels, 0.5) * ref, 1e-9) / max(noise, 1e-9)))
+                // Independently require audible, reduced word 1 long after the
+                // reflex. Render counters alone cannot prove acoustic output.
+                if let onset = on {
+                    let e = we.per[1]
+                    let late = (0..<e.v.count).filter { e.t[$0] >= onset + 700_000_000 && e.t[$0] < onset + 850_000_000 }.map { e.v[$0] }
+                    let level = percentile(late, 0.5)
+                    let noise = percentile((0..<e.v.count).filter { e.t[$0] < t0 }.map { e.v[$0] }, 0.99)
+                    r["duck_late_level_ratio"] = round3(level / (2 * thrWords[1]))
+                    r["duck_late_snr_db"] = round3(20 * log10(max(level, 1e-9) / max(noise, 1e-9)))
+                }
+                if let before = tap.renderLog.last(where: { $0.t <= tPress }), let after = tap.renderLog.last {
+                    r["duck_render_continued"] = after.frames > before.frames + 2400
+                } else { r["duck_render_continued"] = false }
+            }
+            if let o = on, let st = stop, mode == .stop {
                 let heard = msBetween(o, st); r["acoustic_heard_ms"] = round3(heard)
                 if let b = evs.first(where: { $0.kind == "speech.barge_in" }), let played = uint(b.payload?["played_ms"]) {
                     r["reported_played_ms"] = played
@@ -529,7 +620,7 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
 
     /// Stimulus (user-voice stand-in) onset -> first capture frames carrying it.
     func stimulusRun(index: Int) async throws -> [String: Any] {
-        let stim = try Stimulus()
+        let stim = try Stimulus(outputUID: o.outputUID)
         let (host, _, rec) = try makeHost()
         var evs: [Ev] = []
         try await pump(host, until: nowNS() + 800_000_000, into: &evs)
@@ -557,6 +648,14 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
 
 @main struct FaceAcousticMain {
     @MainActor static func main() async {
+        if CommandLine.arguments.contains("--permission-status") {
+            print("microphone_status=\(MicrophonePermission.status.rawValue)")
+            return // Never request a grant or start I/O in a preflight.
+        }
+        if CommandLine.arguments.contains("--list-devices") {
+            let devices = (try? AudioDevices.list().map { ["name": $0.name, "uid": $0.uid, "in": $0.hasInput, "out": $0.hasOutput] }) ?? []
+            print(jsonLine(["devices": devices])); return
+        }
         let o = parse()
         try? FileManager.default.createDirectory(atPath: o.out, withIntermediateDirectories: true)
         let runsPath = o.out + "/runs.jsonl", sessionPath = o.out + "/session.json"
@@ -576,13 +675,21 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
             var session: [String: Any] = ["label": o.label, "aec": o.aec, "calibration": h.cal, "devices": devices,
                 "host": ProcessInfo.processInfo.hostName, "os": ProcessInfo.processInfo.operatingSystemVersionString,
                 "offsets_ms": o.offsets, "started": ISO8601DateFormatter().string(from: Date()),
-                "tool": "face-acoustic", "seed": o.seed]
+                "tool": "face-acoustic", "seed": o.seed,
+                "input_uid": o.inputUID as Any, "output_uid": o.outputUID as Any]
             let snr = h.cal["snr_min_db"] as? Double ?? 0
             session["acoustic_coupling_ok"] = snr >= 12
             try JSONSerialization.data(withJSONObject: session, options: [.sortedKeys, .prettyPrinted]).write(to: URL(fileURLWithPath: sessionPath))
             if o.calibrateOnly { done(0, "calibration only: snr_min_db=\(snr)") }
             if snr < 12 { done(4, "insufficient speaker->microphone coupling: SNR \(snr) dB < 12 dB; refusing to measure") }
             var idx = 0
+            for i in 0..<o.ringdown {
+                for frequency in wordFreqs {
+                    let r = try await h.ringdownRun(frequency: frequency, index: i)
+                    appendLine(runsPath, jsonLine(r)); print("direct-flush diagnostic \(frequency) Hz: \(r["flush_to_acoustic_stop_ms"] ?? "missing") ms")
+                    await h.sleepMS(300)
+                }
+            }
             for rep in 0..<o.barge {
                 for off in o.offsets {
                     let jitter = off == 100 ? 0 : Int(h.rng.next() % 41) - 20
@@ -591,6 +698,12 @@ struct Fail: Swift.Error, CustomStringConvertible { let description: String }
                     print("barge rep=\(rep) off=\(off + jitter) conformant=\(r["conformant"] ?? "?") ack=\(r["barge_to_acoustic_stop_ms"] ?? "-")")
                     await h.sleepMS(300)
                 }
+            }
+            for i in 0..<o.duck {
+                // Finish is not injected: the real 3 s PCM must render fully.
+                let r = try await h.timelineRun(name: "over-talk-duck", offset: 100, index: i, kind: "duck")
+                appendLine(runsPath, jsonLine(r)); print("duck \(i) conformant=\(r["conformant"] ?? "?")")
+                await h.sleepMS(300)
             }
             for i in 0..<o.capture {
                 let r = try await h.timelineRun(name: "late-partial-and-stale-revision", offset: 0, index: i, kind: "capture")
