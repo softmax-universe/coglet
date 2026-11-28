@@ -92,10 +92,40 @@ def ceil5(x):
     return int(math.ceil(x / 5.0) * 5)
 
 
+def completeness_failures(runs):
+    """Version-2 attempts cannot hide failed measurements by dropping rows/fields."""
+    fails = []
+    if any(r.get('noise_ok') is False for r in runs):
+        fails.append('noisy runs invalidate the attempt; retain and repeat the whole attempt')
+    for metric, kind in LATENCY.items():
+        selected = [r for r in runs if r.get('kind') == kind]
+        measured = values(selected, metric)
+        if len(measured) != len(selected) or any(v < 0 for v in measured):
+            fails.append(f'every {kind} run must have finite nonnegative {metric}')
+    barge = [r for r in runs if r.get('kind') == 'barge']
+    if any(r.get('tone_present_at_barge') is not True for r in barge):
+        fails.append('every barge run must have audible tone at barge')
+    if len(values(barge, 'played_minus_acoustic_ms')) != len(barge):
+        fails.append('every barge run must have finite heard error')
+    if any(type(r.get('word_exact')) is not bool or type(r.get('over_credited_words')) is not int
+           for r in barge):
+        fails.append('every barge run must have heard word and over-credit measurements')
+    direct = [r for r in runs if r.get('kind') == 'ringdown']
+    if len(values(direct, 'flush_to_acoustic_stop_ms')) != len(direct):
+        fails.append('every direct-flush diagnostic must have a measured acoustic stop')
+    snrs = values(direct, 'snr_db')
+    if len(snrs) != len(direct) or any(v < 12 for v in snrs):
+        fails.append('every direct-flush diagnostic must have at least 12 dB tone SNR')
+    return fails
+
+
 def derive(runs):
     """ADR-0044 rule: for each gated latency, p95 limit = ceil5(2*p95) and max limit = ceil5(2*max)
     (never below p99+20 ms); heard-truncation |error| likewise; counts/rates gated at observed
     worst case (over-crediting 0 of N, conformance 100%) only if that is what was observed."""
+    errors = completeness_failures(runs)
+    if errors:
+        raise ValueError('; '.join(errors))
     s = summarize(runs)
     if s['duck']['level_ratio']['n'] < 5:
         raise ValueError('derive requires at least five measured over-talk-duck runs')
@@ -124,6 +154,12 @@ def derive(runs):
 def check(thresholds, runs):
     s = summarize(runs)
     fails, notes = [], []
+    if thresholds.get('version', 1) >= 2:
+        fails.extend(completeness_failures(runs))
+        if 'duck' not in thresholds or set(thresholds['latency_ms']) != set(LATENCY):
+            fails.append('version-2 thresholds must gate duck and every latency metric')
+        if 'abs_error_ms' not in thresholds.get('heard_truncation', {}):
+            fails.append('version-2 thresholds must gate heard error')
     for m, lim in thresholds['latency_ms'].items():
         d = s['latency_ms'].get(m, {'n': 0})
         if d['n'] < lim['min_n']:

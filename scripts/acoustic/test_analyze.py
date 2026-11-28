@@ -10,7 +10,8 @@ def fixture():
         runs.extend([
             dict(kind='barge', conformant=True, barge_to_acoustic_stop_ms=110,
                  play_to_acoustic_onset_ms=40, ptt_press_call_ms=1,
-                 played_minus_acoustic_ms=-70, word_exact=True, over_credited_words=0),
+                 played_minus_acoustic_ms=-70, word_exact=True, over_credited_words=0,
+                 tone_present_at_barge=True),
             dict(kind='capture', conformant=True, ptt_press_to_first_capture_ms=5,
                  ptt_release_to_end_event_ms=1),
             dict(kind='stimulus', stimulus_scheduled_to_capture_ms=20),
@@ -66,6 +67,39 @@ class GateTests(unittest.TestCase):
             runs = copy.deepcopy(self.runs)
             next(r for r in runs if r['kind'] == 'duck')[key] = value
             self.assertTrue(analyze.check(self.thresholds, runs)[0], key)
+
+    def test_v2_requires_every_measurement(self):
+        for kind, key in [('barge', 'barge_to_acoustic_stop_ms'),
+                          ('barge', 'played_minus_acoustic_ms'), ('barge', 'word_exact'),
+                          ('capture', 'ptt_press_to_first_capture_ms'),
+                          ('stimulus', 'stimulus_scheduled_to_capture_ms')]:
+            runs = copy.deepcopy(self.runs)
+            next(r for r in runs if r['kind'] == kind).pop(key)
+            self.assertTrue(analyze.check(self.thresholds, runs)[0], key)
+
+    def test_v2_refuses_noisy_or_missing_tone(self):
+        for key, value in [('noise_ok', False), ('tone_present_at_barge', False)]:
+            runs = copy.deepcopy(self.runs)
+            next(r for r in runs if r['kind'] == 'barge')[key] = value
+            self.assertTrue(analyze.check(self.thresholds, runs)[0], key)
+            with self.assertRaises(ValueError):
+                analyze.derive(runs)
+
+    def test_direct_flush_missing_or_inaudible_refuses(self):
+        good = dict(kind='ringdown', frequency_hz=1400, snr_db=20,
+                    flush_to_acoustic_stop_ms=100)
+        self.assertEqual(analyze.check(self.thresholds, self.runs + [good])[0], [])
+        for key, value in [('flush_to_acoustic_stop_ms', None), ('snr_db', 0)]:
+            bad = dict(good, **{key: value})
+            self.assertTrue(analyze.check(self.thresholds, self.runs + [bad])[0])
+
+    def test_v2_cannot_omit_duck_gate(self):
+        thresholds = copy.deepcopy(self.thresholds)
+        thresholds.pop('duck')
+        self.assertTrue(analyze.check(thresholds, self.runs)[0])
+        thresholds = copy.deepcopy(self.thresholds)
+        thresholds['latency_ms'].pop('barge_to_acoustic_duck_ms')
+        self.assertTrue(analyze.check(thresholds, self.runs)[0])
 
     def test_historical_v1_thresholds_still_check_without_duck(self):
         old = copy.deepcopy(self.thresholds)

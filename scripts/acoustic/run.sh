@@ -44,6 +44,7 @@ fi
 
 # Read-only TCC preflight: do not change volume, request a grant or activate audio.
 if [ "${FACE_ACOUSTIC_PREFLIGHT_ONLY:-0}" = 1 ]; then
+  rm -f "$OUT/permission.txt" "$OUT/permission-stderr.txt"
   open -W -n "$APP" --stdout "$OUT/permission.txt" --stderr "$OUT/permission-stderr.txt" --args --permission-status
   cat "$OUT/permission.txt"
   exit 0
