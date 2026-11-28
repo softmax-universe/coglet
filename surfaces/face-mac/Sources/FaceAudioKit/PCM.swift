@@ -61,6 +61,11 @@ final class CaptureConverter {
                 AVAudioFrameCount(ceil(Double(maximumFrames) * 24000 / format.sampleRate)) + 256)
         else { throw FaceAudioError.invalidFormat }
         converter.primeMethod = .none
+        // VoiceProcessingIO may expose a discrete multichannel capture layout.
+        // Its implicit mono downmix can succeed while returning only silence.
+        // Select the microphone channel explicitly, excluding auxiliary channels;
+        // retain AVAudioConverter's existing mono/stereo behavior.
+        if format.channelCount > 2 { converter.channelMap = [0] }
         self.converter = converter
         self.output = output
         self.feed = ConversionFeed(staging: staging)
