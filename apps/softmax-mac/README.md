@@ -147,6 +147,23 @@ xcodebuild test -project Softmax.xcodeproj -scheme Softmax \
   -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
 ```
 
+The macOS-only SwiftPM target `LocalSpeechInputTests` compiles the **actual app
+source** through `Tests/LocalSpeechInputTests/LocalSpeechInput.swift` (a symlink).
+Its test-only Objective-C fixture replaces Speech SDK methods in the xctest process
+and invokes their original block signatures on background queues; it never asks
+for TCC access or uses the microphone. A Swift-closure-only fake does not reproduce
+the legacy Objective-C isolation thunk that caused the first-permission crash.
+Run the six callback regressions with production Swift 6 concurrency checking:
+
+```sh
+swift test -Xswiftc -strict-concurrency=complete --filter LocalSpeechInputTests
+```
+
+They cover authorized/denied completion, recognition final/error/partial callbacks,
+and cancelled authorization/recognition callbacks against a fresh revision.
+The fixture acknowledges actual callback return, and verifies background ingress
+and main-queue cancellation. It is not compiled into the application.
+
 The UI smoke launches the real app, clicks **Open Settings…** from onboarding
 and checks all seven tabs. `--ui-testing` keeps onboarding fresh and suppresses
 preferences writes; it does not grant or fake OS permissions. It does not click
