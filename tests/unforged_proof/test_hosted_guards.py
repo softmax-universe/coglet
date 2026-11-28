@@ -57,6 +57,7 @@ class HostedReceiptGuards(unittest.TestCase):
 
     def test_configured_name_or_sentinel_is_not_image_identity(self):
         for image in ('unforged', 'worker:latest', 'a'*40,
+                      'unforged@sha256:756e666f726765643a63616f732d72756e6e65723a76312e3100000000000000',
                       'native@sha256:'+'B'*64, 'native@sha256:'+'b'*63):
             with self.subTest(image=image), self.assertRaises(Refused):
                 self.check(self.note(worker_image=image), image=image)

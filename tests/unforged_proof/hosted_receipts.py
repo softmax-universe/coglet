@@ -36,6 +36,7 @@ def validate_receipt(raw, *, commit, image, memo_hit, fresh):
     if not isinstance(commit, str) or re.fullmatch('[0-9a-f]{64}', commit) is None:
         raise Refused('full SHA-256 result commit required')
     if (not isinstance(image, str)
+            or image.startswith(('unforged@', 'docker://unforged@'))
             or re.fullmatch(r'[^\s@]+@sha256:[0-9a-f]{64}', image) is None):
         raise Refused('resolved immutable worker image required')
     if not isinstance(raw, str) or len(raw.encode()) > 16384:
