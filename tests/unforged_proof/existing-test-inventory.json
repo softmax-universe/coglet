@@ -1,0 +1,311 @@
+{
+  "method": "Source inventory: Python AST test_ function definitions, Rust #[test]/#[tokio::test] functions. Counts are definitions, not parameterized collected cases or execution claims.",
+  "files": [
+    {
+      "file": "repo/crates/coglet-cli/tests/cli.rs",
+      "sha256": "17ddb3dc6e2ff665c373ad38758330ad9a92cb92e0041d4bf734b97d445cd9bd",
+      "count": 5,
+      "tests": [
+        "cli_build_run_replay_equal_hash_list_and_inspect",
+        "cli_cargo_build_compiles_real_rust_guest_before_packaging",
+        "cli_bad_manifest_reports_actionable_error_before_build",
+        "cli_help_identity_and_deploy_fail_closed",
+        "sandbox_missing_grants_unknown_events_and_bad_wasm_are_rejected"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-cli/tests/enrollment.rs",
+      "sha256": "6c826f37b36879e65a5d0bbf468d90e54eb2878df14d309dd31c4d8292921232",
+      "count": 1,
+      "tests": [
+        "cli_enroll_reference_hub_and_recover_without_reusing_invite"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-cli/tests/operator.rs",
+      "sha256": "31c1da8a30f97846f068e331700256334a6315d47583eb9e85e2fe64163ee8dc",
+      "count": 2,
+      "tests": [
+        "cli_reference_router_deploy_push_status_stop_and_idempotent_retry",
+        "cli_reference_router_push_is_staging_not_install_or_start"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-cli/tests/operator_refusal.rs",
+      "sha256": "1d3a3ab47a3329a0fb8a69804393f43f6e937023c32e84439a9e51e219b3b101",
+      "count": 2,
+      "tests": [
+        "cli_operator_queued_failed_and_malformed_never_report_success",
+        "operator_client_refuses_symlink_and_public_socket_directory"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-cli/tests/supervisor.rs",
+      "sha256": "4639e2338b5be1245bdc5d7e23c43bbb522aa02cf05ddcf21b02c7b2bb32bd18",
+      "count": 2,
+      "tests": [
+        "child_supervisor_times_out_and_bounds_both_output_streams",
+        "file_reader_refuses_fifo_symlink_and_world_readable_secrets"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-hub/tests/promotion_admission.rs",
+      "sha256": "1cae67f0f25a2fa3818468c93614b13d2043fe5399386aebddd6c00dbe067eb5",
+      "count": 19,
+      "tests": [
+        "optional_unverified_approval_is_rejected_without_secret_in_audit",
+        "rejection_receipt_is_exact_after_fault_and_restart",
+        "proposal_rejects_wrong_base_generation_policy_and_ended_ticket",
+        "simultaneous_distinct_requests_have_one_pending_proposal",
+        "same_actor_and_id_on_other_target_does_not_alias_receipt",
+        "absent_boundary_and_generation_overflow_leave_proposal_unactivated",
+        "invalid_boundary_bindings_or_bundle_hash_never_enter_outbox",
+        "incompatible_unreleased_outbox_schema_fails_closed_on_open",
+        "shared_authority_storage_fault_does_not_consume_request_id",
+        "authority_cas_rejection_rolls_back_proposal_but_retains_receipt_and_audit",
+        "promote_admits_one_exact_outbox_intent_without_claiming_activation",
+        "policy_replacement_invalidates_unactivated_proposal_and_audit_failure_is_atomic",
+        "ticket_only_human_approval_rejects_missing_reference_without_proposal_or_outbox",
+        "ticket_union_approval_request_binding_and_compatibility_are_independent",
+        "admitted_audit_links_verified_build_gate_and_ticket_evidence",
+        "proposal_faults_leave_no_partial_receipt_or_transition_after_restart",
+        "independent_sqlite_connections_serialize_competing_and_identical_proposals",
+        "artifact_revocation_during_boundary_preparation_rejects_without_outbox",
+        "proposal_receipt_is_exact_and_survives_restart_without_new_audit"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-hub/tests/promotion_gates.rs",
+      "sha256": "8ea26ff32e566977b33fb0ea43b996e4f1024457bb3b824ca1a6c0eff30df037",
+      "count": 1,
+      "tests": [
+        "gate_reports_require_exact_bindings_authentication_and_exclusive_freshness"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-hub/tests/promotion_installation.rs",
+      "sha256": "5257727eae28d3a0bbe91526424c9bfcb488d4ee3b61be942d71573b9ae736a5",
+      "count": 4,
+      "tests": [
+        "installation_audit_failure_rolls_back_binding_revision_and_current",
+        "concurrent_policy_replacement_has_one_cas_winner_and_no_revision_reuse",
+        "registry_binding_rejects_credential_urls_before_reserving_identity",
+        "installation_pins_operator_role_and_exact_revision_across_restart"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-hub/tests/promotion_policy.rs",
+      "sha256": "376fe4b81a574ca002a1908407c6679a7e0c3bcb239d68fddffdaad8391cf3ad",
+      "count": 2,
+      "tests": [
+        "policy_requires_replay_unique_gates_and_enrolled_role",
+        "policy_rejects_closed_shape_timing_and_lexical_violations"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-hub/tests/promotion_probation.rs",
+      "sha256": "38c775d69fb392ac37968b0a88f258d5a328b126fb4f16d7322736764f1ea54a",
+      "count": 3,
+      "tests": [
+        "probation_component_requires_current_bound_health_before_expiry",
+        "probation_component_thresholds_precede_completion_and_counters_never_reset",
+        "probation_component_timeout_is_exclusive_and_clock_loss_latches_rollback"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/trace.rs",
+      "sha256": "65e8729f60295ab9001e598e330fc15609499e0440b5fff58a797614313bb5b5",
+      "count": 9,
+      "tests": [
+        "complete_frozen_archive_profiles_validate_without_guest_execution",
+        "replay_checks_state_without_requiring_identical_wall_clock_observations",
+        "imported_archives_retain_unreferenced_verified_blobs",
+        "durable_service_export_includes_reopened_journal",
+        "durable_segment_transfer_retains_history_router_and_trace_local_chain",
+        "every_primary_script_reexecutes_independently_with_identical_step_hashes",
+        "independent_program_replay_and_segment_transfer_preserve_lifetime_state",
+        "malformed_trace_header_record_and_blob_are_rejected",
+        "replay_rejects_mismatched_independent_program_effects"
+      ]
+    },
+    {
+      "file": "repo/sim/tests/test_gate_adversarial.py",
+      "sha256": "443a7f3006db94cfc1de8f2da79d20803889ced650a3593deaf7bdaefc73b794",
+      "count": 4,
+      "tests": [
+        "test_recomputed_content_address_does_not_bypass_mac",
+        "test_even_authenticated_mismatched_report_is_refused",
+        "test_changed_tool_and_missing_operator_pin_are_refused",
+        "test_concurrent_consumers_exactly_one_and_unknown_nonce_refused"
+      ]
+    },
+    {
+      "file": "repo/sim/tests/test_gate_artifacts.py",
+      "sha256": "7f6c02bff2c6252d32ecb5cbbf10d5ca4b216790fd5c52c6f2469b8b5a56670e",
+      "count": 6,
+      "tests": [
+        "test_artifacts_are_content_addressed_and_tamper_refused",
+        "test_issuer_refuses_wrong_bytes_and_fixture_never_becomes_production",
+        "test_build_exact_binding_refuses_transfer",
+        "test_verifier_authentication_challenge_binding_and_restart_replay",
+        "test_invalid_bindings_and_suite_fail_closed",
+        "test_native_authenticated_gridbot_cartpole_pass_and_reject"
+      ]
+    },
+    {
+      "file": "repo/sim/tests/test_gate_service.py",
+      "sha256": "050e7248bbc12ccd7e0f96dac6e3c453883aee72feb3dced7a634f9cb1b379a7",
+      "count": 2,
+      "tests": [
+        "test_native_schedule_uses_exact_requested_seed",
+        "test_service_refuses_changed_tools_and_forged_challenge_before_execution"
+      ]
+    },
+    {
+      "file": "repo/sim/tests/test_native.py",
+      "sha256": "ec2ef817804e19801328a3737a9409ddcb55661ef0601ccda71bc7924d0b541f",
+      "count": 2,
+      "tests": [
+        "test_gridbot_pilot_reaches_goal_live_and_replayed",
+        "test_cartpole_episode_live_and_replayed"
+      ]
+    },
+    {
+      "file": "repo/tests/unforged_proof/test_proof.py",
+      "sha256": "d7e65f25b5573d211c78261bf670df11ed249addc6db3dd17abd7cdb0bd98014",
+      "count": 4,
+      "tests": [
+        "test_prefix_excludes_current_and_future_outputs",
+        "test_equality_and_execution_are_both_mandatory",
+        "test_missing_receipts_fail_closed",
+        "test_checks_survive_python_optimization"
+      ]
+    },
+    {
+      "file": "repo/tools/visualizer/native/tests/test_browser_native.py",
+      "sha256": "468c05a97c89f62446451146d90c15a30ba133b1208e130accb48159f0deff8e",
+      "count": 1,
+      "tests": [
+        "test_native_m2_load_scrub_replay_same_hash_and_receipt_what_if_divergence"
+      ]
+    },
+    {
+      "file": "repo/tools/visualizer/native/tests/test_http.py",
+      "sha256": "f6a8e6e396b6aa72b21e4b467847f77b42be6a8079915f1530be0084677a2c89",
+      "count": 1,
+      "tests": [
+        "test_private_native_api_replays_forks_and_refuses_replaced_source"
+      ]
+    },
+    {
+      "file": "repo/tools/visualizer/native/tests/test_native.py",
+      "sha256": "36e41f758d05f5007d1f7ad6de3b84b20f000413cfa3cdae514ef319e7ebc00e",
+      "count": 1,
+      "tests": [
+        "test_real_m2_export_and_independent_native_replay"
+      ]
+    },
+    {
+      "file": "repo/tools/visualizer/native/tests/test_refusal.py",
+      "sha256": "690b472461665ea6db82466c95248d53ebdb8bd671ed67dba4b6054265942fad",
+      "count": 3,
+      "tests": [
+        "test_native_archive_symlink_is_refused",
+        "test_incomplete_archive_never_qualifies_native_replay",
+        "test_edited_input_out_of_range_does_not_return_previous_result"
+      ]
+    },
+    {
+      "file": "repo/tools/visualizer/native/tests/test_worker_limits.py",
+      "sha256": "ab843a0d6b515d115df8127457b73297d4be046df0170767c8f85c22d98d6ce8",
+      "count": 4,
+      "tests": [
+        "test_close_cancels_and_reaps_worker_and_busy_is_bounded",
+        "test_kernel_output_memory_cpu_fences",
+        "test_native_startup_refuses_symlinks_and_nonexecutable",
+        "test_wall_timeout_kills_and_reaps_and_releases_slot"
+      ]
+    },
+    {
+      "file": "unforged/tests/caos_real_receipts.rs",
+      "sha256": "954654fa38befbcb0b18533035ff153dfd24f40bfc0e12619ef6ba2f40a21fc2",
+      "count": 2,
+      "tests": [
+        "real_caos_cold_and_warm_receipts_carry_resolved_image",
+        "real_caos_native_sentinel_is_never_an_identity"
+      ]
+    },
+    {
+      "file": "unforged/tests/caos_unforged_runner.rs",
+      "sha256": "69669a79dfe52fb7c25d8dd628e308c40ca296529a17c9864bb466ee2820b595",
+      "count": 12,
+      "tests": [
+        "unforged_caos_runner_executes_divergent_merges_and_fd3_ipc_drivers_with_pool_isolation",
+        "unforged_caos_runner_executes_stream_exec_and_enforces_ephemeral_escape_exit_42",
+        "unforged_caos_runner_cli_executes_general_worker1_jobs_renews_leases_and_redacts_secrets",
+        "unforged_caos_runner_polls_and_executes_over_iroh_caos_ticket",
+        "caos_observatory_demo_serves_ui_telemetry_acts_and_png",
+        "unforged_daemon_boots_headless_from_bare_ticket_file_and_exits_cleanly_on_sigterm",
+        "caos_worker1_jobs_execute_as_two_parent_unforged_git_merges_and_compose_downstream",
+        "caos_runner_preserves_gitignored_files_empty_dirs_utf8_symlinks_and_missing_out_default",
+        "caos_runner_blocks_secret_leaks_hides_runner_ticket_and_blocks_runner_routes_from_workers",
+        "caos_runner_stacks_git_docker_base_layers_whiteouts_caosmeta_and_rejects_external_oci",
+        "caos_runner_executes_reactive_ref_then_sub_run_and_cas_actor_state_with_zero_held_slots",
+        "unforged_caos_runner_hardening_rejects_symlink_worker_enforces_timeout_and_prevents_recursive_slot_deadlock"
+      ]
+    },
+    {
+      "file": "unforged/tests/coglet_issue_11.rs",
+      "sha256": "19904f30120d98f0719e7f522ffe8fd5c6af311786d21c43abffb39d26e44db9",
+      "count": 5,
+      "tests": [
+        "user_namespace_read_isolation_over_real_transport",
+        "private_oid_want_requires_current_grant",
+        "promisor_fetch_rechecks_revocation",
+        "private_history_scan_error_fails_closed",
+        "router_bookkeeping_and_grant_refs_are_not_public"
+      ]
+    },
+    {
+      "file": "unforged/tests/coglet_stage1_proof.rs",
+      "sha256": "b0819e54b3474519dec59f169979f1d3ba26c82165750028335769b37f1c5a65",
+      "count": 7,
+      "tests": [
+        "stage1_counter_hot_vs_cold_local_and_caos_replay_and_engine_pin_invalidation",
+        "stage1_trapping_guest_reverts_state_clears_out_and_commits_aborted_deterministically",
+        "stage1_nondeterministic_resolver_never_caches_locally_and_refuses_caos",
+        "stage1_coglet_strict_tree_validation_rejects_forbidden_entries_everywhere",
+        "stage1_memory_object_batch_and_git_engine_step_commit_zero_spawns",
+        "stage1_stream_exec_no_cache_forces_cold_runs_and_never_reads_or_writes_memoization",
+        "stage1_engine_bin_resolver_executes_embedded_engine_on_cold_path"
+      ]
+    },
+    {
+      "file": "unforged/tests/coglet_stage2_replay.rs",
+      "sha256": "853ab2f55d04cbeb0a4c9f74fd441b78cccb6f4978821089441f4dd43957adb2",
+      "count": 18,
+      "tests": [
+        "caos_unchanged_tag_changed_image_misses_same_client_cache",
+        "caos_submission_uses_resolved_pin_even_if_tag_changes_before_submit",
+        "caos_missing_or_mismatched_image_receipt_is_not_memoized",
+        "caos_no_cache_does_not_relabel_explicit_hit_as_execution",
+        "caos_native_worker_upgrade_misses_same_sentinel_and_engine_pin",
+        "caos_unchanged_hash_pin_hits_legacy_memo_key",
+        "caos_remote_cold_executed_warm_cache_hit_receipts_carry_image_hash",
+        "real_caos_driver_cold_executed_warm_cache_hit_receipts",
+        "real_caos_native_driver_receipts_bind_worker_digest_cold_warm_and_upgrade",
+        "real_caos_native_unknown_worker_refused_not_sentinel_fallback",
+        "caos_unresolved_mutable_and_unpinned_native_images_fail_closed",
+        "caos_headerless_run_does_not_claim_execution_from_prior_status",
+        "stage2_ingest1_worker_upgrade_vs_local_and_caos_cache_reuse_and_nocache_control",
+        "stage2_ingest2_two_signers_same_tree_and_bridge_signature_isolation",
+        "stage2_100_step_chain_replay_zero_git_spawns_and_receipts",
+        "stage2_external_engine_batch_stdio_replays_100_steps_with_one_spawn_and_zero_git_spawns",
+        "stage2_engine_pinned_resolver_replays_with_embedded_engine_and_rejects_other_engines",
+        "stage2_coglet_ref_layout_users_roundtrip"
+      ]
+    }
+  ],
+  "file_count": 26,
+  "test_definition_count": 122
+}
