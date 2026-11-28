@@ -23,6 +23,7 @@ root=$(mktemp -d /tmp/coglet-image.XXXXXXXX)
 mkdir "$root/work" "$root/resolver"
 cp -R /cas/args/state/. "$root/work/"
 cp -R /cas/args/resolver/. "$root/resolver/"
+chmod -R u+w "$root/work" "$root/resolver"
 chmod 755 "$root/resolver/drivers/proof"
 (cd "$root/work"; "$root/resolver/drivers/proof")
 salt=$(cat /cas/args/salt)
