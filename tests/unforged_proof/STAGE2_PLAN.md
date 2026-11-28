@@ -8,8 +8,11 @@ build authority, or effect-path replacement. Frozen contracts remain unchanged.
 ## Existing inventory and observed baseline
 
 `existing-test-inventory.json` lists exact source names, per-file SHA256 and
-counts: 26 relevant files, 122 source test definitions (not collected parameterized
-cases). Baseline `python3 -m unittest discover -s tests/unforged_proof -v`
+counts: 95 relevant files, 453 source test definitions (not collected parameterized
+cases), expanded to include the entire runtime integration-test subtree before
+runtime/gate implementation edits. The initial narrower inventory was 26 files /
+122 definitions; it omitted execution/database/factory modules that must remain
+covered. Baseline `python3 -m unittest discover -s tests/unforged_proof -v`
 executed all four stage-1 guard tests successfully. None is hosted qualification.
 Retain every existing test. Unforged's synthetic Coglet engine and receipt mocks
 are not a substitute for a real recorded cogletd step.

@@ -1,4 +1,8 @@
 {
+  "baselines": {
+    "repo": "ec31e29d4c72f43fe30b716e02012bacb0e36699",
+    "unforged": "f9c627bcc09346b2923583037a10ac9a2fa8ea12"
+  },
   "method": "Source inventory: Python AST test_ function definitions, Rust #[test]/#[tokio::test] functions. Counts are definitions, not parameterized collected cases or execution claims.",
   "files": [
     {
@@ -113,6 +117,801 @@
       ]
     },
     {
+      "file": "repo/crates/coglet-runtime/tests/abi_wire.rs",
+      "sha256": "79f43a8466cdbda6ba61fd73ab1c06be2a729bb4d113c968d0ed88632330ef64",
+      "count": 5,
+      "tests": [
+        "empty_manifest_still_requires_identity_binding",
+        "unsupported_compute_mode_is_refused_before_instantiation",
+        "admission_instantiates_without_consuming_input_or_calling_handle",
+        "manifest_catalog_and_grants_are_checked_over_the_wire",
+        "archive_views_are_explicit_not_selected_from_case_names"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/cbor_borrowed.rs",
+      "sha256": "91f3644136527ecf2df4800e39609435d024f0a885a75c6737c4dcd74f9c4302",
+      "count": 1,
+      "tests": [
+        "large_text_is_copied_only_into_the_output"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/contract_profile.rs",
+      "sha256": "287df7f7cc5395c1a3de62020bce5ba0c95970daad23813d452c188ff13dda84",
+      "count": 5,
+      "tests": [
+        "local_contract_profile_catalog_v1_closed",
+        "local_contract_profile_replay_pair_fenced",
+        "local_contract_profile_defaults_and_unknowns",
+        "local_contract_profiles_reject_old_public_records",
+        "local_contract_profile_manifest_format_independent"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/database_archive.rs",
+      "sha256": "6e6aa7b18d8ad79d62b0d255dcbc31d1aa3cf8f5e2d145c152c4074b53eff8de",
+      "count": 8,
+      "tests": [
+        "empty_database_archive_roundtrips_without_guest_execution",
+        "database_archive_accepts_exact_lossless_records_and_rejects_projection_only",
+        "database_archive_rejects_tampered_exact_record_bytes",
+        "mixed_ordinary_records_on_db_manifest_do_not_export",
+        "current_plain_archive_import_export_roundtrips",
+        "unknown_database_revision_never_exports_a_fabricated_zero",
+        "database_boundary_seal_and_empty_successor_keep_observed_revision_across_wal_reopen",
+        "daemon_manifest_admission_stays_closed_without_database_context"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/database_service.rs",
+      "sha256": "94766890ee33c776f496bdef8344d112f93a2029f04ae41a28133dc31fb232f6",
+      "count": 24,
+      "tests": [
+        "real_wamr_service_commits_exact_native_record_and_reopens",
+        "mock_service_commits_exact_native_record_and_reopens",
+        "real_wamr_marker_present_recovers_forward_without_guest",
+        "mock_marker_present_recovers_forward_without_guest",
+        "real_wamr_marker_absent_aborts_same_attempt_without_guest",
+        "mock_marker_absent_aborts_same_attempt_without_guest",
+        "real_wamr_database_unavailable_holds_and_loses_nothing",
+        "mock_database_unavailable_holds_and_loses_nothing",
+        "wal_keeps_zero_one_closed_and_database_bytes_exact",
+        "deployment_pins_must_match_runtime_manifest_and_context_grants",
+        "poisoned_unit_with_zero_return_is_guest_return_conflict",
+        "committed_recovery_preserves_post_fence_host_metadata",
+        "real_wamr_replay_enforces_mixed_call_order_without_database",
+        "mock_replay_enforces_mixed_call_order_without_database",
+        "real_wamr_replay_uses_recorded_results",
+        "mock_replay_uses_recorded_results",
+        "real_wamr_replay_applies_recovery_abort_only_after_clean_success",
+        "mock_replay_applies_recovery_abort_only_after_clean_success",
+        "real_wamr_recovery_abort_for_poisoned_guest_diverges",
+        "mock_recovery_abort_for_poisoned_guest_diverges",
+        "real_wamr_replay_records_invalid_db_ranges_as_invalid_argument",
+        "mock_replay_records_invalid_db_ranges_as_invalid_argument",
+        "real_wamr_replay_records_invalid_ordinary_ranges_as_invalid_argument",
+        "mock_replay_records_invalid_ordinary_ranges_as_invalid_argument"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/device_lifecycle.rs",
+      "sha256": "818fe4a20f3e81e5d0961c7544b475dabc7de667cfe96155caf29a94b8f272a0",
+      "count": 39,
+      "tests": [
+        "push_install_stopped_then_stop_and_repeat_receipt",
+        "start_fails_closed_without_native_engine_and_stays_stopped",
+        "install_start_running_stop_with_native_engine",
+        "wal_restart_preserves_installed_and_stopped_state",
+        "install_rejects_wrong_expired_and_wrong_generation_signed_delegations",
+        "stored_delegation_expiry_and_clock_loss_deny_at_the_exact_second",
+        "enrollment_grant_expiry_is_independent_of_delegation_expiry",
+        "wrong_exact_method_and_wrong_generation_pins_are_denied",
+        "unauthorized_peer_context_ticket_and_target_are_denied",
+        "install_without_accepted_push_is_refused",
+        "start_and_restart_revalidate_installed_artifact_not_newer_staged_ref",
+        "start_refuses_tampered_retained_bundle_bytes",
+        "start_refuses_after_authority_loses_the_installed_artifact",
+        "delegation_expiring_while_waiting_for_service_mutex_denies_every_method",
+        "start_requires_present_well_formed_clear_kill_switch",
+        "handler_installed_native_guest_commits_a_real_step_and_journal",
+        "first_install_expiry_leaves_no_code_identity_and_new_ref_retries_cleanly",
+        "lifecycle_operation_retries_cannot_reverse_later_transitions_after_restart",
+        "cogletd_subprocess_enrolls_installs_starts_stops_and_replays_after_sigkill",
+        "running_coglet_resumes_execution_after_daemon_restart",
+        "restart_revalidation_refuses_tampered_artifact",
+        "hub_receipt_preinstall_original_push_completes_before_install",
+        "hub_receipt_original_push_retry_retains_single_boundary",
+        "hub_receipt_constructor_refuses_missing_recovery_runtime",
+        "hub_receipt_pending_recovery_selects_current_original_intent",
+        "hub_receipt_cogletd_sigkill_recovers_original_scope_and_no_duplicate_install",
+        "installed_push_crash_reconciles_exactly_once",
+        "hub_receipt_preinstall_rechecks_authority_after_queued_admission",
+        "hub_receipt_preinstall_superseded_original_never_borrows_new_boundary",
+        "hub_receipt_git_and_lifecycle_ids_conflict_across_ledgers_and_restart",
+        "hub_receipt_original_scope_roundtrip",
+        "hub_receipt_denies_cross_identity",
+        "hub_receipt_survives_restart",
+        "hub_receipt_identical_retry_no_reexecute",
+        "hub_receipt_conflicting_intent_typed",
+        "hub_receipt_install_retry_cannot_borrow_scope_or_reuse_stop_id",
+        "hub_receipt_queued_never_applied_without_boundary",
+        "installed_push_original_id_queued_then_applied",
+        "hub_receipt_request_validation_and_fixtures"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/durability.rs",
+      "sha256": "ccaf879928ca4ece3ea91310a2983daeeb93c89a801bdb9890ea68e6a97aa274",
+      "count": 1,
+      "tests": [
+        "durable_commit_recovers_last_complete_transaction_and_discards_partial_tail"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/embedded_trusted_catalog.rs",
+      "sha256": "37ed980e0d882e3371de3f51933f9530a7e5d9bf303b73694afc503bb5ea15ad",
+      "count": 5,
+      "tests": [
+        "scenario_child",
+        "embedded_trusted_catalog_start",
+        "embedded_trusted_catalog_failure_fences",
+        "embedded_local_contract_profile_provisioning",
+        "embedded_wire_profile_negotiation_and_downgrade"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/executable_archive.rs",
+      "sha256": "96a1db3b2a24fe3a9453de2158b71d22aef982cae321d72ac6d48ae95979ddda",
+      "count": 5,
+      "tests": [
+        "executable_archive_inventory_covers_every_source_record",
+        "executable_archive_records_reexecute_on_wamr_with_identical_step_hashes",
+        "executable_archive_corruptions_reject_before_guest_entry",
+        "executable_archive_replay_rejects_guest_program_mismatch",
+        "frozen_archive_corpus_and_spec_v0_remain_unchanged"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/execution.rs",
+      "sha256": "21fb38594d85b79769608726630434b48e03a7a277df4741c3dc7555ad6c2d02",
+      "count": 11,
+      "tests": [
+        "every_primary_abi_case_is_executed",
+        "mock_engine_produces_no_effects_journal_from_inputs_not_expected_output",
+        "staged_emit_is_recorded_in_call_order",
+        "timers_stage_with_runtime_logical_deadline",
+        "llm_request_is_staged_not_dispatched_as_surface_action",
+        "host_log_appends_canonical_jsonl",
+        "successful_engine_report_cannot_bypass_budget_abort",
+        "authenticated_inbox_boundary_precedes_guest_input_hash",
+        "llm_reply_requires_committed_pending_request",
+        "replay_reexecutes_engine_and_detects_changed_guest_program",
+        "scripted_abort_and_host_validation_regressions"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/face_mac_adapter.rs",
+      "sha256": "b1052be9344e5129415dfb5ec5bd714f3d10ca7a0ca7516771713fe8e96555e1",
+      "count": 1,
+      "tests": [
+        "compiled_face_barge_in_journals_cancelled_action_and_replays_offline"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_database.rs",
+      "sha256": "186624f0226095288946d5bad35aa5aa30a20249c653d3c009334d25ce8986ec",
+      "count": 8,
+      "tests": [
+        "real_wamr_runs_actual_factory_guest_end_to_end",
+        "mock_runs_factory_repository_against_real_database_host",
+        "wasm_task_failed_stages_llm_and_survives_reopen",
+        "factory_wasm_llm_reply_produces_hypothesis",
+        "factory_wasm_stale_llm_reply_refused",
+        "factory_wasm_reply_survives_reopen",
+        "factory_wasm_reply_to_outbox_dispatch_intent",
+        "factory_wasm_outbox_dispatch_result_consumed"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_dispatch_result/mod.rs",
+      "sha256": "3aa5ada683221076ec4534e908059c49121205daf307958d50350222ef970161",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_goals/acceptance.rs",
+      "sha256": "a28d5206ca939863fa67defb52f6431faaaa94a1615d4b896e84d6839f6a6257",
+      "count": 3,
+      "tests": [
+        "goal_budget_and_priority_enforced",
+        "goal_replay_does_not_duplicate",
+        "goal_deferral_and_cancellation"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_goals/cancellation.rs",
+      "sha256": "ab9f4c52760826647e39a93ae59cea4bde9cb90a9c5becbccf3c3002cfb01f6f",
+      "count": 1,
+      "tests": [
+        "goal_inbox_deferral_and_cancellation_reaches_normal_host_cycle"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_goals/mod.rs",
+      "sha256": "b9cc3d61af14dae2ac8c29027bf493f6bfe9757fe616cf40f6b83a30c70eeef2",
+      "count": 1,
+      "tests": [
+        "factory_wasm_goal_ingestion_reopen_and_offline_replay"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_goals/regressions.rs",
+      "sha256": "f7df6c1f7148064fcf1bbe4c9452fc3912fec389ccdbcc99a53165d85f4c078a",
+      "count": 1,
+      "tests": [
+        "goal_scan_revision_fences_inbox_insertion_at_cursor_free_boundaries"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_research/backlog.rs",
+      "sha256": "99153a9ea517660bc966ebf34111dcf83318c7a3f8eb4ac02880c221d8f84073",
+      "count": 1,
+      "tests": [
+        "two_research_completions_drain_via_revision_fenced_read_only_selection"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/factory_research/mod.rs",
+      "sha256": "abc4d083a4984acc879a6be9eb34e647a4965fc0e754e9eb1f6b743b98cb0850",
+      "count": 4,
+      "tests": [
+        "failed_experiment_triggers_investigation",
+        "evidence_provenance_is_preserved_and_validated",
+        "candidate_baseline_comparison_is_reproducible",
+        "research_replay_uses_recorded_responses"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/fault_scenarios.rs",
+      "sha256": "663681cadb9ffaf2e639cc6bdf7e6a5a693cc289cd78ab4b14b9fc06b68676fa",
+      "count": 7,
+      "tests": [
+        "fixed_seed_schedule_reorders_delays_and_bounds_retries",
+        "adapter_lost_terminal_reply_restart_replays_receipt_not_effect",
+        "adapter_delayed_action_after_disconnect_cannot_execute",
+        "adapter_crash_with_pending_effect_recovers_unknown_without_reexecution",
+        "crash_mid_step_child",
+        "runtime_process_crash_fences_attempt_and_reconciles_original_observation",
+        "runtime_torn_commit_recovers_last_complete_state_hash_at_header_payload_and_tail"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/filesystem.rs",
+      "sha256": "0be60555fd6ced432ed3a4755ffb57459f12e3aab06b377a708489695498d756",
+      "count": 2,
+      "tests": [
+        "deserialization_cannot_bypass_snapshot_path_validation",
+        "filesystem_overlay_enforces_mounts_and_abort_isolation"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/heard.rs",
+      "sha256": "e5047487205ca9562d003af01dabaf60b803237c4752a7cd4841033da06800dc",
+      "count": 6,
+      "tests": [
+        "heard_boundary_is_hash_chained_and_replayed_without_surface_access",
+        "zero_step_heard_boundary_exports_and_replays_without_invoking_engine",
+        "durable_zero_step_heard_seal_survives_reopening_without_queueing_wake",
+        "initial_heard_projection_is_validated_not_trusted",
+        "heard_monotonicity_rejects_rewritten_alignment",
+        "reserved_file_descendants_and_ancestors_cannot_be_guest_files"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/lifecycle.rs",
+      "sha256": "05bed8d3a849221c24a688fea0ae0d9482992c5e37ca38a3477588f8a360eb0f",
+      "count": 6,
+      "tests": [
+        "terminal_rejection_consumes_pending_action_once_and_keeps_lifetime_id",
+        "durable_terminal_append_uses_shared_source_sequence_and_survives_restart",
+        "receipt_for_unknown_or_aborted_action_is_rejected",
+        "uncommitted_timer_cannot_be_delivered",
+        "timer_wake_requires_exact_pending_argument_and_is_consumed_once",
+        "past_due_timer_fires_after_commit_and_survives_restart_without_duplication"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/m1_retry_crash.rs",
+      "sha256": "096550e0524b5c9dcf0a626b89a1e50e96b5fef34245e5033f00caf08158b412",
+      "count": 7,
+      "tests": [
+        "synthesized_success_requires_retained_admission_source_and_correlation",
+        "unknown_admission_no_new_id",
+        "terminal_rejection_allows_new_id",
+        "retry_crash_child",
+        "crash_after_persist_before_send",
+        "crash_after_accept_before_outcome_reconciles_original_admission",
+        "crash_after_outcome_before_consumption_keeps_one_terminal"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/managed_lifecycle.rs",
+      "sha256": "3909355b3cb88905ad8ca29a01ce5b169a02eabbb0ad9c79751b9b10c2330edb",
+      "count": 9,
+      "tests": [
+        "install_receipt_and_stopped_fence_survive_real_wal_reopen",
+        "install_rejects_private_initial_data_but_accepts_absent_or_empty_inbox",
+        "stop_cancels_undelivered_actions_without_erasing_abi_history",
+        "stop_preserves_unknown_attempt_fence_and_exact_reserved_inputs_across_reopen",
+        "stopped_unknown_attempt_reconciliation_cannot_revive_undelivered_actions",
+        "full_router_cancellation_failure_still_durably_fences_execution",
+        "legacy_unmanaged_execution_is_unchanged",
+        "stopped_dispatch_refuses_fresh_effects_but_reconciles_original_envelope_and_outcome",
+        "native_scheduler_obeys_durable_stop_and_resumes_only_after_explicit_start"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/native_operational.rs",
+      "sha256": "e6c8f8ff1da14c90a8aed7aef4f8f45f6e5b861ce68f2daf8edfc8b147e02ad2",
+      "count": 11,
+      "tests": [
+        "ffi_recv_waits_through_would_block_without_consuming_message",
+        "ffi_recv_would_block_has_a_bounded_deadline",
+        "ffi_recv_closed_is_not_retried_as_would_block",
+        "ffi_recv_invalid_argument_is_not_retried_as_would_block",
+        "socket_health_barrier_ignores_preexisting_periodic_health",
+        "ffi_byte_identical_retry_after_clock_advances_and_reconnect_no_duplicate_act",
+        "socket_byte_identical_retry_after_clock_advances_and_reconnect_no_duplicate_act",
+        "ffi_private_capture_filters_late_text_and_persists_end_fence",
+        "socket_private_capture_filters_late_text_and_persists_end_fence",
+        "expired_undispatched_head_is_durably_rejected_without_starving_later_actions",
+        "ambiguous_wal_failure_fences_native_clock_and_retained_dispatch"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/operational_surface.rs",
+      "sha256": "c7d2137765be46f98545e37e3b064482f4f9615a870090c20e001d5231df7484",
+      "count": 25,
+      "tests": [
+        "native_pump_reconciles_retained_actions_but_does_not_dispatch_new_intents_while_fenced",
+        "native_read_is_caller_scoped_and_timeout_discards_late_reply",
+        "native_read_revocation_purges_pending_and_completed_private_values",
+        "native_read_invalid_selected_schema_and_unknown_reply_fail_closed",
+        "durable_capture_filter_queues_only_increasing_revisions_before_end",
+        "full_router_does_not_commit_capture_revision_or_source_highwater",
+        "private_event_revoke_disconnect_restart_and_source_highwater",
+        "private_event_expiry_purges_before_any_guest_step",
+        "concurrent_session_epoch_purges_old_read_reply_and_completed_result",
+        "heard_reads_require_speaker_owned_retained_item_and_enforce_utf8_limit",
+        "private_queued_input_is_not_revived_on_wal_reopen",
+        "read_expiry_diagnostics_are_bounded_and_metadata_only",
+        "native_read_pending_and_completed_share_one_bounded_queue",
+        "durable_grant_epoch_survives_reconnect_and_restart",
+        "terminal_rejection_is_one_durable_append_and_zero_step_export_includes_it",
+        "fenced_attempt_with_staged_receipt_reopens_and_defers_later_receipts",
+        "retries_remain_reconcilable_until_deadline_plus_retention",
+        "optional_work_requires_dual_audio_leases_and_semantic_value_byte_cap",
+        "byte_identical_retry_after_clock_advances",
+        "reconnect_reconciles_old_request_instead_of_duplicating_act",
+        "outcome_requires_saved_admission_and_exact_authenticated_source",
+        "operational_catalog_grants_translate_and_kill_fences_new_actions",
+        "missing_mapping_rejects_act_and_invalid_sibling_payload_has_no_authority",
+        "duplicate_owner_or_wrong_catalog_uri_does_not_install_grants",
+        "durable_segment_transfer_retains_pending_actions_llm_inbox_and_dispatch_receipts"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/profile.rs",
+      "sha256": "8fb9cab3a45a71e3872c548bc3e37c55eeffc868b3413b727699cc0c3e4a73b2",
+      "count": 1,
+      "tests": [
+        "json_numbers_remain_integers_with_arbitrary_precision_feature_unification"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/profile_execution.rs",
+      "sha256": "10a1207ef5e6c489286ca021efa3dac6353578e0e0967e4e218567bb6e09f6f9",
+      "count": 4,
+      "tests": [
+        "profile_router_and_committed_record_recover_without_inference",
+        "inbox_and_empty_successor_retain_explicit_local_profile",
+        "mapped_rules_are_explicit_and_unrelated_contracts_stay_frozen",
+        "explicit_profile_reaches_manifest_event_import_and_step_record"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/receipt_wal_custody.rs",
+      "sha256": "a6825bfe421110869c1829ed7083b7dcbeb6e21f7ddacfb887216e07ecf39c59",
+      "count": 1,
+      "tests": [
+        "retired_wal_owner_releases_lock_while_fork_child_has_not_execed"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/receiver_harness_inputs.rs",
+      "sha256": "8138a98069de492c163fc429b0e69b2bb4874b4d9e04a6b06b2ebff0d147aa6e",
+      "count": 3,
+      "tests": [
+        "fetch_logs_snapshot_is_crate_owned_and_self_consistent",
+        "every_frozen_receiver_case_input_exists_and_parses",
+        "harness_reads_no_spec_tree_file"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/recovery.rs",
+      "sha256": "51af0dd168de901016a9afa40204f166236f4c023d9560a64b358c779fc01c60",
+      "count": 15,
+      "tests": [
+        "ambiguous_engine_error_is_fenced_in_memory_and_after_reopen",
+        "preflight_refusal_does_not_fence_or_consume_and_known_failure_consumes_once",
+        "standalone_runtime_cannot_clear_ambiguous_attempt_by_sealing",
+        "attempted_private_batch_survives_reopen_as_reconciliation_only_not_delivery",
+        "initial_inbox_wakes_are_seeded_and_missing_recovered_wakes_are_rejected",
+        "recovery_validates_private_lease_binding_before_restart_cleanup",
+        "trace_identity_cannot_change_between_steps_or_on_trailing_boundary",
+        "recovered_attempt_revalidates_effective_budget_and_boundary_before_cleanup",
+        "recovered_source_reservations_cannot_have_gaps_or_reuse_consumed_sequences",
+        "recovery_rejects_corrupt_retained_blobs",
+        "recovery_rejects_router_metadata_that_cannot_be_an_admitted_queue",
+        "recovery_rejects_schema_valid_forged_runtime_wakes",
+        "effect_ledger_requires_sorted_unique_ids_before_deserialization",
+        "recovery_binds_all_code_files_not_just_wasm_and_provenance",
+        "recovery_rejects_forged_host_state_even_with_valid_internal_frame_checksum"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/router.rs",
+      "sha256": "384f474774242d7903c8d8afc37a03225e387eeb200254ba3f84271d372b16a9",
+      "count": 1,
+      "tests": [
+        "batches_by_arrival_not_foreign_clock"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/sandbox_binding.rs",
+      "sha256": "f6fe4bc9f21371e631cc1e4fae8e75d4a38ce6a39a3aab10f20377bbc3e65612",
+      "count": 1,
+      "tests": [
+        "sandbox_operations_require_singleton_supervisor_binding"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/service.rs",
+      "sha256": "0ca092f515422695f19acbd7f4a8c47c8150c94406ecef8a3d946d120d2eaa09",
+      "count": 1,
+      "tests": [
+        "restart_preserves_arrival_order_and_consumes_durable_attempt_only_once"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/sim_duplex_heard.rs",
+      "sha256": "e0fa5c5ce804eb5bbab0a62bca72e6d530b735c1be11676178e756b8cbf94b4c",
+      "count": 1,
+      "tests": [
+        "sim_heard_history_journals_heard_prefix_and_replays_offline"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/socket_transport.rs",
+      "sha256": "4bf268c9204f0c25a7ed43dfad1a18fb46c7249a0bdba763f14a9e899774d2a2",
+      "count": 4,
+      "tests": [
+        "fragmented_header_payload_and_multiple_frames_have_identical_body",
+        "oversize_zero_partial_header_partial_body_and_uid_mismatch_close",
+        "idle_socket_emits_heartbeats_without_incoming_frames_and_disconnects",
+        "listener_modes_existing_socket_and_insecure_parent_fail_closed"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/state_hash.rs",
+      "sha256": "f103470d311ae42c09360ad94f4b8ddc9b9069aa70e5b10787324f9249982218",
+      "count": 1,
+      "tests": [
+        "state_hash_single_implementation"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/stdio.rs",
+      "sha256": "c8d5df8259a9ce24a648ad83e429ada8777496eba07efdf322361a38917dda4d",
+      "count": 2,
+      "tests": [
+        "packaging_version_exits_without_starting_daemon_and_unknown_flags_fail",
+        "cogletd_mock_stdio_computes_journal_over_native_frames"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/archive_corpus.rs",
+      "sha256": "99a7498895b7f57ac599ccf2c94a1f149b9daa9c5a0bf0aea6410e962f7250d4",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/database_backup.rs",
+      "sha256": "852e360829ac4c99458f6a542a9337495682eec4f81ab57f303b5125b419b82c",
+      "count": 2,
+      "tests": [
+        "real_wamr_backup_restore_replays_and_remains_isolated",
+        "mock_backup_restore_replays_and_remains_isolated"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/database_profile.rs",
+      "sha256": "4e57c27178245b32d4324e788f03df27fdc7a516bd87a9167f910861ada4ec82",
+      "count": 2,
+      "tests": [
+        "local_contract_profile_database_mock_commit_recovery_and_replay",
+        "local_contract_profile_database_wamr_commit_recovery_and_replay"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/database_properties.rs",
+      "sha256": "48e263e04a92f530bfd6e9854578fa9021873cb539e25041b3721326b6bdd834",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/device_receiver.rs",
+      "sha256": "f4694e512ccd088cf4d421291139ee20a66d5f56f88ae8f5b8c4d20883c3b099",
+      "count": 9,
+      "tests": [
+        "back_channel_real_receiver_write_read_receipt_and_restart",
+        "idle_durable_admission_outlives_rpc_timeout_without_terminal_failure",
+        "back_channel_real_receiver_scope_and_path_limits",
+        "back_channel_real_receiver_inbox_dedup_reopened_wal_oracle",
+        "back_channel_pause_is_durable_and_single_step_requires_pause",
+        "real_bounded_guest_allows_durable_inbox_cancel_while_running",
+        "stop_waits_for_detached_guest_safe_boundary_and_receipt",
+        "ordinary_guest_completion_drives_deferred_inbox_without_another_request",
+        "back_channel_single_step_runs_real_wasm_once_and_reuses_original_receipt"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/disk_full_fault.rs",
+      "sha256": "814afb10b1940bccaf12c468d94dc08730d7688b74e4bbb07389f0a74cc44b47",
+      "count": 2,
+      "tests": [
+        "disk_full_child",
+        "runtime_disk_full_during_result_commit_never_dispatches_or_reexecutes"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/face_persisted.rs",
+      "sha256": "95cc9e05f9f03fb82915aaba5d3db5b6d1018121214709e38e2f9a446ab0992d",
+      "count": 1,
+      "tests": [
+        "persisted_face_wasm_emits_to_compiled_adapter_barges_reopens_and_reexecutes"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/faults.rs",
+      "sha256": "ff85f0e0bd58d23e94b224830790df058ab30f993ee76b9258467b605a7722f6",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/installed_push_cases.rs",
+      "sha256": "395d4e8ee4808d5a47273a8f6230807b7d1d0759dec6867ddff0eb0ca9ef4132",
+      "count": 3,
+      "tests": [
+        "installed_push_drains_more_than_one_recovery_batch",
+        "installed_push_applies_at_step_boundary",
+        "installed_push_stale_authority_fails_closed"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/native_engine_cases.rs",
+      "sha256": "b88e347c3ed535422b2247ec86e310d7c6f3f90fb1f6447ff948deb4453a00b3",
+      "count": 9,
+      "tests": [
+        "ffi_compiled_echo_timer_wake_starts_executes_and_stops",
+        "socket_compiled_echo_timer_wake_starts_executes_and_stops",
+        "ffi_real_wasm_commits_call_order_before_dispatch_and_reconciles",
+        "socket_real_wasm_commits_call_order_before_dispatch_and_reconciles",
+        "ffi_real_wasm_trap_discards_staged_emits_and_consumes_once",
+        "socket_real_wasm_trap_discards_staged_emits_and_consumes_once",
+        "real_wamr_journal_reexecutes_two_steps_with_identical_state_hashes",
+        "native_admission_refuses_mode_memory_wasi_and_preserves_queued_input",
+        "reused_admission_proof_keeps_fresh_instances_pin_and_changed_policy_checks"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/native_expiry.rs",
+      "sha256": "c120400249f8bf8dae71b680279ee458e47a768e92111862e29d1938674f417c",
+      "count": 1,
+      "tests": [
+        "native_dispatch_rechecks_clock_after_guest_outlives_grant"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/native_heard.rs",
+      "sha256": "d44c2770539b544cc8fa71e6feb43e18c84bb94c0a2479d6eed5a1d1718de3f8",
+      "count": 7,
+      "tests": [
+        "ffi_out_of_order_reads_do_not_rewrite_stopped_history_or_duplicate_observations",
+        "socket_out_of_order_reads_do_not_rewrite_stopped_history_or_duplicate_observations",
+        "heard_barrier_blocks_reasoning_then_expires_without_a_reply_or_transport_tick",
+        "ffi_owner_heard_reads_materialize_before_reasoning",
+        "socket_owner_heard_reads_materialize_before_reasoning",
+        "ffi_revoked_heard_reply_never_enters_archive",
+        "socket_revoked_heard_reply_never_enters_archive"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/native_playback.rs",
+      "sha256": "8806c902e9b4936baf6b98dce2ae746a05fdab912316f8d9d121e87826a6f893",
+      "count": 4,
+      "tests": [
+        "ffi_playback_duck_pair_and_terminal_binding",
+        "socket_playback_duck_pair_and_terminal_binding",
+        "ffi_provider_native_item_and_call_owner",
+        "socket_provider_native_item_and_call_owner"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/native_ready.rs",
+      "sha256": "70ada3307dfe426714297920ef8c1c4f15af5ab68179f994f3014716345c942c",
+      "count": 2,
+      "tests": [
+        "ready_health_latency_bounded_under_pump_load",
+        "ready_output_not_obstructed_by_pump"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/native_ready_swift.rs",
+      "sha256": "b073a38c665aa8a3b6ca6edf4e42db1dafd9d2f8606f6c1c1b286f1209f4c81c",
+      "count": 1,
+      "tests": [
+        "swift_sdk_ready_health_obstruction_and_control"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/native_wasi.rs",
+      "sha256": "e68b91dd8d1a6fb3ec1bc6b17b4f8f9ef157d0411cc870c300bdd8b26f8d00a5",
+      "count": 8,
+      "tests": [
+        "native_sdk_guest_writes_data_commits_and_reopens",
+        "native_guest_abort_discards_wasi_writes",
+        "native_wasi_crash_between_journal_and_commit_recovers_one_state",
+        "native_wasi_replay_yields_identical_hashes",
+        "native_forbidden_ops_denied_with_permission_errno",
+        "native_wasi_append_flag_does_not_grant_write_or_renumber_clobber",
+        "native_wasi_file_growth_reserves_host_bytes_before_allocation",
+        "native_forbidden_imports_fail_admission_without_instantiation"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/policy_emergency_cases.rs",
+      "sha256": "98165e6df870588e054dc3c162f651fbaf7cc3cd45e97158bfb557fcf01b22b7",
+      "count": 4,
+      "tests": [
+        "emergency_output_revoke_survives_ordinary_admission_saturation",
+        "reserved_emergency_endpoint_rejects_non_revoke_and_forged_bindings",
+        "repeated_revoke_coalesces_pending_recorder",
+        "producer_listener_pair_fails_closed_and_reopens"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/policy_producer_cases.rs",
+      "sha256": "de60f21bb504fc2e9b34f0e6a55a142191ca87f0e8d6a3f6976f47cba6342d9b",
+      "count": 9,
+      "tests": [
+        "guest_action_output_races_revoke_without_exposure_after_return",
+        "failed_revoke_wal_write_leaves_original_stop_unresolved_until_reconciled",
+        "queued_code_change_cannot_advance_attestation_before_cut",
+        "changed_clock_and_overflow_fail_closed_after_real_wal_reopen",
+        "configured_uid_principal_and_stop_id_collision_are_refused_by_real_daemon",
+        "all_five_daemon_methods_return_shared_schema_conforming_results",
+        "order_exhaustion_after_real_wal_reopen_refuses_without_wrapping",
+        "forged_near_limit_counters_are_refused_by_real_wal_recovery",
+        "stop_applied_but_custody_unrecorded_reconciles_once_and_refuses_id_reuse"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/policy_producer_helpers.rs",
+      "sha256": "88aad3f675c1426034bd349e8db90f22f05edd0bfb28527d51175691a7ca5ffd",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/policy_producers.rs",
+      "sha256": "e81ebdc52fe32b070c65e1eea47da4b5b67a85d0b61ade00d4f2602e31cf6ddb",
+      "count": 8,
+      "tests": [
+        "attestation_matches_applied_generation_after_restart",
+        "health_counters_bound_to_generation_and_reject_stale",
+        "pause_health_is_unavailable_after_restart",
+        "emergency_output_revoke_is_synchronous_without_router",
+        "emergency_stop_reconciles_original_context_after_restart",
+        "start_cannot_consume_prearmed_emergency_stop_id",
+        "receiver_cannot_consume_prearmed_emergency_stop_id",
+        "emergency_arming_refuses_operation_id_already_owned_by_receiver"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/policy_reply_schema.rs",
+      "sha256": "55724305e34c1b2ffd9782af483d94d01851fcfc28bd4b4a6dff3853e8cf1c2b",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/receiver_fetch_tests.rs",
+      "sha256": "27745348b345810687dbcd3cf22a2537e26f70fcf057dd1272a1a6dfe3274725",
+      "count": 3,
+      "tests": [
+        "receiver_fetch_serves_only_explicit_signed_snapshot_under_exact_scope",
+        "receiver_fetch_rechecks_revocation_after_metadata_before_data",
+        "receiver_action_expired_is_retained_without_dispatch_or_outcome"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/restart_adapter.rs",
+      "sha256": "b437092fc576f32d924b1be9a80c1b901aecc3cb6840c681fbe93d4de36f5c62",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/restart_admission.rs",
+      "sha256": "599b8d38cf883297958bd8e1cdbdf5854a3e3dcd7d7cfb8f791cc960b7da61bb",
+      "count": 2,
+      "tests": [
+        "restart_revalidation_refuses_expired_or_changed_authority",
+        "restart_kill_switch_refuses_resume"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/router_faults.rs",
+      "sha256": "9ba95ac158ab69a224b3d86ba59bb02f542ceda8c8f1f6a805719ca82fd4588f",
+      "count": 1,
+      "tests": [
+        "router_iroh_lost_reply_reorder_disconnect_restart_retains_old_batch_receipts"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/support/trusted_extension_cases.rs",
+      "sha256": "10af3a081617146dbc46f994fdc3e97f0683f95335849e43f6a1384501314c60",
+      "count": 0,
+      "tests": []
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/surface_health.rs",
+      "sha256": "0e8d78ab84fd04fb8c5cf55300cfd29522c28d595f4f9fc143e300ac05bd51e9",
+      "count": 2,
+      "tests": [
+        "idle_tick_emits_health_then_disconnects_at_three_seconds",
+        "late_input_cannot_revive_expired_link_and_full_output_fails_closed"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/surface_transport.rs",
+      "sha256": "c042430a4769df2177b52a77803b1d66cfcae8e16d86046cee2c9b4a528d5a36",
+      "count": 5,
+      "tests": [
+        "negotiated_reply_and_terminal_version_error_are_schema_valid",
+        "hello_identity_is_not_authentication_and_failure_cannot_negotiate",
+        "malformed_noncanonical_trailing_and_wrong_direction_are_fatal",
+        "health_queue_backpressure_does_not_copy_or_advance_clock",
+        "operational_input_before_hello_and_duplicate_hello_fail_closed"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/surface_wire_profile.rs",
+      "sha256": "dec6b89c464cc0d1a2c956972052e9d598a35e7606f223291047d1cbee687786",
+      "count": 10,
+      "tests": [
+        "wire_selection_is_negotiated_minor_not_local_ceiling",
+        "selected_02_app_event_read_action_through_wire",
+        "selected_02_invalid_fields_and_names_fail_closed",
+        "default_and_ceiling_01_refuse_new_names_even_when_peer_offers_02",
+        "local_02_downgrade_keeps_face_speech_and_withholds_every_product_name",
+        "downgraded_reconnect_cannot_retry_retained_app_dispatch_but_keeps_face_bytes",
+        "downgrade_denies_generic_two_component_catalog_but_default_01_keeps_it",
+        "CogletdWireProfileNegotiationAndDowngradeTest",
+        "native_guest_selected_02_app_event_emits_action_persisted_and_replayed",
+        "native_downgraded_02_app_required_manifest_stays_unadmitted_but_builtin_guest_runs"
+      ]
+    },
+    {
       "file": "repo/crates/coglet-runtime/tests/trace.rs",
       "sha256": "65e8729f60295ab9001e598e330fc15609499e0440b5fff58a797614313bb5b5",
       "count": 9,
@@ -126,6 +925,17 @@
         "independent_program_replay_and_segment_transfer_preserve_lifetime_state",
         "malformed_trace_header_record_and_blob_are_rejected",
         "replay_rejects_mismatched_independent_program_effects"
+      ]
+    },
+    {
+      "file": "repo/crates/coglet-runtime/tests/trusted_extension_catalog.rs",
+      "sha256": "e8fee6cee7de906604541075186b1c95dcd669d5bfd25b193f78da1b76f9810b",
+      "count": 4,
+      "tests": [
+        "daemon_local_contract_profile_provisioning",
+        "CogletdTrustedExtensionCatalogTest",
+        "selected_read_reply_uses_original_correlation_operation",
+        "pinned_loader_rejects_untrusted_or_open_catalogs"
       ]
     },
     {
@@ -306,6 +1116,6 @@
       ]
     }
   ],
-  "file_count": 26,
-  "test_definition_count": 122
+  "file_count": 95,
+  "test_definition_count": 453
 }
