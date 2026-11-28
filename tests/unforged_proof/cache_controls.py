@@ -8,6 +8,7 @@ exports, establish sandbox isolation, or qualify image upgrades/factory gates.
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -15,8 +16,15 @@ from hosted_receipts import Refused, validate_invocation
 
 
 def verify_cache_sequence(raw, *, program, inputs, resolver, endpoint, image, tree):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise Refused('duplicate bridge observation field')
+            result[key] = value
+        return result
     try:
-        events = [json.loads(line) for line in raw.splitlines() if line.strip()]
+        events = [json.loads(line, object_pairs_hook=unique) for line in raw.splitlines() if line.strip()]
         if len(events) != 4:
             raise Refused('exactly four ordered bridge observations required')
         discovery, *runs = events
@@ -69,12 +77,20 @@ def main():
     command = [str(args.bridge.resolve()), 'synthetic-cache-controls', '--synthetic-transport-only',
                str(probe/'os'), old['program'], old['input'], args.expected_resolver, args.expected_endpoint]
     process = subprocess.run(command, capture_output=True, text=True, timeout=600)
-    # Bridge emits only closed observations/sanitized fixed errors, never config.
-    (out/'bridge.jsonl').write_text(process.stdout)
-    (out/'bridge-error.txt').write_text(process.stderr)
+    # Redact defensively even though the bridge's own errors are fixed strings;
+    # dependencies may add diagnostics in future. Never persist broker values.
+    def redact(text):
+        for key in ('CAOS_IROH_TICKET', 'UNFORGED_CAOS_URL'):
+            value = os.environ.get(key)
+            if value:
+                text = text.replace(value, '[REDACTED]')
+        return re.sub(r'caos://[^\s]+', 'caos://[REDACTED]', text)
+    stdout, stderr = redact(process.stdout), redact(process.stderr)
+    (out/'bridge.jsonl').write_text(stdout)
+    (out/'bridge-error.txt').write_text(stderr)
     if process.returncode:
         raise Refused('bridge sequence failed; raw partial observations retained')
-    checked = verify_cache_sequence(process.stdout, program=old['program'], inputs=old['input'],
+    checked = verify_cache_sequence(stdout, program=old['program'], inputs=old['input'],
         resolver=args.expected_resolver, endpoint=args.expected_endpoint,
         image=args.expected_image, tree=old['recorded_output_tree'])
     result = dict(qualification='synthetic cache control ONLY; NOT stage2 PASS',

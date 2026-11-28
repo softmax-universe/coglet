@@ -221,3 +221,63 @@ and canaries, actual factory GateService entry, same-client warm and changed
 image/resolver controls, seven named qualification tests, final review/CI/native
 queue/main merge and containing-main proof remain unfinished. Do not promote this
 incremental synthetic model capability to any of those acceptance claims.
+
+## Continuation 6 — retained-client hosted cold/warm control, NOT PASS
+
+Committed source `eaa54c7ffa55dfa7689ce5fccdf97a4a3c268480` adds an explicit
+synthetic-only bridge command using ONE existing CaosClient/CaosDriverRunner for
+Bypass/Default/Default. No new scheduler/store/runner primitives. Existing discovery
+command remains supported. Three explicit bridge CLI negatives ran RED against the
+old binary, then GREEN after locked/offline rebuild. Three fast transcript
+negatives ran RED missing helper then GREEN; additional duplicate-envelope control
+ran RED with duplicate JSON accepted by parsing, then GREEN strict parser. Total
+31 fast tests pass normal/-O; 3 explicit built-bridge checks pass. Prior6 native
+runtime checks retained unchanged (not rerun this increment). Original95files/
+453definition inventory remains unchanged.
+
+ACTUAL same-client hosted control on the previously recorded synthetic model step1:
+
+- cold commit `df8e0d3a4fbdf428318a50d84038c0eb63eb49525ae5f992bf90de5e3a9377c7`,
+  executed=true/cache=none;
+- default1 `36672eded7a954eed784699cc13aef67e89cb6e3a867619160d424b148411e17`,
+  executed=false/cache=caos;
+- default2 `53b7bbf2deddb137f96b1f279ac7b3a1400559a387df580a5cce1ebb20fe4289`,
+  executed=false/cache=caos.
+
+All complete trees match genuine model step1
+`4df427705abb9aec15df95bea0cc782fa8d59b5d958ab2355a400e7d64fabbad`.
+Image/endpoint/resolver pins unchanged. This establishes remote warm HIT controls,
+not local cache hits or actual worker upgrade. Existing driver is source c6ff3b3,
+SHA2563da438d073ef5c642e20f0522ed28a38fca492b37fc8a0a541d5d6b6295cbe40.
+`verify_cache_probe.py` independently re-read3 actual raw commit/note pairs from
+retained trusted-client Git store. Five LOCAL revalidation negatives reject changed
+expected image/resolver, missing/ambiguous receipt and default2 miss; these are
+mutations/pin changes against actual captured observations, NOT hosted upgrades.
+Archive `evidence/hosted-cache-interim.zip`,4888bytes, SHA256
+`56949e63140d91bcc8c1f367a84d5987d77859e2b64ed74a715ae07cf7a4a7d0`.
+Independent review sa-0-9329bc9f approves exact eaa54c7 cache increment only;
+subsequent defensive-redaction/duplicate parsing/evidence not covered by that review.
+
+Reproduction (private Git first; ticket only env via broker):
+
+```
+CARGO_BUILD_JOBS=2 cargo build --locked --offline --manifest-path tests/unforged_proof/bridge/Cargo.toml --target-dir ../unforged/target
+python3 tests/unforged_proof/native_bridge_checks.py --bridge ../unforged/target/debug/coglet-hosted-bridge
+# Under token-broker exec --scope caos.prod.connect --reason 'stage2 synthetic retained client cache control' --
+python3 tests/unforged_proof/cache_controls.py --bridge ../unforged/target/debug/coglet-hosted-bridge --probe ../hosted-model-1 --output ../hosted-cache-controls-NEW --expected-endpoint e05401185f40e92e694c635fa75ba4a8cdef5bfcb0f7759f0713decfd6c3d6ce --expected-image native@sha256:2e92d104eed5ad02c0daa765c4b17aa35f6be942e39248ef53fdd4987b429ff5 --expected-resolver b79d195fc03d415bb16367921ef52606e880d1263679991ee290af3f26d2fb9f --synthetic-transport-only
+```
+
+Raw controls at workspace/hosted-cache-controls. Same store reruns may legitimately
+append ambiguous notes; do not delete/select receipt lines to claim PASS. Regenerate
+a fresh synthetic input/probe if needed. Defensive redaction now applies to wrapper
+outputs even though bridge errors are fixed strings.
+
+`TRANSPORT_FINDINGS.md` records independent read-only investigations
+sa-0-106ff8b3 and sa-0-6c5ffd9c. Public staging/wire upload splits exist but need
+complete harness orchestration. Standard program job can publish `/cas/out-trace`
+outside ABI root; supported deployed trace readback and real sandbox/canary evidence
+remain unresolved. Native fd3 path explicitly lacks sidecar. No fake diagnostics,
+new sandbox, upstream modifications or deployment. Next integrate those actual
+seams before factory evaluation/signing; do not replace gaps with callback spies.
+Full privacy/sandbox/factory/actual upgrades/seven qualification tests/final review/
+CI/native queue merge/containing-main proof remain. NOT stage2 PASS.

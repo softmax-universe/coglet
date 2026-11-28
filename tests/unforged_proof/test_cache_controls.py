@@ -12,6 +12,12 @@ class CacheControlRefusals(unittest.TestCase):
             program='a'*64, inputs='b'*64, resolver='c'*64,
             endpoint='d'*64, image='native@sha256:'+'e'*64, tree='f'*64)
 
+    def test_duplicate_envelope_fields_fail_closed(self):
+        with self.assertRaisesRegex(Refused, 'duplicate'):
+            verify_cache_sequence('{"same_client":false,"same_client":true}\n{}\n{}\n{}',
+                program='a'*64, inputs='b'*64, resolver='c'*64,
+                endpoint='d'*64, image='native@sha256:'+'e'*64, tree='f'*64)
+
     def test_missing_observation_fails_closed(self):
         with self.assertRaisesRegex(Refused, 'four'):
             self.check([])
