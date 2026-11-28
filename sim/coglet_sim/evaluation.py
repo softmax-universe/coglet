@@ -147,7 +147,7 @@ class _EvaluatorLink:
         self.parser, self.pending = Frames(), Output()
 
 
-def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1, coglet=C):
+def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_actions=1, coglet=C, archive=None):
     """Execute exact rewritten bytes, independently replay, check behavior.
 
     Caller pins tools, world and assertions. Returned data is unsigned, not a
@@ -256,8 +256,10 @@ def evaluate(tmp_path, tools, wasm, *, world, seed, max_steps=16, minimum_action
             child.wait(timeout=5)
             proof = tmp_path / 'proof.json'
             phase = 'proof'
-            subprocess.run([str(tools.proof), str(path/'setup.json'), str(path/'state.wal'),
-                            str(proof)], check=True, timeout=90)
+            proof_command = [str(tools.proof), str(path/'setup.json'), str(path/'state.wal'), str(proof)]
+            if archive is not None:
+                proof_command.append(str(Path(archive).resolve()))
+            subprocess.run(proof_command, check=True, timeout=90)
             report = json.loads(proof.read_text())
             phase = 'replay'
             assert report['independent_guest_reexecution']

@@ -272,8 +272,9 @@ class GateService:
     executable selection to a factory. Native cooperative tests are not OS
     isolation: deploy this process inside a separately restricted sandbox.
     """
-    def __init__(self, store, build_key, gate_key, tools):
+    def __init__(self, store, build_key, gate_key, tools, *, hosted=None):
         self.store, self.build_key, self.gate_key, self.tools = store, build_key, gate_key, tools
+        self.hosted = hosted
         self.tool_identity = {'daemon': digest(tools.daemon.read_bytes()),
                               'proof': digest(tools.proof.read_bytes())}
         # Pin adapter/evaluator/SDK Python source as well as native tools. A suite
@@ -290,15 +291,20 @@ class GateService:
         source.append(('abi-fixture-setup', digest((ROOT / 'conformance/abi/cases.json').read_bytes())))
         source.append(('python', sys.version))
         self.tool_identity['adapter'] = digest(canonical(source))
+        self.hosted_tool_identity = None
+        if hosted is not None:
+            from .hosted import identity
+            self.hosted_tool_identity = {**self.tool_identity, 'hosted': identity(hosted),
+                'hosted_verifier': digest((Path(__file__).parent / 'hosted.py').read_bytes())}
 
-    def evaluate(self, work, request, rewritten):
+    def _evaluate_native(self, work, request, rewritten, *, expected_tools=None, archive=None):
         # Snapshot mutable caller input before any external execution.
         request = json.loads(canonical(request))
         binding, suite = validate_request(request, self.gate_key)
         read_build(self.store, self.build_key, request['build'], binding)
         if not isinstance(rewritten, bytes) or digest(rewritten) != binding.rewritten_sha256:
             raise Refused('rewritten bytes mismatch')
-        if request['tools'] != self.tool_identity:
+        if request['tools'] != (self.tool_identity if expected_tools is None else expected_tools):
             raise Refused('operator-pinned tool identities mismatch')
         from coglet_sim.evaluation import NativeTools, evaluate
         # Execute private copies of the pinned native binaries, closing the path
@@ -312,11 +318,62 @@ class GateService:
                     raise Refused('native tool changed')
                 target.chmod(0o500)
                 paths.append(target.resolve())
+            options = {} if archive is None else {'archive': archive}
             report = evaluate(Path(work), NativeTools(*paths), rewritten, world=suite.world,
                               seed=suite.seed, max_steps=suite.max_steps,
-                              minimum_actions=suite.minimum_actions, coglet=binding.coglet)
+                              minimum_actions=suite.minimum_actions, coglet=binding.coglet, **options)
         if (report['rewritten_sha256'] != binding.rewritten_sha256
+                or report.get('coglet') != binding.coglet
+                or report.get('independent_guest_reexecution') is not True
+                or type(report.get('passed')) is not bool
                 or any(report[k] != suite.document()[k] for k in ('world', 'seed', 'max_steps', 'minimum_actions'))):
             raise Refused('native evaluator returned mismatched configuration')
+        return report
+
+    def evaluate(self, work, request, rewritten):
+        request = json.loads(canonical(request))
+        report = self._evaluate_native(work, request, rewritten)
         return self.store.put(dict(request=request, tools=self.tool_identity, report=report,
+                                   qualification='fixture-only'), self.gate_key, 'evaluation')
+
+    def evaluate_hosted(self, work, request, rewritten):
+        """Native suite plus operator-owned authenticated hosted reexecution.
+
+        No candidate report, endpoint, key or tool selection is accepted here.
+        Refusals/infrastructure errors publish no evaluation. Challenges are still
+        consumed ONLY by GateVerifier.accept_fixture, never by this method.
+        The trusted hosted plugin verifies the complete transport; the service
+        additionally requires exact coverage/tree/salt/pin binding before signing.
+        """
+        from .hosted import identity, validate_steps
+        if self.hosted is None or self.hosted_tool_identity is None:
+            raise Refused('operator hosted evaluator not configured')
+        request = json.loads(canonical(request))
+        expected = json.loads(canonical(self.hosted_tool_identity))
+        if identity(self.hosted) != expected['hosted']:
+            raise Refused('operator hosted evaluator identity changed')
+        try:
+            with tempfile.TemporaryDirectory(prefix='gate-hosted-', dir=work) as private:
+                archive_path = Path(private) / 'archive.json'
+                report = self._evaluate_native(work, request, rewritten,
+                    expected_tools=expected, archive=archive_path)
+                with archive_path.open('rb') as stream:
+                    raw = stream.read(64 * 1024 * 1024 + 1)
+                if len(raw) > 64 * 1024 * 1024:
+                    raise Refused('bounded native archive required')
+                archive = json.loads(raw)
+                # Keep the independent native oracle immutable to a mutable callback.
+                attempt = secrets.token_hex(32)
+                steps = self.hosted.evaluate(Path(private), json.loads(canonical(request)),
+                                             json.loads(canonical(archive)), attempt=attempt)
+                steps = json.loads(canonical(steps))
+                if identity(self.hosted) != expected['hosted']:
+                    raise Refused('operator hosted evaluator identity changed')
+                evidence = validate_steps(steps, archive, request, expected['hosted'], attempt)
+                report['hosted'] = evidence
+        except Exception as error:
+            if isinstance(error, Refused):
+                raise
+            raise Refused('hosted evaluation unavailable; no artifact published') from error
+        return self.store.put(dict(request=request, tools=expected, report=report,
                                    qualification='fixture-only'), self.gate_key, 'evaluation')
