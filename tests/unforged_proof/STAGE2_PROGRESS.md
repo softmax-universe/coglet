@@ -364,3 +364,40 @@ retained. Runtime/factory unchanged; no seven named hosted suite yet. Full
 STANDARD filesystem proof wrapper, genuine safe canaries, complete pregrant
 transport closure, factory nonce/signing, actual upgrades and final CI/merge/
 containing-main remain. No PR/newcards/deploy/capacity/background jobs.
+
+## Continuation 9 — actual recorded driver inside strict STANDARD; NOT PASS
+
+The major next seam is now exercised, not another discovery-only probe. Existing
+STANDARD worker runs unchanged static filesystem driver INSIDE strict namespace/
+proxy-only, no socket/fd3/secrets forwarding. Outer publication preserves entire
+ABI root with separate sidecar. Actual reviewed-source model0+1 and all9Gridbot
+replay+all9fork steps match genuine recorded whole trees. Raw CAOS SHA1 objects
+are independently hash-checked and recursively converted to SHA256 without
+projecting empty directories. All18Gridbot transcripts reverified after capture.
+Exact byte-bound worker/state/driver IDs, fresh salt/miss/exact-image observations
+and authenticated completed-status/sidecar/raw-object readbacks retained.
+
+Independent review first requested fixes (observation storage, exact bytes,
+empty dirs and fresh-miss field). Fixed outer pipe before driver exec, mktemp,
+complete raw tree conversion and strict confirmation in both Rust/Python.
+Incrementf59b2fe68e489d7312d5a9b921a71970b5ae74f1 independently approved
+sa-0-1e81ab03, rebuilt then remotely rerun. Batch conveniencesbfc4dbe/90ecb39
+not final-reviewed. Bridge1dc1ba3c..., unchanged static driver3da438d... .
+STANDARD_EVIDENCE.md holds full pins/commands/results/limitations. Durable raw
+archiveevidence/hosted-standard-interim.tar.xz286704bytes SHA256
+3ab16fe97bb88929223b8b73244608f23f4b5ccb5171e288009562cd91536cc3.
+
+Honest failures: mistyped endpoint model1 refused preupload; corrected pinned
+retry passed. Original batch tool300s timedout after9replay+fork0, no receipt for
+incomplete fork1; tail explicitly ran8remaining in newdirectory and passed. No
+jobs remain. Pre-review first model0 preserved distinctly, never relabeled.
+51fast normal/-O +8builtBridge +6native PASS; original95files453definitions
+retained. No seven named hosted qualification suite/factory changes yet.
+
+Full initial private closure grant/per-send authorization, genuine safe canaries,
+actual factory nonce/evaluation/signing, changed resolver/image, final review/
+requiredCI/nativequeue/main/containing-main remain. No stage2PASS, no PR/newcards/
+deploy/capacity/paidservices. Next complete authorization using the now simple
+public STANDARD staging/wire seam, NOT copied runner/premerge semantics; factory
+must retain fixture-only authority and refusal/no consumed challenge on infra
+failure. No diagnostic-only rediscovery necessary.
