@@ -17,7 +17,9 @@ final class RuntimeAppSurfaceTests: XCTestCase {
         let source = try XCTUnwrap(ProcessInfo.processInfo.environment["SOFTMAX_ECHO_INSTALL"])
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("app-host-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root.appendingPathComponent("surface"), withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        defer { try? FileManager.default.removeItem(at: root) }
+        // Teardown blocks run in reverse order: stop the global runtime before
+        // removing its files, even when an assertion unwrap or ledger read throws.
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
         try Data(CogletTypes.CBORCodec.encodeProfile(.map([]))).write(to: root.appendingPathComponent("surface/ledger.cbor"))
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: root.appendingPathComponent("surface/ledger.cbor").path)
         let installed = URL(fileURLWithPath: source)
@@ -42,13 +44,18 @@ final class RuntimeAppSurfaceTests: XCTestCase {
         var focusRequests = 0
         var focused = false
         let userFocus = { focusRequests += 1; return true }
-        let entered = expectation(description: "native focus settling entered")
-        let finished = expectation(description: "actual native focus witness settled")
+        let entered = XCTestExpectation(description: "native focus settling entered")
+        let finished = XCTestExpectation(description: "actual native focus witness settled")
         var resume: CheckedContinuation<Void, Never>?
         let registry = ControlRegistry(revision: 1, currentRoute: { $0 == "settings" ? "general" : nil })
-        registry.focusSettling = .init(timeout: .seconds(10), interval: .milliseconds(10),
-            now: { ContinuousClock.now }, sleep: { _ in
+        // The injected policy must obey the production two-second maximum.
+        // Freeze only the local settling clock: the explicit continuation, not
+        // runner scheduling, controls when the native witness becomes true.
+        let instant = ContinuousClock.now
+        registry.focusSettling = .init(timeout: .seconds(2), interval: .milliseconds(10),
+            now: { instant }, sleep: { _ in
                 await withCheckedContinuation { continuation in resume = continuation; entered.fulfill() }
+                try Task.checkCancellation()
                 focused = true
                 finished.fulfill()
             })
@@ -67,6 +74,15 @@ final class RuntimeAppSurfaceTests: XCTestCase {
                 "face": object(["visible": .boolean(false), "mode": .text("full"), "expression": .text("neutral"), "status": .text("idle")])])
         }, currentRoute: { $0 == "settings" ? "general" : nil }, navigate: { _, _ in }, open: { _ in }, close: { _ in })
         let host = RuntimeHost(directory: root)
+        addTeardownBlock { @MainActor in
+            await host.stop()
+            // A checked continuation does not wake on task cancellation. Release
+            // a suspended fixture after stop has fenced its native command.
+            resume?.resume()
+            resume = nil
+            XCTAssertEqual(host.state, .stopped, host.errorMessage ?? "")
+            XCTAssertNil(registry.onChange)
+        }
         host.automaticallyPolls = false
         host.installAppSurface(adapter, refresh: { try registry.nativeStateChanged() }, events: { registry.onChange = $0 })
         await host.start()
@@ -79,7 +95,9 @@ final class RuntimeAppSurfaceTests: XCTestCase {
         XCTAssertFalse(focused, "Suspension must not manufacture terminal success")
         let pendingLedger = try CogletTypes.CBORCodec.decodeProfile(Array(Data(contentsOf: root.appendingPathComponent("surface/ledger.cbor"))))
         XCTAssertEqual(pendingLedger["records"]?[owner + "/" + actionID]?["outcome"], .array([]))
-        try XCTUnwrap(resume).resume()
+        let continuation = try XCTUnwrap(resume)
+        resume = nil // teardown must not resume this continuation twice
+        continuation.resume()
         await fulfillment(of: [finished], timeout: 2)
         await host.poll()
         XCTAssertEqual(focusRequests, 1)
