@@ -335,3 +335,32 @@ serialize private wire data before initial grant. Runtime/factory code remains
 unedited. Genuine sandbox/effect canaries, actual resolver/image invalidation,
 7named suite, final review/CI/mainqueue/containing-main proof remain unfinished.
 No PR/newcards/deploy/paidservice/background jobs. NOT stage2 PASS.
+
+## Continuation 8 — supported strict nested sandbox exercised; NOT PASS
+
+Existing strict inner `unforge caos-sandbox-exec --mode namespace --net proxy-only`
+now actually executes on the hosted worker without proxy socket/fd3 preservation,
+real secrets, base/resolver mounts, deployment or primitive changes. Initial
+reviewed-source4e6d749 request376607... honestly refused inner125/EROFS. Existing
+`--caos-bin` and `--unforge-bin` avoid trying to rewrite the inherited read-only
+/bin/caos mount; source67dc3e7 confirmed this. Follow-up independently reviewed
+sourceaf9618b11b183b1c70cc157516a9936a117b1399 (sa-0-5b2ed597) then reran hosted:
+requestaefbf7079dfafbba99f98dd2dbf4d39e24aef316, sidecar69b32b41f92e3c54dd70f771e969d4e7063766f8,
+stdout0b4d0d045e27d1a447a0d5424c577b9e131ea11f. Actual outer/inner netns differ,
+exit0, CAOS_SERVER_URL unset, fd3closed. Separate authenticated status+raw sidecar
+and stdout readback passes exact raw Gitblob/invocation/image verifier. These are
+observations, NOT complete no-effects proof or actual Coglet execution in this
+sandbox. No canary ran; no fabricated counters.
+
+`ISOLATION_EVIDENCE.md` records exact commands, binary/source hashes and honest
+failure/success provenance. `diagnostics_probe.py --strict-isolation` and
+`verify_diagnostic_probe.py --strict-isolation` rerun/verify this supported route.
+41fast normal/-O +8builtBridge CLI refusals PASS; all6native replay checks PASS
+on newly rebuilt static driver (same3da438d... bytes). Initial driver offline
+build failed missing clap cache; locked normal fetch/build succeeded. Bridge
+3f33f2c055287fc0d377cf9841d9e2d6e63b4f669215cc47ef4c19f5ac3c6b7f.
+No privateGit/unforge CLI build yet on this host. Original95files453definitions
+retained. Runtime/factory unchanged; no seven named hosted suite yet. Full
+STANDARD filesystem proof wrapper, genuine safe canaries, complete pregrant
+transport closure, factory nonce/signing, actual upgrades and final CI/merge/
+containing-main remain. No PR/newcards/deploy/capacity/background jobs.
