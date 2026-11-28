@@ -69,6 +69,7 @@ def main():
         # Retain the exact public challenge for independent salt verification;
         # challenge MAC is not a key or bearer credential to CAOS/private data.
         (out/'request.json').write_bytes(canonical(request))
+        (out/'artifact.json').write_bytes((store.root/artifact).read_bytes())
         (out/'evaluation.json').write_bytes(canonical(value))
         result=dict(artifact=artifact,steps=len(value['report']['hosted']['steps']),
             behavioral_passed=value['report']['passed'],qualification=value['qualification'],
