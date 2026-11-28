@@ -16,7 +16,10 @@ import SoftmaxCore
     func transcribe(_ utterance: Utterance) async throws -> String {
         let current = UUID(); revision = current
         let allowed = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
+            // Speech/TCC may invoke this legacy ObjC block off the main actor.
+            SFSpeechRecognizer.requestAuthorization { @Sendable status in
+                continuation.resume(returning: status == .authorized)
+            }
         }
         guard revision == current, allowed, let recognizer = SFSpeechRecognizer(), recognizer.supportsOnDeviceRecognition else { throw Failure.unavailable }
         let request = SFSpeechAudioBufferRecognitionRequest()
@@ -35,7 +38,9 @@ import SoftmaxCore
         request.endAudio()
         return try await withCheckedThrowingContinuation { continuation in
             pending = continuation
-            recognition = recognizer.recognitionTask(with: request) { [weak self] result, error in
+            // Snapshot non-Sendable Speech objects here, then cross to MainActor.
+            // The block itself must not inherit MainActor from transcribe().
+            recognition = recognizer.recognitionTask(with: request) { @Sendable [weak self] result, error in
                 let final = result?.isFinal == true
                 let text = result?.bestTranscription.formattedString
                 let failed = error != nil
