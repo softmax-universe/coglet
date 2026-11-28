@@ -1,4 +1,8 @@
-# Router protocol — 2.0
+# Router protocol — 2.1 (2.0 retained)
+
+Router 2.1 adds the presence methods specified below by
+[ADR-0045](../docs/adr/0045-presence-attention-router-wire.md).
+The prior 2.0 method semantics and build-provenance version remain unchanged.
 
 ADR-0035 takes its fallback: merged router 1.0 retains its CBOR hash meaning.
 Its normative text and schema snapshots are retained in
@@ -35,8 +39,10 @@ bad arguments receives `invalid_argument`; a valid operation failure receives
 SHOULD send a failure before closing when it can safely identify the request.
 
 Every connection begins with `hub.enroll`, initiated by the device, with common
-`version-offer`; a success carries common `version-selection`. Only 2.0 is
-supported here. The ALPN suffix identifies unchanged transport framing, not
+`version-offer`; a success carries common `version-selection`. Versions 2.0 and
+2.1 are supported here; greatest offered supported version wins. Presence
+methods/results and presence method names in delegations MUST NOT be sent or
+accepted on a 2.0 session. The ALPN suffix identifies unchanged transport framing, not
 the selected message version. Common and surface 0.1 shapes remain unchanged;
 there is no negotiation fallback to the removed hub 0.1 method set. No other operation is admitted before success. The initiator
 verifies selection. An already enrolled node sends `invite: null`; this still
@@ -127,19 +133,138 @@ relay binding instead, and enroll uses its one-use invite/allowlist.
 
 `manage.read` and `manage.write` never imply one another or pause/step. A manage
 reader needing pause or single-step needs those additional explicit grants.
-All methods above are the entire 2.0 method set; unknown methods fail
+All methods above plus the 2.1 presence table below are the entire method set;
+unknown methods fail
 `invalid_argument`, not extension fallback. Grant provisioning/revocation is
 operator configuration, not a remotely self-authorizing method.
 
 The successful `hub-success.result` union is selected by the original method,
 not freely interchangeable: enroll → hub-enroll-result; status → hub-status;
 read → hub-read-result; events → hub-events-result; actions → common
-action-accept; step → hub-step-result; tail_log → manage-tail-log-result; health → hub-empty; all other
-methods → hub-mutation-receipt. Reply shape mismatch fails the operation.
+action-accept; step → hub-step-result; tail_log → manage-tail-log-result; health → hub-empty;
+presence.get/set → presence-state; presence.request/changed/check_in → hub-empty;
+all other methods → hub-mutation-receipt. Reply shape mismatch fails the operation.
 Mutation receipts may be queued or terminal except pause/stop/step/manage.patch,
 which wait for their specified boundary or time out; receipt polling recovers
 their state. `hub.cancel` returns the original operation's cancelled receipt;
 if already applied it returns `conflict` without changing that receipt.
+
+## Presence and attention (2.1 only)
+
+This section closes ADR-0036's messages. In ADR-0040's terminology the attention
+is the attending router coglet; this extension does not implement router peering
+or transfer of attending-router authority. In this single-router contract,
+`cogent` is the existing `hub-id` of its configured attending router. It is a
+scope selector, never proof of identity. Unknown/foreign scope MUST be refused.
+
+| Method | Direction | Params | Success result |
+|---|---|---|---|
+| `presence.get` | authorized actor via runtime → router | `{cogent}` | `presence-state` |
+| `presence.set` | authorized actor via runtime → router | `{cogent, base, add, remove, ?attention, ?limit, ?reason}` | `presence-state` |
+| `presence.request` | authenticated hosted coglet via runtime → router | `{cogent, coglet, urgency, reason}` | `hub-empty` |
+| `presence.changed` | router → subscribed runtimes / entering or leaving coglet | `presence-state` | `hub-empty` |
+| `presence.check_in` | router → attention | `{cogent, coglet, status, held, dropped}` | `hub-empty` |
+
+All use the existing closed request record with `target: null`, fresh durable
+`correlation_id`, bounded `timeout_ms`, typed `params`, and mandatory
+`context: {actor, ?ticket}`. Each stream has one terminal reply. Notifications
+are requests with durable outbox IDs; retry byte-identically and deduplicate
+before application, not new events on each retry. They are not an unbounded
+subscription stream. Router runtime fanout routes to the intended recipients;
+notification grants are scoped to the recipient and named cogent. A recipient
+MUST NOT accept a device-originated changed/check_in as router authority.
+
+`presence-state = {cogent, attention, present, limit, revision}`. `attention`
+is a coglet-id; present/add/remove arrays contain at most 255 coglet-ids; limit
+is 0..255, initially 4; revision is uint64, initially zero. Attention is implicitly
+present, MUST NOT occur in present, and does not count toward limit. Present,
+add and remove MUST each be unique. All referenced coglets MUST belong to this
+cogent. Add/remove overlap and a resulting present count above the resulting
+limit return `invalid_argument`. Removing a nonpresent member is a no-op.
+Changing attention to an explicitly present member requires removing it in that
+same change. Actual changes increment revision once; no-ops retain revision.
+Revision overflow returns `resource_exhausted`, never wraps.
+
+Set requires the exact `presence.set` grant under authenticated actor/ticket and
+cogent scope. Supplying attention OR limit additionally requires the distinct
+`presence.attention` grant, including unchanged values. Default provisioning gives
+set to attention and owner, and attention/limit authority only to owner; sharing
+the owner's runtime does not inherit it. Compare base to current revision and
+commit the state, durable retry result and notification outbox atomically. Stale
+base returns `conflict` with no side effect. Admission and application both
+recheck current authority. Exact-ID identical retries recover their saved result;
+conflicting ID reuse returns conflict, never a second mutation.
+
+Presence never changes lifecycle or grants. Get and changed subscription need
+separate exact grants. Entering/leaving coglets have implicit self-only changed
+notification authority. Every runtime learns presence to forward local absent
+messages to the router rather than bypass its holds. Stop/removal removes the
+coglet from presence and delivers its hold in a final check-in. Attention changes
+retain holds and deliver them to the new attention in its first check-ins.
+
+A presence.request source is stamped by its runtime from its authenticated
+hosted-source binding. The router MUST reject a params.coglet different from that
+binding, even if the same runtime hosts it. Urgency is low/high, a hint only;
+reason is nonempty text with at most 1024 encoded UTF-8 bytes (the JSON Schema
+character bound alone is insufficient; implementations MUST check bytes too). A request does not itself change presence. Admit at
+most one per coglet per 60000 router-monotonic milliseconds; earlier requests
+return `resource_exhausted`. Equality at the interval boundary is legal.
+An admitted request MUST be forwarded immediately to attention using the same
+closed `presence.request` request shape on a router-originated stream (target
+remains null; the receiving runtime dispatches it to its configured attention
+coglet). The router asserts the original authenticated actor/ticket context,
+retains the stamped source/urgency/reason, and uses a fresh durable notification
+ID. Commit the rate timestamp, original request receipt and forwarding outbox
+atomically before acknowledgement. Retry identical original requests from their
+saved receipt without consuming a second rate slot or creating another forward;
+the attention deduplicates the notification ID. Missing capacity returns
+resource_exhausted without consuming the timestamp. A runtime accepts this
+attention-facing notification only from its authenticated configured router;
+it never re-originates it as a coglet attention request.
+
+Only unsolicited messages from absent coglets addressed to attention are held.
+Same-runtime sends take the same router path. Present traffic and traffic to
+other destinations are unaffected. Answers AND follow-up updates carrying an
+attention-originated call's correlation_id bypass holds only after matching the
+retained authenticated call, sender and destination. An echoed ID or a message
+kind such as ticket.update is NOT authority to bypass. Correlation history is
+retained until the call/follow-ups end under the owning operation contract;
+unknown or revoked provenance fails closed, never bypasses by guessing.
+
+Each absent coglet's hold is FIFO with cap 64 by default (configuration may lower,
+not raise, that cap). The 64th message triggers an early check-in when permitted;
+early check-ins are at least 10000 router-monotonic milliseconds apart per coglet.
+While limited, overflow drops the oldest message and increments dropped.
+At an eligible early-check-in with an already full hold, drain the old hold first
+and retain the incoming message for the next batch, never emit 65 entries.
+`held` contains existing hub-inbox-delivery records oldest first. `status` is the
+actual existing hub-status obtained with the router's explicit manage status
+authority; no fabricated healthy value on lookup failure. If unavailable, retain
+the batch and retry rather than draining it. Count drops since the last committed
+check-in. Counter overflow refuses new admission with resource_exhausted.
+
+Every frame still fits the 1048576 encoded-CBOR-byte limit, independently of
+message count/Unicode character bounds. Before holding, refuse an individual
+hub-inbox-delivery whose deterministic CBOR encoding exceeds 524288 bytes with
+resource_exhausted and no hold/counter mutation. A check-in status encoding MUST
+fit 16384 bytes; an oversized status is unavailable for this operation, retaining
+the hold until a bounded status can be obtained. These bounds leave room for a
+single held record plus status and fixed frame/context overhead; a large but
+otherwise legal inbox event cannot become permanently undeliverable at the FIFO
+head. Enforce an additional configured router
+held-byte budget; refuse new admission if it cannot be retained, not unlimited
+memory behind a count bound. Split check-ins at record boundaries for frame size;
+retain unsent records, and report accumulated drops only in the first committed
+batch. Check-in dequeue, dropped reset, retry bytes and destination outbox commit
+atomically. A failed/unacknowledged send retries the retained batch, not a second
+drain. Cadence is router configuration (a few minutes by default; slower when
+empty), not a new remotely self-authorizing method.
+
+Rate timestamps/counters use one durable router epoch across reconnect/restart.
+Unprovable continuity fails closed (`unavailable`), never resets a rate bucket.
+These temporal and authority constraints are separate from shape validation.
+Spec-only oracles and golden vectors do not qualify a serving router or a real
+client reply/expression stream. Product payloads remain product-owned.
 
 ## Lifecycle and boundary ordering
 

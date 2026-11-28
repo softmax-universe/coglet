@@ -106,9 +106,11 @@ enum('hub-state', ['stopped', 'running', 'paused', 'faulted'])
 methods = ['hub.enroll', 'hub.install', 'hub.start', 'hub.stop', 'hub.status',
            'manage.patch', 'manage.tail_log', 'hub.events', 'hub.actions',
            'manage.read', 'manage.write', 'manage.pause', 'manage.step',
-           'hub.inbox', 'hub.health', 'hub.receipt', 'hub.cancel']
+           'hub.inbox', 'hub.health', 'hub.receipt', 'hub.cancel',
+           'presence.get', 'presence.set', 'presence.request',
+           'presence.changed', 'presence.check_in']
 enum('hub-method', methods)
-array('hub-methods', 'hub-method', len(methods))
+array('hub-methods', 'hub-method', 17)  # Preserve the existing delegation list bound.
 enum('hub-purpose-delegation', ['delegation'])
 obj('hub-delegation-statement', {'purpose': 'hub-purpose-delegation', 'coglet': 'coglet-id', 'device': 'node-id',
     'hub': 'node-id', 'generation': 'uint64', 'expires': 'uint64', 'methods': 'hub-methods'})
@@ -149,19 +151,41 @@ obj('hub-inbox-params', {'message': 'hub-inbox-delivery', 'actor': 'source-id', 
 obj('hub-health-params', {'device': 'node-id', 'uptime_ms': 'uint64', 'queue_depth': 'uint64',
                           'available_bytes': 'uint64', 'coglets': 'hub-health-items'})
 obj('hub-operation-params', {'operation_id': 'correlation-id'})
+# Router 2.1 presence: common identities/envelopes remain imported unchanged.
+bounded('presence-limit', 0, 255)
+array('presence-coglets', 'coglet-id', 255)
+add('presence-reason', 'tstr .size (1..1024)',
+    {'type': 'string', 'minLength': 1, 'maxLength': 1024}, 'User engagement')
+enum('presence-urgency', ['low', 'high'])
+obj('presence-state', {'cogent': 'hub-id', 'attention': 'coglet-id',
+    'present': 'presence-coglets', 'limit': 'presence-limit', 'revision': 'uint64'})
+EX['presence-state'].update(present=[], limit=4)
+obj('presence-get-params', {'cogent': 'hub-id'})
+obj('presence-set-params', {'cogent': 'hub-id', 'base': 'uint64',
+    'add': 'presence-coglets', 'remove': 'presence-coglets',
+    'attention': 'coglet-id', 'limit': 'presence-limit', 'reason': 'presence-reason'},
+    optional=['attention', 'limit', 'reason'])
+EX['presence-set-params'].update(add=[], remove=[])
+obj('presence-request-params', {'cogent': 'hub-id', 'coglet': 'coglet-id',
+    'urgency': 'presence-urgency', 'reason': 'presence-reason'})
+array('presence-held', 'hub-inbox-delivery', 64)
+obj('presence-check-in-params', {'cogent': 'hub-id', 'coglet': 'coglet-id',
+    'status': 'hub-status', 'held': 'presence-held', 'dropped': 'uint64'})
 params = ['hub-enroll-params', 'hub-install-params', 'hub-empty', 'hub-empty', 'hub-empty',
           'manage-patch-params', 'manage-tail-log-params', 'hub-events-params', 'hub-actions-params',
           'hub-read-params', 'hub-write-params', 'hub-empty', 'hub-empty', 'hub-inbox-params',
-          'hub-health-params', 'hub-operation-params', 'hub-operation-params']
+          'hub-health-params', 'hub-operation-params', 'hub-operation-params',
+          'presence-get-params', 'presence-set-params', 'presence-request-params',
+          'presence-state', 'presence-check-in-params']
 requests = []
 obj('hub-context', {'actor': 'source-id', 'ticket': 'correlation-id'}, optional=['ticket'])
 for method, p in zip(methods, params):
     name = method.replace('.', '-') + '-request'
     m = enum(name + '-method', [method])
-    target = 'hub-null' if method in ['hub.enroll', 'hub.health'] else 'coglet-id'
+    target = 'hub-null' if method in ['hub.enroll', 'hub.health'] or method.startswith('presence.') else 'coglet-id'
     fields = {'method': m, 'target': target, 'correlation_id': 'correlation-id',
               'timeout_ms': 'hub-timeout', 'params': p}
-    if method in ['hub.install', 'hub.start', 'hub.stop', 'hub.status', 'manage.patch', 'manage.tail_log', 'manage.read', 'hub.actions', 'manage.pause', 'manage.step', 'hub.receipt', 'hub.cancel']:
+    if method.startswith('presence.') or method in ['hub.install', 'hub.start', 'hub.stop', 'hub.status', 'manage.patch', 'manage.tail_log', 'manage.read', 'hub.actions', 'manage.pause', 'manage.step', 'hub.receipt', 'hub.cancel']:
         fields['context'] = 'hub-context'
     obj(name, fields)
     requests.append(name)
@@ -172,7 +196,7 @@ obj('hub-read-result', {'step': 'uint64', 'snapshot_hash': 'hub-hash', 'text': '
 obj('hub-events-result', {'next_offset': 'uint64'})
 obj('hub-step-result', {'receipt': 'hub-mutation-receipt', 'step': 'uint64'})
 results = ['hub-enroll-result', 'hub-mutation-receipt', 'hub-status', 'action-accept',
-           'hub-read-result', 'hub-events-result', 'hub-step-result', 'hub-empty']
+           'hub-read-result', 'hub-events-result', 'hub-step-result', 'hub-empty', 'presence-state']
 union('hub-result', results)
 obj('hub-success', {'type': enum('hub-success-type', ['reply']), 'correlation_id': 'correlation-id', 'result': 'hub-result'})
 obj('hub-failure', {'type': enum('hub-failure-type', ['error']), 'correlation_id': 'correlation-id', 'error': 'error'})
@@ -270,6 +294,29 @@ for i, path in enumerate(['/logs', '/logs/', '/data/a', 'logs/a', '/logs//a', '/
     fixture(f'log-path-invalid-{i}', 'manage-log-path', path, False)
     fixture(f'log-entry-invalid-{i}', 'manage-log-entry',
             {'path': path, 'file_offset': 0, 'hex': 'ff'}, False)
+
+# Presence 2.1 public-root negatives and golden optional-field controls.
+for method in methods:
+    if not method.startswith('presence.'):
+        continue
+    selected = method.replace('.', '-') + '-request'
+    good = copy.deepcopy(EX[selected])
+    if method == 'presence.set':
+        good['params'].update(attention=COG, limit=4, reason='Engaged')
+    for rule in [selected, 'hub-request', 'hub-frame']:
+        fixture(f'{selected}-{rule}-control', rule, good, True)
+        for field in ['unknown', 'context']:
+            bad = copy.deepcopy(good)
+            if field == 'unknown':
+                bad['params']['unknown'] = True
+            else:
+                del bad['context']
+            fixture(f'{selected}-{rule}-{field}', rule, bad, False)
+for rule, bad in [('presence-limit', 256), ('presence-limit', -1),
+                  ('presence-coglets', [COG] * 256),
+                  ('presence-held', [EX['hub-inbox-delivery']] * 65),
+                  ('presence-reason', ''), ('presence-urgency', 'urgent')]:
+    fixture(f'presence-bounds-{len(cases)}', rule, bad, False)
 
 folder = SPEC / 'fixtures/hub'
 folder.mkdir(exist_ok=True)
