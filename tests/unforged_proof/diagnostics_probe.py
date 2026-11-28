@@ -16,7 +16,8 @@ def main():
     parser.add_argument('--bridge', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--expected-endpoint', required=True)
-    parser.add_argument('--expected-image', required=True)
+    parser.add_argument('--expected-image')
+    parser.add_argument('--request', help='Read-only follow-up for a retained synthetic request')
     args = parser.parse_args()
     if not args.synthetic_transport_only:
         raise SystemExit('refused: no full private transport authorization')
@@ -25,8 +26,14 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     bridge = args.bridge.resolve()
-    command = [str(bridge), 'synthetic-diagnostics', '--synthetic-transport-only',
-               args.expected_endpoint, args.expected_image, secrets.token_hex(32)]
+    if args.request is not None:
+        command = [str(bridge), 'synthetic-status', '--synthetic-transport-only',
+                   args.expected_endpoint, args.request]
+    else:
+        if not args.expected_image:
+            raise SystemExit('refused: expected image required for execution')
+        command = [str(bridge), 'synthetic-diagnostics', '--synthetic-transport-only',
+                   args.expected_endpoint, args.expected_image, secrets.token_hex(32)]
     provenance = dict(command=command, bridge_sha256=hashlib.sha256(bridge.read_bytes()).hexdigest(),
                       qualification='diagnostic transport capability only; NOT stage2 PASS')
     (output/'command.json').write_text(json.dumps(provenance, indent=2)+'\n')

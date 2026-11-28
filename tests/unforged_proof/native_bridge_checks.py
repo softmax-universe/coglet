@@ -26,6 +26,12 @@ class BridgeRefusals(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('synthetic-only acknowledgement', p.stderr)
 
+    def test_status_rejects_bad_pins_before_credentials(self):
+        p = self.invoke('synthetic-status', '--synthetic-transport-only',
+                        'a'*64, 'not-an-argtree')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('endpoint and SHA-1 request identities', p.stderr)
+
     def test_diagnostics_requires_explicit_synthetic_ack(self):
         p = self.invoke('synthetic-diagnostics')
         self.assertNotEqual(p.returncode, 0)

@@ -25,6 +25,16 @@ fn run() -> Result<(), &'static str> {
             }
             true
         }
+        Some("synthetic-status") => {
+            if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
+                return Err("synthetic-only acknowledgement required; no private transport qualification");
+            }
+            if args.len() != 4 || !is_oid(&args[2]) || args[3].len() != 40
+                || !args[3].bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) {
+                return Err("endpoint and SHA-1 request identities required");
+            }
+            false
+        }
         Some("synthetic-diagnostics") => {
             if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
                 return Err("synthetic-only acknowledgement required; no private transport qualification");
@@ -45,10 +55,12 @@ fn run() -> Result<(), &'static str> {
     let identity = gecaos::iroh_net::IrohTicket::parse(&config.base_url)
         .map_err(|_| "authenticated Iroh endpoint required")?.addr.id.to_string();
     let diagnostic = args.first().map(String::as_str) == Some("synthetic-diagnostics");
-    if (sequence && identity != args[6]) || (diagnostic && identity != args[2]) {
+    let status_only = args.first().map(String::as_str) == Some("synthetic-status");
+    if (sequence && identity != args[6]) || ((diagnostic || status_only) && identity != args[2]) {
         return Err("authenticated endpoint differs from operator pin");
     }
     let client = CaosClient::new(config);
+    if status_only { return diagnostics::read_status(&client, &args[3]); }
     if diagnostic { return diagnostics::probe(&client, &args[3], &args[4]); }
     let mut observations = Vec::new();
     for _ in 0..2 {

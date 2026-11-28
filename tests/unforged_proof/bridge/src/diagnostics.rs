@@ -19,14 +19,49 @@ caos put "$TMPDIR/diagnostics.json" /cas/out-trace
 caos put "$TMPDIR/result.txt" /cas/out
 "#;
 
+pub fn read_status(client: &CaosClient, req: &str) -> Result<(), &'static str> {
+    for path in ["/version".to_string(), format!("/status/{req}"), format!("/status/{req}?all=1")] {
+        let response = client.request_with_headers("GET", &path, None, None)
+            .map_err(|_| "read-only diagnostic request failed")?;
+        // This explicit command observes only an operator-selected synthetic job.
+        println!("{}", json!({"phase":"readback", "path":path,
+            "http_status":response.status, "body":String::from_utf8_lossy(&response.body)}));
+        if path.ends_with("?all=1") && response.status == 200 {
+            let value: serde_json::Value = serde_json::from_slice(&response.body)
+                .map_err(|_| "completed diagnostic status is not JSON")?;
+            if value.get("arg_tree").and_then(|v| v.as_str()) == Some(req) {
+                if let Some(traces) = value.get("out_trace").and_then(|v| v.as_array()) {
+                    if traces.len() != 1 { return Err("readback sidecar ambiguous"); }
+                    let oid = traces[0].as_str().ok_or("readback sidecar identity invalid")?;
+                    let (kind, payload) = client.get_object(oid)
+                        .map_err(|_| "readback sidecar object unavailable")?;
+                    if kind != CaosObjectKind::Blob { return Err("readback sidecar is not blob"); }
+                    let raw = std::str::from_utf8(&payload)
+                        .map_err(|_| "readback sidecar is not UTF-8")?;
+                    println!("{}", json!({"phase":"sidecar-readback", "request":req,
+                        "oid":oid, "raw_payload":raw}));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn probe(client: &CaosClient, expected_image: &str, salt: &str) -> Result<(), &'static str> {
     let worker = client.put_object(CaosObjectKind::Blob, WORKER.as_bytes())
         .map_err(|_| "diagnostic worker upload failed")?;
     let salt_oid = client.put_object(CaosObjectKind::Blob, salt.as_bytes())
         .map_err(|_| "diagnostic salt upload failed")?;
+    // Existing CAOS native binding replaces this reserved arg with the actual
+    // discovered digest before cache/dispatch. Supplying the independently pinned
+    // value makes the submitted and executed identities equal ONLY if that binding
+    // agrees. This does not select/forge worker identity: the server overwrites it.
+    let image_oid = client.put_object(CaosObjectKind::Blob, expected_image.as_bytes())
+        .map_err(|_| "diagnostic image pin upload failed")?;
     let args = client.put_tree(&[
         CaosTreeEntry::new("100755", "worker1", &worker),
         CaosTreeEntry::new("100644", "salt", &salt_oid),
+        CaosTreeEntry::new("100644", "required-native-worker-image", &image_oid),
     ]).map_err(|_| "diagnostic argument upload failed")?;
     let req = client.submit_arg_tree(&CaosBaseSpec::Unforged, &args, Some(salt))
         .map_err(|_| "diagnostic submission failed")?;
@@ -70,7 +105,8 @@ pub fn probe(client: &CaosClient, expected_image: &str, salt: &str) -> Result<()
         return Err("diagnostic object request/salt mismatch");
     }
     println!("{}", json!({"phase":"sidecar", "request":req, "oid":oid,
-        "observations":diagnostic,
+        "observations":diagnostic, "raw_payload":std::str::from_utf8(&payload)
+            .map_err(|_| "diagnostic object is not UTF-8")?,
         "qualification":"actual worker observations, NOT isolation or no-live-effects proof"}));
     Ok(())
 }
