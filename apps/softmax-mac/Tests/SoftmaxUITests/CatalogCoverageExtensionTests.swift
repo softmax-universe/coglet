@@ -541,10 +541,12 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
         let app = try launchProbed()
         defer { finish(app) }
         XCTAssertTrue(app.windows["Welcome to Softmax"].waitForExistence(timeout: 10))
-        // Discover the actual app-owned status item by its public accessibility
-        // label. Never derive native candidates from the registry/probe response.
+        // Discover the actual app-owned status item by its public native title.
+        // macOS exposes this MenuBarExtra as AXTitle, not XCUI label (native
+        // hierarchy evidence: run 46133302623). Never derive native candidates
+        // from the registry/probe response.
         let statusItems = app.menuBars.descendants(matching: .statusItem)
-            .matching(NSPredicate(format: "label BEGINSWITH %@", "Softmax, "))
+            .matching(NSPredicate(format: "title BEGINSWITH %@", "Softmax, "))
         guard waitUntil(5, { statusItems.count == 1 }) else {
             let evidence = XCTAttachment(string: app.debugDescription)
             evidence.name = "menu-bar-status-item-discovery"; evidence.lifetime = .keepAlways; add(evidence)
