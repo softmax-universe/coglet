@@ -31,6 +31,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('unforge', 'bridge', 'driver', 'recording', 'output'):
         parser.add_argument('--'+name, type=Path, required=True)
+    parser.add_argument('--step-index', type=int, default=0)
+    parser.add_argument('--synthetic-gridbot-oracle', action='store_true',
+                        help='allow only code/manifest/initial state of the committed synthetic Gridbot fixture')
     parser.add_argument('--expected-endpoint', required=True)
     parser.add_argument('--expected-image', required=True)
     parser.add_argument('--expected-resolver', required=True)
@@ -53,8 +56,16 @@ def main():
     out.mkdir(exist_ok=False, parents=True)
     recording = args.recording.resolve()
     trace = json.loads((recording/'trace.json').read_bytes())
-    if trace['coglet'] != 'coglet:'+'09'*32:
+    if args.synthetic_gridbot_oracle:
+        import gzip
+        fixture = json.loads(gzip.decompress((ROOT/'tools/visualizer/native/fixtures/m2-gridbot-trace.json.gz').read_bytes()))
+        for key in ('coglet','code_hash','manifest_hash','initial_files','initial_hash'):
+            if trace[key] != fixture[key]:
+                raise RuntimeError('not the committed synthetic Gridbot fixture: '+key)
+    elif trace['coglet'] != 'coglet:'+'09'*32:
         raise RuntimeError('only synthetic counter recording permitted')
+    if not 0 <= args.step_index < len(trace['records']):
+        raise RuntimeError('step index outside recording')
     probe = subprocess.run([str(args.bridge.resolve())], env=env, capture_output=True, timeout=90)
     if probe.returncode:
         raise RuntimeError('authenticated native discovery unavailable; diagnostics suppressed')
@@ -78,7 +89,7 @@ def main():
     driver = args.driver.resolve().read_bytes()
     blob = git('hash-object','-w','--stdin',data=driver)
     program_tree = git('mktree',data=f'100755 blob {blob}\tproof-driver\n'.encode())
-    input_tree = git('rev-parse','refs/proof/input-0')
+    input_tree = git('rev-parse',f'refs/proof/input-{args.step_index}')
     program = git('commit-tree',program_tree,data=b'synthetic recorded-step program\n')
     inputs = git('commit-tree',input_tree,data=b'synthetic recorded-step input, no expected output\n')
     # Validate retained closure locally. This is not export-payload serialization.
@@ -137,7 +148,7 @@ def main():
         validated = validate_invocation(raw_commit=commit_raw,raw_receipt=note,commit=commit,
             output_tree=tree,program_commit=program,input_commit=inputs,resolver=resolver,
             image=args.expected_image,memo_hit=False,fresh=True)
-        if tree != trace['records'][0]['output_hash']:
+        if tree != trace['records'][args.step_index]['output_hash']:
             raise RuntimeError('hosted whole filesystem tree differs from genuine recorded step')
         result.update(receipt=validated,recorded_output_tree=tree,resolver=resolver)
         (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')

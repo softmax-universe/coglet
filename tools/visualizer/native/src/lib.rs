@@ -1,9 +1,15 @@
 //! Reuse the existing offline native oracle, including fork applicability checks.
 //! No providers, dispatchers, or live runtime bindings are constructed here.
-// Keep one implementation shared with the CLI; the internal main is not invoked.
-#[allow(dead_code)]
-#[path = "main.rs"]
-mod native;
+mod strict;
+mod offline;
+use offline as native;
+
+/// Existing display-only CLI report, sharing the same replay/fork oracle.
+pub fn replay_report(trace: &serde_json::Value, request: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let baseline = native::replay(trace)?;
+    if request == &serde_json::json!({}) { Ok(baseline) }
+    else { native::fork(trace, request, &baseline) }
+}
 
 use coglet_runtime::{NativeEngine, Runtime};
 use serde_json::Value;

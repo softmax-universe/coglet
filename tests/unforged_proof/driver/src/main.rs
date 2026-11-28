@@ -61,10 +61,9 @@ fn run() -> Result<(), String> {
             return Err(format!("prior state differs: {path}"));
         }
     }
-    let setup = &job["setup"];
     let mut engine = NativeEngine::new(
         hex::decode(&before["/code/bin/step.wasm"]).map_err(|e| e.to_string())?,
-        &setup["manifest"]["budgets"],
+        &job["input"]["budgets"],
         16 * 1024 * 1024,
         64 * 1024,
     )?;
