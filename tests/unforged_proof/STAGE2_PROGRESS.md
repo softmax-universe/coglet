@@ -1,6 +1,17 @@
 # Stage 2 increment: hosted capability discovered, NOT qualification PASS
 
-Latest continuation13: see [CANARY_EVIDENCE.md](CANARY_EVIDENCE.md). Independently
+Latest continuation14: see [RESOLVER_EVIDENCE.md](RESOLVER_EVIDENCE.md). Actual
+SAME CaosDriverRunner/client executed A-cold/A-warm/B-first/B-warm/A-return;
+real changed resolver tree B preserves A plus one harmless metadata blob.
+All5full trees equal genuine native modelstep1;2executions/3remote cache hits.
+Original95files453definitions programmatically retained;107fast normal/-O and
+11builtBridge refusals PASS. Reviewed5558153/80bff72; offline verifier1460cdd
+independently approved sa-0-d8271ef8, independently ran5observations/32rawobjects
+and3additional corruption probes.15local mutation negatives are NOT worker
+upgrades. Actual retained-client image change/seven named hosted tests/final
+reviewCIqueue/main/containingmain remain. No previous completed batch rerun.
+
+Previous continuation13: see [CANARY_EVIDENCE.md](CANARY_EVIDENCE.md). Independently
 reviewed55e4463e real loopback-only outer positive controls, inner denied-connect
 probes and post-replay unchanged counters now accompany3actual hosted model0/1
 and Gridbot2executions. Every full tree equals genuine native recording.100fast
