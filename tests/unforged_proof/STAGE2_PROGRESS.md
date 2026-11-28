@@ -1,5 +1,24 @@
 # Stage 2 increment: hosted capability discovered, NOT qualification PASS
 
+Latest continuation15: see [QUALIFICATION_EVIDENCE.md](QUALIFICATION_EVIDENCE.md).
+Seven explicit opt-in hosted_* entrypoints now exist, with9newLOCAL orchestration
+cases REDmissingmodule/GREEN,116fast normal/-O PASS and all95baselinefiles/
+453definitions programmatically retained. Corrected plan APPROVEsa-0-e6ba35d5;
+exact executable2347c0b APPROVEsa-0-4899598b. Actual full suite first recorded
+4PASS/3FAIL (factory operator mistakenly selected visualizer binary); corrected
+factory-only config then PASS9steps+honest3stepreject. Actual32unique executions
+=2model+9replay+9fork+9factory-pass+3reject, allfulltrees/canaries reverified by
+independent offline helper; separate evidence review APPROVEsa-0-3dbf030d.
+No completed earlier batches rerun. Actual image transition and no-effects
+source-closure qualification remain FAIL, not skip/waiver. Independent audit
+sa-0-dcdb40e7 found clean reachable step callgraph but networking dependencies
+compiled into driver; next isolate preparation/prune dependencies before exacthead
+audit and changed-binary hosted proof. FinalCI/queue/main/containing-main remain.
+No stage2PASS, no PR/cards/deploy/capacity/paidservice/GPU. No running jobs.
+Gateway restart interrupted one offline reviewer before verdict; successor reviewer
+actually ran helper32/32 and approved bounded evidence, no missing verdict claim.
+
+
 Latest continuation14: see [RESOLVER_EVIDENCE.md](RESOLVER_EVIDENCE.md). Actual
 SAME CaosDriverRunner/client executed A-cold/A-warm/B-first/B-warm/A-return;
 real changed resolver tree B preserves A plus one harmless metadata blob.
