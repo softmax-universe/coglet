@@ -7,6 +7,7 @@ use gecaos::os::GecaosOs;
 use serde_json::json;
 use std::time::Duration;
 mod diagnostics;
+mod isolation;
 
 fn is_oid(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
@@ -35,7 +36,7 @@ fn run() -> Result<(), &'static str> {
             }
             false
         }
-        Some("synthetic-diagnostics") => {
+        Some("synthetic-diagnostics" | "synthetic-isolation") => {
             if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
                 return Err("synthetic-only acknowledgement required; no private transport qualification");
             }
@@ -54,14 +55,15 @@ fn run() -> Result<(), &'static str> {
     config = config.with_base(CaosBaseSpec::Unforged);
     let identity = gecaos::iroh_net::IrohTicket::parse(&config.base_url)
         .map_err(|_| "authenticated Iroh endpoint required")?.addr.id.to_string();
-    let diagnostic = args.first().map(String::as_str) == Some("synthetic-diagnostics");
+    let isolation = args.first().map(String::as_str) == Some("synthetic-isolation");
+    let diagnostic = args.first().map(String::as_str) == Some("synthetic-diagnostics") || isolation;
     let status_only = args.first().map(String::as_str) == Some("synthetic-status");
     if (sequence && identity != args[6]) || ((diagnostic || status_only) && identity != args[2]) {
         return Err("authenticated endpoint differs from operator pin");
     }
     let client = CaosClient::new(config);
     if status_only { return diagnostics::read_status(&client, &args[3]); }
-    if diagnostic { return diagnostics::probe(&client, &args[3], &args[4]); }
+    if diagnostic { return diagnostics::probe(&client, &args[3], &args[4], isolation); }
     let mut observations = Vec::new();
     for _ in 0..2 {
         let image = client.discover_native_worker_image()

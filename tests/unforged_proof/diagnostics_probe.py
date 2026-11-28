@@ -13,6 +13,8 @@ import subprocess
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--synthetic-transport-only', action='store_true')
+    parser.add_argument('--strict-isolation', action='store_true',
+                        help='Exercise existing nested namespace without proxy/fd3; no fallback')
     parser.add_argument('--bridge', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--expected-endpoint', required=True)
@@ -32,7 +34,7 @@ def main():
     else:
         if not args.expected_image:
             raise SystemExit('refused: expected image required for execution')
-        command = [str(bridge), 'synthetic-diagnostics', '--synthetic-transport-only',
+        command = [str(bridge), 'synthetic-isolation' if args.strict_isolation else 'synthetic-diagnostics', '--synthetic-transport-only',
                    args.expected_endpoint, args.expected_image, secrets.token_hex(32)]
     provenance = dict(command=command, bridge_sha256=hashlib.sha256(bridge.read_bytes()).hexdigest(),
                       qualification='diagnostic transport capability only; NOT stage2 PASS')

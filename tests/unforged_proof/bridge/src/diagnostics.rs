@@ -47,8 +47,9 @@ pub fn read_status(client: &CaosClient, req: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
-pub fn probe(client: &CaosClient, expected_image: &str, salt: &str) -> Result<(), &'static str> {
-    let worker = client.put_object(CaosObjectKind::Blob, WORKER.as_bytes())
+pub fn probe(client: &CaosClient, expected_image: &str, salt: &str, isolation: bool) -> Result<(), &'static str> {
+    let script = if isolation { crate::isolation::WORKER } else { WORKER };
+    let worker = client.put_object(CaosObjectKind::Blob, script.as_bytes())
         .map_err(|_| "diagnostic worker upload failed")?;
     let salt_oid = client.put_object(CaosObjectKind::Blob, salt.as_bytes())
         .map_err(|_| "diagnostic salt upload failed")?;
@@ -108,5 +109,21 @@ pub fn probe(client: &CaosClient, expected_image: &str, salt: &str) -> Result<()
         "observations":diagnostic, "raw_payload":std::str::from_utf8(&payload)
             .map_err(|_| "diagnostic object is not UTF-8")?,
         "qualification":"actual worker observations, NOT isolation or no-live-effects proof"}));
+    if isolation {
+        let (kind, raw) = client.get_object(&result.oid)
+            .map_err(|_| "strict sandbox result readback failed")?;
+        if kind != CaosObjectKind::Blob { return Err("strict sandbox result is not blob"); }
+        println!("{}", json!({"phase":"sandbox-output", "oid":result.oid,
+            "raw_payload": std::str::from_utf8(&raw).map_err(|_| "strict sandbox output is not UTF-8")?}));
+        let outer = diagnostic.get("outer_netns").and_then(|v| v.as_str());
+        let inner = diagnostic.get("inner_netns").and_then(|v| v.as_str());
+        if diagnostic.get("exit_code").and_then(|v| v.as_i64()) != Some(0)
+            || outer.is_none() || inner.is_none() || outer == inner
+            || !inner.is_some_and(|v| v.starts_with("net:[") && v.ends_with(']'))
+            || diagnostic.get("proxy_env").and_then(|v| v.as_str()) != Some("unset")
+            || diagnostic.get("fd3").and_then(|v| v.as_str()) != Some("closed") {
+            return Err("strict nested namespace unavailable; no fallback or isolation qualification");
+        }
+    }
     Ok(())
 }

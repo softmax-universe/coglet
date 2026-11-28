@@ -11,7 +11,7 @@ import re
 from hosted_receipts import Refused
 
 
-def verify_sidecar(raw, oid, *, request, salt):
+def _decode_sidecar(raw, oid, *, request, salt):
     if (not isinstance(raw, bytes) or len(raw) > 65536
             or not isinstance(oid, str) or not re.fullmatch('[0-9a-f]{40}', oid)
             or not isinstance(request, str) or not re.fullmatch('[0-9a-f]{40}', request)
@@ -31,9 +31,30 @@ def verify_sidecar(raw, oid, *, request, salt):
         value = json.loads(raw, object_pairs_hook=unique)
     except (ValueError, UnicodeError) as error:
         raise Refused('invalid diagnostic JSON') from error
-    if (not isinstance(value, dict)
-            or set(value) != {'request', 'salt', 'netns', 'sandbox_env', 'network_env'}
-            or any(not isinstance(item, str) for item in value.values())
-            or value['request'] != request or value['salt'] != salt):
+    if (not isinstance(value, dict) or value.get('request') != request
+            or value.get('salt') != salt):
+        raise Refused('diagnostic invocation mismatch')
+    return value
+
+
+def verify_sidecar(raw, oid, *, request, salt):
+    value = _decode_sidecar(raw, oid, request=request, salt=salt)
+    if (set(value) != {'request', 'salt', 'netns', 'sandbox_env', 'network_env'}
+            or any(not isinstance(item, str) for item in value.values())):
         raise Refused('closed diagnostic observations or invocation mismatch')
+    return value
+
+
+def verify_isolation_sidecar(raw, oid, *, request, salt):
+    """Strict nested-namespace observation, NOT a complete no-effects certificate."""
+    value = _decode_sidecar(raw, oid, request=request, salt=salt)
+    if (set(value) != {'request', 'salt', 'outer_netns', 'inner_netns',
+                       'exit_code', 'proxy_env', 'fd3'}
+            or type(value['exit_code']) is not int or value['exit_code'] != 0
+            or value['proxy_env'] != 'unset' or value['fd3'] != 'closed'
+            or any(not isinstance(value[key], str)
+                   or re.fullmatch(r'net:\[[0-9]+\]', value[key]) is None
+                   for key in ('outer_netns', 'inner_netns'))
+            or value['outer_netns'] == value['inner_netns']):
+        raise Refused('strict isolated execution observations unavailable')
     return value
