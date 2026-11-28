@@ -176,7 +176,12 @@ final class ShellModel: ObservableObject {
         guard !testing else { return }
         if hubConnection == nil {
             let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/softmax-hub-link")
-            let connection = HubConnection(account: HubAccount(store: KeychainHubStore()),
+            #if DEBUG
+            let store: any HubStore = DevelopmentHubStore()
+            #else
+            let store: any HubStore = KeychainHubStore()
+            #endif
+            let connection = HubConnection(account: HubAccount(store: store),
                                            link: ProcessHubLink(executable: helper))
             connection.changed = { [weak self] in self?.objectWillChange.send() }
             hubConnection = connection
