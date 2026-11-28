@@ -59,6 +59,22 @@ class NativeReplayChecks(unittest.TestCase):
         self.assertNotEqual(refused.returncode, 0)
         self.assertIn(b'missing recorded model reply', refused.stderr)
         self.assertFalse(output.exists())
+        import os
+        recording = self.trace.parent / 'recording'
+        recording.mkdir()
+        (recording/'trace.json').write_text(json.dumps(incomplete))
+        hosted = subprocess.run([
+            'python3', str(ROOT/'tests/unforged_proof/hosted_probe.py'),
+            '--recording', str(recording), '--driver', str(DRIVER),
+            '--unforge', str(self.trace.parent/'missing-unforge'),
+            '--bridge', str(self.trace.parent/'missing-bridge'), '--output', str(output),
+            '--expected-endpoint', 'a'*64, '--expected-image', 'native@sha256:'+'b'*64,
+            '--expected-resolver', 'c'*64, '--synthetic-transport-only', '--synthetic-model-oracle'],
+            env={**os.environ, 'CAOS_IROH_TICKET': 'deliberately-invalid-local-negative'},
+            capture_output=True, timeout=120)
+        self.assertNotEqual(hosted.returncode, 0)
+        self.assertIn(b'missing recorded model reply', hosted.stderr)
+        self.assertFalse(output.exists())
 
     def test_recorded_effectful_steps_are_reexecuted(self):
         result = self.invoke('record', self.trace)

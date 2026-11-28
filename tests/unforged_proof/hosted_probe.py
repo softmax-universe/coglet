@@ -34,6 +34,8 @@ def main():
     parser.add_argument('--step-index', type=int, default=0)
     parser.add_argument('--synthetic-gridbot-oracle', action='store_true',
                         help='allow only code/manifest/initial state of the committed synthetic Gridbot fixture')
+    parser.add_argument('--synthetic-model-oracle', action='store_true',
+                        help='allow only initial code/state of the hand-authored native model fixture')
     parser.add_argument('--expected-endpoint', required=True)
     parser.add_argument('--expected-image', required=True)
     parser.add_argument('--expected-resolver', required=True)
@@ -53,10 +55,26 @@ def main():
                  GIT_COMMITTER_NAME='Coglet synthetic proof', GIT_COMMITTER_EMAIL='proof@example.invalid',
                  GIT_AUTHOR_DATE='2026-11-28T00:00:00Z', GIT_COMMITTER_DATE='2026-11-28T00:00:00Z')
     out = args.output.resolve()
-    out.mkdir(exist_ok=False, parents=True)
     recording = args.recording.resolve()
     trace = json.loads((recording/'trace.json').read_bytes())
-    if args.synthetic_gridbot_oracle:
+    if args.synthetic_gridbot_oracle and args.synthetic_model_oracle:
+        raise RuntimeError('select exactly one synthetic oracle')
+    if args.synthetic_model_oracle:
+        reference = subprocess.run([str(args.driver.resolve()), 'record-model', str(ROOT)],
+                                   capture_output=True, timeout=120, env=clean)
+        if reference.returncode:
+            raise RuntimeError('local synthetic model fixture unavailable')
+        fixture = json.loads(reference.stdout)
+        for key in ('coglet','code_hash','manifest_hash','initial_files','initial_hash'):
+            if trace[key] != fixture[key]:
+                raise RuntimeError('not the native synthetic model fixture: '+key)
+        from recorded_closure import require_model_reply_closure
+        require_model_reply_closure(trace)
+        checked = subprocess.run([str(args.driver.resolve()), 'record', str(recording/'trace.json')],
+                                 capture_output=True, timeout=120, env=clean)
+        if checked.returncode:
+            raise RuntimeError('synthetic model native archive verification failed')
+    elif args.synthetic_gridbot_oracle:
         import gzip
         fixture = json.loads(gzip.decompress((ROOT/'tools/visualizer/native/fixtures/m2-gridbot-trace.json.gz').read_bytes()))
         for key in ('coglet','code_hash','manifest_hash','initial_files','initial_hash'):
@@ -66,6 +84,7 @@ def main():
         raise RuntimeError('only synthetic counter recording permitted')
     if not 0 <= args.step_index < len(trace['records']):
         raise RuntimeError('step index outside recording')
+    out.mkdir(exist_ok=False, parents=True)
     probe = subprocess.run([str(args.bridge.resolve())], env=env, capture_output=True, timeout=90)
     if probe.returncode:
         raise RuntimeError('authenticated native discovery unavailable; diagnostics suppressed')
