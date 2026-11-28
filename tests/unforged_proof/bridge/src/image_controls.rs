@@ -27,7 +27,7 @@ chmod -R u+w "$root/work" "$root/resolver"
 chmod 755 "$root/resolver/drivers/proof"
 (cd "$root/work"; "$root/resolver/drivers/proof")
 salt=$(cat /cas/args/salt)
-printf '{"request":"%s","salt":"%s","mode":"bounded-native-replay"}\n' "${CAOS_OWN_ARGTREE_HASH:?}" "$salt" > "$root/sidecar.json"
+printf '{"salt":"%s","mode":"bounded-native-replay"}\n' "$salt" > "$root/sidecar.json"
 caos put "$root/sidecar.json" /cas/out-trace
 caos put "$root/work" /cas/out
 "#;
@@ -113,7 +113,10 @@ pub fn execute(client:CaosClient,p:Plan,args:&[String])->R<()> {
         if kind!=CaosObjectKind::Blob{return Err("sidecar nonblob");}
         println!("{}",json!({"phase":"image-sidecar","oid":oid,"hex":crate::guarded::hex(&raw)}));
         let v:serde_json::Value=serde_json::from_slice(&raw).map_err(|_|"sidecar invalid")?;
-        if v!=json!({"request":req,"salt":args[5],"mode":"bounded-native-replay"}) {return Err("sidecar binding mismatch");}
+        // Generic Docker workers do not expose the native-worker request env.
+        // Authenticated completed-status above binds this sidecar OID to req;
+        // sidecar contents additionally bind the fresh salt consumed by this job.
+        if v!=json!({"salt":args[5],"mode":"bounded-native-replay"}) {return Err("sidecar binding mismatch");}
         crate::standard::read_tree(&client,out,"",0,&mut(64*1024*1024))?;
     }Ok(())
 }

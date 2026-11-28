@@ -9,3 +9,7 @@ class ImageLauncherTests(unittest.TestCase):
         execute=text.index('(cd "$root/work"; "$root/resolver/drivers/proof")')
         self.assertLess(copy,writable)
         self.assertLess(writable,execute)
+
+    def test_generic_worker_does_not_require_native_only_request_environment(self):
+        text=(Path(__file__).parent/'bridge/src/image_controls.rs').read_text()
+        self.assertNotIn('CAOS_OWN_ARGTREE_HASH',text)
