@@ -11,6 +11,7 @@ if [ -z "$binary" ]; then binary=$(command -v unforge || true); fi
 # stdin/stdout/stderr are ordinary observations; fd3 is not preserved.
 set +e
 "$binary" caos-sandbox-exec --mode namespace --net proxy-only \
+  --unforge-bin "$binary" --caos-bin "$(command -v caos)" \
   --cas-dir "$root/cas" --secret-dir "$root/secrets" \
   --work-dir "$root/work" --tmp-dir "$root/tmp" -- \
   bash -c 'readlink /proc/$$/ns/net; if [ "${CAOS_SERVER_URL+x}" = x ]; then echo set; else echo unset; fi; if [ -e /proc/$$/fd/3 ]; then echo open; else echo closed; fi' \
