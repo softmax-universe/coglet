@@ -281,3 +281,57 @@ new sandbox, upstream modifications or deployment. Next integrate those actual
 seams before factory evaluation/signing; do not replace gaps with callback spies.
 Full privacy/sandbox/factory/actual upgrades/seven qualification tests/final review/
 CI/native queue merge/containing-main proof remain. NOT stage2 PASS.
+
+## Continuation 7 — actual worker diagnostics transport resolved, NOT PASS
+
+Resumed on hermes-worker-a2 with EMPTY workspace. Recovered pushed182e6f3, pinned
+Unforgedf9c627b and all3compact committed archives (hashes independently matched).
+31fast tests passed normal/-O; previous raw local object stores and builds are not
+present here. Do not claim they survived host movement. New bridge built with
+cargo+1.100.0 (system default1.91.1); no driver/native runtime builds yet this host.
+
+Additive `synthetic-diagnostics` command consumes existing public CaosClient
+put/submit/run/status/get APIs and STANDARD worker sidecar machinery. Actual
+initial execution succeeded exact-image/fresh-miss but submitted-identity status
+wasnull -> honest refusal. Inspected real CAOS source604b6024 revealed native
+binding inserts `required-native-worker-image` before execution/status. Supplying
+independent expected digest under this EXISTING arg lets server overwrite it and
+preserve submitted=executed only when actual binding agrees. Fixed probe then
+actually retrieved completed status and worker sidecar; readback is supported,
+not a missing prerequisite. No upstream/deployed source or capacity changed.
+
+Reviewed source `0c143e21fc5138c879ceb8207c9d95693291eaef` independently approved
+by separate sa-0-46a7dc87 for THIS increment only. Rebuilt and actually reran that
+source after review: request `7147019a668131c2aa813a8731521fbeb6d29b2b`, sidecar
+`5b4c99dea1026317833f6e63b2f1dc08a4d011e3`. Separate authenticated readback,
+then independent local verifier passed raw Git blob hash, request/salt/image and
+status/sidecar consistency. Bridge binary SHA256
+`b59f8dd689027b51a922bfa51ca76c65a2778c6f66ff533f52496196eeb0e776`.
+Worker observed actual netns identifier and effective-policy env fieldsunset;
+these are NOT isolation/no-live-effects certificates. No invented zero counters.
+
+Tests35fast normal/-O,6explicit built-bridge CLI negatives PASS.3newCLI negatives
+RED on old binaries thenGREEN;4sidecar guardsRED missingmodule thenGREEN.
+Existing6native runtime checks retained, not rerun. Baseline95files453definitions
+retained. Source and evidence reproduction in `DIAGNOSTICS_EVIDENCE.md` inside
+committed `evidence/hosted-diagnostics-interim.zip`11801bytes SHA256
+`8f47de7861869a69f3bc97e8e866a9e6c8486d50b234b14c991f8658161fb6df`.
+Earlier failures/pre-review binaries explicitly distinguished from latest pair.
+Use `verify_diagnostic_probe.py --probe ../hosted-diagnostics-reviewed --readback
+../hosted-diagnostics-reviewed-readback --expected-image <existing-pin>` after
+extracting archive in workspace. No old hosted Coglet batch rerun.
+
+IMPORTANT source semantics correction: Unforged server_confirmed_nocache is
+inferred from requestednocache+X-Caos-Cache:miss; inspected CAOS parser ignores
+nocache query. Fresh consumed salt + actual executed receipt proves this call
+executed, not universal server bypass. Full factory nonce and relevant inner
+memo bypass remain mandatory. `/version=unknown` is NOT a deployed source pin.
+
+Next integrate the supported STANDARD wrapper with existing filesystem proof
+executable and genuine recorded replay/fork inputs, preserving exact ABI root and
+separate diagnostics. Complete actual pre-serialization export closure + per-send
+checks remains substantial work; do not copy runner/premerge/store semantics or
+serialize private wire data before initial grant. Runtime/factory code remains
+unedited. Genuine sandbox/effect canaries, actual resolver/image invalidation,
+7named suite, final review/CI/mainqueue/containing-main proof remain unfinished.
+No PR/newcards/deploy/paidservice/background jobs. NOT stage2 PASS.

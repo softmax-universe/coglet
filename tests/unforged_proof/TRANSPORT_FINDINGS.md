@@ -69,3 +69,41 @@ Remaining gaps to resolve before implementation can qualify:
 
 No Unforged source, deployed worker, capacity or frozen contract changed. Full
 privacy/sandbox/factory/upgrade/seven-test/CI/queue/containing-main gates remain.
+
+## Continuation 7: actual supported readback resolved; do not file an absence prerequisite
+
+CAOS source `604b6024166e5eb4ffa41e3555c2f5f0bd9d06b6` (read-only checkout)
+provides `/status/<ArgTree>?all=1` with `out_trace` (`server/src/status.rs:398–436`).
+Its native request binding inserts `required-native-worker-image` before dispatch
+(`compute.rs:678–724`); status tracks that **bound** identity. Supplying the
+independently expected digest under that existing arg allows submitted=executed
+only when the server's own overwrite agrees. It cannot forge worker identity.
+A completed plain status may return null by design; `all=1` retains completed work.
+
+Actual reviewed-source probe `0c143e21fc5138c879ceb8207c9d95693291eaef` executed
+STANDARD worker request `7147019a668131c2aa813a8731521fbeb6d29b2b`, fresh salt,
+actual cache-miss/exact-image receipt. Completed status names sidecar
+`5b4c99dea1026317833f6e63b2f1dc08a4d011e3`; a SEPARATE authenticated readback
+retrieved its exact blob bytes. `verify_diagnostic_probe.py` independently checks
+Git SHA1/raw bytes, status identity, salt, receipt disposition and observations.
+This closes supported sidecar transport, not the full Coglet wrapper or isolation.
+
+The worker actually observed `net:[4026532663]` and both effective-policy env
+fields **unset**. No fake model/adapter/network zero counters were added. No live
+effects/canaries were attempted. `/version` returns `unknown`; inspected CAOS HEAD
+is not therefore a deployed-source attestation. Earlier unbound request3208ca67
+returned null status; preserve that honest failure, not an absence conclusion.
+
+Also inspect bypass semantics, not a field name: pinned Unforged sets
+`server_confirmed_nocache` when a requested nocache run has X-Caos-Cache=miss
+(`caos.rs:1638–1641`). The inspected CAOS run parser uses req, not nocache
+(`compute.rs:556–586,639–652`). A new consumed salt plus genuine miss establishes
+actual execution for THIS invocation; do not claim a server-wide bypass API.
+Existing factory nonce/salt and inner runner memo controls remain mandatory.
+
+For actual full replay/fork/factory integration, reuse this supported STANDARD
+wrapper plus the existing filesystem proof executable and exact ABI root output;
+do not add diagnostics to that root. Initial complete private grant before staging
+and per-crossing revalidation remain unimplemented. Do not serialize private wire
+objects before the initial grant merely to discover their descriptors. No copying
+seed/premerge/runner/store semantics into a second implementation is authorized.
