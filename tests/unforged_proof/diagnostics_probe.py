@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--expected-endpoint', required=True)
     parser.add_argument('--expected-image')
     parser.add_argument('--request', help='Read-only follow-up for a retained synthetic request')
+    parser.add_argument('--result-oid', help='Optional retained sandbox-output blob for read-only follow-up')
     args = parser.parse_args()
     if not args.synthetic_transport_only:
         raise SystemExit('refused: no full private transport authorization')
@@ -31,6 +32,8 @@ def main():
     if args.request is not None:
         command = [str(bridge), 'synthetic-status', '--synthetic-transport-only',
                    args.expected_endpoint, args.request]
+        if args.result_oid:
+            command.append(args.result_oid)
     else:
         if not args.expected_image:
             raise SystemExit('refused: expected image required for execution')

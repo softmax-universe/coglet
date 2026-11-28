@@ -49,9 +49,9 @@ def verify_isolation_sidecar(raw, oid, *, request, salt):
     """Strict nested-namespace observation, NOT a complete no-effects certificate."""
     value = _decode_sidecar(raw, oid, request=request, salt=salt)
     if (set(value) != {'request', 'salt', 'outer_netns', 'inner_netns',
-                       'exit_code', 'proxy_env', 'fd3'}
+                       'exit_code', 'caos_server_url_env', 'fd3'}
             or type(value['exit_code']) is not int or value['exit_code'] != 0
-            or value['proxy_env'] != 'unset' or value['fd3'] != 'closed'
+            or value['caos_server_url_env'] != 'unset' or value['fd3'] != 'closed'
             or any(not isinstance(value[key], str)
                    or re.fullmatch(r'net:\[[0-9]+\]', value[key]) is None
                    for key in ('outer_netns', 'inner_netns'))

@@ -26,7 +26,7 @@ fd3=${observations[2]:-unavailable}
 [[ "$inner" =~ ^net:\[[0-9]+\]$ ]] || inner=unavailable
 [[ "$proxy" = unset || "$proxy" = set ]] || proxy=unavailable
 [[ "$fd3" = closed || "$fd3" = open ]] || fd3=unavailable
-printf '{"request":"%s","salt":"%s","outer_netns":"%s","inner_netns":"%s","exit_code":%s,"proxy_env":"%s","fd3":"%s"}\n' \
+printf '{"request":"%s","salt":"%s","outer_netns":"%s","inner_netns":"%s","exit_code":%s,"caos_server_url_env":"%s","fd3":"%s"}\n' \
   "${CAOS_OWN_ARGTREE_HASH:-unset}" "$salt" "$outer" "$inner" "$code" "$proxy" "$fd3" > "$root/diagnostics.json"
 # Retain the actual failure instead of succeeding by fallback or forging counters.
 cat "$root/stdout" "$root/stderr" > "$root/result.txt"

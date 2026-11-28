@@ -30,8 +30,9 @@ fn run() -> Result<(), &'static str> {
             if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
                 return Err("synthetic-only acknowledgement required; no private transport qualification");
             }
-            if args.len() != 4 || !is_oid(&args[2]) || args[3].len() != 40
-                || !args[3].bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) {
+            if !(args.len() == 4 || args.len() == 5) || !is_oid(&args[2])
+                || !args[3..].iter().all(|s| s.len() == 40
+                    && s.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))) {
                 return Err("endpoint and SHA-1 request identities required");
             }
             false
@@ -62,7 +63,11 @@ fn run() -> Result<(), &'static str> {
         return Err("authenticated endpoint differs from operator pin");
     }
     let client = CaosClient::new(config);
-    if status_only { return diagnostics::read_status(&client, &args[3]); }
+    if status_only {
+        diagnostics::read_status(&client, &args[3])?;
+        if let Some(oid) = args.get(4) { diagnostics::read_output(&client, oid)?; }
+        return Ok(());
+    }
     if diagnostic { return diagnostics::probe(&client, &args[3], &args[4], isolation); }
     let mut observations = Vec::new();
     for _ in 0..2 {

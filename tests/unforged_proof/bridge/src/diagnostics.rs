@@ -47,6 +47,14 @@ pub fn read_status(client: &CaosClient, req: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
+pub fn read_output(client: &CaosClient, oid: &str) -> Result<(), &'static str> {
+    let (kind, raw) = client.get_object(oid).map_err(|_| "sandbox output readback failed")?;
+    if kind != CaosObjectKind::Blob { return Err("sandbox output is not blob"); }
+    println!("{}", json!({"phase":"sandbox-output-readback", "oid":oid,
+        "raw_payload": std::str::from_utf8(&raw).map_err(|_| "sandbox output is not UTF-8")?}));
+    Ok(())
+}
+
 pub fn probe(client: &CaosClient, expected_image: &str, salt: &str, isolation: bool) -> Result<(), &'static str> {
     let script = if isolation { crate::isolation::WORKER } else { WORKER };
     let worker = client.put_object(CaosObjectKind::Blob, script.as_bytes())
@@ -117,10 +125,13 @@ pub fn probe(client: &CaosClient, expected_image: &str, salt: &str, isolation: b
             "raw_payload": std::str::from_utf8(&raw).map_err(|_| "strict sandbox output is not UTF-8")?}));
         let outer = diagnostic.get("outer_netns").and_then(|v| v.as_str());
         let inner = diagnostic.get("inner_netns").and_then(|v| v.as_str());
+        let namespace = |value: Option<&str>| value.is_some_and(|s| {
+            s.strip_prefix("net:[").and_then(|s| s.strip_suffix(']'))
+                .is_some_and(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()))
+        });
         if diagnostic.get("exit_code").and_then(|v| v.as_i64()) != Some(0)
-            || outer.is_none() || inner.is_none() || outer == inner
-            || !inner.is_some_and(|v| v.starts_with("net:[") && v.ends_with(']'))
-            || diagnostic.get("proxy_env").and_then(|v| v.as_str()) != Some("unset")
+            || !namespace(outer) || !namespace(inner) || outer == inner
+            || diagnostic.get("caos_server_url_env").and_then(|v| v.as_str()) != Some("unset")
             || diagnostic.get("fd3").and_then(|v| v.as_str()) != Some("closed") {
             return Err("strict nested namespace unavailable; no fallback or isolation qualification");
         }

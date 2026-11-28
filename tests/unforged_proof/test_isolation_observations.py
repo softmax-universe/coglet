@@ -9,7 +9,7 @@ from diagnostic_receipts import Refused, verify_isolation_sidecar
 class IsolationObservations(unittest.TestCase):
     def check(self, **changed):
         value = dict(request='a'*40, salt='b'*64, outer_netns='net:[1]',
-                     inner_netns='net:[2]', exit_code=0, proxy_env='unset', fd3='closed')
+                     inner_netns='net:[2]', exit_code=0, caos_server_url_env='unset', fd3='closed')
         value.update(changed)
         raw = json.dumps(value).encode()
         oid = hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
@@ -29,6 +29,6 @@ class IsolationObservations(unittest.TestCase):
                 self.check(inner_netns=namespace)
 
     def test_proxy_or_fd3_or_extra_claim_refuses(self):
-        for change in (dict(proxy_env='set'), dict(fd3='open'), dict(qualified=True)):
+        for change in (dict(caos_server_url_env='set'), dict(fd3='open'), dict(qualified=True)):
             with self.subTest(change=change), self.assertRaises(Refused):
                 self.check(**change)
