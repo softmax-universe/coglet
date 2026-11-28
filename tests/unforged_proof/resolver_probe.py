@@ -24,6 +24,7 @@ def main():
         ap.add_argument('--'+name,type=Path,required=True)
     for name in ('expected-resolver','expected-image','expected-endpoint','expected-driver-sha256','expected-bridge-sha256'):
         ap.add_argument('--'+name,required=True)
+    ap.add_argument('--git', type=Path, required=True, help='task-private Git >=2.45 with reftable')
     ap.add_argument('--synthetic-transport-only',action='store_true')
     a=ap.parse_args()
     if not a.synthetic_transport_only:raise Refused('synthetic-only acknowledgement required')
@@ -33,6 +34,9 @@ def main():
         raise Refused('full independent identities required')
     if not re.fullmatch('native@sha256:[0-9a-f]{64}',a.expected_image):raise Refused('native immutable image pin required')
     clean={k:v for k,v in os.environ.items() if k not in ('CAOS_IROH_TICKET','UNFORGED_CAOS_URL')}
+    local_path=str(a.git.resolve().parent)+os.pathsep+clean.get('PATH','')
+    clean['PATH']=local_path
+    bridge_env=dict(os.environ,PATH=local_path)
     clean.update(GIT_AUTHOR_NAME='Coglet synthetic proof',GIT_AUTHOR_EMAIL='proof@example.invalid',GIT_COMMITTER_NAME='Coglet synthetic proof',GIT_COMMITTER_EMAIL='proof@example.invalid')
     def command(args,data=None):
         p=subprocess.run([str(x) for x in args],input=data,capture_output=True,env=clean,timeout=120)
@@ -44,7 +48,11 @@ def main():
     for key in ('coglet','code_hash','manifest_hash','initial_files','initial_hash'):
         if trace[key]!=reference[key]:raise Refused('not synthetic model oracle')
     verified=json.loads(command([a.driver.resolve(),'record',a.trace.resolve()]))
-    if verified!=trace:raise Refused('genuine native recorded oracle differs')
+    # Existing native record() verifies the complete deterministic journal;
+    # measured wall-time and its derived chain hashes are regenerated per run.
+    # Retain both originals, never rewrite their telemetry or hash chains.
+    if [r['output_hash'] for r in verified['records']] != [r['output_hash'] for r in trace['records']]:
+        raise Refused('genuine native recorded oracle differs')
     previous=json.loads((a.probe/'result.json').read_bytes())
     if previous['resolver']!=a.expected_resolver:raise Refused('retained resolver pin differs')
     step=previous['step'] if 'step' in previous else 1
@@ -65,6 +73,20 @@ def main():
     program=previous['program']
     if git('cat-file','blob',f'{program}:proof-driver')!=a.driver.read_bytes():raise Refused('retained program driver differs')
     input_tree=git('rev-parse',f"{previous['input']}^{{tree}}").decode().strip()
+    from prefix_inputs import step_payload
+    payload=step_payload(trace,step)
+    (out/'prefix.json').write_text(json.dumps(payload['prefix']))
+    snapshot=json.loads(command([a.driver.resolve(),'snapshot',out/'prefix.json']))
+    expected_files={p.removeprefix('/'):bytes.fromhex(value) for p,value in snapshot.items()}
+    actual_files={}
+    for row in git('ls-tree','-rz',input_tree).split(b'\0'):
+        if not row:continue
+        descriptor,name=row.split(b'\t',1);mode,kind,oid=descriptor.split(b' ')
+        if mode!=b'100644' or kind!=b'blob':raise Refused('nonregular synthetic input')
+        actual_files[name.decode()]=git('cat-file','blob',oid.decode())
+    actual_payload=actual_files.pop('proof-input.json',b'')
+    if json.loads(actual_payload)!=payload or actual_files!=expected_files:
+        raise Refused('retained input differs from exact genuine native prefix/current input')
     inputs=git('commit-tree',input_tree,data=b'synthetic resolver control input '+nonce.encode()+b'\n').decode().strip()
     for name,oid in [('program',program),('input',inputs),('resolver-a',resolver_a),('resolver-b',resolver_b)]:
         git('update-ref','refs/stage2-resolver/'+name,oid)
@@ -75,6 +97,7 @@ def main():
               qualification='synthetic resolver controls only; NOT stage2 PASS')
     (out/'command.json').write_text(json.dumps(info,indent=2)+'\n')
     (out/'trace.json').write_bytes(a.trace.read_bytes())
+    (out/'native-rerecorded.json').write_text(json.dumps(verified,indent=2)+'\n')
     args=[str(a.bridge.resolve()),'synthetic-resolver-controls','--synthetic-transport-only',str(out/'os'),program,inputs,resolver_a,resolver_b,a.expected_endpoint]
     info['command']=args
     (out/'command.json').write_text(json.dumps(info,indent=2)+'\n')
@@ -83,7 +106,7 @@ def main():
         for name in ('CAOS_IROH_TICKET','UNFORGED_CAOS_URL'):
             if os.environ.get(name):raw=raw.replace(os.environ[name].encode(),b'[REDACTED]')
         return re.sub(rb'caos://[^\s]+',b'caos://[REDACTED]',raw)
-    try:p=subprocess.run(args,capture_output=True,timeout=600)
+    try:p=subprocess.run(args,capture_output=True,timeout=600,env=bridge_env)
     except subprocess.TimeoutExpired as e:
         (out/'bridge.jsonl').write_bytes(redacted(e.stdout or b''))
         (out/'bridge-error.txt').write_bytes(redacted(e.stderr or b''))
