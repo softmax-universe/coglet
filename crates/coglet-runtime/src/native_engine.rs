@@ -248,14 +248,8 @@ impl crate::RuntimeService {
         session: &crate::SurfaceSession,
         now: u64,
     ) -> Result<()> {
-        timing_span!("native.run");
         let Some((run, config, mut engine)) = ({
-            let lock_wait = {
-                timing_span!("native.lock_wait");
-                service.lock()
-            };
-            timing_span!("native.prepare");
-            let mut locked = lock_wait.map_err(|_| "runtime service poisoned")?;
+            let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
             if !locked.managed_running()
                 || locked.managed_paused()
                 || locked.code_pending()
@@ -286,33 +280,26 @@ impl crate::RuntimeService {
         }) else {
             return Ok(());
         };
-        let result = {
-            timing_span!("native.execute");
-            Self::execute_detached(
-                service,
-                run,
-                &mut engine,
-                &|fence| fence(),
-                &|locked, inputs| {
-                    if locked.surface_epoch(session.surface()) != session.grant_epoch() {
-                        return Err("permission_denied".into());
-                    }
-                    let fresh = locked.supervised_now()?;
-                    if session
-                        .execution_grants(&locked.state.runtime.manifest, fresh)?
-                        .is_none_or(|grants| json!(grants) != inputs["grants"])
-                    {
-                        return Err("permission_denied".into());
-                    }
-                    Ok(())
-                },
-            )
-        };
-        let final_wait = {
-            timing_span!("native.final_lock_wait");
-            service.lock()
-        };
-        let mut locked = final_wait.map_err(|_| "runtime service poisoned")?;
+        let result = Self::execute_detached(
+            service,
+            run,
+            &mut engine,
+            &|fence| fence(),
+            &|locked, inputs| {
+                if locked.surface_epoch(session.surface()) != session.grant_epoch() {
+                    return Err("permission_denied".into());
+                }
+                let fresh = locked.supervised_now()?;
+                if session
+                    .execution_grants(&locked.state.runtime.manifest, fresh)?
+                    .is_none_or(|grants| json!(grants) != inputs["grants"])
+                {
+                    return Err("permission_denied".into());
+                }
+                Ok(())
+            },
+        );
+        let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
         locked.native = Some((config, engine));
         locked.detached_execution = false;
         result

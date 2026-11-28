@@ -28,11 +28,9 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
         self.engine.admit(inputs, host)
     }
     fn execute(&mut self, inputs: &Value, host: &mut StepHost) -> Result<EngineReport> {
-        timing_span!("detached.execute");
         // Authority providers acquire SQL first and invoke this WAL callback
         // under that guard. Neither guard survives into actual guest execution.
         (self.authorized)(&|| {
-            timing_span!("detached.entry_fence");
             let mut service = self
                 .service
                 .lock()
@@ -43,15 +41,13 @@ impl<E: Engine> Engine for SharedAttempt<'_, E> {
             next.runtime.unresolved_attempt = Some(inputs.clone());
             next.fenced_staged_prefix =
                 Some(next.staged_boundary.as_ref().map_or(0, |s| s.changes.len()));
-            let value = {
-                timing_span!("detached.serialize");
-                serde_json::to_value(&next).map_err(|e| e.to_string())?
-            };
-            service.store.commit(&value, None)?;
+            service.store.commit(
+                &serde_json::to_value(&next).map_err(|e| e.to_string())?,
+                None,
+            )?;
             service.state = next;
             Ok(())
         })?;
-        timing_span!("detached.engine");
         self.engine.execute(inputs, host)
     }
     fn database_observation(&mut self, committed: bool) -> Result<Option<DatabaseObservation>> {
@@ -66,7 +62,6 @@ pub(crate) struct DetachedRun {
 }
 impl RuntimeService {
     fn require_detached_entry(&self, inputs: &Value, basis: &DetachedBasis) -> Result<()> {
-        timing_span!("detached.require_entry");
         if !self.detached_execution {
             return Err("missing detached execution custody".into());
         }
@@ -94,7 +89,6 @@ impl RuntimeService {
         Ok(())
     }
     pub(super) fn prepare_detached(&mut self, context: &Value) -> Result<Option<DetachedRun>> {
-        timing_span!("detached.prepare");
         self.require_deliverable()?;
         let Some((inputs, _, next)) = self.begin_attempt(context)? else {
             return Ok(None);
@@ -130,18 +124,12 @@ impl RuntimeService {
             live,
             basis: &run.basis,
         };
-        let result = {
-            timing_span!("detached.runtime_step");
-            run.runtime.step(&run.inputs, &mut attempt)
-        };
+        let result = run.runtime.step(&run.inputs, &mut attempt);
         let mut locked = service.lock().map_err(|_| "runtime service poisoned")?;
         // A failed admission has no fence; an unknown entered outcome retains
         // its durable fence even after dropping the in-process reservation.
         match result {
-            Ok(result) => {
-                timing_span!("detached.recover");
-                locked.recover_attempt(&result["journal"])
-            }
+            Ok(result) => locked.recover_attempt(&result["journal"]),
             Err(error) => Err(error),
         }
     }

@@ -79,24 +79,7 @@ pub struct SurfaceSession {
     sent_dispatches: BTreeSet<String>,
 }
 impl SurfaceSession {
-    /// Test-build-only, value-free first-refusal evidence. Never includes frame
-    /// bodies, identities, transcripts or retained read values.
-    #[cfg(feature = "ffi-test-hooks")]
-    pub(crate) fn diagnose_abi_refusal(&self, stage: &str, now: Option<u64>) {
-        crate::timing::flush_first_refusal(stage);
-        eprintln!(
-            "embedded-abi-refusal stage={stage} now={now:?} runtime_clock={} last_received={} last_health={} negotiated={} closed={} queued={} reads={}",
-            self.runtime_clock,
-            self.last_received,
-            self.last_health,
-            self.negotiated,
-            self.closed,
-            self.output.len(),
-            self.reads.len()
-        );
-    }
     pub(crate) fn transport_now(&self, probe_clock: std::time::Instant) -> Result<u64> {
-        timing_span!("surface.transport_now");
         if let Some(service) = &self.service {
             service
                 .lock()
@@ -161,22 +144,15 @@ impl SurfaceSession {
     }
     /// Native transport pump. Reconnect automatically reconciles saved IDs.
     pub fn pump_dispatch(&mut self, now: u64) -> Result<()> {
-        timing_span!("surface.pump_dispatch");
         if !self.negotiated || self.closed {
             return Ok(());
         }
         let Some(service) = self.service.clone() else {
             return Ok(());
         };
-        {
-            timing_span!("pump.supervisor_reads");
-            self.pump_supervisor_reads(now)?;
-        }
+        self.pump_supervisor_reads(now)?;
         #[cfg(feature = "native-engine")]
-        {
-            timing_span!("pump.native");
-            crate::RuntimeService::run_native(&service, self, now)?;
-        }
+        crate::RuntimeService::run_native(&service, self, now)?;
         while self.output.len() < SURFACE_QUEUE {
             // Guest execution and fsync can outlive the admission lease. Native
             // routes recheck the supervised clock for EACH new dispatch, never
@@ -190,13 +166,10 @@ impl SurfaceSession {
                     now
                 }
             };
-            let next = {
-                timing_span!("pump.next_dispatch");
-                service
-                    .lock()
-                    .map_err(|_| "runtime service poisoned")?
-                    .next_dispatch(self, &self.sent_dispatches, now)?
-            };
+            let next = service
+                .lock()
+                .map_err(|_| "runtime service poisoned")?
+                .next_dispatch(self, &self.sent_dispatches, now)?;
             let Some((id, bytes)) = next else {
                 break;
             };
@@ -274,8 +247,6 @@ impl SurfaceSession {
             return;
         }
         if now < self.runtime_clock {
-            #[cfg(feature = "ffi-test-hooks")]
-            self.diagnose_abi_refusal("tick-clock-rollback", Some(now));
             self.disconnect();
             return;
         }
@@ -285,8 +256,6 @@ impl SurfaceSession {
             return;
         }
         if now - self.last_received >= 3_000_000 {
-            #[cfg(feature = "ffi-test-hooks")]
-            self.diagnose_abi_refusal("tick-inactivity", Some(now));
             self.disconnect();
             return;
         }
@@ -336,7 +305,6 @@ impl SurfaceSession {
         0
     }
     fn receive(&mut self, raw: &[u8], now: u64) -> Result<()> {
-        timing_span!("surface.receive", raw.len());
         let decoded = coglet_types::decode_profile(raw)?;
         // Hello is common to both minors; afterwards the selected minor governs.
         crate::profile_codec::validate(self.wire.rule("surface-message"), &decoded)?;
