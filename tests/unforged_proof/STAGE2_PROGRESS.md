@@ -1,6 +1,20 @@
 # Stage 2 increment: hosted capability discovered, NOT qualification PASS
 
-Latest continuation11: see [PREPARED_EVIDENCE.md](PREPARED_EVIDENCE.md). Reviewed
+Latest continuation12: see [FACTORY_EVIDENCE.md](FACTORY_EVIDENCE.md). Actual
+operator-configured GateService.evaluate_hosted now precedes signing: native
+behavioral suite acquires complete existing RuntimeService archive, every hosted
+step is fresh salt-bound to full challenge+index+operator attempt and compared to
+that exact oracle before signing. Reviewed8e5b0d2/a6eec01/9fcd765 increments.
+Actual native3step archive compatibility PASS; actual hosted factory behavioral
+PASS9steps and honest behavioral rejection3steps; per-step raw status/sidecar/full
+ABI graphs independently reverified. Existing one-use/fixture-only/production
+refusals retained, raw signed artifact retained for PASS9.96fast normal/-OPASS;
+unconfigured sim24PASS/5native SKIP; configured retained-native regression wrapper
+timeout180s, NOT a pass; child confirmed gone. No old hosted batches rerun.
+Genuine canaries, actual resolver/image invalidation, seven named hosted suite,
+final independent review/required CI/native queue/main/containing-main remain.
+
+Previous continuation11: see [PREPARED_EVIDENCE.md](PREPARED_EVIDENCE.md). Reviewed
 1cd62a76 connects initial held-source grant before decode/serialization to complete
 recipe grant before state staging and the existing guarded transport. Actual hosted
 prepared model0 requestc70b18b1... has50approvals and exact whole recorded tree;
