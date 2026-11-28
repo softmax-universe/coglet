@@ -6,6 +6,7 @@ use gecaos::git::GitEnv;
 use gecaos::os::GecaosOs;
 use serde_json::json;
 use std::time::Duration;
+mod diagnostics;
 
 fn is_oid(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
@@ -24,6 +25,16 @@ fn run() -> Result<(), &'static str> {
             }
             true
         }
+        Some("synthetic-diagnostics") => {
+            if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
+                return Err("synthetic-only acknowledgement required; no private transport qualification");
+            }
+            if args.len() != 5 || !is_oid(&args[2]) || !is_oid(&args[4])
+                || !args[3].strip_prefix("native@sha256:").is_some_and(is_oid) {
+                return Err("full endpoint/image/salt identities required");
+            }
+            false
+        }
         _ => return Err("unknown bridge command"),
     };
     // Never format configuration/errors: a malformed URL may contain a ticket.
@@ -33,10 +44,12 @@ fn run() -> Result<(), &'static str> {
     config = config.with_base(CaosBaseSpec::Unforged);
     let identity = gecaos::iroh_net::IrohTicket::parse(&config.base_url)
         .map_err(|_| "authenticated Iroh endpoint required")?.addr.id.to_string();
-    if sequence && identity != args[6] {
+    let diagnostic = args.first().map(String::as_str) == Some("synthetic-diagnostics");
+    if (sequence && identity != args[6]) || (diagnostic && identity != args[2]) {
         return Err("authenticated endpoint differs from operator pin");
     }
     let client = CaosClient::new(config);
+    if diagnostic { return diagnostics::probe(&client, &args[3], &args[4]); }
     let mut observations = Vec::new();
     for _ in 0..2 {
         let image = client.discover_native_worker_image()

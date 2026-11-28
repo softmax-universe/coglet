@@ -26,6 +26,17 @@ class BridgeRefusals(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('synthetic-only acknowledgement', p.stderr)
 
+    def test_diagnostics_requires_explicit_synthetic_ack(self):
+        p = self.invoke('synthetic-diagnostics')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('synthetic-only acknowledgement', p.stderr)
+
+    def test_diagnostics_rejects_bad_pins_before_credentials(self):
+        p = self.invoke('synthetic-diagnostics', '--synthetic-transport-only',
+                        'a'*64, 'native:latest', 'b'*64)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('endpoint/image/salt identities', p.stderr)
+
     def test_sequence_rejects_bad_identifiers_before_credentials(self):
         p = self.invoke('synthetic-cache-controls', '--synthetic-transport-only',
                         '/not-opened', 'not-an-oid', 'b'*64, 'c'*64, 'd'*64)
