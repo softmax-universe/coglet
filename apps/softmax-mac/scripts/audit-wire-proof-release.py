@@ -90,7 +90,10 @@ def audit_bundle(app, output, *, release):
                 else:
                     thin = image
                 symbols = run_tool(['/usr/bin/nm', str(thin)])
-                strings = run_tool(['/usr/bin/strings', '-a', str(thin)])
+                # Darwin -a scans all Mach-O sections, not all file bytes.
+                # The standalone '-' also includes headers/load commands and
+                # LINKEDIT: even a section-empty preview image is inspected.
+                strings = run_tool(['/usr/bin/strings', '-', str(thin)])
                 if ((symbols is not None and not symbols.strip())
                         or strings is None or not strings.strip()):
                     raise ValueError('empty native inspection output')

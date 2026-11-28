@@ -194,10 +194,34 @@ class ReleaseBoundaryTests(unittest.TestCase):
                          [('Contents/MacOS/Softmax', 'arm64', [])])
         self.assertFalse(any(c[1] == '-thin' for c in self.calls))
         self.assertIn(('/usr/bin/nm', str(self.main)), self.calls)
-        self.assertIn(('/usr/bin/strings', '-a', str(self.main)), self.calls)
+        self.assertIn(('/usr/bin/strings', '-', str(self.main)), self.calls)
         self.projections = {('Contents/MacOS/Softmax', 'arm64', 'strings'): b'WireProofExecutor'}
         with self.assertRaisesRegex(ValueError, 'forbidden.*WireProofExecutor'):
             self.run_audit()
+
+    def test_strings_scans_whole_file_not_just_macho_sections(self):
+        # Darwin `-a` scans sections only; a real __preview.dylib can have
+        # zero printable section data despite printable load-command strings.
+        # `-` selects all file bytes, strengthening the exclusion boundary.
+        self.image('Contents/MacOS/Softmax', thin=True)
+        self.arch_output = b'arm64\n'
+        original_native = self.native
+
+        def native(args, **kwargs):
+            result = original_native(args, **kwargs)
+            if args[0] == '/usr/bin/strings':
+                self.assertEqual(args, ['/usr/bin/strings', '-', str(self.main)])
+            return result
+
+        with patch.object(self.audit.subprocess, 'run', side_effect=native):
+            rows = self.run_audit()
+        self.assertEqual(len(rows), 1)
+        # Load-command/non-section leakage must still be rejected.
+        self.projections = {('Contents/MacOS/Softmax', 'arm64', 'strings'):
+                            b'@rpath/CredentialFixtureStore.dylib\n'}
+        with patch.object(self.audit.subprocess, 'run', side_effect=native):
+            with self.assertRaisesRegex(ValueError, 'forbidden.*CredentialFixtureStore'):
+                self.run_audit()
 
     def test_missing_or_non_macho_primary_is_rejected_before_tools(self):
         for contents in (None, b'not a Mach-O'):
@@ -242,7 +266,7 @@ class ReleaseBoundaryTests(unittest.TestCase):
         self.assertEqual((self.output / row['symbols']).read_bytes(), b'')
         self.assertEqual(row['symbols_sha256'], hashlib.sha256(b'').hexdigest())
         self.assertTrue(row['no_symbols'])
-        self.assertIn(('/usr/bin/strings', '-a', str(preview)), self.calls)
+        self.assertIn(('/usr/bin/strings', '-', str(preview)), self.calls)
         self.projections[('Contents/MacOS/__preview.dylib', 'arm64', 'strings')] = b'CredentialFixtureStore'
         with self.assertRaisesRegex(ValueError, 'forbidden.*CredentialFixtureStore'):
             self.run_audit()
