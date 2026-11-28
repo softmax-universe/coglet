@@ -1,5 +1,11 @@
 # Stage 2 increment: hosted capability discovered, NOT qualification PASS
 
+Latest continuation10: see [GUARDED_EVIDENCE.md](GUARDED_EVIDENCE.md). Independently
+reviewed476ae3 adds complete retained recipe + per-serialization/per-request guard,
+actual guarded model1 execution with51approvals and exact full tree, initial denial
+and real HEAD→POST revocation negative. 67fast normal/-O+5Rust+actual cross-language
+2runsPASS. Initial private preparation/factory/no-effects/upgrades/final gates remain.
+
 This is an implementation checkpoint, not the final evidence attachment, stage-2
 suite, CI result, exact-head approval or containing-main proof.
 
