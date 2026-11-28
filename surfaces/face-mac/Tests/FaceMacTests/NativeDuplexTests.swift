@@ -8,6 +8,7 @@ import CAudioRing
     var playback: PCMQueue?
     var starts = 0
     var stops = 0
+    var rendered: [Float] = []
     func start(configuration: AudioConfiguration, capture: PCMQueue, playback: PCMQueue,
                changed: @escaping @MainActor @Sendable () -> Void) throws {
         self.playback = playback; starts += 1
@@ -15,10 +16,34 @@ import CAudioRing
     func stop() { stops += 1 }
     func render(_ frames: Int) -> Int {
         var samples = [Float](repeating: 0, count: frames)
-        return samples.withUnsafeMutableBufferPointer { fa_render(playback!.raw, $0.baseAddress, frames, 1) }
+        let count = samples.withUnsafeMutableBufferPointer { fa_render(playback!.raw, $0.baseAddress, frames, 1) }
+        rendered = samples
+        return count
     }
 }
 final class NativeDuplexTests: XCTestCase {
+    func testExplicitDuckGainSurvivesCapturePollsAndCountsActualFrames() async throws {
+        try await MainActor.run {
+            let graph = InjectedGraph()
+            let kit = FaceAudioKit(factory: { graph }, permission: { true })
+            let duplex = NativeFaceDuplex(kit: kit)
+            try duplex.setPlaybackGain(0.25)
+            try duplex.start()
+            try duplex.enqueue([16384, 16384])
+            _ = duplex.readCapture() // quiet input must not undo a configured reflex
+            XCTAssertEqual(graph.render(1), 1)
+            XCTAssertEqual(graph.rendered[0], 0.125, accuracy: 0.0001)
+            XCTAssertEqual(duplex.renderedFrames, 1)
+            XCTAssertThrowsError(try duplex.setPlaybackGain(.nan))
+            XCTAssertThrowsError(try duplex.setPlaybackGain(-1))
+            try duplex.setPlaybackGain(1)
+            XCTAssertEqual(graph.render(1), 1)
+            XCTAssertEqual(graph.rendered[0], 0.5, accuracy: 0.0001)
+            try duplex.setPlaybackGain(0.25)
+            duplex.stop()
+            XCTAssertEqual(kit.playbackGain, 1)
+        }
+    }
     func testAdapterUsesOneSharedGraphAndExactRenderedFrameCounter() async throws {
         try await MainActor.run {
             let graph = InjectedGraph()

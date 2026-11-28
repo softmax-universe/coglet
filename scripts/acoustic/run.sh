@@ -39,7 +39,15 @@ if [ "${FACE_ACOUSTIC_SKIP_BUILD:-0}" != 1 ]; then
 <key>NSMicrophoneUsageDescription</key><string>Coglet Face M2b acoustic proof (speaker-to-microphone latency measurement)</string>
 </dict></plist>
 PLIST
-  codesign --force -s - --identifier com.softmax.coglet.faceacoustic "$APP"
+  codesign --force -s "${FACE_ACOUSTIC_SIGN_IDENTITY:--}" --identifier com.softmax.coglet.faceacoustic "$APP"
+fi
+
+# Read-only TCC preflight: do not change volume, request a grant or activate audio.
+if [ "${FACE_ACOUSTIC_PREFLIGHT_ONLY:-0}" = 1 ]; then
+  rm -f "$OUT/permission.txt" "$OUT/permission-stderr.txt"
+  open -W -n "$APP" --stdout "$OUT/permission.txt" --stderr "$OUT/permission-stderr.txt" --args --permission-status
+  cat "$OUT/permission.txt"
+  exit 0
 fi
 
 OLD_VOLUME="$(osascript -e 'output volume of (get volume settings)')"

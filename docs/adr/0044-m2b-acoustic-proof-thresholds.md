@@ -39,8 +39,9 @@ Declared test seams — honest limits of what this proves:
 | user voice | a second `AVAudioEngine` plays a 3400 Hz tone at a scheduled host time | real speech, mic-to-ear acoustics |
 | AEC | off | echo-cancelled barge-in; laptop route switching; hot-unplug |
 
-The harness is a test tool: not shipped (excluded from the published package products),
-no network route, not a surface.
+The harness is a test tool, exported as the macOS-only Swift package executable
+product `face-acoustic` so the proof runner can build it. It is not bundled in the
+installed product apps, opens no network route, and is not a deployed adapter.
 
 Measurement method. Each session first calibrates: per-frequency noise floor
 (p99 of a quiet second) and tone level (p10 of each tone through the speaker→mic loop);
@@ -149,3 +150,50 @@ docs/acoustic/m2b-mini-2026-11-27/thresholds.json <out>`.
   measurement with a broadband stimulus or a closer microphone could tighten it.
 - Single session per claim: the distributions are one room at one time. Only a
   repeated, independent re-measurement would tighten the 2× margin.
+
+## Follow-up measurement protocol (threshold amendment pending)
+
+The trusted `FaceSurfaceBackend` constructor can now select immutable
+`bargeMode: .duck`; its default remains `.stop`. Unsupported duplex implementations
+refuse duck mode. A native duck applies linear gain 0.25 before publishing
+`reflex=ducked` and the matching `state=ducked` snapshot. Admitted audio is not
+flushed or replayed, queued chunks remain at reduced gain, and later actual render
+frames alone extend heard history. Gain resets on stream close, cancellation and
+native teardown. This constructor is not a guest-writable configuration switch.
+The separate optional energy-VAD duck can multiply the adapter gain; it stays off
+in this PTT/tone proof. No real-ASR, voice-classification or AEC claim is added.
+
+`--duck-runs N` drives the frozen `over-talk-duck` config and transcript inputs.
+The frozen finish input is not injected: the real 3-second PCM must finish and emit
+its successful outcome. Progress observations are projected to item/state
+transitions across transcript events, preserving all other events, and compared
+with the frozen ordering. Reflex, paired position snapshot, final state and
+terminal status must match, not just event kinds.
+
+The duck latency is PTT press to the first sustained fall below 0.625 of the
+pre-barge level (the halfway crossing between gain 1 and 0.25), **not silence**.
+Steady-state amplitude is measured 150–250 ms after the press. A second word's
+700–850 ms window after acoustic onset independently checks sustained acoustic
+output. Both level ratios must be within 0.10–0.45 and at least 12 dB above their
+own quiet lead-in p99. These mode-discrimination guards reject no duck, stopped
+output and noise-only output; continued render frames alone cannot establish
+acoustic continuation. Missing/non-finite measurements fail. Version-2 thresholds
+also require measured duck latency and complete duck conformance. Historical
+version-1 gates remain stop/capture-only and cannot certify duck.
+
+`--ringdown-runs N` adds separately labelled per-frequency direct-flush diagnostics:
+2-second tones are cut after 700 ms, bypassing the speech backend but retaining
+the same native graph, microphone and 25%-for-3-ms detector. Compare these tails
+with actual timeline barges before attributing frequency-dependent delay to room,
+speaker DSP, capture, or adapter work. These diagnostics are not timeline passes.
+The existing full-tone stop metric is unchanged; no faster threshold has yet been
+accepted from this follow-up. Raw measurement, a separately seeded rerun, numeric
+thresholds and their rationale must accompany the final amendment.
+
+Explicit `--input-uid` and `--output-uid` pin both the duplex graph and the separate
+stimulus engine to the intended rig without changing the system default route.
+`--list-devices` lists UIDs without opening audio. `--permission-status` and
+`FACE_ACOUSTIC_PREFLIGHT_ONLY=1` inspect TCC without requesting permissions or
+playing sound; `FACE_ACOUSTIC_SIGN_IDENTITY` can use an existing stable signing
+identity for an isolated harness bundle. Do not overwrite a previous proof bundle
+or request unrelated grants.

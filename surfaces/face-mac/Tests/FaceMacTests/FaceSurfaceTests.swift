@@ -12,6 +12,13 @@ import CogletSurface
     var captured: [Int16] = []
     var onVoiceActivity: ((Bool) -> Void)?
     var flushes = 0
+    var supportsPlaybackGain = true
+    var gain: Float = 1
+    var gainFails = false
+    func setPlaybackGain(_ gain: Float) throws {
+        if gainFails { throw NativeSurfaceError("unavailable") }
+        self.gain = gain
+    }
     func start() throws { isRunning = true }
     func stop() { isRunning = false; generation += 1 }
     func enqueue(_ samples: [Int16]) throws { enqueued.append(samples) }
@@ -32,6 +39,62 @@ import CogletSurface
 }
 
 final class FaceSurfaceTests: XCTestCase {
+    func testDuckAppliesBeforeEventsRetainsQueueAndExtendsHeardOnlyByRendering() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), tts = TestSynthesis()
+            let face = FaceSurfaceBackend(audio: io, synthesis: tts, renderer: .init { _ in }, bargeMode: .duck)
+            var events: [(String, CBORValue)] = []
+            face.activate(owner: Self.owner, epoch: 1) { kind, payload in
+                if kind == "speech.barge_in" { XCTAssertEqual(io.gain, 0.25) }
+                events.append((kind, payload))
+            }
+            let first = Self.speak(id: "00000000000000000000000000000001", final: false)
+            _ = try face.begin(action: first, epoch: 1, now: 0)
+            _ = try face.begin(action: Self.speak(id: "00000000000000000000000000000002", chunk: 1), epoch: 1, now: 0)
+            tts.callbacks[0](.success(.init(samples: Array(repeating: 1, count: 24_000),
+                spans: [.init(endMS: 400, text: "hello "), .init(endMS: 900, text: "world")])))
+            try face.tick(now: 1); io.renderedFrames = 12_000
+            let flushes = io.flushes
+            events = []
+            try face.speechStart(utterance: "20000000000000000000000000000000", positionMS: 0)
+            XCTAssertEqual(events.map { $0.0 }, ["speech.start", "speech.barge_in", "speech.position"])
+            XCTAssertEqual(events[1].1["reflex"], .text("ducked"))
+            XCTAssertEqual(events[2].1["state"], .text("ducked"))
+            XCTAssertEqual(events[1].1["played_ms"], events[2].1["played_ms"])
+            XCTAssertEqual(io.flushes, flushes)
+            XCTAssertTrue(face.takeCompletions().isEmpty)
+            let query = CBORValue.record([("item", first["id"]!)])
+            XCTAssertEqual(try face.read(operation: "speech.heard", args: query, owner: Self.owner, now: 1)["text"], .text("hello "))
+            io.renderedFrames = 24_000; try face.tick(now: 2)
+            XCTAssertEqual(try face.read(operation: "speech.heard", args: query, owner: Self.owner, now: 2)["text"], .text("hello world"))
+            if case .succeeded = face.takeCompletions().first?.result {} else { XCTFail("rendered duck item must succeed") }
+            tts.callbacks[1](.success(.init(samples: Array(repeating: 1, count: 2400))))
+            try face.tick(now: 3)
+            XCTAssertEqual(io.gain, 0.25, "queued chunks stay reduced, no replay or automatic unduck")
+            io.renderedFrames += 2400; try face.tick(now: 4)
+            XCTAssertEqual(io.gain, 1, "finished stream cannot leak gain into another stream")
+            XCTAssertEqual(try face.read(operation: "speech.config", args: .map([]), owner: Self.owner, now: 4)["barge"], .text("duck"))
+        }
+    }
+    func testDuckGainFailureStopsWithoutFalseReflexAndUnsupportedIORefuses() async throws {
+        try await MainActor.run {
+            let io = TestDuplex(), tts = TestSynthesis()
+            let face = FaceSurfaceBackend(audio: io, synthesis: tts, renderer: .init { _ in }, bargeMode: .duck)
+            var barges = 0
+            face.activate(owner: Self.owner, epoch: 1) { kind, _ in if kind == "speech.barge_in" { barges += 1 } }
+            io.supportsPlaybackGain = false
+            XCTAssertThrowsError(try face.startDuplex())
+            io.supportsPlaybackGain = true
+            _ = try face.begin(action: Self.speak(id: "00000000000000000000000000000001"), epoch: 1, now: 0)
+            tts.callbacks[0](.success(.init(samples: Array(repeating: 1, count: 2400))))
+            try face.tick(now: 1); io.gainFails = true
+            let flushes = io.flushes
+            XCTAssertThrowsError(try face.speechStart(utterance: "20000000000000000000000000000000", positionMS: 0))
+            XCTAssertGreaterThan(io.flushes, flushes)
+            XCTAssertEqual(barges, 0)
+            XCTAssertEqual(face.takeCompletions().count, 1)
+        }
+    }
     func testBargeInFlushesBeforeEventsCancelsQueueAndFencesLateSynthesis() async throws {
         try await MainActor.run {
             let io = TestDuplex(), tts = TestSynthesis()

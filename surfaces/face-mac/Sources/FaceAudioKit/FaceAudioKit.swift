@@ -28,6 +28,16 @@ public struct AudioConfiguration: Equatable, Sendable {
     public var onVoiceActivity: ((Bool) -> Void)?
     public var duckingGain: Float = 0.25
     public var duckingEnabled = false
+    /// Explicit adapter reflex gain, independent of the optional energy VAD.
+    public private(set) var playbackGain: Float = 1
+    public func setPlaybackGain(_ gain: Float) throws {
+        guard gain.isFinite, gain >= 0, gain <= 1 else { throw FaceAudioError.invalidFormat }
+        playbackGain = gain
+        updateGain()
+    }
+    private func updateGain() {
+        if let playback { fa_gain(playback.raw, playbackGain * (duckingEnabled && speaking ? duckingGain : 1)) }
+    }
     private var vad = EnergyVAD()
     private var speaking = false
     private var capture: PCMQueue?
@@ -60,6 +70,7 @@ public struct AudioConfiguration: Equatable, Sendable {
                 do { try self.startCapture() } catch { self.lastError = error }
             }
             capture = input; playback = output; engine = graph
+            updateGain()
             isRunning = true; lastError = nil
         } catch { graph.stop(); lastError = error; throw error }
     }
@@ -70,6 +81,7 @@ public struct AudioConfiguration: Equatable, Sendable {
         engine?.stop()
         if let playback { completedFrames += fa_played(playback.raw) }
         engine = nil; capture = nil; playback = nil; isRunning = false
+        playbackGain = 1 // a later graph/owner must not inherit an old reflex
         vad = EnergyVAD()
         if speaking { speaking = false; onVoiceActivity?(false) }
     }
@@ -101,8 +113,8 @@ public struct AudioConfiguration: Equatable, Sendable {
         let n = samples.withUnsafeMutableBufferPointer { fa_read(capture.raw, $0.baseAddress, $0.count) }
         samples.removeLast(samples.count - n)
         let active = vad.process(samples)
-        if let playback { fa_gain(playback.raw, duckingEnabled && active ? duckingGain : 1) }
         if active != speaking { speaking = active; onVoiceActivity?(active) }
+        updateGain()
         return samples
     }
 }
