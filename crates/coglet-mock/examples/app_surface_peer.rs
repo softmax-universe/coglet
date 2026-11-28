@@ -11,10 +11,15 @@
 //! `operation` is the FULL catalog name, e.g. `softmax.app.navigate`; `id` is 32 lowercase hex):
 //!   {"kind":"act","operation":..,"args":{..},"id":..}   {"kind":"read",..same..}
 //!   {"kind":"retry","id":..} (re-sends the EXACT stored act bytes)   {"kind":"close"}
-//!   {"kind":"wrong_epoch","id":..} fixed ordinary shortcuts press, epoch+1; MUST be refused
+//!   {"kind":"wrong_epoch","id":..} fixed foundation set_focus, epoch+1; MUST be refused
 //! `close` waits until every retained command is answered (accept+outcome / read_reply);
 //! a command unanswered after 6 s local time fails the peer. stdout is drained by a bounded
 //! writer thread: a stalled consumer fails the peer closed instead of stalling the socket loop.
+//! Only the 9 foundation operations are expected, granted or sent (events view_changed,
+//! focus_changed, window_changed; reads state, controls; actions navigate, open_window,
+//! close_window, set_focus). The immutable 13-name catalog pin is unchanged; the other catalog
+//! names (control_changed, invoke, set_setting) are DEFERRED: never expected in caps, never in
+//! grants, refused locally as commands and refused as incoming events.
 //! `act invoke_sensitive` is an explicit negative control only: it is sent without any
 //! grant and the peer fails if the app ever accepts or succeeds it.
 
@@ -37,6 +42,12 @@ const RESOURCE: &str = "softmax.app_control";
 const SENSITIVE: &str = "softmax.app.invoke_sensitive";
 const S01: &str = "surface::surface-message";
 const S02: &str = "surface02::s02-surface-message";
+/// The foundation subset of the pinned catalog: the ONLY operations this peer expects, grants or
+/// sends. Everything else in the catalog is deferred (and kept pinned for grammar validation).
+const FOUNDATION_EVENTS: [&str; 3] = ["softmax.app.focus_changed", "softmax.app.view_changed", "softmax.app.window_changed"];
+const FOUNDATION_READS: [&str; 2] = ["softmax.app.controls", "softmax.app.state"];
+const FOUNDATION_ACTIONS: [&str; 4] =
+    ["softmax.app.close_window", "softmax.app.navigate", "softmax.app.open_window", "softmax.app.set_focus"];
 const MAX_LINE: usize = 64 * 1024;
 /// Test-peer lifetime cap on retained commands (acts are kept for exact replay, completed reads
 /// are kept as evidence; nothing is ever evicted). 256 covers the native wire test's inventory
@@ -170,14 +181,25 @@ impl Catalog {
         let rule = self.schemas.get(uri).ok_or("unknown schema URI")?;
         coglet_types::validate_with_schema(&self.rules, rule, &to_profile(v)?)
     }
-    /// Ordinary (non-sensitive) operations of the `softmax.app` entry with a direction.
+    /// Foundation operations of the `softmax.app` entry with a direction (sorted). Selected from the
+    /// fixed foundation lists; each must exist in the pinned catalog with that direction.
     fn ordinary(&self, direction: &str) -> Vec<String> {
-        let mut v: Vec<String> = (self.ops.iter())
-            .filter(|(_, o)| o.entry == ENTRY && o.direction == direction)
-            .map(|(n, _)| n.clone())
+        let sel: &[&str] = match direction {
+            "event" => &FOUNDATION_EVENTS,
+            "read" => &FOUNDATION_READS,
+            "action" => &FOUNDATION_ACTIONS,
+            _ => &[],
+        };
+        let mut v: Vec<String> = sel
+            .iter()
+            .filter(|n| self.ops.get(**n).is_some_and(|o| o.entry == ENTRY && o.direction == direction))
+            .map(|n| n.to_string())
             .collect();
         v.sort();
         v
+    }
+    fn is_foundation(&self, name: &str) -> bool {
+        ["event", "read", "action"].iter().any(|d| self.ordinary(d).iter().any(|n| n == name))
     }
     fn schema_uri(&self, op: &str) -> &str {
         let o = &self.ops[op];
@@ -445,7 +467,7 @@ impl Peer {
     fn caps(&mut self, b: &Json) -> Result<(), String> {
         self.advance_clock(uint(b, "clock")?)?;
         if get(b, "entries")? != &json!([self.cat.expected_caps_entry()]) {
-            return Err(format!("capabilities differ from the ordinary pinned catalog: {}", get(b, "entries")?));
+            return Err(format!("capabilities differ from the foundation operations: {}", get(b, "entries")?));
         }
         Ok(())
     }
@@ -464,7 +486,7 @@ impl Peer {
         let set: BTreeSet<String> = ops.iter().map(|s| s.to_string()).collect();
         let ordinary: BTreeSet<String> = ["event", "read", "action"].iter().flat_map(|d| self.cat.ordinary(d)).collect();
         if set.len() != ops.len() || set != ordinary {
-            return Err("grant operations are not the ordinary catalog operations".into());
+            return Err("grant operations are not exactly the foundation operations".into());
         }
         let expires = uint(g, "expires")?;
         if expires <= self.clock {
@@ -493,7 +515,7 @@ impl Peer {
             return self.outcome(p, text(b, "correlation_id")?);
         }
         match self.cat.ops.get(kind) {
-            Some(o) if o.direction == "event" && o.entry == ENTRY => {
+            Some(o) if o.direction == "event" && o.entry == ENTRY && self.cat.is_foundation(kind) => {
                 self.cat.check(&o.input, p)?;
                 if let Some(rev) = p.get("revision").and_then(Json::as_u64) {
                     if rev < self.last_revision {
@@ -585,8 +607,8 @@ impl Peer {
             Cmd::Close => return Err("close is handled by the loop".into()),
             Cmd::Act { op, args, id } => (op, args, id, false),
             Cmd::Read { op, args, id } => (op, args, id, true),
-            Cmd::WrongEpoch { id } => ("softmax.app.invoke".to_owned(),
-                json!({"window":"settings", "control":"settings.shortcuts.open", "verb":"press"}), id, false),
+            Cmd::WrongEpoch { id } => ("softmax.app.set_focus".to_owned(),
+                json!({"window":"settings", "control":"settings.shortcuts.open"}), id, false),
         };
         if self.retained.len() >= MAX_RETAINED {
             return Err("retained command limit reached".into());
@@ -600,6 +622,11 @@ impl Peer {
             return Err(format!("{op} is not a {want}"));
         }
         let negative = wrong_epoch || (!is_read && op == SENSITIVE);
+        // Deferred operations (invoke, set_setting, control_changed) are refused locally; only the
+        // explicit ungranted invoke_sensitive negative control may bypass the grant check.
+        if op != SENSITIVE && !self.cat.is_foundation(&op) {
+            return Err(format!("{op} is deferred (not a foundation operation); refusing locally"));
+        }
         if op != SENSITIVE && (!self.granted.contains(&op) || self.clock >= self.expires) {
             return Err(format!("{op} is not granted (or the grant expired); refusing locally"));
         }
@@ -815,20 +842,17 @@ mod tests {
     const OWNER: &str = "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     const WINDOW: Duration = Duration::from_secs(6);
     // Literal expectations (not derived from the catalog code under test).
-    const EVENTS: [(&str, &str); 4] = [
-        ("control_changed", "app-control-changed"),
+    const EVENTS: [(&str, &str); 3] = [
         ("focus_changed", "app-focus-changed"),
         ("view_changed", "app-view-changed"),
         ("window_changed", "app-window-changed"),
     ];
     const READS: [(&str, &str); 2] = [("controls", "app-controls-result"), ("state", "app-state-result")];
-    const ACTIONS: [(&str, &str); 6] = [
+    const ACTIONS: [(&str, &str); 4] = [
         ("close_window", "app-window-args"),
-        ("invoke", "app-invoke-args"),
         ("navigate", "app-location"),
         ("open_window", "app-window-args"),
         ("set_focus", "app-focus-args"),
-        ("set_setting", "app-setting-args"),
     ];
     fn full(n: &str) -> String {
         format!("softmax.app.{n}")
@@ -933,6 +957,9 @@ mod tests {
         let mutations: Vec<Box<dyn Fn(&mut Json)>> = vec![
             Box::new(|c| { c["actions"].as_array_mut().unwrap().pop(); }),
             Box::new(|c| c["actions"].as_array_mut().unwrap().push(json!(SENSITIVE))),
+            Box::new(|c| c["actions"].as_array_mut().unwrap().push(json!("softmax.app.invoke"))),
+            Box::new(|c| c["actions"].as_array_mut().unwrap().push(json!("softmax.app.set_setting"))),
+            Box::new(|c| c["events"].as_array_mut().unwrap().push(json!("softmax.app.control_changed"))),
             Box::new(|c| c["exclusive"] = json!(["softmax.app_control", "audio.mic"])),
             Box::new(|c| c["exclusive"] = json!([])),
             Box::new(|c| c["schemas"]["softmax.app.navigate"] = json!("https://softmax.com/schemas/app/v1/app-empty")),
@@ -958,7 +985,10 @@ mod tests {
         let mut dup = ops.clone();
         dup.push(full("navigate"));
         ops.push(SENSITIVE.into());
+        let mut with_deferred = names(&[&EVENTS[..], &READS[..], &ACTIONS[..]].concat());
+        with_deferred.push(full("invoke"));
         let bad: Vec<Json> = vec![
+            with("operations", json!(with_deferred)),
             json!([]),
             json!([g.clone(), g.clone()]),
             with("coglet", json!(format!("coglet:{}", "c".repeat(64)))),
@@ -976,14 +1006,14 @@ mod tests {
     }
 
     #[test]
-    fn wrong_epoch_negative_keeps_real_ordinary_handler_and_requires_refusal() {
+    fn wrong_epoch_negative_uses_foundation_set_focus_and_requires_refusal() {
         let command = || parse_cmd(format!(r#"{{"kind":"wrong_epoch","id":"{ID1}"}}"#).as_bytes()).unwrap();
         let mut p = ready_peer();
         let raw = p.command(command()).unwrap();
         let sent = decode_s02(&raw);
         assert_eq!(sent["body"]["grant_epoch"], json!(EPOCH + 1));
-        assert_eq!(sent["body"]["action"]["capability"], "softmax.app.invoke");
-        assert_eq!(sent["body"]["action"]["args"], json!({"window":"settings", "control":"settings.shortcuts.open", "verb":"press"}));
+        assert_eq!(sent["body"]["action"]["capability"], "softmax.app.set_focus");
+        assert_eq!(sent["body"]["action"]["args"], json!({"window":"settings", "control":"settings.shortcuts.open"}));
         p.on_frame(&accept_frame(ID1, false)).unwrap();
         assert!(p.unanswered().is_empty());
         assert_eq!(p.command(Cmd::Retry { id: ID1.into() }).unwrap(), raw);
@@ -1012,12 +1042,12 @@ mod tests {
     #[test]
     fn retry_resends_exact_bytes_and_conflicting_ids_are_refused() {
         let mut p = ready_peer();
-        let first = p.command(act(&full("set_setting"), json!({"key": "floating_orb", "value": true}), ID1)).unwrap();
+        let first = p.command(act(&full("set_focus"), json!({"window": "settings", "control": "a"}), ID1)).unwrap();
         p.on_frame(&s02(json!({"type": "health", "body": {"state": "ready", "clock": HELLO_CLOCK + 2_000_000, "pending": 0, "correlation_id": "f".repeat(32)}}))).unwrap();
         assert_eq!(p.command(Cmd::Retry { id: ID1.into() }).unwrap(), first, "exact stored bytes, not rebuilt with a new deadline");
         assert_eq!(p.command(Cmd::Retry { id: ID1.into() }).unwrap(), first);
-        assert!(p.command(act(&full("set_setting"), json!({"key": "floating_orb", "value": false}), ID1)).is_err(), "same id, other bytes");
-        assert!(p.command(act(&full("set_setting"), json!({"key": "floating_orb", "value": true}), ID1)).is_err(), "same id never replaces");
+        assert!(p.command(act(&full("set_focus"), json!({"window": "settings", "control": "b"}), ID1)).is_err(), "same id, other bytes");
+        assert!(p.command(act(&full("set_focus"), json!({"window": "settings", "control": "a"}), ID1)).is_err(), "same id never replaces");
         assert_eq!(p.command(Cmd::Retry { id: ID1.into() }).unwrap(), first);
         assert!(p.command(Cmd::Retry { id: ID2.into() }).is_err());
         p.command(Cmd::Read { op: full("state"), args: json!({}), id: ID2.into() }).unwrap();
@@ -1028,9 +1058,12 @@ mod tests {
     fn wrong_schema_sibling_float_ungranted_and_direction_are_refused() {
         let mut p = ready_peer();
         let bad = [
-            ("softmax.app.set_setting", json!({"key": "floating_orb", "value": true, "extra": 1})),
-            ("softmax.app.set_setting", json!({"key": "floating_orb", "value": "Dark"})),
-            ("softmax.app.set_setting", json!({"key": "appearance", "value": true})),
+            ("softmax.app.set_focus", json!({"window": "main", "control": "x", "extra": 1})),
+            ("softmax.app.open_window", json!({"window": "nonexistent"})),
+            // Deferred operations are in the pinned catalog but refused locally, even with valid args.
+            ("softmax.app.set_setting", json!({"key": "floating_orb", "value": true})),
+            ("softmax.app.invoke", json!({"window": "settings", "control": "settings.shortcuts.open", "verb": "press"})),
+            ("softmax.app.control_changed", json!({})),
             ("softmax.app.navigate", json!({"window": "settings", "route": "main"})),
             ("softmax.app.navigate", json!({"window": "main"})),
             ("softmax.app.set_focus", json!({"window": "main", "control": 5})),
@@ -1042,7 +1075,7 @@ mod tests {
             assert!(p.command(act(op, args.clone(), &format!("{i:032x}"))).is_err(), "{op} {args}");
         }
         assert!(p.command(Cmd::Read { op: full("navigate"), args: nav(), id: ID2.into() }).is_err());
-        let float = br#"{"kind":"act","operation":"set_setting","args":{"key":"floating_orb","value":1.5},"id":"11111111111111111111111111111111"}"#;
+        let float = br#"{"kind":"act","operation":"softmax.app.set_focus","args":{"window":"main","control":1.5},"id":"11111111111111111111111111111111"}"#;
         let Cmd::Act { op, args, id } = parse_cmd(float).unwrap() else { panic!() };
         assert!(p.command(Cmd::Act { op, args, id }).is_err(), "float refused by the integer profile");
         assert!(p.retained.is_empty(), "refused commands retain nothing");

@@ -1,0 +1,19 @@
+# Product-local registry for the separately selected softmax.app views/focus cases (ADR-0030).
+# Run from the repo root:
+#   conformance/run --registry conformance/softmax_app_views_focus/impls.toml \
+#     --contract-profile surface-0.2 --suite softmax_app_views_focus
+# Linux claim: the Python reference SDK surface provisioned with the REAL pinned app catalog
+# (apps/softmax-mac/Surface/catalog.v1.json). It is a wire-level stand-in, NOT the app.
+[[implementations]]
+name = "surface-python-reference-softmax-app-views-focus"
+suites = ["softmax_app_views_focus"]
+peer_roles = ["runtime"]
+transport = "stdio"
+contract_profile = "surface-0.2"
+command = ["env", "PYTHONPATH=sdk/surface-python", "python3", "-m", "coglet_surface.reference", "--conformance-clock"]
+ready_line = "COGLET_PYTHON_READY"
+fixture_clock = true
+[implementations.fixtures.softmax-app-base.env]
+COGLET_FIXTURE_CONFIG = "conformance/softmax_app_views_focus/adapter-config.fixture"
+COGLET_FIXTURE_CATALOG = "apps/softmax-mac/Surface/catalog.v1.json"
+COGLET_FIXTURE_CATALOG_SHA256 = "3b2ad502dd3d111b9f6fcf832a51fccff2b8582348de8f9e354e75f2019354f9"

@@ -219,10 +219,11 @@ private actor WireProofExecutor {
         // The pin is reviewed product source, never derived from CLI/peer bytes.
         catalog = try TrustedExtensionCatalog(json: Array(Data(contentsOf: resource)),
             sha256: AppSurfaceProvisioning.catalogPin, contractProfile: .surface02)
+        // Match the installed views/focus slice exactly. The catalog remains
+        // pinned in full; dormant credential fixtures do not qualify more actions.
         let names: Set<String> = ["softmax.app.state", "softmax.app.controls", "softmax.app.navigate",
             "softmax.app.open_window", "softmax.app.close_window", "softmax.app.set_focus",
-            "softmax.app.invoke", "softmax.app.set_setting", "softmax.app.view_changed",
-            "softmax.app.focus_changed", "softmax.app.control_changed", "softmax.app.window_changed"]
+            "softmax.app.view_changed", "softmax.app.focus_changed", "softmax.app.window_changed"]
         operations = catalog!.operations.filter { names.contains($0.name) }
         guard operations.count == names.count else { throw WireProofFailure() }
         listener = try SurfaceSocketListener(directory: directory.appendingPathComponent("s").path,

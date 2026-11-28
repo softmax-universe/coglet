@@ -1,0 +1,92 @@
+{
+  "name": "views-focus-open-window-accepted",
+  "description": "open_window about accepted and succeeds",
+  "contract_profile": "surface-0.2",
+  "peer_role": "runtime",
+  "fixtures": [
+    "softmax-app-base"
+  ],
+  "steps": [
+    {
+      "expect": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.2",
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "hello_reply",
+        "body": {
+          "selection": {
+            "version": "0.2"
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "capabilities",
+        "body.revision": 1,
+        "body.entries.0.name": "softmax.app",
+        "body.entries.0.exclusive.0": "softmax.app_control"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "grants",
+        "body.epoch": 1
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "act",
+        "body": {
+          "grant_epoch": 1,
+          "action": {
+            "id": "00000000000000000000000000000001",
+            "coglet": "coglet:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "capability": "softmax.app.open_window",
+            "args": {
+              "window": "about"
+            },
+            "deadline": 1000000,
+            "correlation_id": "00000000000000000000000000000001"
+          }
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "accept",
+        "body.id": "00000000000000000000000000000001",
+        "body.correlation_id": "00000000000000000000000000000001",
+        "body.accepted": true
+      },
+      "within_ms": 1000
+    },
+    {
+      "match": {
+        "type": "event",
+        "body.kind": "action.outcome",
+        "body.payload.id": "00000000000000000000000000000001",
+        "body.payload.correlation_id": "00000000000000000000000000000001",
+        "body.payload.status": "succeeded"
+      },
+      "within_ms": 200
+    }
+  ]
+}

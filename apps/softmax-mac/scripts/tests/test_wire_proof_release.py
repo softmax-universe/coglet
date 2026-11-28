@@ -231,6 +231,74 @@ class ReleaseBoundaryTests(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, 'native tool failed'):
                         self.run_audit()
 
+    def test_exact_nm_no_symbols_diagnostic_still_scans_strings(self):
+        preview = self.image('Contents/MacOS/__preview.dylib', thin=True)
+        self.arch_output = b'arm64\n'
+        self.projections = {('Contents/MacOS/__preview.dylib', 'arm64', 'nm'): b''}
+        self.tool_fault = (lambda a: a == ['/usr/bin/nm', str(preview)], 0,
+                           f'{preview}: no symbols\n'.encode())
+        rows = self.run_audit()
+        row = next(r for r in rows if r['image'].endswith('__preview.dylib'))
+        self.assertEqual((self.output / row['symbols']).read_bytes(), b'')
+        self.assertEqual(row['symbols_sha256'], hashlib.sha256(b'').hexdigest())
+        self.assertTrue(row['no_symbols'])
+        self.assertIn(('/usr/bin/strings', '-a', str(preview)), self.calls)
+        self.projections[('Contents/MacOS/__preview.dylib', 'arm64', 'strings')] = b'CredentialFixtureStore'
+        with self.assertRaisesRegex(ValueError, 'forbidden.*CredentialFixtureStore'):
+            self.run_audit()
+        rows = self.run_audit(release=False)
+        with self.assertRaisesRegex(ValueError, 'missing Debug markers'):
+            self.audit.validate_debug(rows)
+
+    def test_no_symbols_diagnostic_is_exact_and_nm_only(self):
+        path = str(self.main)
+        exact = f'{path}: no symbols\n'.encode()
+        cases = (
+            ('nonzero', ['/usr/bin/nm', path], 1, b'', exact),
+            ('symbols present', ['/usr/bin/nm', path], 0, b'_ordinary\n', exact),
+            ('whitespace stdout', ['/usr/bin/nm', path], 0, b'\n', exact),
+            ('wrong image', ['/usr/bin/nm', path], 0, b'', b'/other: no symbols\n'),
+            ('extra warning', ['/usr/bin/nm', path], 0, b'', exact + b'warning: truncated\n'),
+            ('prefixed error', ['/usr/bin/nm', path], 0, b'', b'error: ' + exact),
+            ('duplicate diagnostic', ['/usr/bin/nm', path], 0, b'', exact + exact),
+            ('missing newline', ['/usr/bin/nm', path], 0, b'', exact[:-1]),
+            ('strings', ['/usr/bin/strings', '-a', path], 0, b'', exact),
+            ('lipo', ['/usr/bin/lipo', '-archs', path], 0, b'', exact),
+            ('other nm', ['/other/nm', path], 0, b'', exact),
+            ('extra nm argument', ['/usr/bin/nm', '-a', path], 0, b'', exact),
+        )
+        for name, args, status, stdout, stderr in cases:
+            with self.subTest(case=name), patch.object(self.audit.subprocess, 'run',
+                    return_value=subprocess.CompletedProcess(args, status, stdout, stderr)):
+                with self.assertRaisesRegex(ValueError, 'native tool failed'):
+                    self.audit.run_tool(args)
+
+    def test_fat_no_symbols_checks_each_slice_and_retains_debug_positive(self):
+        preview = 'Contents/MacOS/__preview.dylib'
+        self.image(preview)
+        all_markers = b'\n'.join(self.EXPECTED_MARKERS)
+        self.projections = {('Contents/MacOS/Softmax', arch, 'nm'): all_markers
+                            for arch in ('arm64', 'x86_64')}
+
+        def native(args, **kwargs):
+            result = self.native(args, **kwargs)
+            if args[0] == '/usr/bin/nm' and self.slices.get(args[-1], ('', ''))[0] == preview:
+                return subprocess.CompletedProcess(args, 0, b'', f'{args[-1]}: no symbols\n'.encode())
+            return result
+
+        with patch.object(self.audit.subprocess, 'run', side_effect=native):
+            rows = self.run_audit(release=False)
+            self.audit.validate_debug(rows)
+            preview_rows = [r for r in rows if r['image'] == preview]
+            self.assertEqual({r['arch'] for r in preview_rows}, {'arm64', 'x86_64'})
+            self.assertTrue(all(r['no_symbols'] for r in preview_rows))
+            self.projections = {(preview, 'x86_64', 'strings'): b'credential-witness'}
+            with self.assertRaisesRegex(ValueError, 'forbidden.*credential-witness'):
+                self.run_audit()
+            self.projections = {(preview, 'arm64', 'strings'): b''}
+            with self.assertRaisesRegex(ValueError, 'empty native inspection output'):
+                self.run_audit()
+
     def test_malformed_duplicate_and_empty_architectures_rejected(self):
         for archs in (b'', b' \n', b'arm64 arm64', b'arm64 ../x86_64', b'arm64 x86-64', b'arm64\xff'):
             with self.subTest(archs=archs):

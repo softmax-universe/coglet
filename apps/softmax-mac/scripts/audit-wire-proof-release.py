@@ -4,6 +4,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -37,7 +38,15 @@ def digest(path):
 
 
 def run_tool(args):
+    """Return stdout, or None only for nm's verified empty symbol table."""
     result = subprocess.run(args, capture_output=True, check=False, timeout=120)
+    # Apple nm reports an empty symbol table on stderr with exit 0. Match
+    # the entire diagnostic against the actual inspected slice, never a
+    # filename/suffix allowlist or substring that could conceal another error.
+    if (len(args) == 2 and args[0] == '/usr/bin/nm'
+            and result.returncode == 0 and result.stdout == b''
+            and result.stderr == os.fsencode(args[1]) + b': no symbols\n'):
+        return None
     if result.returncode or result.stderr:
         raise ValueError(f'native tool failed: {args[0]} exit={result.returncode} stderr={result.stderr!r}')
     return result.stdout
@@ -64,7 +73,10 @@ def audit_bundle(app, output, *, release):
     rows = []
     for image, magic in images:
         original_hash = digest(image)
-        arch_text = run_tool(['/usr/bin/lipo', '-archs', str(image)]).decode('ascii').strip()
+        arch_output = run_tool(['/usr/bin/lipo', '-archs', str(image)])
+        if arch_output is None:
+            raise ValueError('missing architecture inventory')
+        arch_text = arch_output.decode('ascii').strip()
         archs = arch_text.split()
         if not archs or len(archs) != len(set(archs)) or any(not re.fullmatch(r'[A-Za-z0-9_]+', a) for a in archs):
             raise ValueError('invalid architecture inventory')
@@ -79,8 +91,12 @@ def audit_bundle(app, output, *, release):
                     thin = image
                 symbols = run_tool(['/usr/bin/nm', str(thin)])
                 strings = run_tool(['/usr/bin/strings', '-a', str(thin)])
-                if not symbols.strip() or not strings.strip():
+                if ((symbols is not None and not symbols.strip())
+                        or strings is None or not strings.strip()):
                     raise ValueError('empty native inspection output')
+                no_symbols = symbols is None
+                if symbols is None:
+                    symbols = b''  # Persist the genuine empty projection, not a synthetic symbol.
                 ordinal = len(rows)
                 symbol_path = f'{ordinal:04d}-{arch}.symbols.txt'
                 string_path = f'{ordinal:04d}-{arch}.strings.txt'
@@ -89,6 +105,7 @@ def audit_bundle(app, output, *, release):
                 row = {'image': str(image.relative_to(app)), 'arch': arch,
                        'image_sha256': original_hash, 'slice_sha256': digest(thin),
                        'symbols': symbol_path, 'symbols_sha256': hashlib.sha256(symbols).hexdigest(),
+                       'no_symbols': no_symbols,
                        'strings': string_path, 'strings_sha256': hashlib.sha256(strings).hexdigest(),
                        'hits': validate_projection(symbols, strings, release=release)}
                 rows.append(row)

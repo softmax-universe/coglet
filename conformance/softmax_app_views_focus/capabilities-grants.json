@@ -1,0 +1,55 @@
+{
+  "name": "views-focus-capabilities-grants",
+  "description": "0.2 negotiated; entry softmax.app with exclusive softmax.app_control",
+  "contract_profile": "surface-0.2",
+  "peer_role": "runtime",
+  "fixtures": [
+    "softmax-app-base"
+  ],
+  "steps": [
+    {
+      "expect": {
+        "type": "hello",
+        "body": {
+          "surface": "surface:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "offer": {
+            "versions": [
+              "0.2",
+              "0.1"
+            ]
+          },
+          "clock": 0,
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      },
+      "within_ms": 200
+    },
+    {
+      "send": {
+        "type": "hello_reply",
+        "body": {
+          "selection": {
+            "version": "0.2"
+          },
+          "correlation_id": "11111111111111111111111111111111"
+        }
+      }
+    },
+    {
+      "match": {
+        "type": "capabilities",
+        "body.revision": 1,
+        "body.entries.0.name": "softmax.app",
+        "body.entries.0.exclusive.0": "softmax.app_control"
+      },
+      "within_ms": 200
+    },
+    {
+      "match": {
+        "type": "grants",
+        "body.epoch": 1
+      },
+      "within_ms": 200
+    }
+  ]
+}
