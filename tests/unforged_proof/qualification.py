@@ -232,15 +232,23 @@ class Qualification:
         return dict(denied=denied,missing_reply_refused=True)
 
     def hosted_replay_has_no_live_effects(self):
+        from no_effects_closure import inspect
+        from no_effects_policy import check
+        # These are committed reviewed-source bytes, never an operator waiver.
+        # Check before any execution, and retain raw selected Cargo graph.
+        pins=check();graph=inspect()
+        (self.out/'no-effects-closure.json').write_text(json.dumps(graph,indent=2)+'\n')
         self.hosted_replay_matches_recorded_step_trees()
         model=strict_json((self.out/'model.json').read_bytes())
         replay=strict_json((self.out/'oracles/replay-trace.json').read_bytes())
         require_effects(model,'llm_requests');require_effects(replay,'actions')
         note=dict(source=self.c['source'],model_steps=len(model['records']),adapter_steps=len(replay['records']),
+                  audited_source_files=len(pins),source_pins=pins,
                   observed='each step required strict namespace and synthetic loopback controls',
-                  limitation='not universal syscall accounting; independent exact-head live-dispatch/source-closure audit outstanding')
-        (self.out/'no-effects-source-audit-pending.json').write_text(json.dumps(note,indent=2)+'\n')
-        raise Unavailable('exact-head no-live-dispatch source-closure audit remains outstanding; loopback controls alone do not certify no-live-effects')
+                  claim='bare Runtime.step records guest model/actions; only recorded boundary outcomes enter replay; no reachable live dispatcher in reviewed source',
+                  limitation='not universal syscall accounting; loopback controls cover synthetic endpoints only')
+        (self.out/'no-effects-source-audit.json').write_text(json.dumps(note,indent=2)+'\n')
+        return note
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

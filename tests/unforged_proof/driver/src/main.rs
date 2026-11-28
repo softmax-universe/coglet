@@ -1,6 +1,6 @@
 //! Opt-in local proof driver. No unforged library is linked into Coglet.
 use coglet_runtime::{NativeEngine, Runtime};
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::{collections::BTreeMap, fs, path::Path};
 
 fn files(runtime: &Runtime) -> BTreeMap<String, String> {
@@ -52,22 +52,7 @@ fn run() -> Result<(), String> {
         }
         _ => {}
     }
-    if args.get(1).map(String::as_str) == Some("prepare") {
-        let setup = coglet_cli::package_setup(Path::new(&args[2])).map_err(|e| e.to_string())?;
-        let id = setup["manifest"]["id"].clone();
-        let batches: Vec<_> = (0..5).map(|step| json!([{"kind":"runtime.debug_step","source":id,"seq":step,"logical_time":step,"correlation_id":"11111111111111111111111111111111","payload":{}}])).collect();
-        let job = coglet_cli::sandbox_job(
-            setup,
-            json!(batches),
-            json!([]),
-            json!({"coglet":id,"operations":[],"resources":[]}),
-            "11111111111111111111111111111111",
-            7,
-        )
-        .map_err(|e| e.to_string())?;
-        fs::write(&args[3], serde_json::to_vec(&job).unwrap()).map_err(|e| e.to_string())?;
-        return Ok(());
-    }
+
     if args.get(1).map(String::as_str) == Some("snapshot") {
         let runtime = Runtime::import_trace(&read(&args[2])?)?;
         println!("{}", serde_json::to_string(&files(&runtime)).unwrap());

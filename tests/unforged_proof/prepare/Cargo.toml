@@ -1,0 +1,15 @@
+[package]
+name = "coglet-unforged-prepare"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+coglet-cli = { path = "../../../crates/coglet-cli" }
+serde_json = "1"
+
+[profile.dev]
+debug = 0
+incremental = false

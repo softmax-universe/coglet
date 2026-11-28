@@ -31,6 +31,8 @@ cargo rustc --locked --manifest-path coglets/counter/Cargo.toml \
   --target wasm32-wasip1 --release --lib -- -C link-arg=--max-memory=16777216
 cargo build --locked --manifest-path tests/unforged_proof/driver/Cargo.toml \
   --target-dir target -j2
+cargo build --locked --manifest-path tests/unforged_proof/prepare/Cargo.toml \
+  --target-dir target -j2
 python3 -m unittest discover -s tests/unforged_proof -v
 python3 tests/unforged_proof/run.py --unforge ../unforged/target/debug/unforge \
   --output ../unforged-proof-evidence
@@ -42,6 +44,12 @@ the explicit maximum memory is required by native engine admission. No changes
 to workspace dependencies, default CI, journal structure, or step semantics.
 This directory is deliberately outside the default build; CI can opt in by
 running the commands above with an independently pinned unforged checkout.
+The preparation helper is supervisor-only and retains the CLI package API;
+it is never exported as the hosted program. The bare driver disables runtime
+device defaults and does not depend on the CLI. Run the explicit selected-graph
+gate with `python3 tests/unforged_proof/no_effects_closure.py --output NEW.json`.
+That guard is not a universal syscall/effects certificate; the driver intentionally
+contains loopback-only canaries, and source audit plus actual execution are separate.
 
 If Git must be provisioned without sudo, build a release tarball into a private
 prefix; prepend `<prefix>/bin` to PATH. This proof needs only local Git, so builds

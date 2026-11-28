@@ -77,7 +77,7 @@ def main():
     run(cli, 'build', '--wasm', ROOT / 'coglets/counter/target/wasm32-wasip1/release/coglet_counter.wasm',
         '--manifest', out/'manifest.json', '--source-commit', run('git','rev-parse','HEAD',cwd=ROOT).decode().strip(),
         '--recipe',out/'recipe','--policy',out/'policy','--output',out/'package')
-    run(driver,'prepare',out/'package',out/'hot-job.json')
+    run(bins/'coglet-unforged-prepare',out/'package',out/'hot-job.json')
     job = json.loads((out/'hot-job.json').read_text())
     raw = run(daemon,'--sandbox-stdio',data=json.dumps(job).encode())
     (out/'trace.json').write_bytes(raw)

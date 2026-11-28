@@ -5,7 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
-coglet-runtime = { path = "../../../crates/coglet-runtime", features = ["native-engine"] }
+coglet-runtime = { path = "../../../crates/coglet-runtime", default-features = false, features = ["native-engine"] }
 coglet-types = { path = "../../../crates/coglet-types" }
 serde_json = "1"
 serde = "1"

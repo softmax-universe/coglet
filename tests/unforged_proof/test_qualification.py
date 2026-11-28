@@ -59,6 +59,11 @@ class LocalQualificationTests(unittest.TestCase):
         instance=object.__new__(q.Qualification)
         with patch.object(q.Qualification,'model',return_value=None),patch.object(q.Qualification,'receipt_negatives',return_value={'LOCAL':True}):
             with self.assertRaisesRegex(q.Unavailable,'actual.*image'):instance.hosted_changed_image_invalidates_acceptance()
+    def test_no_effects_requires_pins_before_execution(self):
+        instance=object.__new__(q.Qualification)
+        with patch('no_effects_policy.check',side_effect=ValueError('source audit differs')),patch.object(q.Qualification,'hosted_replay_matches_recorded_step_trees') as execute:
+            with self.assertRaisesRegex(ValueError,'source audit'):instance.hosted_replay_has_no_live_effects()
+            execute.assert_not_called()
     def test_empty_or_non_effectful_oracle_refuses(self):
         for trace in ({'records':[]},{'records':[{'llm_requests':[],'actions':[]}]}):
             with self.assertRaises(q.Unavailable):q.require_effects(trace,'llm_requests')
