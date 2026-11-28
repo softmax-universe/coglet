@@ -16,6 +16,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     for key in ('trace','driver','unforge','output'):
         ap.add_argument('--'+key, type=Path, required=True)
+    ap.add_argument('--resolver-store', type=Path, required=True,
+                    help='existing local Unforged Git store retaining the independently pinned resolver')
+    ap.add_argument('--expected-resolver', required=True)
     args = ap.parse_args()
     driver, unforge = args.driver.resolve(), args.unforge.resolve()
     trace_path = args.trace.resolve()
@@ -51,6 +54,14 @@ def main():
                     rows.append(f'100644 blob {value}\t{name}\0')
             return git('mktree','-z',data=''.join(rows).encode())
         return build(nested)
+
+    source_pin = run('git','--no-replace-objects',f'--git-dir={args.resolver_store.resolve()}',
+                     'rev-parse','refs/heads/resolver').decode().strip()
+    if source_pin != args.expected_resolver:
+        raise RuntimeError('source resolver differs from independent pin')
+    git('fetch','--no-tags',str(args.resolver_store.resolve()),'refs/heads/resolver:refs/heads/resolver')
+    if git('rev-parse','refs/heads/resolver') != args.expected_resolver:
+        raise RuntimeError('imported resolver differs from independent pin')
 
     results = []
     for index, record in enumerate(trace['records']):
