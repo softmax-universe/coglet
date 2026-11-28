@@ -33,7 +33,15 @@ public struct AppSurfaceProvisioning {
         let builtins = SurfaceOperation.builtins.filter {
             ["speech.start", "speech.end", "speech.speak_chunk", "expression.set_expression"].contains($0.name)
         }
-        let available = builtins + (catalog?.operations ?? [])
+        // The bundled ADR-0030 catalog is immutable and remains the persistence
+        // identity. This release qualifies only views/focus; the controls and
+        // settings slices must extend this boundary through their own proofs.
+        // Reject an explicit unqualified request, never silently drop it or let
+        // manifest/resource presence opt it into production.
+        let foundation: Set<String> = ["softmax.app.state", "softmax.app.controls",
+            "softmax.app.view_changed", "softmax.app.focus_changed", "softmax.app.window_changed",
+            "softmax.app.navigate", "softmax.app.open_window", "softmax.app.close_window", "softmax.app.set_focus"]
+        let available = builtins + (catalog?.operations.filter { foundation.contains($0.name) } ?? [])
         let requested = Set(subscriptions + required)
         guard requested.isSubset(of: Set(available.map(\.name))) else { throw AppSurfaceFailure.unsupported }
         let selected = requested.union(["speech.start", "speech.end"])

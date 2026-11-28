@@ -2,7 +2,7 @@ import XCTest
 @testable import SoftmaxAppSurface
 
 final class RegistrationInventoryTests: XCTestCase {
-    @MainActor func testInventoryCapturesActualMountsWithoutReadingValuesOrInvokingEffects() throws {
+    @MainActor func testInventoryCapturesActualMountsWithoutReadingValuesOrInvokingEffects() async throws {
         var reads = 0, effects = 0, visible = true, enabled = false
         let registry = ControlRegistry(revision: 0, currentRoute: { _ in "general" })
         let mount = try registry.mount(id: "settings.secret", window: "settings", route: "general",
@@ -30,7 +30,7 @@ final class RegistrationInventoryTests: XCTestCase {
         XCTAssertEqual(effects, 0)
     }
 
-    @MainActor func testInventoryIncludesDisabledOffRouteMountsAndExcludesRefusedDuplicate() throws {
+    @MainActor func testInventoryIncludesDisabledOffRouteMountsAndExcludesRefusedDuplicate() async throws {
         let registry = ControlRegistry(revision: 0, currentRoute: { _ in "audio" })
         func mount(_ id: String) throws {
             try registry.mount(id: id, window: "settings", route: "general", role: "button",

@@ -222,6 +222,32 @@ private actor BackendHarness {
 }
 
 final class AppSurfaceBackendTests: XCTestCase, @unchecked Sendable {
+    /// A foundation grant omits control_changed. Real native registrations may
+    /// still report value changes, but those must not poison the retained stream
+    /// or consume a source sequence before the next authorized view/focus event.
+    func testFoundationEventSubsetIgnoresUnselectedControlChanges() async throws {
+        let capture = try await MainActor.run { try Host().adapter.capture() }
+        let h = try BackendHarness(capture: capture, clock: BackendClock(),
+            allowed: ["softmax.app.view_changed", "softmax.app.focus_changed"], withConnection: true)
+        try h.mailbox.observe(operation: "softmax.app.control_changed", payload: .map([
+            .init("revision", .unsigned(2)), .init("window", .text("settings")),
+            .init("control", .text("settings.general.button")),
+            .init("value", .map([.init("kind", .text("none"))]))]))
+        let omitted = try await h.eventFrames()
+        XCTAssertTrue(omitted.isEmpty)
+        for operation in ["softmax.app.view_changed", "softmax.app.focus_changed"] {
+            let field = operation == "softmax.app.view_changed" ? "route" : "control"
+            let value: N = field == "route" ? .text("general") : .text("settings.general.button")
+            try h.mailbox.observe(operation: operation, payload: .map([
+                .init("revision", .unsigned(3)), .init("window", .text("settings")), .init(field, value)]))
+            let frames = try await h.eventFrames()
+            XCTAssertEqual(frames.count, 1)
+            XCTAssertEqual(frames.first?["body"]?["kind"], .text(operation))
+        }
+        let stillLive = try await h.guardedSend()
+        XCTAssertTrue(stillLive)
+        try await h.close()
+    }
     // Synthetic native storage only; no Keychain, identity or product tokens.
     @MainActor private final class SecrecyFixture {
         let host: Host

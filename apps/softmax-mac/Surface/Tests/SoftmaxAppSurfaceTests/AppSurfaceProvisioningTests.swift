@@ -27,11 +27,38 @@ final class AppSurfaceProvisioningTests: XCTestCase {
         XCTAssertThrowsError(try AppSurfaceProvisioning(configuration: config(profile: "surface-0.2", names: ["softmax.app.state"])))
         XCTAssertThrowsError(try AppSurfaceProvisioning(configuration: config(catalog: true, names: ["softmax.app.state"])))
     }
+    func testFoundationSelectsEveryViewAndFocusOperationWithoutBroadeningCatalog() throws {
+        let names = ["softmax.app.state", "softmax.app.controls", "softmax.app.view_changed",
+            "softmax.app.focus_changed", "softmax.app.window_changed", "softmax.app.navigate",
+            "softmax.app.open_window", "softmax.app.close_window", "softmax.app.set_focus"]
+        let p = try AppSurfaceProvisioning(configuration: config(profile: "surface-0.2", catalog: true,
+            names: names, resources: ["softmax.app_control"]))
+        XCTAssertEqual(p.operationNames, Set(names + ["speech.start", "speech.end"]))
+        XCTAssertEqual(Set(p.operations.map(\.name)), p.operationNames)
+        // Keep exact catalog/persistence identity: the subset is admission, not
+        // a rewritten catalog that would reinterpret an existing ledger.
+        XCTAssertEqual(p.catalog?.operations.count, 13)
+        XCTAssertFalse(p.resources.contains("softmax.app_sensitive_control"))
+    }
+
+    func testFoundationRefusesDeferredOperationsEvenWithExplicitResources() throws {
+        for name in ["softmax.app.invoke", "softmax.app.set_setting",
+                     "softmax.app.invoke_sensitive", "softmax.app.control_changed"] {
+            for resources in [[], ["softmax.app_control", "softmax.app_sensitive_control"]] {
+                XCTAssertThrowsError(try AppSurfaceProvisioning(configuration: config(
+                    profile: "surface-0.2", catalog: true,
+                    names: ["softmax.app.state", name], resources: resources))) { error in
+                    XCTAssertEqual(error as? AppSurfaceFailure, .unsupported, name)
+                }
+            }
+        }
+    }
+
     func testReviewedCatalogIsPinnedAndManifestSelectionNeverGrantsSensitiveResource() throws {
         let p = try AppSurfaceProvisioning(configuration: config(profile: "surface-0.2", catalog: true,
-            names: ["softmax.app.state", "softmax.app.invoke_sensitive"], resources: ["softmax.app_control"]))
+            names: ["softmax.app.state", "softmax.app.set_focus"], resources: ["softmax.app_control"]))
         XCTAssertTrue(p.enablesApp)
-        XCTAssertEqual(Set(p.operations.map(\.name)), ["speech.start", "speech.end", "softmax.app.state", "softmax.app.invoke_sensitive"])
+        XCTAssertEqual(Set(p.operations.map(\.name)), ["speech.start", "speech.end", "softmax.app.state", "softmax.app.set_focus"])
         XCTAssertFalse(p.resources.contains("softmax.app_sensitive_control"))
         XCTAssertTrue(p.resources.contains("softmax.app_control"))
         let base = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

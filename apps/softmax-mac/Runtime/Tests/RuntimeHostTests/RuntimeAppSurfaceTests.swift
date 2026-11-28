@@ -11,7 +11,7 @@ import struct SoftmaxAppSurface.CBORMapEntry
 /// Real C ABI/WAMR and production RuntimeHost with a MainActor command fixture.
 /// NOT the app's live AppDelegate/SwiftUI tree or a coglet-mock acceptance proof.
 final class RuntimeAppSurfaceTests: XCTestCase {
-    @MainActor func testProductionHostCompletesPinnedAsyncAppActionOnlyAfterNativeCallback() async throws {
+    @MainActor func testProductionHostCompletesPinnedFocusOnlyAfterNativeWitness() async throws {
         typealias N = SoftmaxAppSurface.CBORValue
         func object(_ fields: [String: N]) -> N { .map(fields.map { SoftmaxAppSurface.CBORMapEntry($0.key, $0.value) }) }
         let source = try XCTUnwrap(ProcessInfo.processInfo.environment["SOFTMAX_ECHO_INSTALL"])
@@ -27,30 +27,35 @@ final class RuntimeAppSurfaceTests: XCTestCase {
         var manifest = try XCTUnwrap(setup["manifest"] as? [String: Any])
         let owner = try XCTUnwrap(manifest["id"] as? String)
         let actionID = String(repeating: "e", count: 32)
-        manifest["required_capabilities"] = (manifest["required_capabilities"] as? [String] ?? []) + ["softmax.app.state", "softmax.app.invoke"]
+        manifest["required_capabilities"] = (manifest["required_capabilities"] as? [String] ?? []) + ["softmax.app.state", "softmax.app.set_focus"]
         manifest["exclusive_outputs"] = (manifest["exclusive_outputs"] as? [String] ?? []) + ["softmax.app_control"]
         setup["manifest"] = manifest; setup["contract_profile"] = "surface-0.2"
         setup["initial_effect_ids"] = ["actions": [actionID], "timers": [], "llm_requests": []]
-        setup["initial_actions"] = [["id": actionID, "coglet": owner, "capability": "softmax.app.invoke",
-            "args": ["verb": "press", "window": "settings", "control": "settings.general.test_button"],
+        setup["initial_actions"] = [["id": actionID, "coglet": owner, "capability": "softmax.app.set_focus",
+            "args": ["window": "settings", "control": "settings.general.search"],
             "deadline": 60_000_000, "correlation_id": actionID]]
         let product = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Surface")
         configuration["trusted_extension_catalog"] = ["json": try String(contentsOf: product.appendingPathComponent("catalog.v1.json"), encoding: .utf8),
             "sha256": try String(contentsOf: product.appendingPathComponent("catalog.v1.sha256"), encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)]
         configuration["setup"] = setup; configuration["wal"] = root.appendingPathComponent("state.wal").path
         try JSONSerialization.data(withJSONObject: configuration, options: [.sortedKeys]).write(to: root.appendingPathComponent("runtime.json"))
-        var presses = 0
-        let userPress = { presses += 1 }
-        let entered = expectation(description: "async native command entered")
-        let finished = expectation(description: "actual native callback finished")
+        var focusRequests = 0
+        var focused = false
+        let userFocus = { focusRequests += 1; return true }
+        let entered = expectation(description: "native focus settling entered")
+        let finished = expectation(description: "actual native focus witness settled")
         var resume: CheckedContinuation<Void, Never>?
         let registry = ControlRegistry(revision: 1, currentRoute: { $0 == "settings" ? "general" : nil })
-        _ = try registry.mount(id: "settings.general.test_button", window: "settings", route: "general", role: "button", label: "Test button",
-            verbs: ["press"], value: { object(["kind": .text("none")]) }, invokeAsync: { _, context in
+        registry.focusSettling = .init(timeout: .seconds(10), interval: .milliseconds(10),
+            now: { ContinuousClock.now }, sleep: { _ in
                 await withCheckedContinuation { continuation in resume = continuation; entered.fulfill() }
-                try context.perform { userPress() }
+                focused = true
                 finished.fulfill()
-            }, invoke: { _ in XCTFail("async command used sync fallback") })
+            })
+        _ = try registry.mount(id: "settings.general.search", window: "settings", route: "general", role: "text_field", label: "Search",
+            verbs: ["type_text"], value: { object(["kind": .text("text"), "value": .text("")]) },
+            focus: userFocus, focused: { focused }, focusSettles: true,
+            invoke: { _ in XCTFail("focus must not invoke a control") })
         let adapter = AppSurfaceAdapter(registry: registry, captureState: {
             let meter = object(["state": .text("idle"), "visible": .boolean(false), "elapsed_ms": .unsigned(0), "level": .unsigned(0)])
             return object(["revision": .unsigned(registry.revision),
@@ -66,17 +71,19 @@ final class RuntimeAppSurfaceTests: XCTestCase {
         host.installAppSurface(adapter, refresh: { try registry.nativeStateChanged() }, events: { registry.onChange = $0 })
         await host.start()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
-        XCTAssertEqual(presses, 0, "SDK acceptance cannot fake a native effect")
+        XCTAssertEqual(focusRequests, 0, "SDK acceptance cannot fake a native effect")
         await host.poll()
         XCTAssertEqual(host.state, .running, host.errorMessage ?? "")
         await fulfillment(of: [entered], timeout: 2)
-        XCTAssertEqual(presses, 0, "Suspension must not manufacture terminal success")
+        XCTAssertEqual(focusRequests, 1, "request uses the shared native focus path once")
+        XCTAssertFalse(focused, "Suspension must not manufacture terminal success")
         let pendingLedger = try CogletTypes.CBORCodec.decodeProfile(Array(Data(contentsOf: root.appendingPathComponent("surface/ledger.cbor"))))
         XCTAssertEqual(pendingLedger["records"]?[owner + "/" + actionID]?["outcome"], .array([]))
         try XCTUnwrap(resume).resume()
         await fulfillment(of: [finished], timeout: 2)
         await host.poll()
-        XCTAssertEqual(presses, 1)
+        XCTAssertEqual(focusRequests, 1)
+        XCTAssertTrue(focused)
         XCTAssertTrue(host.actions.isEmpty, "app actions must never enter RuntimeAction speech decoding")
         let ledger = try CogletTypes.CBORCodec.decodeProfile(Array(Data(contentsOf: root.appendingPathComponent("surface/ledger.cbor"))))
         guard case .array(let outcome)? = ledger["records"]?[owner + "/" + actionID]?["outcome"] else {
