@@ -55,7 +55,7 @@ class PreparationTests(unittest.TestCase):
             with self.subTest(key=key),self.assertRaises(Refused):
                 prepare(other,self.source_authority,self.grant,self.scope)
 
-    def test_wrong_snapshot_and_missing_reply_refuse(self):
+    def test_wrong_snapshot_refuses(self):
         values = self.sources.arguments()
         values['snapshot'] = b'{}'
         wrong = Sources(**values)
@@ -108,6 +108,70 @@ class PreparationTests(unittest.TestCase):
         with self.assertRaises(Refused):
             with prepared.stage(link,'other',self.recipe_authority,grant,scope): pass
         self.assertFalse((self.parent/'other').exists())
+
+    def test_nonobject_trace_refuses(self):
+        for raw in (b'[]',b'null',b'3',b'"x"'):
+            values = self.sources.arguments()
+            values['trace'] = raw
+            source = Sources(**values)
+            scope = source.scope()
+            with self.subTest(raw=raw),self.assertRaises(Refused):
+                prepare(source,self.source_authority,self.source_authority.issue(scope),scope)
+
+    def test_body_oserror_is_preserved(self):
+        prepared = self.prepared()
+        scope,grant = self.recipe_grant(prepared)
+        marker = OSError('body marker')
+        with self.assertRaises(OSError) as caught:
+            with prepared.stage(self.parent,'stage',self.recipe_authority,grant,scope):
+                raise marker
+        self.assertIs(caught.exception,marker)
+        self.assertFalse((self.parent/'stage').exists())
+
+    def test_cleanup_fault_closes_all_fds_and_retries(self):
+        prepared = self.prepared()
+        scope,grant = self.recipe_grant(prepared)
+        before = len(list(Path('/proc/self/fd').iterdir()))
+        original = os.unlink
+        calls = []
+        def unlink(*args,**kwargs):
+            calls.append(1)
+            if len(calls) == 1: raise PermissionError('injected cleanup failure')
+            return original(*args,**kwargs)
+        with patch('guarded_preparation.os.unlink',side_effect=unlink):
+            with self.assertRaises(Refused):
+                with prepared.stage(self.parent,'stage',self.recipe_authority,grant,scope): pass
+        self.assertEqual(len(list(Path('/proc/self/fd').iterdir())),before)
+        self.assertFalse((self.parent/'stage').exists())
+
+    def test_cleanup_removes_unexpected_files_without_following_symlinks(self):
+        prepared = self.prepared()
+        scope,grant = self.recipe_grant(prepared)
+        outside = self.parent/'outside'
+        outside.write_bytes(b'keep')
+        before = len(list(Path('/proc/self/fd').iterdir()))
+        with prepared.stage(self.parent,'stage',self.recipe_authority,grant,scope) as staged:
+            root = Path(staged.path)
+            (root/'unexpected').write_bytes(b'private')
+            (root/'escape').symlink_to(outside)
+        self.assertEqual(outside.read_bytes(),b'keep')
+        self.assertFalse((self.parent/'stage').exists())
+        self.assertEqual(len(list(Path('/proc/self/fd').iterdir())),before)
+
+    def test_recipe_revocation_stops_next_write(self):
+        prepared = self.prepared()
+        scope,grant = self.recipe_grant(prepared)
+        original = os.write
+        writes = []
+        def write(fd,raw):
+            count = original(fd,raw)
+            writes.append(count)
+            self.revoked.add(grant)
+            return count
+        with patch('guarded_preparation.os.write',side_effect=write),self.assertRaises(Refused):
+            with prepared.stage(self.parent,'stage',self.recipe_authority,grant,scope): pass
+        self.assertEqual(len(writes),1)
+        self.assertFalse((self.parent/'stage').exists())
 
     def test_retained_data_and_scope_cannot_be_mutated_through_views(self):
         prepared = self.prepared()

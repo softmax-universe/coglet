@@ -14,6 +14,8 @@ from dataclasses import dataclass
 import hashlib
 import json
 import os
+import shutil
+import sys
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType, SimpleNamespace
 
@@ -120,9 +122,11 @@ class Prepared:
         both = _Both(self,authority)
         def check(): both.verify(grant,scope)
         check()  # before ANY staging syscall
-        fds,created_files,created_dirs = {},[],[]
+        if not shutil.rmtree.avoids_symlink_attacks:
+            raise Refused('fd-safe cleanup required')
+        fds = {}
         parent_fd = root_fd = None
-        made_root = False
+        made_root = yielded = False
         try:
             absolute = Path(parent).absolute()
             fd = os.open('/',os.O_RDONLY|os.O_DIRECTORY)
@@ -144,13 +148,11 @@ class Prepared:
                 parent_path,_,leaf = directory.rpartition('/')
                 check()
                 os.mkdir(leaf,mode=0o700,dir_fd=fds[parent_path])
-                created_dirs.append((fds[parent_path],leaf))
                 fds[directory] = os.open(leaf,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fds[parent_path])
             for path,raw in self._files:
                 parent_path,_,leaf = path.rpartition('/')
                 check()
                 fd = os.open(leaf,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=fds[parent_path])
-                created_files.append((fds[parent_path],leaf))
                 try:
                     offset = 0
                     while offset < len(raw):
@@ -165,17 +167,35 @@ class Prepared:
                 'args/salt':self.sources.salt.encode(),'args/required-native-worker-image':self.sources.image.encode(),
                 'args/required-pool':b'unforged'})
             session = ApprovalSession(both,grant,scope,retained_blobs=retained)
+            yielded = True
             yield SimpleNamespace(path=f'/proc/{os.getpid()}/fd/{root_fd}',session=session)
         except OSError:
+            if yielded: raise  # preserve errors from the caller, not staging
             raise Refused('staging filesystem refused') from None
         finally:
-            # Cleanup uses retained fds, never follows candidate-controlled paths,
-            # and does not require a grant that may already have been revoked.
-            for fd,leaf in reversed(created_files): os.unlink(leaf,dir_fd=fd)
-            for fd,leaf in reversed(created_dirs): os.rmdir(leaf,dir_fd=fd)
-            for fd in reversed(list(fds.values())): os.close(fd)
-            if made_root: os.rmdir(name,dir_fd=parent_fd)
-            if parent_fd is not None: os.close(parent_fd)
+            active = sys.exception()
+            errors = []
+            for fd in reversed(list(fds.values())):
+                try: os.close(fd)
+                except OSError: errors.append('close')
+            try:
+                if made_root:
+                    # fd-safe stdlib cleanup removes unexpected descendants but
+                    # never follows symlinks. Retry once after a transient fault;
+                    # still report the fault, even if all bytes were removed.
+                    for attempt in range(2):
+                        try:
+                            shutil.rmtree(name,dir_fd=parent_fd)
+                            break
+                        except FileNotFoundError: break
+                        except OSError: errors.append('remove')
+            finally:
+                if parent_fd is not None:
+                    try: os.close(parent_fd)
+                    except OSError: errors.append('parent-close')
+            if errors:
+                if active is not None: active.add_note('staging cleanup failed; inspect operator-owned staging root')
+                else: raise Refused('staging cleanup failed; inspect operator-owned staging root')
 
 
 def prepare(sources,authority,grant,scope):
@@ -183,10 +203,10 @@ def prepare(sources,authority,grant,scope):
     if export_scope(scope) != expected: raise Refused('initial preparation source scope differs')
     authority.verify(grant,expected)  # before decoding or serializing private inputs
     trace,snapshot = strict_json(sources.trace),strict_json(sources.snapshot)
-    require_model_reply_closure(trace)
-    if not isinstance(trace,dict) or trace.get('coglet') != sources.coglet:
-        raise Refused('operator target differs from recording')
+    if not isinstance(trace,dict) or trace.get('coglet') != sources.coglet or not isinstance(snapshot,dict):
+        raise Refused('operator target or source shape differs from recording')
     try:
+        require_model_reply_closure(trace)
         payload = step_payload(trace,sources.step)
         authority.verify(grant,expected)
         files = state_files(snapshot,payload)
