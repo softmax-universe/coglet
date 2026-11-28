@@ -2,6 +2,8 @@
 //! or synthetic CI construction occurs here; both hosts consume identical bytes.
 use coglet_hub::build::Artifact;
 use coglet_runtime::{NativeEngine, Runtime, RuntimeService, Snapshot};
+#[path = "r3_profile.rs"]
+mod qualification_profile;
 #[path = "../support/r3_diagnostics.rs"]
 mod r3_diagnostics;
 use serde_json::{Value, json};
@@ -130,6 +132,11 @@ fn published_r3_runtime_journal_fs_trap_payload_chain() {
         r3_diagnostics::Diagnostics::create(&out, std::env::consts::ARCH, pins).unwrap();
     fs::create_dir_all(&out).unwrap();
     let (setup, wasm) = admitted_fixture(&dir);
+    assert_eq!(
+        setup["manifest"]["budgets"]["wall_time_us"],
+        qualification_profile::WALL_TIME_US
+    );
+    assert_eq!(setup["inputs"]["budgets"], setup["manifest"]["budgets"]);
     let engine = || {
         NativeEngine::new(
             wasm.clone(),
