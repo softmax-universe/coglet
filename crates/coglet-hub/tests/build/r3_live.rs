@@ -8,6 +8,8 @@ use std::{
 };
 #[path = "r3_guest.rs"]
 mod guest;
+#[path = "r3_profile.rs"]
+mod qualification_profile;
 
 fn profile(f: &Fixture, config: R3Config) -> (Target, Profile) {
     let source = fs::read(f.dir.path().join("guest.wat")).unwrap();
@@ -57,6 +59,8 @@ fn protected_r3_configuration_publishes_from_real_ci() {
     let mut manifest: Value =
         serde_json::from_slice(&fs::read(f.dir.path().join("manifest.json")).unwrap()).unwrap();
     manifest["budgets"]["compute_mode"] = json!("wamr-2.4.3-fast-cumulative-v1");
+    // A new signed fixture profile, not a post-admission deadline override.
+    manifest["budgets"]["wall_time_us"] = json!(qualification_profile::WALL_TIME_US);
     fs::write(
         f.dir.path().join("manifest.json"),
         serde_json::to_vec(&manifest).unwrap(),

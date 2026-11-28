@@ -87,6 +87,51 @@ architectures and the unchanged 960-case WAMR/Wasmtime/oracle comparison. Final
 H-transform/runtime qualification is completed only by the additional required
 publication/runtime jobs below; the component suite alone does not qualify it.
 
+### Signed runtime-fixture allowance
+
+The protected publication producer selects the test-only constant
+`tests/build/r3_profile.rs::WALL_TIME_US` (**5,000,000 microseconds**) in the
+manifest **before** committing source, pinning its profile, rewriting, building
+and signing. Both native consumers assert that exact signed manifest allowance
+and equal context budgets; neither changes an admitted artifact. This is a new
+qualification input, not a runtime-default, ABI, engine, watchdog or deadline
+change. The fixed one-second thin build gate above is unchanged.
+
+The previous 100,000-microsecond archive failed in dependency-mirror run
+[`46062970164`](https://github.com/softmax-universe/coglet/actions/runs/46062970164),
+x86 job `140754533457`: step zero committed, step one aborted `wall` /
+`deadline_exceeded`, with 408,399 microseconds wall usage, **zero compute and no
+host calls**. Original diagnostic artifact `15233354687` (ZIP SHA-256
+`3afe24ccee268f6a7b49e6a440d436b18540bc58b07009b400840d5097489090`)
+and publication artifact `15229627693` (ZIP SHA-256
+`d173ec91c14f7220c9e5da92465be85d17a843fc8fbcf98c0892996fa7e4dd6a`)
+retain that failure and its original signed bytes. It is not relabeled a pass.
+
+An unchanged-archive local x86 reproduction passed (one test, no skips).
+A separate, removed observational wrapper measured native admission at
+57–92 microseconds and admission-to-execution host/WAL gaps at 12,059 / 19,038 /
+60,949 microseconds across the three attempts. These local phase measurements
+are **not historical causal attribution**: the failed hosted run does not expose
+its phase timing. They show why durable host work must not be assumed free.
+The five-second allowance follows other native fixture budgets and exceeds the
+observed hosted failure's total wall usage by more than twelve times; this
+qualification tests numerical/state determinism, not a 100-ms service-level
+objective. There is no retry loop or incremental budget escalation.
+
+Required workspace test
+`signed_fixture_budget_preserves_absolute_deadline_across_durable_entry`
+uses real WAMR and the real durable service. After native admission and the WAL
+entry fence, 150 ms of deliberate preguest host delay causes the original
+100-ms allowance to abort with zero compute/calls and unchanged files; the same
+workload commits under the declared five-second allowance. A delay beyond five
+seconds still aborts under that allowance. Each result is reopened from the
+actual WAL, and the original absolute deadline is never renewed. This is a
+hermetic deadline control, **not** signed-publication or cross-architecture
+proof. The unchanged required native publication/runtime inventories and paired
+aggregation remain the positive qualification gate. No skip, quarantine,
+production performance fix, all-platform or installed-update claim follows from
+this input correction.
+
 ### Required production-path/native qualification
 
 `r3-qualification` is an explicit test-only feature; it does not enable a default
