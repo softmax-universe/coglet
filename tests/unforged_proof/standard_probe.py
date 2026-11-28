@@ -102,7 +102,7 @@ def main():
     expected = trace['records'][args.step]['output_hash']
     if actual != expected: raise RuntimeError('whole ABI output differs: '+actual+' != '+expected)
     save(out/'result.json',dict(request=req, result_oid=executed['result_oid'], output_hash=actual,expected_hash=expected,
-        sidecar_oid=sidecar['oid'], preexec_observations=observations, qualification='actual recorded step using strict namespace flags; preexec observations writable by trusted driver, NOT adversarial isolation/no-effects or stage2 PASS'))
+        sidecar_oid=sidecar['oid'], preexec_observations=observations, qualification='actual recorded step using strict namespace flags; preexec observations retained through outer pipe, NOT complete no-effects or stage2 PASS'))
     print(json.dumps(dict(request=req, step=args.step, output_hash=actual, qualification='NOT stage2 PASS')))
 
 if __name__ == '__main__': main()
