@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://coglet.dev/spec/messages/peering.schema.json",
+  "$ref": "#/$defs/peering",
+  "$defs": {
+    "peer-enroll": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "const": "peer.enroll"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "household": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "sender": {
+          "$ref": "common.schema.json#/$defs/hub-id"
+        },
+        "receiver": {
+          "$ref": "common.schema.json#/$defs/hub-id"
+        },
+        "attending": {
+          "$ref": "common.schema.json#/$defs/hub-id"
+        },
+        "offer": {
+          "$ref": "common.schema.json#/$defs/version-offer"
+        }
+      },
+      "required": [
+        "method",
+        "correlation_id",
+        "household",
+        "sender",
+        "receiver",
+        "attending",
+        "offer"
+      ],
+      "additionalProperties": false
+    },
+    "peer-enrolled": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "const": "peer.enrolled"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "selection": {
+          "$ref": "common.schema.json#/$defs/version-selection"
+        }
+      },
+      "required": [
+        "method",
+        "correlation_id",
+        "selection"
+      ],
+      "additionalProperties": false
+    },
+    "peer-private": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "common.schema.json#/$defs/source-id"
+        },
+        "owner": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "epoch": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        }
+      },
+      "required": [
+        "source",
+        "owner",
+        "epoch"
+      ],
+      "additionalProperties": false
+    },
+    "peer-route": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "const": "peer.route"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "household": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "sender": {
+          "$ref": "common.schema.json#/$defs/hub-id"
+        },
+        "receiver": {
+          "$ref": "common.schema.json#/$defs/hub-id"
+        },
+        "origin": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/coglet-id"
+        },
+        "actor": {
+          "$ref": "common.schema.json#/$defs/node-id"
+        },
+        "ticket": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "capability": {
+          "$ref": "common.schema.json#/$defs/capability-name"
+        },
+        "deadline": {
+          "$ref": "common.schema.json#/$defs/uint64"
+        },
+        "payload": {
+          "$ref": "common.schema.json#/$defs/profile-map"
+        },
+        "private": {
+          "$ref": "#/$defs/peer-private"
+        }
+      },
+      "required": [
+        "method",
+        "correlation_id",
+        "household",
+        "sender",
+        "receiver",
+        "origin",
+        "target",
+        "actor",
+        "capability",
+        "deadline",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    "peer-accepted": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "const": "peer.accepted"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        }
+      },
+      "required": [
+        "method",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "peer-failure": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "const": "peer.failure"
+        },
+        "correlation_id": {
+          "$ref": "common.schema.json#/$defs/correlation-id"
+        },
+        "error": {
+          "$ref": "common.schema.json#/$defs/error"
+        }
+      },
+      "required": [
+        "method",
+        "correlation_id",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "peering": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/peer-enroll"
+        },
+        {
+          "$ref": "#/$defs/peer-enrolled"
+        },
+        {
+          "$ref": "#/$defs/peer-route"
+        },
+        {
+          "$ref": "#/$defs/peer-accepted"
+        },
+        {
+          "$ref": "#/$defs/peer-failure"
+        }
+      ]
+    }
+  }
+}

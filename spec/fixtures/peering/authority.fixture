@@ -1,0 +1,1410 @@
+[
+  {
+    "name": "authorized-private",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "accepted"
+  },
+  {
+    "name": "authorized-public",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": null,
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "accepted"
+  },
+  {
+    "name": "authority-widening-sending_policy",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "authority-widening-receiving_policy",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "authority-widening-delegation",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "authority-widening-adapter_grants",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "unauthenticated-peer",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": false,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "unauthenticated"
+  },
+  {
+    "name": "transport-key-mismatch",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:0000000000000000000000000000000000000000000000000000000000000000",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "unauthenticated"
+  },
+  {
+    "name": "cross-owner-without-binding",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": null,
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "foreign-target",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:0000000000000000000000000000000000000000000000000000000000000000",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "stale-source-epoch",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 0
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "fenced-source",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": false
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "omitted-private-cannot-declassify",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "expired-deadline",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 1000,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "deadline_exceeded"
+  },
+  {
+    "name": "clock-unmapped",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": false,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "deadline_exceeded"
+  },
+  {
+    "name": "receiver-killed",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": true,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "revoked-authority",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": false,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "wrong-household",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "00000000000000000000000000000000",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "forged-origin-actor",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "0000000000000000000000000000000000000000000000000000000000000000",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
+    "name": "ended-ticket",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        1
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  }
+]

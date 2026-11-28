@@ -88,6 +88,67 @@ class HubFixtures(unittest.TestCase):
                     value['context'] = context
                 self.validate(rule, value, valid)
 
+    def peering_validate(self, rule, value, valid=True):
+        root = json.loads((SPEC / 'messages/peering.schema.json').read_text())
+        root['$ref'] = '#/$defs/' + rule
+        self.assertEqual(Draft202012Validator(root, registry=self.registry).is_valid(value), valid)
+        source = (SPEC / 'messages/peering.cddl').read_text() + (SPEC / 'messages/common.cddl').read_text()
+        validator = Schema('selected = ' + rule + '\n' + source)
+        if valid:
+            validator.validate_cbor(encode(value))
+        else:
+            with self.assertRaises(ValidationError):
+                validator.validate_cbor(encode(value))
+
+    def test_peering_dual_schema_goldens_and_roots(self):
+        cases = json.loads((SPEC / 'fixtures/peering/cases.json').read_text())
+        self.assertEqual(len(cases), len({c['name'] for c in cases}))
+        for case in cases:
+            with self.subTest(case=case['name']):
+                self.peering_validate(case['type'], case['value'], case['valid'])
+                if case['type'] != 'peer-private':
+                    self.peering_validate('peering', case['value'], case['valid'])
+                if case['valid']:
+                    self.assertEqual(encode(case['value']).hex(), case['cbor_hex'])
+                    self.assertEqual(decode(bytes.fromhex(case['cbor_hex'])), case['value'])
+        print(f'peering: {len(cases)} dual-schema vectors, selected and public root')
+
+    def test_peering_authority_intersection_and_owner_negatives(self):
+        from peering_oracle import admit, Denied
+        cases = json.loads((SPEC / 'fixtures/peering/authority.fixture').read_text())
+        self.assertEqual(len(cases), len({c['name'] for c in cases}))
+        for case in cases:
+            with self.subTest(case=case['name']):
+                # Every semantic negative is shape-valid in both actual schemas.
+                self.peering_validate('peer-route', case['request'])
+                before = copy.deepcopy(case)
+                if case['result'] == 'accepted':
+                    self.assertEqual(admit(case['request'], case['state']), 'accepted')
+                else:
+                    with self.assertRaises(Denied) as error:
+                        admit(case['request'], case['state'])
+                    self.assertEqual(str(error.exception), case['result'])
+                self.assertEqual(case, before)
+        required = {'unauthenticated-peer', 'cross-owner-without-binding',
+                    'omitted-private-cannot-declassify', 'authorized-private', 'authorized-public'}
+        required.update('authority-widening-' + layer for layer in
+                        ('sending_policy', 'receiving_policy', 'delegation', 'adapter_grants'))
+        self.assertTrue(required.issubset({c['name'] for c in cases}))
+        print(f'peering: {len(cases)} spec-only semantic controls (not transport qualification)')
+
+    def test_peering_draft_is_not_frozen_hub_and_freshness(self):
+        import build_peering
+        import build_peering_authority
+        for builder in (build_peering, build_peering_authority):
+            for path, expected in builder.outputs().items():
+                self.assertEqual((SPEC.parent / path).read_text(), expected, path)
+        contracts = json.loads((SPEC.parent / 'codegen/contracts.json').read_text())
+        self.assertEqual(contracts['peering'], 'draft-validated')
+        cases = json.loads((SPEC / 'fixtures/peering/cases.json').read_text())
+        for case in cases:
+            if case['valid'] and case['type'] not in ('peer-private',):
+                self.validate('hub-request', case['value'], False)
+
     def verify(self, raw, signature, signer):
         with tempfile.TemporaryDirectory() as td:
             p = Path(td)

@@ -10,5 +10,6 @@
   "database": "generated",
   "policy": "draft-validated",
   "promotion": "draft-validated",
-  "tickets": "draft-validated"
+  "tickets": "draft-validated",
+  "peering": "draft-validated"
 }
