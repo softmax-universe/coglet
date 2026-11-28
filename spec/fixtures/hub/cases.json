@@ -2089,6 +2089,514 @@
     "value": {}
   },
   {
+    "name": "presence-limit",
+    "type": "presence-limit",
+    "valid": true,
+    "value": 0,
+    "cbor_hex": "00"
+  },
+  {
+    "name": "presence-coglets",
+    "type": "presence-coglets",
+    "valid": true,
+    "value": [
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ],
+    "cbor_hex": "817847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161"
+  },
+  {
+    "name": "presence-reason",
+    "type": "presence-reason",
+    "valid": true,
+    "value": "User engagement",
+    "cbor_hex": "6f5573657220656e676167656d656e74"
+  },
+  {
+    "name": "presence-urgency",
+    "type": "presence-urgency",
+    "valid": true,
+    "value": "low",
+    "cbor_hex": "636c6f77"
+  },
+  {
+    "name": "presence-state",
+    "type": "presence-state",
+    "valid": true,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "present": [],
+      "limit": 4,
+      "revision": 0
+    },
+    "cbor_hex": "a5656c696d69740466636f67656e7478446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626770726573656e7480687265766973696f6e0069617474656e74696f6e7847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161"
+  },
+  {
+    "name": "presence-state-unknown",
+    "type": "presence-state",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "present": [],
+      "limit": 4,
+      "revision": 0,
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-state-missing-cogent",
+    "type": "presence-state",
+    "valid": false,
+    "value": {
+      "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "present": [],
+      "limit": 4,
+      "revision": 0
+    }
+  },
+  {
+    "name": "presence-state-missing-attention",
+    "type": "presence-state",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "present": [],
+      "limit": 4,
+      "revision": 0
+    }
+  },
+  {
+    "name": "presence-state-missing-present",
+    "type": "presence-state",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "limit": 4,
+      "revision": 0
+    }
+  },
+  {
+    "name": "presence-state-missing-limit",
+    "type": "presence-state",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "present": [],
+      "revision": 0
+    }
+  },
+  {
+    "name": "presence-state-missing-revision",
+    "type": "presence-state",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "present": [],
+      "limit": 4
+    }
+  },
+  {
+    "name": "presence-get-params",
+    "type": "presence-get-params",
+    "valid": true,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "cbor_hex": "a166636f67656e7478446875623a62626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "presence-get-params-unknown",
+    "type": "presence-get-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-get-params-missing-cogent",
+    "type": "presence-get-params",
+    "valid": false,
+    "value": {}
+  },
+  {
+    "name": "presence-set-params",
+    "type": "presence-set-params",
+    "valid": true,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "base": 0,
+      "add": [],
+      "remove": []
+    },
+    "cbor_hex": "a4636164648064626173650066636f67656e7478446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626672656d6f766580"
+  },
+  {
+    "name": "presence-set-params-unknown",
+    "type": "presence-set-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "base": 0,
+      "add": [],
+      "remove": [],
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-set-params-missing-cogent",
+    "type": "presence-set-params",
+    "valid": false,
+    "value": {
+      "base": 0,
+      "add": [],
+      "remove": []
+    }
+  },
+  {
+    "name": "presence-set-params-missing-base",
+    "type": "presence-set-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "add": [],
+      "remove": []
+    }
+  },
+  {
+    "name": "presence-set-params-missing-add",
+    "type": "presence-set-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "base": 0,
+      "remove": []
+    }
+  },
+  {
+    "name": "presence-set-params-missing-remove",
+    "type": "presence-set-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "base": 0,
+      "add": []
+    }
+  },
+  {
+    "name": "presence-request-params",
+    "type": "presence-request-params",
+    "valid": true,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "urgency": "low",
+      "reason": "User engagement"
+    },
+    "cbor_hex": "a466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166726561736f6e6f5573657220656e676167656d656e7467757267656e6379636c6f77"
+  },
+  {
+    "name": "presence-request-params-unknown",
+    "type": "presence-request-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "urgency": "low",
+      "reason": "User engagement",
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-request-params-missing-cogent",
+    "type": "presence-request-params",
+    "valid": false,
+    "value": {
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "urgency": "low",
+      "reason": "User engagement"
+    }
+  },
+  {
+    "name": "presence-request-params-missing-coglet",
+    "type": "presence-request-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "urgency": "low",
+      "reason": "User engagement"
+    }
+  },
+  {
+    "name": "presence-request-params-missing-urgency",
+    "type": "presence-request-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "reason": "User engagement"
+    }
+  },
+  {
+    "name": "presence-request-params-missing-reason",
+    "type": "presence-request-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "urgency": "low"
+    }
+  },
+  {
+    "name": "presence-held",
+    "type": "presence-held",
+    "valid": true,
+    "value": [
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      }
+    ],
+    "cbor_hex": "81a362696478206363636363636363636363636363636363636363636363636363636363636363656576656e74a66373657100646b696e64686875622e6e6f746566736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782063636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a62626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262"
+  },
+  {
+    "name": "presence-check-in-params",
+    "type": "presence-check-in-params",
+    "valid": true,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": {
+        "state": "stopped",
+        "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "generation": 0,
+        "step": 0,
+        "pending": 0,
+        "error": {
+          "code": "conflict",
+          "message": "Conflict",
+          "retryable": false
+        }
+      },
+      "held": [
+        {
+          "id": "cccccccccccccccccccccccccccccccc",
+          "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "event": {
+            "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "hub.note",
+            "seq": 0,
+            "logical_time": 0,
+            "payload": {},
+            "correlation_id": "cccccccccccccccccccccccccccccccc"
+          }
+        }
+      ],
+      "dropped": 0
+    },
+    "cbor_hex": "a56468656c6481a362696478206363636363636363636363636363636363636363636363636363636363636363656576656e74a66373657100646b696e64686875622e6e6f746566736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782063636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166737461747573a6647374657000656572726f72a364636f646568636f6e666c696374676d65737361676568436f6e666c69637469726574727961626c65f46573746174656773746f707065646770656e64696e6700696c6976655f747265657840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a67656e65726174696f6e006764726f7070656400"
+  },
+  {
+    "name": "presence-check-in-params-unknown",
+    "type": "presence-check-in-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": {
+        "state": "stopped",
+        "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "generation": 0,
+        "step": 0,
+        "pending": 0,
+        "error": {
+          "code": "conflict",
+          "message": "Conflict",
+          "retryable": false
+        }
+      },
+      "held": [
+        {
+          "id": "cccccccccccccccccccccccccccccccc",
+          "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "event": {
+            "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "hub.note",
+            "seq": 0,
+            "logical_time": 0,
+            "payload": {},
+            "correlation_id": "cccccccccccccccccccccccccccccccc"
+          }
+        }
+      ],
+      "dropped": 0,
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-check-in-params-missing-cogent",
+    "type": "presence-check-in-params",
+    "valid": false,
+    "value": {
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": {
+        "state": "stopped",
+        "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "generation": 0,
+        "step": 0,
+        "pending": 0,
+        "error": {
+          "code": "conflict",
+          "message": "Conflict",
+          "retryable": false
+        }
+      },
+      "held": [
+        {
+          "id": "cccccccccccccccccccccccccccccccc",
+          "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "event": {
+            "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "hub.note",
+            "seq": 0,
+            "logical_time": 0,
+            "payload": {},
+            "correlation_id": "cccccccccccccccccccccccccccccccc"
+          }
+        }
+      ],
+      "dropped": 0
+    }
+  },
+  {
+    "name": "presence-check-in-params-missing-coglet",
+    "type": "presence-check-in-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "status": {
+        "state": "stopped",
+        "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "generation": 0,
+        "step": 0,
+        "pending": 0,
+        "error": {
+          "code": "conflict",
+          "message": "Conflict",
+          "retryable": false
+        }
+      },
+      "held": [
+        {
+          "id": "cccccccccccccccccccccccccccccccc",
+          "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "event": {
+            "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "hub.note",
+            "seq": 0,
+            "logical_time": 0,
+            "payload": {},
+            "correlation_id": "cccccccccccccccccccccccccccccccc"
+          }
+        }
+      ],
+      "dropped": 0
+    }
+  },
+  {
+    "name": "presence-check-in-params-missing-status",
+    "type": "presence-check-in-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "held": [
+        {
+          "id": "cccccccccccccccccccccccccccccccc",
+          "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "event": {
+            "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "hub.note",
+            "seq": 0,
+            "logical_time": 0,
+            "payload": {},
+            "correlation_id": "cccccccccccccccccccccccccccccccc"
+          }
+        }
+      ],
+      "dropped": 0
+    }
+  },
+  {
+    "name": "presence-check-in-params-missing-held",
+    "type": "presence-check-in-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": {
+        "state": "stopped",
+        "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "generation": 0,
+        "step": 0,
+        "pending": 0,
+        "error": {
+          "code": "conflict",
+          "message": "Conflict",
+          "retryable": false
+        }
+      },
+      "dropped": 0
+    }
+  },
+  {
+    "name": "presence-check-in-params-missing-dropped",
+    "type": "presence-check-in-params",
+    "valid": false,
+    "value": {
+      "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": {
+        "state": "stopped",
+        "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "generation": 0,
+        "step": 0,
+        "pending": 0,
+        "error": {
+          "code": "conflict",
+          "message": "Conflict",
+          "retryable": false
+        }
+      },
+      "held": [
+        {
+          "id": "cccccccccccccccccccccccccccccccc",
+          "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "event": {
+            "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "hub.note",
+            "seq": 0,
+            "logical_time": 0,
+            "payload": {},
+            "correlation_id": "cccccccccccccccccccccccccccccccc"
+          }
+        }
+      ]
+    }
+  },
+  {
     "name": "hub-context",
     "type": "hub-context",
     "valid": true,
@@ -4638,6 +5146,947 @@
     }
   },
   {
+    "name": "presence-get-request-method",
+    "type": "presence-get-request-method",
+    "valid": true,
+    "value": "presence.get",
+    "cbor_hex": "6c70726573656e63652e676574"
+  },
+  {
+    "name": "presence-get-request",
+    "type": "presence-get-request",
+    "valid": true,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e67657466706172616d73a166636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-get-request-unknown",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-get-request-missing-method",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-missing-target",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-missing-correlation_id",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-missing-timeout_ms",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-missing-params",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-missing-context",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-method",
+    "type": "presence-set-request-method",
+    "valid": true,
+    "value": "presence.set",
+    "cbor_hex": "6c70726573656e63652e736574"
+  },
+  {
+    "name": "presence-set-request",
+    "type": "presence-set-request",
+    "valid": true,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": []
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e73657466706172616d73a4636164648064626173650066636f67656e7478446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626672656d6f76658066746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-set-request-unknown",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": []
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-set-request-missing-method",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": []
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-missing-target",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": []
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-missing-correlation_id",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": []
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-missing-timeout_ms",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": []
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-missing-params",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-missing-context",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": []
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-method",
+    "type": "presence-request-request-method",
+    "valid": true,
+    "value": "presence.request",
+    "cbor_hex": "7070726573656e63652e72657175657374"
+  },
+  {
+    "name": "presence-request-request",
+    "type": "presence-request-request",
+    "valid": true,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e7265717565737466706172616d73a466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166726561736f6e6f5573657220656e676167656d656e7467757267656e6379636c6f7766746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-request-request-unknown",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-request-request-missing-method",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-missing-target",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-missing-correlation_id",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-missing-timeout_ms",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-missing-params",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-missing-context",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-method",
+    "type": "presence-changed-request-method",
+    "valid": true,
+    "value": "presence.changed",
+    "cbor_hex": "7070726573656e63652e6368616e676564"
+  },
+  {
+    "name": "presence-changed-request",
+    "type": "presence-changed-request",
+    "valid": true,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e6368616e67656466706172616d73a5656c696d69740466636f67656e7478446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626770726573656e7480687265766973696f6e0069617474656e74696f6e7847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-changed-request-unknown",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-changed-request-missing-method",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-missing-target",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-missing-correlation_id",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-missing-timeout_ms",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-missing-params",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-missing-context",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-method",
+    "type": "presence-check_in-request-method",
+    "valid": true,
+    "value": "presence.check_in",
+    "cbor_hex": "7170726573656e63652e636865636b5f696e"
+  },
+  {
+    "name": "presence-check_in-request",
+    "type": "presence-check_in-request",
+    "valid": true,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647170726573656e63652e636865636b5f696e66706172616d73a56468656c6481a362696478206363636363636363636363636363636363636363636363636363636363636363656576656e74a66373657100646b696e64686875622e6e6f746566736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782063636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166737461747573a6647374657000656572726f72a364636f646568636f6e666c696374676d65737361676568436f6e666c69637469726574727961626c65f46573746174656773746f707065646770656e64696e6700696c6976655f747265657840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a67656e65726174696f6e006764726f707065640066746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-check_in-request-unknown",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "unknown": true
+    }
+  },
+  {
+    "name": "presence-check_in-request-missing-method",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-missing-target",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-missing-correlation_id",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-missing-timeout_ms",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-missing-params",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-missing-context",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      }
+    }
+  },
+  {
     "name": "hub-request",
     "type": "hub-request",
     "valid": true,
@@ -5377,37 +6826,37 @@
     "cbor_hex": "a5666d6574686f646a6875622e656e726f6c6c66706172616d73a2656f66666572a16876657273696f6e738163322e3066696e7669746578403131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313166746172676574f66a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
   },
   {
-    "name": "negative-382",
+    "name": "negative-461",
     "type": "hub-timeout",
     "valid": false,
     "value": 0
   },
   {
-    "name": "negative-383",
+    "name": "negative-462",
     "type": "hub-timeout",
     "valid": false,
     "value": 300001
   },
   {
-    "name": "negative-384",
+    "name": "negative-463",
     "type": "hub-chunk-hex",
     "valid": false,
     "value": "a"
   },
   {
-    "name": "negative-385",
+    "name": "negative-464",
     "type": "hub-signature",
     "valid": false,
     "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
   },
   {
-    "name": "negative-386",
+    "name": "negative-465",
     "type": "hub-write-path",
     "valid": false,
     "value": "/code/main"
   },
   {
-    "name": "negative-387",
+    "name": "negative-466",
     "type": "hub-receipt-applied",
     "valid": false,
     "value": {
@@ -5418,7 +6867,7 @@
     }
   },
   {
-    "name": "negative-388",
+    "name": "negative-467",
     "type": "hub-event-batch",
     "valid": false,
     "value": [
@@ -7877,5 +9326,2198 @@
       "file_offset": 0,
       "hex": "ff"
     }
+  },
+  {
+    "name": "presence-get-request-presence-get-request-control",
+    "type": "presence-get-request",
+    "valid": true,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e67657466706172616d73a166636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-get-request-presence-get-request-unknown",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-presence-get-request-context",
+    "type": "presence-get-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-hub-request-control",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e67657466706172616d73a166636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-get-request-hub-request-unknown",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-hub-request-context",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-hub-frame-control",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e67657466706172616d73a166636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-get-request-hub-frame-unknown",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-get-request-hub-frame-context",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.get",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-presence-set-request-control",
+    "type": "presence-set-request",
+    "valid": true,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e73657466706172616d73a76361646480646261736500656c696d69740466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266726561736f6e67456e67616765646672656d6f76658069617474656e74696f6e7847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-set-request-presence-set-request-unknown",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-presence-set-request-context",
+    "type": "presence-set-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-hub-request-control",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e73657466706172616d73a76361646480646261736500656c696d69740466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266726561736f6e67456e67616765646672656d6f76658069617474656e74696f6e7847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-set-request-hub-request-unknown",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-hub-request-context",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-hub-frame-control",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f646c70726573656e63652e73657466706172616d73a76361646480646261736500656c696d69740466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266726561736f6e67456e67616765646672656d6f76658069617474656e74696f6e7847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-set-request-hub-frame-unknown",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-set-request-hub-frame-context",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.set",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "base": 0,
+        "add": [],
+        "remove": [],
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "limit": 4,
+        "reason": "Engaged"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-presence-request-request-control",
+    "type": "presence-request-request",
+    "valid": true,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e7265717565737466706172616d73a466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166726561736f6e6f5573657220656e676167656d656e7467757267656e6379636c6f7766746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-request-request-presence-request-request-unknown",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-presence-request-request-context",
+    "type": "presence-request-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-hub-request-control",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e7265717565737466706172616d73a466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166726561736f6e6f5573657220656e676167656d656e7467757267656e6379636c6f7766746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-request-request-hub-request-unknown",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-hub-request-context",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-hub-frame-control",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e7265717565737466706172616d73a466636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166726561736f6e6f5573657220656e676167656d656e7467757267656e6379636c6f7766746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-request-request-hub-frame-unknown",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement",
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-request-request-hub-frame-context",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.request",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "urgency": "low",
+        "reason": "User engagement"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-presence-changed-request-control",
+    "type": "presence-changed-request",
+    "valid": true,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e6368616e67656466706172616d73a5656c696d69740466636f67656e7478446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626770726573656e7480687265766973696f6e0069617474656e74696f6e7847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-changed-request-presence-changed-request-unknown",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0,
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-presence-changed-request-context",
+    "type": "presence-changed-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-hub-request-control",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e6368616e67656466706172616d73a5656c696d69740466636f67656e7478446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626770726573656e7480687265766973696f6e0069617474656e74696f6e7847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-changed-request-hub-request-unknown",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0,
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-hub-request-context",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-hub-frame-control",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647070726573656e63652e6368616e67656466706172616d73a5656c696d69740466636f67656e7478446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626770726573656e7480687265766973696f6e0069617474656e74696f6e7847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-changed-request-hub-frame-unknown",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0,
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-changed-request-hub-frame-context",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.changed",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "attention": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "present": [],
+        "limit": 4,
+        "revision": 0
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-presence-check_in-request-control",
+    "type": "presence-check_in-request",
+    "valid": true,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647170726573656e63652e636865636b5f696e66706172616d73a56468656c6481a362696478206363636363636363636363636363636363636363636363636363636363636363656576656e74a66373657100646b696e64686875622e6e6f746566736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782063636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166737461747573a6647374657000656572726f72a364636f646568636f6e666c696374676d65737361676568436f6e666c69637469726574727961626c65f46573746174656773746f707065646770656e64696e6700696c6976655f747265657840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a67656e65726174696f6e006764726f707065640066746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-check_in-request-presence-check_in-request-unknown",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0,
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-presence-check_in-request-context",
+    "type": "presence-check_in-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-hub-request-control",
+    "type": "hub-request",
+    "valid": true,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647170726573656e63652e636865636b5f696e66706172616d73a56468656c6481a362696478206363636363636363636363636363636363636363636363636363636363636363656576656e74a66373657100646b696e64686875622e6e6f746566736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782063636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166737461747573a6647374657000656572726f72a364636f646568636f6e666c696374676d65737361676568436f6e666c69637469726574727961626c65f46573746174656773746f707065646770656e64696e6700696c6976655f747265657840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a67656e65726174696f6e006764726f707065640066746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-check_in-request-hub-request-unknown",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0,
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-hub-request-context",
+    "type": "hub-request",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-hub-frame-control",
+    "type": "hub-frame",
+    "valid": true,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    "cbor_hex": "a6666d6574686f647170726573656e63652e636865636b5f696e66706172616d73a56468656c6481a362696478206363636363636363636363636363636363636363636363636363636363636363656576656e74a66373657100646b696e64686875622e6e6f746566736f757263657847636f676c65743a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161677061796c6f6164a06c6c6f676963616c5f74696d65006e636f7272656c6174696f6e5f6964782063636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f67656e7478446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626266636f676c65747847636f676c65743a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616166737461747573a6647374657000656572726f72a364636f646568636f6e666c696374676d65737361676568436f6e666c69637469726574727961626c65f46573746174656773746f707065646770656e64696e6700696c6976655f747265657840656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656a67656e65726174696f6e006764726f707065640066746172676574f667636f6e74657874a1656163746f7278446875623a626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626a74696d656f75745f6d73016e636f7272656c6174696f6e5f696478206363636363636363636363636363636363636363636363636363636363636363"
+  },
+  {
+    "name": "presence-check_in-request-hub-frame-unknown",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0,
+        "unknown": true
+      },
+      "context": {
+        "actor": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    }
+  },
+  {
+    "name": "presence-check_in-request-hub-frame-context",
+    "type": "hub-frame",
+    "valid": false,
+    "value": {
+      "method": "presence.check_in",
+      "target": null,
+      "correlation_id": "cccccccccccccccccccccccccccccccc",
+      "timeout_ms": 1,
+      "params": {
+        "cogent": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": {
+          "state": "stopped",
+          "live_tree": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "generation": 0,
+          "step": 0,
+          "pending": 0,
+          "error": {
+            "code": "conflict",
+            "message": "Conflict",
+            "retryable": false
+          }
+        },
+        "held": [
+          {
+            "id": "cccccccccccccccccccccccccccccccc",
+            "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "event": {
+              "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "hub.note",
+              "seq": 0,
+              "logical_time": 0,
+              "payload": {},
+              "correlation_id": "cccccccccccccccccccccccccccccccc"
+            }
+          }
+        ],
+        "dropped": 0
+      }
+    }
+  },
+  {
+    "name": "presence-bounds-687",
+    "type": "presence-limit",
+    "valid": false,
+    "value": 256
+  },
+  {
+    "name": "presence-bounds-688",
+    "type": "presence-limit",
+    "valid": false,
+    "value": -1
+  },
+  {
+    "name": "presence-bounds-689",
+    "type": "presence-coglets",
+    "valid": false,
+    "value": [
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ]
+  },
+  {
+    "name": "presence-bounds-690",
+    "type": "presence-held",
+    "valid": false,
+    "value": [
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "cccccccccccccccccccccccccccccccc",
+        "sender": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "event": {
+          "source": "coglet:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "hub.note",
+          "seq": 0,
+          "logical_time": 0,
+          "payload": {},
+          "correlation_id": "cccccccccccccccccccccccccccccccc"
+        }
+      }
+    ]
+  },
+  {
+    "name": "presence-bounds-691",
+    "type": "presence-reason",
+    "valid": false,
+    "value": ""
+  },
+  {
+    "name": "presence-bounds-692",
+    "type": "presence-urgency",
+    "valid": false,
+    "value": "urgent"
   }
 ]

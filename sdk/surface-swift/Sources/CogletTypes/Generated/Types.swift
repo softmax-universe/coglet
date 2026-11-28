@@ -99,7 +99,7 @@ internal enum GeneratedSchema {
         "hub::hub-maybe-secret": .union([.reference("hub::hub-secret"), .reference("hub::hub-null")]),
         "hub::hub-empty": .boundedMap(0, 0, .text, .reference("common::profile-value")),
         "hub::hub-state": .union([.literal(.text("stopped")), .literal(.text("running")), .literal(.text("paused")), .literal(.text("faulted"))]),
-        "hub::hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("manage.patch")), .literal(.text("manage.tail_log")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("manage.read")), .literal(.text("manage.write")), .literal(.text("manage.pause")), .literal(.text("manage.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
+        "hub::hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("manage.patch")), .literal(.text("manage.tail_log")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("manage.read")), .literal(.text("manage.write")), .literal(.text("manage.pause")), .literal(.text("manage.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel")), .literal(.text("presence.get")), .literal(.text("presence.set")), .literal(.text("presence.request")), .literal(.text("presence.changed")), .literal(.text("presence.check_in"))]),
         "hub::hub-methods": .boundedArray(0, 17, .reference("hub::hub-method")),
         "hub::hub-purpose-delegation": .literal(.text("delegation")),
         "hub::hub-delegation-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-purpose-delegation")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "expires", optional: false, node: .reference("common::uint64")), .init(name: "methods", optional: false, node: .reference("hub::hub-methods"))]),
@@ -135,6 +135,16 @@ internal enum GeneratedSchema {
         "hub::hub-inbox-params": .record([.init(name: "message", optional: false, node: .reference("hub::hub-inbox-delivery")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
         "hub::hub-health-params": .record([.init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "uptime_ms", optional: false, node: .reference("common::uint64")), .init(name: "queue_depth", optional: false, node: .reference("common::uint64")), .init(name: "available_bytes", optional: false, node: .reference("common::uint64")), .init(name: "coglets", optional: false, node: .reference("hub::hub-health-items"))]),
         "hub::hub-operation-params": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "hub::presence-limit": .range(.unsigned(0), .unsigned(255)),
+        "hub::presence-coglets": .boundedArray(0, 255, .reference("common::coglet-id")),
+        "hub::presence-reason": .intersection([.text, .size(1, 1024)]),
+        "hub::presence-urgency": .union([.literal(.text("low")), .literal(.text("high"))]),
+        "hub::presence-state": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "attention", optional: false, node: .reference("common::coglet-id")), .init(name: "present", optional: false, node: .reference("hub::presence-coglets")), .init(name: "limit", optional: false, node: .reference("hub::presence-limit")), .init(name: "revision", optional: false, node: .reference("common::uint64"))]),
+        "hub::presence-get-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id"))]),
+        "hub::presence-set-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "base", optional: false, node: .reference("common::uint64")), .init(name: "add", optional: false, node: .reference("hub::presence-coglets")), .init(name: "remove", optional: false, node: .reference("hub::presence-coglets")), .init(name: "attention", optional: true, node: .reference("common::coglet-id")), .init(name: "limit", optional: true, node: .reference("hub::presence-limit")), .init(name: "reason", optional: true, node: .reference("hub::presence-reason"))]),
+        "hub::presence-request-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "urgency", optional: false, node: .reference("hub::presence-urgency")), .init(name: "reason", optional: false, node: .reference("hub::presence-reason"))]),
+        "hub::presence-held": .boundedArray(0, 64, .reference("hub::hub-inbox-delivery")),
+        "hub::presence-check-in-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "status", optional: false, node: .reference("hub::hub-status")), .init(name: "held", optional: false, node: .reference("hub::presence-held")), .init(name: "dropped", optional: false, node: .reference("common::uint64"))]),
         "hub::hub-context": .record([.init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
         "hub::hub-enroll-request-method": .literal(.text("hub.enroll")),
         "hub::hub-enroll-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-enroll-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-enroll-params"))]),
@@ -170,12 +180,22 @@ internal enum GeneratedSchema {
         "hub::hub-receipt-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-receipt-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub::hub-cancel-request-method": .literal(.text("hub.cancel")),
         "hub::hub-cancel-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-cancel-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub::hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::manage-patch-request"), .reference("hub::manage-tail_log-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::manage-read-request"), .reference("hub::manage-write-request"), .reference("hub::manage-pause-request"), .reference("hub::manage-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
+        "hub::presence-get-request-method": .literal(.text("presence.get")),
+        "hub::presence-get-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-get-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-get-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::presence-set-request-method": .literal(.text("presence.set")),
+        "hub::presence-set-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-set-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-set-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::presence-request-request-method": .literal(.text("presence.request")),
+        "hub::presence-request-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-request-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-request-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::presence-changed-request-method": .literal(.text("presence.changed")),
+        "hub::presence-changed-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-changed-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-state")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::presence-check_in-request-method": .literal(.text("presence.check_in")),
+        "hub::presence-check_in-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-check_in-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-check-in-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub::hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::manage-patch-request"), .reference("hub::manage-tail_log-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::manage-read-request"), .reference("hub::manage-write-request"), .reference("hub::manage-pause-request"), .reference("hub::manage-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request"), .reference("hub::presence-get-request"), .reference("hub::presence-set-request"), .reference("hub::presence-request-request"), .reference("hub::presence-changed-request"), .reference("hub::presence-check_in-request")]),
         "hub::hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
         "hub::hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
         "hub::hub-events-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
         "hub::hub-step-result": .record([.init(name: "receipt", optional: false, node: .reference("hub::hub-mutation-receipt")), .init(name: "step", optional: false, node: .reference("common::uint64"))]),
-        "hub::hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty")]),
+        "hub::hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty"), .reference("hub::presence-state")]),
         "hub::hub-success-type": .literal(.text("reply")),
         "hub::hub-success": .record([.init(name: "type", optional: false, node: .reference("hub::hub-success-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "result", optional: false, node: .reference("hub::hub-result"))]),
         "hub::hub-failure-type": .literal(.text("error")),
@@ -358,7 +378,7 @@ internal enum GeneratedSchema {
         "hub-maybe-secret": .union([.reference("hub::hub-secret"), .reference("hub::hub-null")]),
         "hub-empty": .boundedMap(0, 0, .text, .reference("common::profile-value")),
         "hub-state": .union([.literal(.text("stopped")), .literal(.text("running")), .literal(.text("paused")), .literal(.text("faulted"))]),
-        "hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("manage.patch")), .literal(.text("manage.tail_log")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("manage.read")), .literal(.text("manage.write")), .literal(.text("manage.pause")), .literal(.text("manage.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel"))]),
+        "hub-method": .union([.literal(.text("hub.enroll")), .literal(.text("hub.install")), .literal(.text("hub.start")), .literal(.text("hub.stop")), .literal(.text("hub.status")), .literal(.text("manage.patch")), .literal(.text("manage.tail_log")), .literal(.text("hub.events")), .literal(.text("hub.actions")), .literal(.text("manage.read")), .literal(.text("manage.write")), .literal(.text("manage.pause")), .literal(.text("manage.step")), .literal(.text("hub.inbox")), .literal(.text("hub.health")), .literal(.text("hub.receipt")), .literal(.text("hub.cancel")), .literal(.text("presence.get")), .literal(.text("presence.set")), .literal(.text("presence.request")), .literal(.text("presence.changed")), .literal(.text("presence.check_in"))]),
         "hub-methods": .boundedArray(0, 17, .reference("hub::hub-method")),
         "hub-purpose-delegation": .literal(.text("delegation")),
         "hub-delegation-statement": .record([.init(name: "purpose", optional: false, node: .reference("hub::hub-purpose-delegation")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id")), .init(name: "generation", optional: false, node: .reference("common::uint64")), .init(name: "expires", optional: false, node: .reference("common::uint64")), .init(name: "methods", optional: false, node: .reference("hub::hub-methods"))]),
@@ -394,6 +414,16 @@ internal enum GeneratedSchema {
         "hub-inbox-params": .record([.init(name: "message", optional: false, node: .reference("hub::hub-inbox-delivery")), .init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
         "hub-health-params": .record([.init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "uptime_ms", optional: false, node: .reference("common::uint64")), .init(name: "queue_depth", optional: false, node: .reference("common::uint64")), .init(name: "available_bytes", optional: false, node: .reference("common::uint64")), .init(name: "coglets", optional: false, node: .reference("hub::hub-health-items"))]),
         "hub-operation-params": .record([.init(name: "operation_id", optional: false, node: .reference("common::correlation-id"))]),
+        "presence-limit": .range(.unsigned(0), .unsigned(255)),
+        "presence-coglets": .boundedArray(0, 255, .reference("common::coglet-id")),
+        "presence-reason": .intersection([.text, .size(1, 1024)]),
+        "presence-urgency": .union([.literal(.text("low")), .literal(.text("high"))]),
+        "presence-state": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "attention", optional: false, node: .reference("common::coglet-id")), .init(name: "present", optional: false, node: .reference("hub::presence-coglets")), .init(name: "limit", optional: false, node: .reference("hub::presence-limit")), .init(name: "revision", optional: false, node: .reference("common::uint64"))]),
+        "presence-get-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id"))]),
+        "presence-set-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "base", optional: false, node: .reference("common::uint64")), .init(name: "add", optional: false, node: .reference("hub::presence-coglets")), .init(name: "remove", optional: false, node: .reference("hub::presence-coglets")), .init(name: "attention", optional: true, node: .reference("common::coglet-id")), .init(name: "limit", optional: true, node: .reference("hub::presence-limit")), .init(name: "reason", optional: true, node: .reference("hub::presence-reason"))]),
+        "presence-request-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "urgency", optional: false, node: .reference("hub::presence-urgency")), .init(name: "reason", optional: false, node: .reference("hub::presence-reason"))]),
+        "presence-held": .boundedArray(0, 64, .reference("hub::hub-inbox-delivery")),
+        "presence-check-in-params": .record([.init(name: "cogent", optional: false, node: .reference("common::hub-id")), .init(name: "coglet", optional: false, node: .reference("common::coglet-id")), .init(name: "status", optional: false, node: .reference("hub::hub-status")), .init(name: "held", optional: false, node: .reference("hub::presence-held")), .init(name: "dropped", optional: false, node: .reference("common::uint64"))]),
         "hub-context": .record([.init(name: "actor", optional: false, node: .reference("common::source-id")), .init(name: "ticket", optional: true, node: .reference("common::correlation-id"))]),
         "hub-enroll-request-method": .literal(.text("hub.enroll")),
         "hub-enroll-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-enroll-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-enroll-params"))]),
@@ -429,12 +459,22 @@ internal enum GeneratedSchema {
         "hub-receipt-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-receipt-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
         "hub-cancel-request-method": .literal(.text("hub.cancel")),
         "hub-cancel-request": .record([.init(name: "method", optional: false, node: .reference("hub::hub-cancel-request-method")), .init(name: "target", optional: false, node: .reference("common::coglet-id")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::hub-operation-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
-        "hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::manage-patch-request"), .reference("hub::manage-tail_log-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::manage-read-request"), .reference("hub::manage-write-request"), .reference("hub::manage-pause-request"), .reference("hub::manage-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request")]),
+        "presence-get-request-method": .literal(.text("presence.get")),
+        "presence-get-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-get-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-get-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "presence-set-request-method": .literal(.text("presence.set")),
+        "presence-set-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-set-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-set-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "presence-request-request-method": .literal(.text("presence.request")),
+        "presence-request-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-request-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-request-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "presence-changed-request-method": .literal(.text("presence.changed")),
+        "presence-changed-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-changed-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-state")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "presence-check_in-request-method": .literal(.text("presence.check_in")),
+        "presence-check_in-request": .record([.init(name: "method", optional: false, node: .reference("hub::presence-check_in-request-method")), .init(name: "target", optional: false, node: .reference("hub::hub-null")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "timeout_ms", optional: false, node: .reference("hub::hub-timeout")), .init(name: "params", optional: false, node: .reference("hub::presence-check-in-params")), .init(name: "context", optional: false, node: .reference("hub::hub-context"))]),
+        "hub-request": .union([.reference("hub::hub-enroll-request"), .reference("hub::hub-install-request"), .reference("hub::hub-start-request"), .reference("hub::hub-stop-request"), .reference("hub::hub-status-request"), .reference("hub::manage-patch-request"), .reference("hub::manage-tail_log-request"), .reference("hub::hub-events-request"), .reference("hub::hub-actions-request"), .reference("hub::manage-read-request"), .reference("hub::manage-write-request"), .reference("hub::manage-pause-request"), .reference("hub::manage-step-request"), .reference("hub::hub-inbox-request"), .reference("hub::hub-health-request"), .reference("hub::hub-receipt-request"), .reference("hub::hub-cancel-request"), .reference("hub::presence-get-request"), .reference("hub::presence-set-request"), .reference("hub::presence-request-request"), .reference("hub::presence-changed-request"), .reference("hub::presence-check_in-request")]),
         "hub-enroll-result": .record([.init(name: "selection", optional: false, node: .reference("common::version-selection")), .init(name: "device", optional: false, node: .reference("common::node-id")), .init(name: "hub", optional: false, node: .reference("common::node-id"))]),
         "hub-read-result": .record([.init(name: "step", optional: false, node: .reference("common::uint64")), .init(name: "snapshot_hash", optional: false, node: .reference("hub::hub-hash")), .init(name: "text", optional: false, node: .reference("hub::hub-text")), .init(name: "next_offset", optional: false, node: .reference("common::uint64")), .init(name: "eof", optional: false, node: .reference("hub::hub-bool"))]),
         "hub-events-result": .record([.init(name: "next_offset", optional: false, node: .reference("common::uint64"))]),
         "hub-step-result": .record([.init(name: "receipt", optional: false, node: .reference("hub::hub-mutation-receipt")), .init(name: "step", optional: false, node: .reference("common::uint64"))]),
-        "hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty")]),
+        "hub-result": .union([.reference("hub::hub-enroll-result"), .reference("hub::hub-mutation-receipt"), .reference("hub::hub-status"), .reference("common::action-accept"), .reference("hub::hub-read-result"), .reference("hub::hub-events-result"), .reference("hub::hub-step-result"), .reference("hub::hub-empty"), .reference("hub::presence-state")]),
         "hub-success-type": .literal(.text("reply")),
         "hub-success": .record([.init(name: "type", optional: false, node: .reference("hub::hub-success-type")), .init(name: "correlation_id", optional: false, node: .reference("common::correlation-id")), .init(name: "result", optional: false, node: .reference("hub::hub-result"))]),
         "hub-failure-type": .literal(.text("error")),
@@ -862,6 +902,16 @@ internal enum GeneratedSchema {
         case "hub::hub-inbox-params": typed = try HubHubInboxParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-health-params": typed = try HubHubHealthParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-operation-params": typed = try HubHubOperationParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-limit": typed = try HubPresenceLimit.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-coglets": typed = try HubPresenceCoglets.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-reason": typed = try HubPresenceReason.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-urgency": typed = try HubPresenceUrgency.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-state": typed = try HubPresenceState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-get-params": typed = try HubPresenceGetParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-set-params": typed = try HubPresenceSetParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-request-params": typed = try HubPresenceRequestParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-held": typed = try HubPresenceHeld.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-check-in-params": typed = try HubPresenceCheckInParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-context": typed = try HubHubContext.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-enroll-request-method": typed = try HubHubEnrollRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-enroll-request": typed = try HubHubEnrollRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -897,6 +947,16 @@ internal enum GeneratedSchema {
         case "hub::hub-receipt-request": typed = try HubHubReceiptRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-cancel-request-method": typed = try HubHubCancelRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-cancel-request": typed = try HubHubCancelRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-get-request-method": typed = try HubPresenceGetRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-get-request": typed = try HubPresenceGetRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-set-request-method": typed = try HubPresenceSetRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-set-request": typed = try HubPresenceSetRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-request-request-method": typed = try HubPresenceRequestRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-request-request": typed = try HubPresenceRequestRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-changed-request-method": typed = try HubPresenceChangedRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-changed-request": typed = try HubPresenceChangedRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-check_in-request-method": typed = try HubPresenceCheckInRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "hub::presence-check_in-request": typed = try HubPresenceCheckInRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-request": typed = try HubHubRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-enroll-result": typed = try HubHubEnrollResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub::hub-read-result": typed = try HubHubReadResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -1121,6 +1181,16 @@ internal enum GeneratedSchema {
         case "hub-inbox-params": typed = try HubInboxParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-health-params": typed = try HubHealthParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-operation-params": typed = try HubOperationParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-limit": typed = try PresenceLimit.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-coglets": typed = try PresenceCoglets.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-reason": typed = try PresenceReason.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-urgency": typed = try PresenceUrgency.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-state": typed = try PresenceState.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-get-params": typed = try PresenceGetParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-set-params": typed = try PresenceSetParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-request-params": typed = try PresenceRequestParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-held": typed = try PresenceHeld.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-check-in-params": typed = try PresenceCheckInParams.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-context": typed = try HubContext.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-enroll-request-method": typed = try HubEnrollRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-enroll-request": typed = try HubEnrollRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -1156,6 +1226,16 @@ internal enum GeneratedSchema {
         case "hub-receipt-request": typed = try HubReceiptRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-cancel-request-method": typed = try HubCancelRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-cancel-request": typed = try HubCancelRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-get-request-method": typed = try PresenceGetRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-get-request": typed = try PresenceGetRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-set-request-method": typed = try PresenceSetRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-set-request": typed = try PresenceSetRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-request-request-method": typed = try PresenceRequestRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-request-request": typed = try PresenceRequestRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-changed-request-method": typed = try PresenceChangedRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-changed-request": typed = try PresenceChangedRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-check_in-request-method": typed = try PresenceCheckInRequestMethod.init(cborValue: value, depth: 0).cborValue(depth: 0)
+        case "presence-check_in-request": typed = try PresenceCheckInRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-request": typed = try HubRequest.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-enroll-result": typed = try HubEnrollResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
         case "hub-read-result": typed = try HubReadResult.init(cborValue: value, depth: 0).cborValue(depth: 0)
@@ -3851,6 +3931,11 @@ public indirect enum HubHubMethod: CBORMessage, Sendable {
     case variant15(Swift.String)
     case variant16(Swift.String)
     case variant17(Swift.String)
+    case variant18(Swift.String)
+    case variant19(Swift.String)
+    case variant20(Swift.String)
+    case variant21(Swift.String)
+    case variant22(Swift.String)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.literal(.text("hub.enroll")), cborValue)) != nil {
@@ -3921,6 +4006,26 @@ public indirect enum HubHubMethod: CBORMessage, Sendable {
             self = .variant17(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.get")), cborValue)) != nil {
+            self = .variant18(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.set")), cborValue)) != nil {
+            self = .variant19(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.request")), cborValue)) != nil {
+            self = .variant20(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.changed")), cborValue)) != nil {
+            self = .variant21(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.check_in")), cborValue)) != nil {
+            self = .variant22(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -3978,6 +4083,21 @@ public indirect enum HubHubMethod: CBORMessage, Sendable {
         case .variant17(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("hub.cancel")), value)
+        case .variant18(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.get")), value)
+        case .variant19(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.set")), value)
+        case .variant20(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.request")), value)
+        case .variant21(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.changed")), value)
+        case .variant22(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.check_in")), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -4776,6 +4896,224 @@ public struct HubHubOperationParams: CBORMessage, Sendable {
     }
 }
 
+public typealias HubPresenceLimit = Swift.UInt64
+
+public typealias HubPresenceCoglets = [CommonCogletId]
+
+public typealias HubPresenceReason = CBORValue
+
+public indirect enum HubPresenceUrgency: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-urgency"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("low")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("high")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("low")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("high")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubPresenceState: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-state"
+    public var `cogent`: CommonHubId
+    public var `attention`: CommonCogletId
+    public var `present`: HubPresenceCoglets
+    public var `limit`: HubPresenceLimit
+    public var `revision`: CommonUint64
+    public init(`cogent`: CommonHubId, `attention`: CommonCogletId, `present`: HubPresenceCoglets, `limit`: HubPresenceLimit, `revision`: CommonUint64) {
+        self.`cogent` = `cogent`
+        self.`attention` = `attention`
+        self.`present` = `present`
+        self.`limit` = `limit`
+        self.`revision` = `revision`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`attention` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "attention")), depth: depth + 1)
+        self.`present` = try HubPresenceCoglets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "present")), depth: depth + 1)
+        self.`limit` = try HubPresenceLimit.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "limit")), depth: depth + 1)
+        self.`revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("attention", try self.`attention`.cborValue(depth: depth + 1)))
+        entries.append(.init("present", try self.`present`.cborValue(depth: depth + 1)))
+        entries.append(.init("limit", try self.`limit`.cborValue(depth: depth + 1)))
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubPresenceGetParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-get-params"
+    public var `cogent`: CommonHubId
+    public init(`cogent`: CommonHubId) {
+        self.`cogent` = `cogent`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubPresenceSetParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-set-params"
+    public var `cogent`: CommonHubId
+    public var `base`: CommonUint64
+    public var `add`: HubPresenceCoglets
+    public var `remove`: HubPresenceCoglets
+    public var `attention`: CommonCogletId?
+    public var `limit`: HubPresenceLimit?
+    public var `reason`: HubPresenceReason?
+    public init(`cogent`: CommonHubId, `base`: CommonUint64, `add`: HubPresenceCoglets, `remove`: HubPresenceCoglets, `attention`: CommonCogletId? = nil, `limit`: HubPresenceLimit? = nil, `reason`: HubPresenceReason? = nil) {
+        self.`cogent` = `cogent`
+        self.`base` = `base`
+        self.`add` = `add`
+        self.`remove` = `remove`
+        self.`attention` = `attention`
+        self.`limit` = `limit`
+        self.`reason` = `reason`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`base` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "base")), depth: depth + 1)
+        self.`add` = try HubPresenceCoglets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "add")), depth: depth + 1)
+        self.`remove` = try HubPresenceCoglets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "remove")), depth: depth + 1)
+        self.`attention` = try CBORCodec.field(entries, "attention").map { try CommonCogletId.init(cborValue: $0, depth: depth + 1) }
+        self.`limit` = try CBORCodec.field(entries, "limit").map { try HubPresenceLimit.init(cborValue: $0, depth: depth + 1) }
+        self.`reason` = try CBORCodec.field(entries, "reason").map { try HubPresenceReason.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("base", try self.`base`.cborValue(depth: depth + 1)))
+        entries.append(.init("add", try self.`add`.cborValue(depth: depth + 1)))
+        entries.append(.init("remove", try self.`remove`.cborValue(depth: depth + 1)))
+        if let v = self.`attention` { entries.append(.init("attention", try v.cborValue(depth: depth + 1))) }
+        if let v = self.`limit` { entries.append(.init("limit", try v.cborValue(depth: depth + 1))) }
+        if let v = self.`reason` { entries.append(.init("reason", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct HubPresenceRequestParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-request-params"
+    public var `cogent`: CommonHubId
+    public var `coglet`: CommonCogletId
+    public var `urgency`: HubPresenceUrgency
+    public var `reason`: HubPresenceReason
+    public init(`cogent`: CommonHubId, `coglet`: CommonCogletId, `urgency`: HubPresenceUrgency, `reason`: HubPresenceReason) {
+        self.`cogent` = `cogent`
+        self.`coglet` = `coglet`
+        self.`urgency` = `urgency`
+        self.`reason` = `reason`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`urgency` = try HubPresenceUrgency.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "urgency")), depth: depth + 1)
+        self.`reason` = try HubPresenceReason.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reason")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("urgency", try self.`urgency`.cborValue(depth: depth + 1)))
+        entries.append(.init("reason", try self.`reason`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubPresenceHeld = [HubHubInboxDelivery]
+
+public struct HubPresenceCheckInParams: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-check-in-params"
+    public var `cogent`: CommonHubId
+    public var `coglet`: CommonCogletId
+    public var `status`: HubHubStatus
+    public var `held`: HubPresenceHeld
+    public var `dropped`: CommonUint64
+    public init(`cogent`: CommonHubId, `coglet`: CommonCogletId, `status`: HubHubStatus, `held`: HubPresenceHeld, `dropped`: CommonUint64) {
+        self.`cogent` = `cogent`
+        self.`coglet` = `coglet`
+        self.`status` = `status`
+        self.`held` = `held`
+        self.`dropped` = `dropped`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`status` = try HubHubStatus.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`held` = try HubPresenceHeld.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "held")), depth: depth + 1)
+        self.`dropped` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "dropped")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("held", try self.`held`.cborValue(depth: depth + 1)))
+        entries.append(.init("dropped", try self.`dropped`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public struct HubHubContext: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-context"
     public var `actor`: CommonSourceId
@@ -5530,6 +5868,226 @@ public struct HubHubCancelRequest: CBORMessage, Sendable {
     }
 }
 
+public typealias HubPresenceGetRequestMethod = Swift.String
+
+public struct HubPresenceGetRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-get-request"
+    public var `method`: HubPresenceGetRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceGetParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceGetRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceGetParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceGetRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceGetParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubPresenceSetRequestMethod = Swift.String
+
+public struct HubPresenceSetRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-set-request"
+    public var `method`: HubPresenceSetRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceSetParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceSetRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceSetParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceSetRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceSetParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubPresenceRequestRequestMethod = Swift.String
+
+public struct HubPresenceRequestRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-request-request"
+    public var `method`: HubPresenceRequestRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceRequestParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceRequestRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceRequestParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceRequestRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceRequestParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubPresenceChangedRequestMethod = Swift.String
+
+public struct HubPresenceChangedRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-changed-request"
+    public var `method`: HubPresenceChangedRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceState
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceChangedRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceState, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceChangedRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias HubPresenceCheckInRequestMethod = Swift.String
+
+public struct HubPresenceCheckInRequest: CBORMessage, Sendable {
+    public static let schemaRule = "hub::presence-check_in-request"
+    public var `method`: HubPresenceCheckInRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceCheckInParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceCheckInRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceCheckInParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceCheckInRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceCheckInParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum HubHubRequest: CBORMessage, Sendable {
     public static let schemaRule = "hub::hub-request"
     case variant1(HubHubEnrollRequest)
@@ -5549,6 +6107,11 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
     case variant15(HubHubHealthRequest)
     case variant16(HubHubReceiptRequest)
     case variant17(HubHubCancelRequest)
+    case variant18(HubPresenceGetRequest)
+    case variant19(HubPresenceSetRequest)
+    case variant20(HubPresenceRequestRequest)
+    case variant21(HubPresenceChangedRequest)
+    case variant22(HubPresenceCheckInRequest)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-request"), cborValue)) != nil {
@@ -5619,6 +6182,26 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
             self = .variant17(try HubHubCancelRequest.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-get-request"), cborValue)) != nil {
+            self = .variant18(try HubPresenceGetRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-set-request"), cborValue)) != nil {
+            self = .variant19(try HubPresenceSetRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-request-request"), cborValue)) != nil {
+            self = .variant20(try HubPresenceRequestRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-changed-request"), cborValue)) != nil {
+            self = .variant21(try HubPresenceChangedRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-check_in-request"), cborValue)) != nil {
+            self = .variant22(try HubPresenceCheckInRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -5676,6 +6259,21 @@ public indirect enum HubHubRequest: CBORMessage, Sendable {
         case .variant17(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-cancel-request"), value)
+        case .variant18(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-get-request"), value)
+        case .variant19(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-set-request"), value)
+        case .variant20(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-request-request"), value)
+        case .variant21(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-changed-request"), value)
+        case .variant22(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-check_in-request"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -5808,6 +6406,7 @@ public indirect enum HubHubResult: CBORMessage, Sendable {
     case variant6(HubHubEventsResult)
     case variant7(HubHubStepResult)
     case variant8(HubHubEmpty)
+    case variant9(HubPresenceState)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-result"), cborValue)) != nil {
@@ -5842,6 +6441,10 @@ public indirect enum HubHubResult: CBORMessage, Sendable {
             self = .variant8(try HubHubEmpty.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-state"), cborValue)) != nil {
+            self = .variant9(try HubPresenceState.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -5872,6 +6475,9 @@ public indirect enum HubHubResult: CBORMessage, Sendable {
         case .variant8(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-empty"), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-state"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -11471,6 +12077,11 @@ public indirect enum HubMethod: CBORMessage, Sendable {
     case variant15(Swift.String)
     case variant16(Swift.String)
     case variant17(Swift.String)
+    case variant18(Swift.String)
+    case variant19(Swift.String)
+    case variant20(Swift.String)
+    case variant21(Swift.String)
+    case variant22(Swift.String)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.literal(.text("hub.enroll")), cborValue)) != nil {
@@ -11541,6 +12152,26 @@ public indirect enum HubMethod: CBORMessage, Sendable {
             self = .variant17(try Swift.String.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.get")), cborValue)) != nil {
+            self = .variant18(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.set")), cborValue)) != nil {
+            self = .variant19(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.request")), cborValue)) != nil {
+            self = .variant20(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.changed")), cborValue)) != nil {
+            self = .variant21(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("presence.check_in")), cborValue)) != nil {
+            self = .variant22(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -11598,6 +12229,21 @@ public indirect enum HubMethod: CBORMessage, Sendable {
         case .variant17(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.literal(.text("hub.cancel")), value)
+        case .variant18(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.get")), value)
+        case .variant19(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.set")), value)
+        case .variant20(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.request")), value)
+        case .variant21(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.changed")), value)
+        case .variant22(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("presence.check_in")), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -12396,6 +13042,224 @@ public struct HubOperationParams: CBORMessage, Sendable {
     }
 }
 
+public typealias PresenceLimit = Swift.UInt64
+
+public typealias PresenceCoglets = [CommonCogletId]
+
+public typealias PresenceReason = CBORValue
+
+public indirect enum PresenceUrgency: CBORMessage, Sendable {
+    public static let schemaRule = "presence-urgency"
+    case variant1(Swift.String)
+    case variant2(Swift.String)
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        if (try? CBORCodec.validateNode(.literal(.text("low")), cborValue)) != nil {
+            self = .variant1(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.literal(.text("high")), cborValue)) != nil {
+            self = .variant2(try Swift.String.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        throw CBORFailure.invalid("no union branch matched")
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        let value: CBORValue
+        switch self {
+        case .variant1(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("low")), value)
+        case .variant2(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.literal(.text("high")), value)
+        }
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct PresenceState: CBORMessage, Sendable {
+    public static let schemaRule = "presence-state"
+    public var `cogent`: CommonHubId
+    public var `attention`: CommonCogletId
+    public var `present`: HubPresenceCoglets
+    public var `limit`: HubPresenceLimit
+    public var `revision`: CommonUint64
+    public init(`cogent`: CommonHubId, `attention`: CommonCogletId, `present`: HubPresenceCoglets, `limit`: HubPresenceLimit, `revision`: CommonUint64) {
+        self.`cogent` = `cogent`
+        self.`attention` = `attention`
+        self.`present` = `present`
+        self.`limit` = `limit`
+        self.`revision` = `revision`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`attention` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "attention")), depth: depth + 1)
+        self.`present` = try HubPresenceCoglets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "present")), depth: depth + 1)
+        self.`limit` = try HubPresenceLimit.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "limit")), depth: depth + 1)
+        self.`revision` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "revision")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("attention", try self.`attention`.cborValue(depth: depth + 1)))
+        entries.append(.init("present", try self.`present`.cborValue(depth: depth + 1)))
+        entries.append(.init("limit", try self.`limit`.cborValue(depth: depth + 1)))
+        entries.append(.init("revision", try self.`revision`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct PresenceGetParams: CBORMessage, Sendable {
+    public static let schemaRule = "presence-get-params"
+    public var `cogent`: CommonHubId
+    public init(`cogent`: CommonHubId) {
+        self.`cogent` = `cogent`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct PresenceSetParams: CBORMessage, Sendable {
+    public static let schemaRule = "presence-set-params"
+    public var `cogent`: CommonHubId
+    public var `base`: CommonUint64
+    public var `add`: HubPresenceCoglets
+    public var `remove`: HubPresenceCoglets
+    public var `attention`: CommonCogletId?
+    public var `limit`: HubPresenceLimit?
+    public var `reason`: HubPresenceReason?
+    public init(`cogent`: CommonHubId, `base`: CommonUint64, `add`: HubPresenceCoglets, `remove`: HubPresenceCoglets, `attention`: CommonCogletId? = nil, `limit`: HubPresenceLimit? = nil, `reason`: HubPresenceReason? = nil) {
+        self.`cogent` = `cogent`
+        self.`base` = `base`
+        self.`add` = `add`
+        self.`remove` = `remove`
+        self.`attention` = `attention`
+        self.`limit` = `limit`
+        self.`reason` = `reason`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`base` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "base")), depth: depth + 1)
+        self.`add` = try HubPresenceCoglets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "add")), depth: depth + 1)
+        self.`remove` = try HubPresenceCoglets.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "remove")), depth: depth + 1)
+        self.`attention` = try CBORCodec.field(entries, "attention").map { try CommonCogletId.init(cborValue: $0, depth: depth + 1) }
+        self.`limit` = try CBORCodec.field(entries, "limit").map { try HubPresenceLimit.init(cborValue: $0, depth: depth + 1) }
+        self.`reason` = try CBORCodec.field(entries, "reason").map { try HubPresenceReason.init(cborValue: $0, depth: depth + 1) }
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("base", try self.`base`.cborValue(depth: depth + 1)))
+        entries.append(.init("add", try self.`add`.cborValue(depth: depth + 1)))
+        entries.append(.init("remove", try self.`remove`.cborValue(depth: depth + 1)))
+        if let v = self.`attention` { entries.append(.init("attention", try v.cborValue(depth: depth + 1))) }
+        if let v = self.`limit` { entries.append(.init("limit", try v.cborValue(depth: depth + 1))) }
+        if let v = self.`reason` { entries.append(.init("reason", try v.cborValue(depth: depth + 1))) }
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public struct PresenceRequestParams: CBORMessage, Sendable {
+    public static let schemaRule = "presence-request-params"
+    public var `cogent`: CommonHubId
+    public var `coglet`: CommonCogletId
+    public var `urgency`: HubPresenceUrgency
+    public var `reason`: HubPresenceReason
+    public init(`cogent`: CommonHubId, `coglet`: CommonCogletId, `urgency`: HubPresenceUrgency, `reason`: HubPresenceReason) {
+        self.`cogent` = `cogent`
+        self.`coglet` = `coglet`
+        self.`urgency` = `urgency`
+        self.`reason` = `reason`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`urgency` = try HubPresenceUrgency.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "urgency")), depth: depth + 1)
+        self.`reason` = try HubPresenceReason.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "reason")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("urgency", try self.`urgency`.cborValue(depth: depth + 1)))
+        entries.append(.init("reason", try self.`reason`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias PresenceHeld = [HubHubInboxDelivery]
+
+public struct PresenceCheckInParams: CBORMessage, Sendable {
+    public static let schemaRule = "presence-check-in-params"
+    public var `cogent`: CommonHubId
+    public var `coglet`: CommonCogletId
+    public var `status`: HubHubStatus
+    public var `held`: HubPresenceHeld
+    public var `dropped`: CommonUint64
+    public init(`cogent`: CommonHubId, `coglet`: CommonCogletId, `status`: HubHubStatus, `held`: HubPresenceHeld, `dropped`: CommonUint64) {
+        self.`cogent` = `cogent`
+        self.`coglet` = `coglet`
+        self.`status` = `status`
+        self.`held` = `held`
+        self.`dropped` = `dropped`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`cogent` = try CommonHubId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "cogent")), depth: depth + 1)
+        self.`coglet` = try CommonCogletId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "coglet")), depth: depth + 1)
+        self.`status` = try HubHubStatus.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "status")), depth: depth + 1)
+        self.`held` = try HubPresenceHeld.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "held")), depth: depth + 1)
+        self.`dropped` = try CommonUint64.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "dropped")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("cogent", try self.`cogent`.cborValue(depth: depth + 1)))
+        entries.append(.init("coglet", try self.`coglet`.cborValue(depth: depth + 1)))
+        entries.append(.init("status", try self.`status`.cborValue(depth: depth + 1)))
+        entries.append(.init("held", try self.`held`.cborValue(depth: depth + 1)))
+        entries.append(.init("dropped", try self.`dropped`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public struct HubContext: CBORMessage, Sendable {
     public static let schemaRule = "hub-context"
     public var `actor`: CommonSourceId
@@ -13150,6 +14014,226 @@ public struct HubCancelRequest: CBORMessage, Sendable {
     }
 }
 
+public typealias PresenceGetRequestMethod = Swift.String
+
+public struct PresenceGetRequest: CBORMessage, Sendable {
+    public static let schemaRule = "presence-get-request"
+    public var `method`: HubPresenceGetRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceGetParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceGetRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceGetParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceGetRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceGetParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias PresenceSetRequestMethod = Swift.String
+
+public struct PresenceSetRequest: CBORMessage, Sendable {
+    public static let schemaRule = "presence-set-request"
+    public var `method`: HubPresenceSetRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceSetParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceSetRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceSetParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceSetRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceSetParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias PresenceRequestRequestMethod = Swift.String
+
+public struct PresenceRequestRequest: CBORMessage, Sendable {
+    public static let schemaRule = "presence-request-request"
+    public var `method`: HubPresenceRequestRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceRequestParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceRequestRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceRequestParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceRequestRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceRequestParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias PresenceChangedRequestMethod = Swift.String
+
+public struct PresenceChangedRequest: CBORMessage, Sendable {
+    public static let schemaRule = "presence-changed-request"
+    public var `method`: HubPresenceChangedRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceState
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceChangedRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceState, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceChangedRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceState.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
+public typealias PresenceCheckInRequestMethod = Swift.String
+
+public struct PresenceCheckInRequest: CBORMessage, Sendable {
+    public static let schemaRule = "presence-check_in-request"
+    public var `method`: HubPresenceCheckInRequestMethod
+    public var `target`: HubHubNull
+    public var `correlation_id`: CommonCorrelationId
+    public var `timeout_ms`: HubHubTimeout
+    public var `params`: HubPresenceCheckInParams
+    public var `context`: HubHubContext
+    public init(`method`: HubPresenceCheckInRequestMethod, `target`: HubHubNull, `correlation_id`: CommonCorrelationId, `timeout_ms`: HubHubTimeout, `params`: HubPresenceCheckInParams, `context`: HubHubContext) {
+        self.`method` = `method`
+        self.`target` = `target`
+        self.`correlation_id` = `correlation_id`
+        self.`timeout_ms` = `timeout_ms`
+        self.`params` = `params`
+        self.`context` = `context`
+    }
+    public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
+        try CBORCodec.checkDepth(depth)
+        try CBORCodec.validate(Self.schemaRule, cborValue)
+        let entries = try cborValue.requireMap()
+        self.`method` = try HubPresenceCheckInRequestMethod.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "method")), depth: depth + 1)
+        self.`target` = try HubHubNull.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "target")), depth: depth + 1)
+        self.`correlation_id` = try CommonCorrelationId.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "correlation_id")), depth: depth + 1)
+        self.`timeout_ms` = try HubHubTimeout.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "timeout_ms")), depth: depth + 1)
+        self.`params` = try HubPresenceCheckInParams.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "params")), depth: depth + 1)
+        self.`context` = try HubHubContext.init(cborValue: CBORCodec.required(CBORCodec.field(entries, "context")), depth: depth + 1)
+    }
+    public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
+        try CBORCodec.checkDepth(depth)
+        var entries: [CBORMapEntry] = []
+        entries.append(.init("method", try self.`method`.cborValue(depth: depth + 1)))
+        entries.append(.init("target", try self.`target`.cborValue(depth: depth + 1)))
+        entries.append(.init("correlation_id", try self.`correlation_id`.cborValue(depth: depth + 1)))
+        entries.append(.init("timeout_ms", try self.`timeout_ms`.cborValue(depth: depth + 1)))
+        entries.append(.init("params", try self.`params`.cborValue(depth: depth + 1)))
+        entries.append(.init("context", try self.`context`.cborValue(depth: depth + 1)))
+        let value = CBORValue.map(entries)
+        try CBORCodec.validate(Self.schemaRule, value)
+        return value
+    }
+}
+
 public indirect enum HubRequest: CBORMessage, Sendable {
     public static let schemaRule = "hub-request"
     case variant1(HubHubEnrollRequest)
@@ -13169,6 +14253,11 @@ public indirect enum HubRequest: CBORMessage, Sendable {
     case variant15(HubHubHealthRequest)
     case variant16(HubHubReceiptRequest)
     case variant17(HubHubCancelRequest)
+    case variant18(HubPresenceGetRequest)
+    case variant19(HubPresenceSetRequest)
+    case variant20(HubPresenceRequestRequest)
+    case variant21(HubPresenceChangedRequest)
+    case variant22(HubPresenceCheckInRequest)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-request"), cborValue)) != nil {
@@ -13239,6 +14328,26 @@ public indirect enum HubRequest: CBORMessage, Sendable {
             self = .variant17(try HubHubCancelRequest.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-get-request"), cborValue)) != nil {
+            self = .variant18(try HubPresenceGetRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-set-request"), cborValue)) != nil {
+            self = .variant19(try HubPresenceSetRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-request-request"), cborValue)) != nil {
+            self = .variant20(try HubPresenceRequestRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-changed-request"), cborValue)) != nil {
+            self = .variant21(try HubPresenceChangedRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-check_in-request"), cborValue)) != nil {
+            self = .variant22(try HubPresenceCheckInRequest.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -13296,6 +14405,21 @@ public indirect enum HubRequest: CBORMessage, Sendable {
         case .variant17(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-cancel-request"), value)
+        case .variant18(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-get-request"), value)
+        case .variant19(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-set-request"), value)
+        case .variant20(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-request-request"), value)
+        case .variant21(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-changed-request"), value)
+        case .variant22(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-check_in-request"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value
@@ -13428,6 +14552,7 @@ public indirect enum HubResult: CBORMessage, Sendable {
     case variant6(HubHubEventsResult)
     case variant7(HubHubStepResult)
     case variant8(HubHubEmpty)
+    case variant9(HubPresenceState)
     public init(cborValue: CBORValue, depth: Swift.Int = 0) throws {
         try CBORCodec.checkDepth(depth)
         if (try? CBORCodec.validateNode(.reference("hub::hub-enroll-result"), cborValue)) != nil {
@@ -13462,6 +14587,10 @@ public indirect enum HubResult: CBORMessage, Sendable {
             self = .variant8(try HubHubEmpty.init(cborValue: cborValue, depth: depth))
             return
         }
+        if (try? CBORCodec.validateNode(.reference("hub::presence-state"), cborValue)) != nil {
+            self = .variant9(try HubPresenceState.init(cborValue: cborValue, depth: depth))
+            return
+        }
         throw CBORFailure.invalid("no union branch matched")
     }
     public func cborValue(depth: Swift.Int = 0) throws -> CBORValue {
@@ -13492,6 +14621,9 @@ public indirect enum HubResult: CBORMessage, Sendable {
         case .variant8(let v):
             value = try v.cborValue(depth: depth)
             try CBORCodec.validateNode(.reference("hub::hub-empty"), value)
+        case .variant9(let v):
+            value = try v.cborValue(depth: depth)
+            try CBORCodec.validateNode(.reference("hub::presence-state"), value)
         }
         try CBORCodec.validate(Self.schemaRule, value)
         return value

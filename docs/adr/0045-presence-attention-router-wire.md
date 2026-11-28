@@ -3,7 +3,7 @@
 - Status: Proposed
 - Date: 2026-11-28
 - Authors: Coglet contributors
-- Related PR: pending
+- Related PR: https://github.com/softmax-universe/coglet/pull/232 (published ADR-only before schema edits)
 - Supersedes / superseded by: refines ADR-0036; does not specify router peering (ADR-0040)
 
 ## Context
@@ -103,9 +103,16 @@ cf6039de9c before and after. Add dual-validator golden vectors and recursive
 unknown-field negatives; public hub roots as well as selected rules must reject
 malformed frames. Add spec-only temporal cases for attention grants, stale CAS,
 cap/overlap/foreign membership, hold overflow, counted oldest drops, exact 10 s
-and 60 s boundaries, authenticated correlated answers/follow-ups, and attention
-handoff. Run codegen freshness, generated Rust/Python/Swift codec coverage and
-`cargo test --workspace --exclude coglet-engine-wamr`. Serving-router conformance
+and 60 s boundaries, authenticated correlated answers/follow-ups, attention
+handoff, frame overhead and multibyte UTF-8 boundaries. Run codegen freshness,
+generated Rust/Python/Swift codec coverage and
+`cargo test --workspace --exclude coglet-engine-wamr`.
+Presence.request is forwarded
+immediately to attention as the same closed method on a router-originated stream,
+with a durable deduplicated notification ID. Individual held delivery records are
+capped at 524288 encoded CBOR bytes; check-in status is capped at 16384 bytes,
+with oversized status treated as unavailable without draining the hold.
+Serving-router conformance
 is not claimed by these spec oracles.
 
 ## Approval

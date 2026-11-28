@@ -1,0 +1,10 @@
+[
+  {"name":"set-without-grant","op":"set","params":{"base":0,"add":[1],"remove":[]},"grants":[],"error":"permission_denied"},
+  {"name":"attention-without-extra-grant","op":"set","params":{"base":0,"add":[],"remove":[],"attention":2},"grants":["presence.set"],"error":"permission_denied"},
+  {"name":"limit-without-extra-grant","op":"set","params":{"base":0,"add":[],"remove":[],"limit":4},"grants":["presence.set"],"error":"permission_denied"},
+  {"name":"stale-cas","op":"set","params":{"base":1,"add":[1],"remove":[]},"grants":["presence.set"],"error":"conflict"},
+  {"name":"default-cap-overrun","op":"set","params":{"base":0,"add":[1,2,3,4,5],"remove":[]},"grants":["presence.set"],"error":"invalid_argument"},
+  {"name":"overlap","op":"set","params":{"base":0,"add":[1],"remove":[1]},"grants":["presence.set"],"error":"invalid_argument"},
+  {"name":"four-present-control","op":"set","params":{"base":0,"add":[1,2,3,4],"remove":[]},"grants":["presence.set"],"revision":1},
+  {"name":"no-op-control","op":"set","params":{"base":0,"add":[],"remove":[1]},"grants":["presence.set"],"revision":0}
+]
