@@ -63,6 +63,19 @@ class NativeReplayChecks(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'regular file', result.stderr)
 
+    def test_snapshot_ingress_reuses_strict_archive_reader(self):
+        link = self.trace.parent / 'link.json'
+        link.symlink_to(self.trace)
+        result = self.invoke('snapshot', link)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b'')
+        oversized = self.trace.parent / 'oversized.json'
+        with oversized.open('wb') as stream:
+            stream.truncate(128 * 1024 * 1024 + 1)
+        result = self.invoke('snapshot', oversized)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b'128 MiB', result.stderr)
+
     def test_absent_fork_receipt_fails_closed(self):
         result = self.invoke('fork-trace', self.trace, data=b'{"receipt_index":999,"result":{}}')
         self.assertNotEqual(result.returncode, 0)

@@ -8,8 +8,8 @@ fn files(runtime: &Runtime) -> BTreeMap<String, String> {
     // adding a production API or changing journal/trace formats.
     serde_json::from_value(serde_json::to_value(runtime).unwrap()["files"].clone()).unwrap()
 }
-fn read(path: &str) -> Value {
-    serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
+fn read(path: &str) -> Result<Value, String> {
+    coglet_visualizer_native::read_archive(path)
 }
 fn run() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
@@ -48,11 +48,11 @@ fn run() -> Result<(), String> {
         return Ok(());
     }
     if args.get(1).map(String::as_str) == Some("snapshot") {
-        let runtime = Runtime::import_trace(&read(&args[2]))?;
+        let runtime = Runtime::import_trace(&read(&args[2])?)?;
         println!("{}", serde_json::to_string(&files(&runtime)).unwrap());
         return Ok(());
     }
-    let job = read("proof-input.json");
+    let job = read("proof-input.json")?;
     let mut runtime = Runtime::import_trace(&job["prefix"])?;
     let before = files(&runtime);
     for (path, bytes) in &before {

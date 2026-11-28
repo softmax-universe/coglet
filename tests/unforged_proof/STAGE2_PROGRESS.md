@@ -71,10 +71,11 @@ Independent increment review `sa-0-af41fa5f` requested stricter ingress, complet
 journal comparison on the materialized execution, and proper shared-module
 factoring. First two are fixed and native tests rerun: the existing strict bounded
 reader/parser is reused; materialization compares all journal fields except
-regenerated chain identity and wall-duration observation. Proper factoring remains
-OPEN: the new library currently compiles main.rs as an internal dead-code module.
-Do not call this final implementation approval. Add further journal-mismatch and
-oversize/symlink controls, run existing CLI tests, and refactor before final review.
+regenerated chain identity and wall-duration observation. Shared-module factoring
+is now complete in `offline.rs`; the CLI consumes the library and no longer
+includes `main.rs` or suppresses dead code. The existing native CLI/refusal suite
+ran all nine parameterized cases successfully. Snapshot/job ingress now also
+uses the strict reader; symlink/oversize snapshot negative ran RED then GREEN.
 
 `record_oracles.py` actually emitted complete local replay/fork archives, each
 nine steps with four actions and four boundaries. Fork edits the first successful
@@ -93,6 +94,54 @@ and bundle wrappers. An injected DriverRunner is too late for blanket zero-write
 proof because resolver/seed creation already occurred. Existing native-driver jobs
 return out_trace=None, unlike program jobs. Full privacy and worker-diagnostic
 integration remain work; do not invent counters or silently use subset grants.
+
+## Full synthetic hosted replay/fork increment — NOT stage2 PASS
+
+At source `c255074d4f5006274f65c97eeaebde9993e1be45`, all nine replay steps
+and all nine independently recorded fork steps actually executed on the existing
+hosted native runtime. Every raw trusted-client receipt reports runner=caos,
+executed=true/cache=none, with the same observed worker image and resolver pins
+listed above. Every complete returned filesystem tree matches its recorded
+step, including the distinct replay/fork final trees above. This is 18 fresh
+receipts, not 18 names for a single result. `verify_oracle_batch.py` independently
+read back each raw commit/note and checked all 18 graph/receipt/tree bindings.
+
+Static hosted driver SHA256:
+`a1c8fac758ae7130a8c7087cd0e49db2ae45696ba39885e340d9a630e1648059`.
+That binary includes shared offline factoring/input-budget work, NOT the later
+snapshot/job strict-ingress fix. Do not relabel its evidence as containing the
+later fix. Current local driver was rebuilt and all five native checks pass.
+Existing 23 fast tests pass normal and optimized Python; nine existing CLI
+parameterized cases pass. Independent incremental review `sa-0-c4157cc4` approved
+`c9edeab` factoring/input work only, not final stage2 or later batch changes.
+
+`prepare_oracle_inputs.py` independently verifies native execution before
+constructing each prefix input; only earlier records, current whitelisted input
+fields and code/manifest blobs cross this step boundary. It imports the EXISTING
+resolver from a local Unforged store after checking an independent pin, rather
+than reconstructing resolver internals. Initial unseeded OS probe failed before
+upload because `unforge init` alone does not create the lazy resolver branch.
+
+Rerun preparation for each trace (`replay-trace.json`, `fork-trace.json`):
+
+```
+PATH=<private-reftable-git>/bin:$PATH python3 tests/unforged_proof/prepare_oracle_inputs.py --trace <oracle-trace> --driver <static-driver> --unforge <unforge> --resolver-store <existing-os>/dev --expected-resolver b79d195fc03d415bb16367921ef52606e880d1263679991ee290af3f26d2fb9f --output <new-prepared-dir>
+PATH=<private-reftable-git>/bin:$PATH token-broker exec --scope caos.prod.connect --reason 'Synthetic recorded replay fork hosted batch' -- python3 tests/unforged_proof/hosted_oracle_batch.py --unforge <unforge> --bridge <bridge> --driver <static-driver> --replay <prepared-replay> --fork <prepared-fork> --output <new-batch-dir> --expected-endpoint e05401185f40e92e694c635fa75ba4a8cdef5bfcb0f7759f0713decfd6c3d6ce --expected-image native@sha256:2e92d104eed5ad02c0daa765c4b17aa35f6be942e39248ef53fdd4987b429ff5 --expected-resolver b79d195fc03d415bb16367921ef52606e880d1263679991ee290af3f26d2fb9f
+python3 tests/unforged_proof/verify_oracle_batch.py --batch <batch-dir> --output <new-compact-evidence.zip>
+```
+
+Durable raw interim evidence is `evidence/hosted-gridbot-interim.zip` (36,781
+bytes, SHA256 `b757927d9a098836aaf912215de9657f6c3051f5e46c9ac45a56b594e59cf162`).
+Contains 18 raw receipt notes/returned commits/discovery/results and summary,
+not credential-bearing transport config or huge object databases. Original local
+oracle files plus prepared inputs remain in the task workspace.
+
+Still NOT qualification: Gridbot has zero model requests; no full transport grant
+seam, sandbox diagnostic/canary, factory entry, same-client warm/changed-pin
+qualification, seven named hosted acceptance tests, final review/CI/queue/main
+merge or containing-main proof. Synthetic-grant callbacks still do NOT fence all
+Unforged transport objects; explicit synthetic-only refusal remains. No new fleet
+capacity, paid service, GPU or deployed-runtime changes occurred.
 
 ## Reproduce capability only
 
