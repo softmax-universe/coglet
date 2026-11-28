@@ -97,6 +97,9 @@ class FactoryTransport:
             if tree != record['output_hash']:raise Refused('factory hosted whole tree mismatch')
             row=dict(index=index,salt=salt,request_oid=submitted['request'],tree=tree,
                      worker_image=self.image,transcript_sha256=digest(raw))
+            if index == 0:
+                self.source_authority.verify(grant, scope)
+                (out/'native-oracle.json').write_bytes(held.trace)
             (out/'result.json').write_bytes(canonical(row))
             rows.append(row)
         return rows
