@@ -1,6 +1,8 @@
 {
   "version": 1,
   "files": {
+    ".cargo/config.toml": "e3c36048e95aefbd1b9bf395e8960e3c070d8fafc84ab5f9ed307007f33875d6",
+    "Cargo.toml": "a60d5da08a20342465400955bd8e819010e6abfdc57d8a13822683ad283287eb",
     "crates/coglet-db/Cargo.toml": "66f2f4c25cc0033490b97624089bb6dbbfd053f9ce8855ea96a58a784bcff2cf",
     "crates/coglet-db/src/admission.rs": "6e8f26e41aa3db58f5a0fa22b89488cafb08202d22abb279a1af463b271975b1",
     "crates/coglet-db/src/catalog.rs": "cfa1876ea0fe64285ee4000411747a9bba686f1c73024a10694a872a50935ecb",
@@ -23,6 +25,7 @@
     "crates/coglet-engine-wamr/examples/wamr-conformance.rs": "d35ae1623453d96b460fbfc329263381d370820aab8acc71fd81eccfc35f3207",
     "crates/coglet-engine-wamr/native/CMakeLists.txt": "257962f9c15759596ab59002da8d02da40911e4bdb1cd79090a149fbfb378574",
     "crates/coglet-engine-wamr/native/bridge.c": "54371748c089259296a8737af01245a88f13fb45d4ea88923084514c7ae56427",
+    "crates/coglet-engine-wamr/native/wasi.def": "22d41ae7519320f37e2eda755064564cc8dc07090cfca640a4b86e41f2f4b256",
     "crates/coglet-engine-wamr/src/lib.rs": "dc4aa70fdb3b04aeddf7647c6130d6b938e1d20a7bd4dc0de0fab3e4e73cc74e",
     "crates/coglet-engine-wamr/src/native.rs": "c9fedebbefcc66b131552ebb4a3dd7c4fc59122cc8c827ffe2412c1915f55a04",
     "crates/coglet-engine-wamr/src/owner_tests.rs": "3013ae3eed094949dc71839106e33fdcea922a9e09b55313a3f4e662631a0a44",
@@ -222,6 +225,7 @@
     "crates/coglet-types/tests/ir.rs": "e3ff90d8b3f97f0fe07a00144f543c34700551b9b30f6382b58694b136046df3",
     "crates/coglet-types/tests/profile.rs": "9f95bab7188579d111692083e671d10cefa5ccbe37080141c226194b001d7f3c",
     "crates/coglet-types/tests/typed.rs": "05b82eb4517619c5e6847083c7be7eaca6608f232823a5b60d3e292ea739728a",
+    "rust-toolchain.toml": "b2d7e24ee84cdeec227e05cb91e222d866b71ae6d5a013f022a5b1e07566b525",
     "tests/unforged_proof/driver/Cargo.lock": "3a5a5195cbc4cbddc9c0d6ee03f04293c30cda877eed6f049aec7f8c46a2ac25",
     "tests/unforged_proof/driver/Cargo.toml": "41d290ddc1ae4c9a267aec4993e840983b74c7ac91079f8cea14987070085ded",
     "tests/unforged_proof/driver/src/canary.rs": "3a92e7219f615032944a5f15a42129812f8172cf127b33f4458f5bf4904879b3",

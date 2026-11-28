@@ -20,8 +20,10 @@ ROOTS=('tests/unforged_proof/driver/','tools/visualizer/native/',
 def selected_sources():
     raw=subprocess.check_output(['git','ls-files','-z'],cwd=ROOT)
     paths=[p.decode() for p in raw.split(b'\0') if p]
-    return {p:(ROOT/p).read_bytes() for p in paths if p.startswith(ROOTS) and
-            (p.endswith(('.rs','.c','.h','.toml','.lock')) or p.endswith('CMakeLists.txt'))}
+    return {p:(ROOT/p).read_bytes() for p in paths if
+            p in ('Cargo.toml','.cargo/config.toml','rust-toolchain.toml') or
+            (p.startswith(ROOTS) and
+             (p.endswith(('.rs','.c','.h','.def','.toml','.lock')) or p.endswith('CMakeLists.txt')))}
 
 def verify_files(files,pins):
     if not isinstance(pins,dict) or not pins or set(files)!=set(pins):raise ValueError('source audit file set differs')
