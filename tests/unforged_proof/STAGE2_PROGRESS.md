@@ -160,3 +160,64 @@ Pins are observations from this probe, not permanent service guarantees. An imag
 change must refuse until independently investigated, never normalize it away.
 Raw generated evidence is in the operator-selected output directory, NOT tracked
 private state or credentials. Keep the final evidence archive below 25MB.
+
+## Genuine model request/reply increment (still NOT stage2 PASS)
+
+Added `driver/src/model_fixture.rs`: hand-authored WAT calls the existing native
+`coglet_v0.llm` import once, then returns on the reply wake. It uses existing
+`async-llm-two-wakes` input/boundary fixture data (not `guest_script` or expected
+journals); real NativeEngine executes both steps, then independently reexecutes
+the exported archive. Provider outcome is explicitly scripted, never a live model
+call. Guest does NOT inspect reply text, so this is applicability/recording proof,
+not model-dependent behavior. Existing runtime's frozen hub0 build-record codec
+is reused for its provenance, without changing any frozen contract.
+
+`recorded_closure.py` requires complete committed model request/reply closure
+(including initial pending and trailing boundary) before input preparation creates
+any output directory or Git objects. Missing/duplicate/inapplicable/correlation
+negatives are retained. A real regression control temporarily removed that check:
+the native test failed because preparation reached `unforge init` on an incomplete
+recording; restored check passes before nonexistent Unforged/bridge paths can run.
+Both native preparation and synthetic hosted entry negative run with a genuine
+one-step prefix whose model request has no reply. Four fast helper cases added;
+27 fast tests pass normally and under -O; six explicit native tests pass. Initial
+native command test was RED before implementation. Helpers were added before their
+fast tests; do not misreport every helper case as test-first RED.
+
+Independent separate-session incremental review `sa-0-90ec1e7f` APPROVES exact
+`e999b6fbbf832a8b148adeb7f8483e1c857eac7c` for model/closure scope only. Reviewer
+independently ran six native/27 fast/27 optimized tests. Later synthetic whitelist
+commit and evidence are not covered by that incremental review; final exact-head
+review remains required.
+
+Actual hosted execution of BOTH model steps completed from source
+`c6ff3b3ac77dcdfecbca53080942abc11d95f882`, static driver SHA256
+`3da438d073ef5c642e20f0522ed28a38fca492b37fc8a0a541d5d6b6295cbe40`.
+Raw receipts, commits, discovery, results and complete original trace are preserved
+in `evidence/hosted-model-interim.zip` (7,009 bytes, SHA256
+`06f2b4ba0fdcb651be3c30f8bb62de5c083b307ab2e07821f8612eb376dad3ae`).
+Archive summary abbreviates source as c6ff3b3; full source above. Step0 receipt
+`89d1991c103af1d1731393c88258b2e181ed74e63e0673f42ad9a5f1412287d6`
+returned full tree `91156afc257cd101d3c6efa2d31b6ed608bc2e54d801fb1933fdcd2c25b1be38`;
+step1 `9fa4390e65ec3b3d21ffb93200a97392793cb78e2d504914929db7671bbeff8e`
+returned full tree `4df427705abb9aec15df95bea0cc782fa8d59b5d958ab2355a400e7d64fabbad`.
+Both raw readbacks pass `validate_invocation`, executed=true/cache=none, same
+independently pinned endpoint/image/resolver as above. This source contains strict
+snapshot/job ingress fix absent from older Gridbot hosted evidence. No deployments
+or capacity changed; this remains synthetic transport only, NOT private proof.
+
+Reproduction additions (same driver/pins/broker env and private Git as above):
+
+```
+<driver> record-model . > <model-trace.json>
+python3 tests/unforged_proof/prepare_oracle_inputs.py --trace <model-trace.json> --driver <driver> --unforge <unforge> --output <prepared-model> --resolver-store <stage1-unforged-os>/dev --expected-resolver b79d195fc03d415bb16367921ef52606e880d1263679991ee290af3f26d2fb9f
+# Invoke hosted_probe.py per above twice, with --recording <prepared-model>,
+# --step-index 0 / 1, separate fresh --output dirs and --synthetic-model-oracle.
+python3 tests/unforged_proof/verify_model_probe.py --workspace <task-workspace> --source-head c6ff3b3ac77dcdfecbca53080942abc11d95f882 --output <new-evidence.zip>
+```
+
+Full actual pre-serialization transport grants, supported worker sandbox diagnostics
+and canaries, actual factory GateService entry, same-client warm and changed
+image/resolver controls, seven named qualification tests, final review/CI/native
+queue/main merge and containing-main proof remain unfinished. Do not promote this
+incremental synthetic model capability to any of those acceptance claims.
