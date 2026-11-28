@@ -8,6 +8,7 @@ use serde_json::json;
 use std::time::Duration;
 mod diagnostics;
 mod isolation;
+mod standard;
 
 fn is_oid(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
@@ -37,6 +38,16 @@ fn run() -> Result<(), &'static str> {
             }
             false
         }
+        Some("synthetic-step") => {
+            if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
+                return Err("synthetic-only acknowledgement required; no private transport qualification");
+            }
+            if args.len() != 7 || !is_oid(&args[2]) || !is_oid(&args[4])
+                || !args[3].strip_prefix("native@sha256:").is_some_and(is_oid) {
+                return Err("endpoint/image/salt/driver/state required");
+            }
+            false
+        }
         Some("synthetic-diagnostics" | "synthetic-isolation") => {
             if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
                 return Err("synthetic-only acknowledgement required; no private transport qualification");
@@ -59,10 +70,12 @@ fn run() -> Result<(), &'static str> {
     let isolation = args.first().map(String::as_str) == Some("synthetic-isolation");
     let diagnostic = args.first().map(String::as_str) == Some("synthetic-diagnostics") || isolation;
     let status_only = args.first().map(String::as_str) == Some("synthetic-status");
-    if (sequence && identity != args[6]) || ((diagnostic || status_only) && identity != args[2]) {
+    let standard = args.first().map(String::as_str) == Some("synthetic-step");
+    if (sequence && identity != args[6]) || ((diagnostic || status_only || standard) && identity != args[2]) {
         return Err("authenticated endpoint differs from operator pin");
     }
     let client = CaosClient::new(config);
+    if standard { return standard::execute(&client, &args[3], &args[4], std::path::Path::new(&args[5]), std::path::Path::new(&args[6])); }
     if status_only {
         diagnostics::read_status(&client, &args[3])?;
         if let Some(oid) = args.get(4) { diagnostics::read_output(&client, oid)?; }
