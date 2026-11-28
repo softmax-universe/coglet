@@ -534,6 +534,56 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
             truncated: false), [:])
     }
 
+    // MARK: - menu_bar (real status item, not a synthetic menu fixture)
+
+    @MainActor
+    func testCatalogCoverageMenuBarNativeStatusItem() throws {
+        let app = try launchProbed()
+        defer { finish(app) }
+        XCTAssertTrue(app.windows["Welcome to Softmax"].waitForExistence(timeout: 10))
+        // Discover the actual app-owned status item by its public accessibility
+        // label. Never derive native candidates from the registry/probe response.
+        let statusItems = app.menuBars.descendants(matching: .statusItem)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Softmax, "))
+        guard waitUntil(5, { statusItems.count == 1 }) else {
+            let evidence = XCTAttachment(string: app.debugDescription)
+            evidence.name = "menu-bar-status-item-discovery"; evidence.lifetime = .keepAlways; add(evidence)
+            return XCTFail("expected exactly one independently discovered Softmax status item")
+        }
+        let status = statusItems.firstMatch
+        let ids = ["menu.open_face", "menu.open_chat", "menu.open_voice", "menu.commands",
+            "menu.settings", "menu.check_updates", "menu.about", "menu.quit"]
+        let expecting = Dictionary(uniqueKeysWithValues: ids.map {
+            ($0, (role: "button", verbs: ["press"], sensitive: $0 == "menu.check_updates" || $0 == "menu.quit"))
+        })
+        status.click()
+        let menu = app.windows.containing(.button, identifier: "menu.open_chat").firstMatch
+        guard menu.waitForExistence(timeout: 5) else {
+            let evidence = XCTAttachment(string: app.debugDescription)
+            evidence.name = "menu-bar-popup-discovery"; evidence.lifetime = .keepAlways; add(evidence)
+            return XCTFail("real status-item click did not expose the native menu window")
+        }
+        // Exact full descendant multiset, including disabled Update and Quit;
+        // no registered-side intersection and no native candidate subtraction.
+        try captureCoverage(scope: menu, owner: "menu_bar", route: "menu", tag: "status-item-open",
+            sentinel: menu.buttons["menu.open_chat"], anchors: ids, expecting: expecting)
+        let hierarchy = XCTAttachment(string: menu.debugDescription)
+        hierarchy.name = "menu-bar-open-native-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+        // Ordinary native navigation proves that the inspected menu is usable.
+        // Never press Update or Quit during this coverage checkpoint.
+        menu.buttons["menu.open_chat"].click()
+        XCTAssertTrue(app.dialogs["Softmax Conversation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
+        try assertNoVisibleRegistrations(window: "menu_bar", tag: "open-chat-dismissed")
+        status.click()
+        try captureCoverage(scope: menu, owner: "menu_bar", route: "menu", tag: "status-item-reopened",
+            sentinel: menu.buttons["menu.open_chat"], anchors: ids, expecting: expecting)
+        // Clicking the actual status item again dismisses the same presentation.
+        status.click()
+        XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
+        try assertNoVisibleRegistrations(window: "menu_bar", tag: "status-item-dismissed")
+    }
+
     // MARK: - command_palette
 
     @MainActor
