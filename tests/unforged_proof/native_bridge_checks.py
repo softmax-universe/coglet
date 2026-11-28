@@ -21,6 +21,23 @@ class BridgeRefusals(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('unknown bridge command', p.stderr)
 
+    def test_resolver_requires_explicit_synthetic_ack(self):
+        p = self.invoke('synthetic-resolver-controls')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('synthetic-only acknowledgement', p.stderr)
+
+    def test_resolver_rejects_bad_pins_before_credentials(self):
+        p = self.invoke('synthetic-resolver-controls', '--synthetic-transport-only',
+                        '/not-opened', 'bad', 'b'*64, 'c'*64, 'd'*64, 'e'*64)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('full SHA-256', p.stderr)
+
+    def test_resolver_rejects_missing_store_before_credentials(self):
+        p = self.invoke('synthetic-resolver-controls', '--synthetic-transport-only',
+                        '/not-opened', 'a'*64, 'b'*64, 'c'*64, 'd'*64, 'e'*64)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('resolver store unavailable', p.stderr)
+
     def test_sequence_requires_explicit_synthetic_ack(self):
         p = self.invoke('synthetic-cache-controls')
         self.assertNotEqual(p.returncode, 0)

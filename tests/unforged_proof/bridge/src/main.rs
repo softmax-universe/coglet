@@ -10,6 +10,7 @@ mod diagnostics;
 mod guarded;
 mod isolation;
 mod standard;
+mod resolver_controls;
 
 fn is_oid(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
@@ -19,6 +20,15 @@ fn run() -> Result<(), &'static str> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let sequence = match args.first().map(String::as_str) {
         None => false,
+        Some("synthetic-resolver-controls") => {
+            if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
+                return Err("synthetic-only acknowledgement required; no private transport qualification");
+            }
+            if args.len() != 8 || !args[3..8].iter().all(|v| is_oid(v)) || args[5] == args[6] {
+                return Err("distinct resolver commits and full SHA-256 request/endpoint identities required");
+            }
+            false
+        }
         Some("synthetic-cache-controls") => {
             if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
                 return Err("synthetic-only acknowledgement required; no private transport qualification");
@@ -61,6 +71,9 @@ fn run() -> Result<(), &'static str> {
         }
         _ => return Err("unknown bridge command"),
     };
+    let resolver_os = if args.first().map(String::as_str) == Some("synthetic-resolver-controls") {
+        Some(resolver_controls::validate(&args)?)
+    } else { None };
     // Never format configuration/errors: a malformed URL may contain a ticket.
     let ticket = std::env::var("CAOS_IROH_TICKET").map_err(|_| "broker ticket unavailable")?;
     let mut config = CaosConfig::new(ticket).map_err(|_| "invalid broker endpoint")?;
@@ -76,7 +89,9 @@ fn run() -> Result<(), &'static str> {
     if (sequence && identity != args[6]) || ((diagnostic || status_only || standard || guarded) && identity != args[2]) {
         return Err("authenticated endpoint differs from operator pin");
     }
+    if resolver_os.is_some() && identity != args[7] { return Err("authenticated endpoint differs from operator pin"); }
     let client = CaosClient::new(config);
+    if let Some(os) = resolver_os { return resolver_controls::execute(client, os, &args, &identity); }
     if standard { return standard::execute(&client, &args[3], &args[4], std::path::Path::new(&args[5]), std::path::Path::new(&args[6])); }
     if guarded {
         return guarded::execute(&client, &args[2], &args[3], &args[4],
