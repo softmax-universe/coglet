@@ -12,8 +12,12 @@ fn read(path: &str) -> Result<Value, String> {
     coglet_visualizer_native::read_archive(path)
 }
 mod model_fixture;
+mod canary;
 fn run() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
+    if args.get(1).is_some_and(|v| v.starts_with("canary-")) {
+        return canary::run(&args);
+    }
     if args.get(1).map(String::as_str) == Some("record-model") && args.len() == 3 {
         let archive = model_fixture::record(Path::new(&args[2]))?;
         println!(

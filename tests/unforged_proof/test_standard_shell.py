@@ -18,7 +18,19 @@ class StandardShell(unittest.TestCase):
             root = Path(temp)
             for path in ('bin','args/state','capture','tmp'): (root/path).mkdir(parents=True)
             (root/'args/salt').write_text('b'*64)
-            (root/'args/driver').write_text('not executed')
+            # Stub controls only: let outer setup reach the original sandbox
+            # refusal. No loopback/isolation claim comes from this fake driver.
+            (root/'args/driver').write_text('''#!/bin/bash
+case "$1" in
+canary-listen)
+  printf '1 1 0\\n' > "$2/stats"
+  printf '12345 12346 %s\\n' "$3" > "$2/ready"
+  while [ ! -f "$2/stop" ]; do sleep .01; done
+  ;;
+canary-positive) exit 0;;
+*) exit 97;;
+esac
+''')
             unforge = root/'bin/unforge'
             unforge.write_text('#!/bin/bash\nprintf "stub refusal\\n" >&2\nexit 125\n')
             unforge.chmod(0o755)

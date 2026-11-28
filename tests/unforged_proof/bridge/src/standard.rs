@@ -12,6 +12,20 @@ mkdir -p "$root/cas/args" "$root/secrets" "$root/work" "$root/tmp"
 cp -R "$CAOS_ARGS_DIR/state/." "$root/work/"
 cp "$CAOS_ARGS_DIR/driver" "$root/cas/args/driver"
 chmod 755 "$root/cas/args/driver"
+mkdir "$root/listener"
+"$root/cas/args/driver" canary-listen "$root/listener" "$salt" &
+listener_pid=$!
+trap 'kill "$listener_pid" 2>/dev/null || true; wait "$listener_pid" 2>/dev/null || true' EXIT
+for ((try=0; try<100; try++)); do
+  [ ! -f "$root/listener/ready" ] || break
+  kill -0 "$listener_pid" || exit 125
+  sleep 0.02
+done
+[ -f "$root/listener/ready" ] || exit 125
+cp "$root/listener/ready" "$root/cas/args/canary-config"
+"$root/cas/args/driver" canary-positive "$root/cas/args/canary-config"
+baseline=$(cat "$root/listener/stats")
+[ "$baseline" = '1 1 0' ] || exit 125
 binary=${UNFORGED_UNFORGE_BIN:-}
 if [ -z "$binary" ]; then binary=$(command -v unforge); fi
 set +e
@@ -19,7 +33,7 @@ set +e
   --unforge-bin "$binary" --caos-bin "$(command -v caos)" \
   --cas-dir "$root/cas" --secret-dir "$root/secrets" \
   --work-dir "$root/work" --tmp-dir "$root/tmp" -- \
-  bash -c 'set -euo pipefail; readlink /proc/$$/ns/net; if [ "${CAOS_SERVER_URL+x}" = x ]; then echo set; else echo unset; fi; if [ -e /proc/$$/fd/3 ]; then echo open; else echo closed; fi; cd /work; exec /cas/args/driver' \
+  bash -c 'set -euo pipefail; readlink /proc/$$/ns/net; if [ "${CAOS_SERVER_URL+x}" = x ]; then echo set; else echo unset; fi; if [ -e /proc/$$/fd/3 ]; then echo open; else echo closed; fi; /cas/args/driver canary-probe /cas/args/canary-config; cd /work; exec /cas/args/driver' \
   2> "$root/stderr" | {
     # Pipe bytes already consumed cannot be changed by the subsequent driver.
     # These outer files are outside every inner mount. Keep observations separate
@@ -27,9 +41,11 @@ set +e
     IFS= read -r observed_net || observed_net=unavailable
     IFS= read -r observed_proxy || observed_proxy=unavailable
     IFS= read -r observed_fd3 || observed_fd3=unavailable
+    IFS= read -r -n 128 observed_canary || observed_canary=unavailable
     printf '%s\n' "$observed_net" > "$root/netns"
     printf '%s\n' "$observed_proxy" > "$root/proxy"
     printf '%s\n' "$observed_fd3" > "$root/fd3"
+    printf '%s\n' "$observed_canary" > "$root/canary"
     cat > "$root/stdout"
   }
 statuses=("${PIPESTATUS[@]}")
@@ -39,11 +55,22 @@ set -e
 inner=$(cat "$root/netns" 2>/dev/null || printf unavailable)
 proxy=$(cat "$root/proxy" 2>/dev/null || printf unavailable)
 fd3=$(cat "$root/fd3" 2>/dev/null || printf unavailable)
+canary=$(cat "$root/canary" 2>/dev/null || printf unavailable)
+[[ "$canary" =~ ^(refused|timeout|unreachable),(refused|timeout|unreachable),(loopback-up|loopback-unavailable)$ ]] || { canary=unavailable; code=125; }
+# Listener is outside all inner mounts. Stop and join before final counter read;
+# no delayed accept can be hidden by reading counters while it is still active.
+touch "$root/listener/stop"
+if ! wait "$listener_pid"; then code=125; fi
+trap - EXIT
+post=$(cat "$root/listener/stats" 2>/dev/null || printf unavailable)
+[ "$post" = '1 1 0' ] || code=125
+[[ "$post" =~ ^[0-9]+\ [0-9]+\ [0-9]+$ ]] || post=unavailable
+post=${post// /-}
 [[ "$inner" =~ ^net:\[[0-9]+\]$ ]] || inner=unavailable
 [[ "$proxy" = unset || "$proxy" = set ]] || proxy=unavailable
 [[ "$fd3" = closed || "$fd3" = open ]] || fd3=unavailable
-printf '{"request":"%s","salt":"%s","outer_netns":"%s","inner_netns":"%s","exit_code":%s,"caos_server_url_env":"%s","fd3":"%s"}\n' \
-  "${CAOS_OWN_ARGTREE_HASH:-unset}" "$salt" "$outer" "$inner" "$code" "$proxy" "$fd3" > "$root/diagnostics.json"
+printf '{"request":"%s","salt":"%s","outer_netns":"%s","inner_netns":"%s","exit_code":%s,"caos_server_url_env":"%s","fd3":"%s","loopback_canary":"1-1-0:%s:%s"}\n' \
+  "${CAOS_OWN_ARGTREE_HASH:-unset}" "$salt" "$outer" "$inner" "$code" "$proxy" "$fd3" "$canary" "$post" > "$root/diagnostics.json"
 caos put "$root/diagnostics.json" /cas/out-trace
 # Refuse rather than publish a partially executed ABI tree.
 if [ "$code" != 0 ]; then cat "$root/stderr" >&2; exit "$code"; fi
