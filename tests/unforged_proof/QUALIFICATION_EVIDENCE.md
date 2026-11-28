@@ -1,5 +1,17 @@
 # Live qualification composition — NOT stage2 PASS
 
+## Actual image transition closure (continuation17)
+
+[IMAGE_EVIDENCE.md](IMAGE_EVIDENCE.md) records the actual165a9a1 source run on
+latest Unforged c8aeece with bridge9caf04ca...: SAME client/resolver/program/state,
+only immutable existing Docker base changes, 2 executions/2remote hits, four full
+ABI trees match genuine recording. Named image test now launches a fresh probe
+then independently checks raw request and output graphs, source-bound worker/
+launcher, actual headers/status/sidecars.137normal/-O/7Rust PASS. The older
+unconditional image failure and capacity gap below are historical, now superseded.
+Final independent full-branch review, CI/native-queue main merge and new
+containing-main hosted proof are still required. No overall stage2PASS claimed.
+
 ## Latest re-pin (continuation16; distinct from old runs below)
 
 David requested latest Unforged before next hosted batch. Current consumed source

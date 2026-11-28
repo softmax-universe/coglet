@@ -1,4 +1,18 @@
-# Stage 2 increment: hosted capability discovered, NOT qualification PASS
+# Stage 2 increment: actual image transition PASS, NOT final qualification PASS
+
+Latest continuation17: [IMAGE_EVIDENCE.md](IMAGE_EVIDENCE.md). Actual one-client,
+one consumed resolver/program/input A-cold/B-first/B-warm/A-return sequence at
+165a9a1 on latest Unforged c8aeece: 2 executions/2 remote hits, both immutable
+existing Docker images observed, all four complete trees equal genuine modelstep1.
+Independent raw graph verifier rerun PASS; coherent program-replacement hole found
+by review and fixed through source-bound bytes/modes, genuine RED regression.
+137 fast normal/-O PASS; 7 Rust PASS/1 explicitly ignored cross-language consumer.
+Named image entrypoint now launches fresh image_probe + independent graph verifier;
+missing config refuses, no historical substitute. Durable 21,011,488-byte archive
+c3c086db... retains all raw request/output graphs and both honest failed attempts.
+No strict/private/localmemo claim on bounded synthetic Docker control. Final
+full-branch exact-head review, required CI, native queue/main merge and containing
+main hosted proof remain. No stage2 PASS yet; earlier sections are historical.
 
 Latest continuation16: [NO_EFFECTS_EVIDENCE.md](NO_EFFECTS_EVIDENCE.md).
 At47cc741, independently source-audited native-only driver closure and236pins;
