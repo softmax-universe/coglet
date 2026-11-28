@@ -1,0 +1,13 @@
+[package]
+name = "coglet-hosted-bridge"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+# Opt-in harness only, never a dependency of a Coglet crate. Checkout the pinned
+# Unforged source as a sibling of this repository (see STAGE2_PLAN.md).
+[dependencies]
+gecaos = { path = "../../../../unforged" }
+serde_json = "1"
