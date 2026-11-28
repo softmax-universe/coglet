@@ -69,7 +69,7 @@ fn upload(client: &CaosClient, path: &Path, depth: usize, budget: &mut u64) -> R
     client.put_tree(&entries).map_err(|_| "state tree upload failed")
 }
 
-fn read_bounded(path: &Path, budget: &mut u64) -> Result<Vec<u8>, &'static str> {
+pub(crate) fn read_bounded(path: &Path, budget: &mut u64) -> Result<Vec<u8>, &'static str> {
     use std::io::Read;
     if !std::fs::symlink_metadata(path).map_err(|_| "input metadata unavailable")?.file_type().is_file() {
         return Err("input must be regular file");

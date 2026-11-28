@@ -7,6 +7,7 @@ use gecaos::os::GecaosOs;
 use serde_json::json;
 use std::time::Duration;
 mod diagnostics;
+mod guarded;
 mod isolation;
 mod standard;
 
@@ -38,7 +39,7 @@ fn run() -> Result<(), &'static str> {
             }
             false
         }
-        Some("synthetic-step") => {
+        Some("synthetic-step" | "guarded-step") => {
             if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
                 return Err("synthetic-only acknowledgement required; no private transport qualification");
             }
@@ -71,11 +72,16 @@ fn run() -> Result<(), &'static str> {
     let diagnostic = args.first().map(String::as_str) == Some("synthetic-diagnostics") || isolation;
     let status_only = args.first().map(String::as_str) == Some("synthetic-status");
     let standard = args.first().map(String::as_str) == Some("synthetic-step");
-    if (sequence && identity != args[6]) || ((diagnostic || status_only || standard) && identity != args[2]) {
+    let guarded = args.first().map(String::as_str) == Some("guarded-step");
+    if (sequence && identity != args[6]) || ((diagnostic || status_only || standard || guarded) && identity != args[2]) {
         return Err("authenticated endpoint differs from operator pin");
     }
     let client = CaosClient::new(config);
     if standard { return standard::execute(&client, &args[3], &args[4], std::path::Path::new(&args[5]), std::path::Path::new(&args[6])); }
+    if guarded {
+        return guarded::execute(&client, &args[2], &args[3], &args[4],
+            std::path::Path::new(&args[5]), std::path::Path::new(&args[6]));
+    }
     if status_only {
         diagnostics::read_status(&client, &args[3])?;
         if let Some(oid) = args.get(4) { diagnostics::read_output(&client, oid)?; }

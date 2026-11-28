@@ -11,3 +11,4 @@ publish = false
 [dependencies]
 gecaos = { path = "../../../../unforged" }
 serde_json = "1"
+sha2 = "0.11"
