@@ -73,8 +73,9 @@ class Presence:
         self.delivered.append(notification)
         return notification
 
-    def end_call(self, sender, correlation):
-        self.calls.discard((self.state['attention'], sender, correlation))
+    def end_call(self, origin_attention, sender, correlation):
+        # Retirement follows the retained call identity, not today's attention.
+        self.calls.discard((origin_attention, sender, correlation))
 
     def call(self, sender, correlation):
         # Recorded only after an authenticated attention-originated call.

@@ -136,10 +136,20 @@ class PresenceContracts(unittest.TestCase):
             router = Presence(COGENT, MEMBERS[0], MEMBERS)
             correlation = 'e' * 32
             router.call(MEMBERS[1], correlation)
-            router.end_call(MEMBERS[1], correlation)
+            router.end_call(MEMBERS[0], MEMBERS[1], correlation)
             router.message(MEMBERS[1], MEMBERS[0], self.message(0, correlation, 'ticket.update'), 0)
             self.assertEqual(len(router.delivered), 0, terminal)
             self.assertEqual(len(router.holds[MEMBERS[1]]), 1, terminal)
+
+    def test_presence_handoff_retirement_then_return_does_not_resurrect_call(self):
+        correlation = 'd' * 32
+        self.router.call(MEMBERS[1], correlation)
+        self.router.set(dict(self.params, add=[], attention=MEMBERS[2]), {'presence.set', 'presence.attention'})
+        self.router.end_call(MEMBERS[0], MEMBERS[1], correlation)
+        self.router.set(dict(self.params, base=1, add=[], attention=MEMBERS[0]), {'presence.set', 'presence.attention'})
+        self.router.message(MEMBERS[1], MEMBERS[0], self.message(0, correlation, 'ticket.update'), 0)
+        self.assertEqual(self.router.delivered, [])
+        self.assertEqual(len(self.router.holds[MEMBERS[1]]), 1)
 
     def test_presence_individual_held_record_encoded_size_boundary(self):
         from test_common import encode
