@@ -1,6 +1,17 @@
 # Stage 2 increment: hosted capability discovered, NOT qualification PASS
 
-Latest continuation12: see [FACTORY_EVIDENCE.md](FACTORY_EVIDENCE.md). Actual
+Latest continuation13: see [CANARY_EVIDENCE.md](CANARY_EVIDENCE.md). Independently
+reviewed55e4463e real loopback-only outer positive controls, inner denied-connect
+probes and post-replay unchanged counters now accompany3actual hosted model0/1
+and Gridbot2executions. Every full tree equals genuine native recording.100fast
+normal/-O,3nativecanary,6native replayPASS; selected31native/gate regression IDs
+PASS aggregated18before420s tool timeout+13exact remainingtail; no missing IDs.
+No universal no-effects certificate or actual worker upgrade is claimed. Actual
+retained-client image/resolver invalidation, complete cache freshness, seven named
+hosted tests, final independent review/requiredCI/nativequeue/main/containingmain
+remain. Prior completed batches were not rerun.
+
+Previous continuation12: see [FACTORY_EVIDENCE.md](FACTORY_EVIDENCE.md). Actual
 operator-configured GateService.evaluate_hosted now precedes signing: native
 behavioral suite acquires complete existing RuntimeService archive, every hosted
 step is fresh salt-bound to full challenge+index+operator attempt and compared to
