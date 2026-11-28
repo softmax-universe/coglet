@@ -7,6 +7,9 @@ Synthetic bounded replay only; not strict/private/universal effects proof.
 import argparse
 import hashlib
 import json
+import os
+import re
+import subprocess
 from pathlib import Path
 from image_controls import verify_sequence,Refused
 from wire_trees import object_id,verify_output
@@ -15,6 +18,12 @@ from standard_step import snapshot_tree,path_parts
 
 def require(value,why):
     if not value:raise Refused(why)
+
+def verify_programs(leaves,source_text):
+    for constant,path,mode in [('WORKER','worker1','100755'),('LAUNCHER','launcher','100644')]:
+        values=re.findall(r'pub const '+constant+r':&str = r#"(.*?)"#;',source_text,re.S)
+        require(len(values)==1,'missing/ambiguous reviewed program source')
+        require(leaves.get(path)==(mode,values[0].encode()),'reviewed '+path+' bytes/mode differ')
 
 def graph(rows):
     objects={}
@@ -56,6 +65,12 @@ def graph(rows):
 
 def verify(batch,*,source,upstream,driver,bridge,endpoint,image_a,image_b):
     info=json.loads((batch/'command.json').read_bytes())
+    require(isinstance(source,str) and re.fullmatch('[0-9a-f]{40}',source),'exact containing source required')
+    clean={k:v for k,v in os.environ.items() if k not in ('CAOS_IROH_TICKET','UNFORGED_CAOS_URL')}
+    # Resolve audited bytes from the caller's independent execution SHA, not the
+    # working tree, command report, or untrusted uploaded program itself.
+    program_source=subprocess.check_output(['git','--no-replace-objects','show',source+':tests/unforged_proof/bridge/src/image_controls.rs'],
+        cwd=Path(__file__).resolve().parents[2],env=clean,timeout=30).decode()
     for key,value in dict(source=source,upstream=upstream,driver=driver,bridge=bridge,endpoint=endpoint,image_a=image_a,image_b=image_b).items():require(info[key]==value,'execution pin '+key)
     trace=json.loads((batch/'trace.json').read_bytes());other=json.loads((batch/'native-rerecorded.json').read_bytes())
     require([r['output_hash'] for r in trace['records']]==[r['output_hash'] for r in other['records']],'native verification trees')
@@ -78,6 +93,7 @@ def verify(batch,*,source,upstream,driver,bridge,endpoint,image_a,image_b):
         require(top['base'][0]=='100644' and blob(top['base'][1])==('docker://'+obs['image']).encode(),'resolved image request binding')
         require(closure(req)==set(objects),'unreachable extra request object')
         current=leaves(req);current.pop('base')
+        verify_programs(current,program_source)
         if arg_leaves is None:arg_leaves=current
         require(current==arg_leaves,'base-only complete graph invariant')
         effective=b''.join(mode.encode()+b' '+name.encode()+b'\0'+bytes.fromhex(oid) for name,(mode,oid) in top.items() if name!='base')
