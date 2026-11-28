@@ -12,6 +12,8 @@ coglet-cli = { path = "../../../crates/coglet-cli" }
 coglet-visualizer-native = { path = "../../../tools/visualizer/native" }
 serde_json = "1"
 hex = "0.4"
+wat = "1"
+coglet-types = { package = "coglet-types-hub0", path = "../../../crates/coglet-types-hub0" }
 
 [profile.dev]
 debug = 0

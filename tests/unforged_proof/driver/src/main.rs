@@ -11,8 +11,17 @@ fn files(runtime: &Runtime) -> BTreeMap<String, String> {
 fn read(path: &str) -> Result<Value, String> {
     coglet_visualizer_native::read_archive(path)
 }
+mod model_fixture;
 fn run() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("record-model") && args.len() == 3 {
+        let archive = model_fixture::record(Path::new(&args[2]))?;
+        println!(
+            "{}",
+            serde_json::to_string(&archive).map_err(|e| e.to_string())?
+        );
+        return Ok(());
+    }
     match args.get(1).map(String::as_str) {
         Some("record") | Some("fork-trace") if args.len() == 3 => {
             let trace = coglet_visualizer_native::read_archive(&args[2])?;
@@ -21,12 +30,20 @@ fn run() -> Result<(), String> {
             } else {
                 use std::io::Read;
                 let mut raw = Vec::new();
-                std::io::stdin().take(65_537).read_to_end(&mut raw).map_err(|e| e.to_string())?;
-                if raw.len() > 65_536 { return Err("request too large".into()); }
+                std::io::stdin()
+                    .take(65_537)
+                    .read_to_end(&mut raw)
+                    .map_err(|e| e.to_string())?;
+                if raw.len() > 65_536 {
+                    return Err("request too large".into());
+                }
                 let request = coglet_visualizer_native::parse_request(&raw)?;
                 coglet_visualizer_native::fork_trace(&trace, &request)?
             };
-            println!("{}", serde_json::to_string(&archive).map_err(|e| e.to_string())?);
+            println!(
+                "{}",
+                serde_json::to_string(&archive).map_err(|e| e.to_string())?
+            );
             return Ok(());
         }
         _ => {}

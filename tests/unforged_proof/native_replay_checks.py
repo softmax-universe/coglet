@@ -26,6 +26,40 @@ class NativeReplayChecks(unittest.TestCase):
     def invoke(self, *args, data=None):
         return subprocess.run([str(DRIVER), *map(str, args)], input=data, capture_output=True, timeout=120)
 
+    def test_native_model_request_and_recorded_reply_reexecute(self):
+        result = self.invoke('record-model', ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        recorded = json.loads(result.stdout)
+        self.assertEqual(len(recorded['records']), 2)
+        self.assertEqual(sum(len(r['llm_requests']) for r in recorded['records']), 1)
+        self.assertEqual(recorded['records'][0]['status'], 'committed')
+        self.assertEqual(recorded['records'][1]['status'], 'committed')
+        self.assertIn(b'llm.reply', bytes.fromhex(recorded['records'][1]['boundary'][0]['after']))
+        self.trace.write_bytes(result.stdout)
+        replay = self.invoke('record', self.trace)
+        self.assertEqual(replay.returncode, 0, replay.stderr)
+        self.assertEqual([r['output_hash'] for r in json.loads(replay.stdout)['records']],
+                         [r['output_hash'] for r in recorded['records']])
+        from recorded_closure import require_model_reply_closure
+        self.assertEqual(require_model_reply_closure(recorded), dict(requests=1, replies=1))
+        # A genuine committed prefix with an outstanding request is valid archive
+        # history but must not be accepted as a complete hosted gate recording.
+        from run import prefix
+        incomplete = prefix(recorded, 1)
+        with self.assertRaisesRegex(ValueError, 'missing recorded model reply'):
+            require_model_reply_closure(incomplete)
+        self.trace.write_text(json.dumps(incomplete))
+        output = self.trace.parent / 'must-not-create'
+        refused = subprocess.run([
+            'python3', str(ROOT/'tests/unforged_proof/prepare_oracle_inputs.py'),
+            '--trace', str(self.trace), '--driver', str(DRIVER),
+            '--unforge', str(self.trace.parent/'missing-unforge'), '--output', str(output),
+            '--resolver-store', str(self.trace.parent/'missing-store'),
+            '--expected-resolver', 'a'*64], capture_output=True, timeout=120)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn(b'missing recorded model reply', refused.stderr)
+        self.assertFalse(output.exists())
+
     def test_recorded_effectful_steps_are_reexecuted(self):
         result = self.invoke('record', self.trace)
         self.assertEqual(result.returncode, 0, result.stderr)

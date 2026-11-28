@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 from prefix_inputs import step_payload
+from recorded_closure import require_model_reply_closure
 from run import run, save
 
 
@@ -27,6 +28,7 @@ def main():
     verified = json.loads(run(driver, 'record', trace_path))
     if [r['output_hash'] for r in verified['records']] != [r['output_hash'] for r in trace['records']]:
         raise RuntimeError('native oracle differs')
+    require_model_reply_closure(trace)
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     save(out/'trace.json', trace)
