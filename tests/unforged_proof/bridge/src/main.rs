@@ -11,6 +11,9 @@ mod guarded;
 mod isolation;
 mod standard;
 mod resolver_controls;
+mod image_controls;
+#[cfg(test)]
+mod image_tests;
 
 fn is_oid(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
@@ -20,6 +23,17 @@ fn run() -> Result<(), &'static str> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let sequence = match args.first().map(String::as_str) {
         None => false,
+        Some("synthetic-image-controls") => {
+            if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
+                return Err("synthetic public fixtures only; no private image transport");
+            }
+            let image = |s: &str| s.strip_prefix("localhost:5000/caos@sha256:").is_some_and(is_oid);
+            if args.len()!=10 || !is_oid(&args[2]) || !image(&args[3]) || !image(&args[4])
+                || args[3]==args[4] || !is_oid(&args[5]) || !is_oid(&args[7]) || !is_oid(&args[8]) {
+                return Err("endpoint/distinct images/salt/store/resolver/driver/state required");
+            }
+            false
+        }
         Some("synthetic-resolver-controls") => {
             if args.get(1).map(String::as_str) != Some("--synthetic-transport-only") {
                 return Err("synthetic-only acknowledgement required; no private transport qualification");
@@ -75,6 +89,9 @@ fn run() -> Result<(), &'static str> {
         Some(resolver_controls::validate(&args)?)
     } else { None };
     // Never format configuration/errors: a malformed URL may contain a ticket.
+    let image_plan = if args.first().map(String::as_str)==Some("synthetic-image-controls") {
+        Some(image_controls::validate(&args)?)
+    } else {None};
     let ticket = std::env::var("CAOS_IROH_TICKET").map_err(|_| "broker ticket unavailable")?;
     let mut config = CaosConfig::new(ticket).map_err(|_| "invalid broker endpoint")?;
     config.timeout = Duration::from_secs(180);
@@ -91,6 +108,10 @@ fn run() -> Result<(), &'static str> {
     }
     if resolver_os.is_some() && identity != args[7] { return Err("authenticated endpoint differs from operator pin"); }
     let client = CaosClient::new(config);
+    if let Some(plan)=image_plan {
+        if identity!=args[2] {return Err("authenticated endpoint differs from operator pin");}
+        return image_controls::execute(client,plan,&args);
+    }
     if let Some(os) = resolver_os { return resolver_controls::execute(client, os, &args, &identity); }
     if standard { return standard::execute(&client, &args[3], &args[4], std::path::Path::new(&args[5]), std::path::Path::new(&args[6])); }
     if guarded {

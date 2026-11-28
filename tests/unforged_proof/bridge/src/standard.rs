@@ -77,7 +77,7 @@ if [ "$code" != 0 ]; then cat "$root/stderr" >&2; exit "$code"; fi
 caos put "$root/work" /cas/out
 "#;
 
-fn upload(client: &CaosClient, path: &Path, depth: usize, budget: &mut u64) -> Result<String, &'static str> {
+pub(crate) fn upload(client: &CaosClient, path: &Path, depth: usize, budget: &mut u64) -> Result<String, &'static str> {
     if depth > 32 { return Err("synthetic state depth exceeded"); }
     let mut entries = Vec::new();
     for entry in std::fs::read_dir(path).map_err(|_| "state directory unavailable")? {
