@@ -10,7 +10,7 @@ do not recreate it or confuse it with that file's separate captured-evidence mut
 
 `SoftmaxCatalogCoverageExtensionTests.testCatalogCoverageMenuBarNativeStatusItem`
 is a new, unqualified test: discover the actual app-owned status item by its public
-AX label, click it, enumerate the full popup descendant multiset, exercise only
+native title, click it, enumerate the full popup descendant multiset, exercise only
 ordinary Open Chat, then check dismissal/reopening and registration retirement.
 No production repair or synthetic menu fixture accompanies this test. On failure,
 read its `menu-bar-status-item-discovery` / `menu-bar-popup-discovery` hierarchy
@@ -19,9 +19,13 @@ coverage, and never remove the menu ledger gap solely because it exists.
 
 ## Remaining presentation drivers
 
-- **main**: no native main window currently exists. `AppDelegate` open/navigate
-  reject it. Prove closed/null route and unavailable operations; do not fabricate
-  a screen or label it an actionable tree census.
+- **main**: no native main window currently exists. The real-wire
+  `test_softmax_app_observe_views_and_focus` now asserts exactly one closed/null
+  record, an empty successful controls read and no native `softmax.main` window
+  before/after each attempted operation. Open/navigate fail with wire `unavailable`;
+  closing an already-closed window is a successful no-op before host dispatch,
+  not an unsupported error. The new assertions remain natively unqualified.
+  Do not fabricate a screen or label this an actionable tree census.
 - **orb**: `OrbButton.installVoiceAccessibilityAction` already exposes an actual
   `NSAccessibilityCustomAction("Open Voice")`. Right-click and that action enter
   `performVoice`; `OrbVoiceRegistration` is a `gesture`/`press` registration.
@@ -38,14 +42,19 @@ coverage, and never remove the menu ledger gap solely because it exists.
   A passive checkpoint needs positive native anchors, explicit zero-action
   enumeration and snapshot agreement, not the interactive helper's nonempty
   requirements. Exercise finite visible states and cancellation/hide lifecycle.
-- **sign_out_confirmation**: enrollment is not necessary. `HubConnection.canSignOut`
-  is true for a real startup error as well as device/pairing presence. A guarded
-  memory-only HubStore throwing on identity load plus an inert HubLink can drive
-  real `start()` error, followed by `stop()` to cancel retries. Do not use the
-  credential fixture that actually enrolls. Navigate Settings/Hub, open the real
-  sheet, census its two button controls and click **Cancel only**. No credentials,
-  Keychain, network, identity reset or confirmation effect are needed. This fixture
-  and its native proof are not implemented yet.
+- **sign_out_confirmation**: the new DEBUG-only `CatalogSignOutFixture` implements
+  the prerequisite without enrollment: real `HubConnection.start()` identity-load
+  failure from an in-memory throwing store, inert link, then synchronous `stop()`
+  before MainActor yields. The validated private catalog launch additionally
+  requires `--catalog-sign-out-startup-error`; runtime must be stopped and no
+  connection may exist. No credentials, Keychain, network or storage mutation.
+  `testCatalogCoverageSignOutConfirmationCancelAndReopen` uses actual Settings/Hub
+  navigation and Sign out, strict two-button AX/registry census, **Cancel only**,
+  full mount retirement, reopen/cancel and unchanged closed fixture counters.
+  `testCatalogSignOutFixtureIsNotSelectedByDefault` retains the ordinary launch
+  control. Four fixture markers extend the Release exclusion/Debug-positive gate.
+  These new native tests and actual Mach-O marker checks remain unqualified;
+  the ledger is intentionally unchanged until native execution succeeds.
 - **quit_confirmation**: `AppDelegate.quit()` checks `model.state` (not simply
   talkState) before showing its `NSAlert.runModal`. A safe fixture must establish
   the real state prerequisite, not trigger microphone or actual conversation.

@@ -9,10 +9,11 @@ import XCTest
 ///  - the SAME comparator text (byte-parity asserted against SoftmaxUITests.swift),
 ///  - an independent actual XCUI tree enumeration of each real native surface,
 ///  - a fresh-nonce registry probe written/read through the existing
-///    `--catalog-probe-directory` seam (no new launch flag or harness),
+///    `--catalog-probe-directory` seam (no new harness),
 ///  - every state is reached by an ordinary native user action (click, key,
 ///    right-click). Nothing is granted, typed into a secret field, enrolled,
-///    imported, opened in System Settings or sent to a URL.
+///    imported, opened in System Settings or sent to a URL. The sign-out-only
+///    launch selector establishes a real memory-store startup error, not identity.
 /// Evidence attachments precede assertions so one red state keeps later states.
 final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
     // Local debug-test evidence only, identical in shape to the baseline probe.
@@ -36,6 +37,19 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
             let dropped: Int
         }
         let menuDiagnostics: MenuDiagnostics
+        struct SignOutFixture: Decodable {
+            let identityLoads: Int
+            let storageMutations: Int
+            let linkStarts: Int
+            let linkConnects: Int
+            let linkStops: Int
+            let startupError: Bool
+            let canSignOut: Bool
+            let identityAbsent: Bool
+            let pairingAbsent: Bool
+            let offline: Bool
+        }
+        let signOutFixture: SignOutFixture?
     }
 
     private struct CoverageResult {
@@ -436,11 +450,11 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
         let baselineCovered: Set<String> = ["onboarding", "settings"]
         let extensionCovered: Set<String> = ["command_palette", "about", "keyboard_shortcuts", "face", "chat", "hub_pairing"]
         let unresolved: [String: String] = [
-            "main": "no such window exists; AppSurface open/navigate return unsupported",
+            "main": "no native main window; explicit closed/null/read-empty/refused-open-navigation wire witnesses await native qualification",
             "orb": "secondary gesture has a registry entry but no independent XCUI node; full gesture enumeration remains unqualified",
-            "menu_bar": "MenuBarExtra popover is hosted by the status item; no ordinary XCUI route to its tree was established",
-            "hud": "visible only while push-to-talk is listening/thinking/speaking (microphone + global key); no safe native driver",
-            "sign_out_confirmation": "needs an enrolled hub identity (auth/pairing effect); sign out is sensitive",
+            "menu_bar": "real status-item/popup census awaits native qualification; discovery uses actual native title, not label",
+            "hud": "passive panel needs safe presentation fixture, independent zero-action census and snapshot/lifecycle agreement",
+            "sign_out_confirmation": "UNRESOLVED: safe startup-error/Cancel checkpoint exists; actual native AX success is still required",
             "quit_confirmation": "OS-owned NSAlert (runModal) shown only during an active conversation; quit is sensitive",
         ]
         guard let source = sourceText("../../Sources/SoftmaxApp/SoftmaxApp.swift"),
@@ -787,6 +801,90 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
             absent: ["chat.draft", "chat.send"],
             expecting: ["chat.voice.microphone_settings": (role: "button", verbs: ["press"], sensitive: true),
                         "chat.voice.refresh_permissions": (role: "button", verbs: ["press"], sensitive: false)])
+    }
+
+    // MARK: - sign_out_confirmation (startup error only, Cancel only)
+
+    private func assertSignOutStartupError(_ probe: CoverageProbe, tag: String) throws {
+        let witness = try XCTUnwrap(probe.signOutFixture, "missing isolated startup-error witness: " + tag)
+        XCTAssertEqual(witness.identityLoads, 1, tag)
+        XCTAssertEqual(witness.storageMutations, 0, tag)
+        XCTAssertEqual(witness.linkStarts, 0, tag)
+        XCTAssertEqual(witness.linkConnects, 0, tag)
+        // start() error cleanup and explicit stop(); no retry or confirm effect.
+        XCTAssertEqual(witness.linkStops, 2, tag)
+        XCTAssertTrue(witness.startupError, tag)
+        XCTAssertTrue(witness.canSignOut, tag)
+        XCTAssertTrue(witness.identityAbsent, tag)
+        XCTAssertTrue(witness.pairingAbsent, tag)
+        XCTAssertTrue(witness.offline, tag)
+    }
+
+    @MainActor
+    func testCatalogCoverageSignOutConfirmationCancelAndReopen() throws {
+        let app = try launchProbed(["--catalog-sign-out-startup-error"])
+        defer { finish(app) }
+        guard let settings = openSettings(app) else { return }
+        settings.buttons["settings.tab.hub"].click()
+        let signOut = settings.buttons["settings.hub.sign_out"]
+        guard signOut.waitForExistence(timeout: 5), signOut.isEnabled else {
+            let evidence = XCTAttachment(string: settings.debugDescription)
+            evidence.name = "sign-out-startup-error-entry"; evidence.lifetime = .keepAlways; add(evidence)
+            return XCTFail("real startup error did not expose the actual Hub Sign out button")
+        }
+        let initial = try XCTUnwrap(try freshProbe("sign-out-startup-error"))
+        try assertSignOutStartupError(initial.probe, tag: "before-sheet")
+        XCTAssertFalse(initial.probe.registrations.contains { $0.window == "sign_out_confirmation" })
+        let ids = ["hub.sign_out.cancel", "hub.sign_out.confirm"]
+        let expecting: [String: (role: String, verbs: [String], sensitive: Bool)] = [
+            ids[0]: (role: "button", verbs: ["press"], sensitive: false),
+            ids[1]: (role: "button", verbs: ["press"], sensitive: true)]
+        for tag in ["open", "reopened"] {
+            // Real Settings/Hub user action, never an adapter-forced sheet.
+            signOut.click()
+            let sheet = app.sheets.firstMatch
+            guard sheet.waitForExistence(timeout: 5) else {
+                let evidence = XCTAttachment(string: app.debugDescription)
+                evidence.name = "sign-out-" + tag + "-sheet-discovery"; evidence.lifetime = .keepAlways; add(evidence)
+                return XCTFail("native Sign out button did not open its actual sheet")
+            }
+            let hierarchy = XCTAttachment(string: sheet.debugDescription)
+            hierarchy.name = "sign-out-" + tag + "-native-hierarchy"; hierarchy.lifetime = .keepAlways; add(hierarchy)
+            let result = try XCTUnwrap(try captureCoverage(scope: sheet, owner: "sign_out_confirmation",
+                route: "sign_out", tag: tag, sentinel: sheet.buttons[ids[0]], anchors: ids, expecting: expecting))
+            // Full independent actionable census: no type narrowing, registry
+            // intersection, scrollbar exemption or missing/extra control waiver.
+            XCTAssertEqual(result.actual.sorted(), ids.sorted(), tag)
+            XCTAssertEqual(result.entries.map(\.id).sorted(), ids.sorted(), tag)
+            XCTAssertEqual(sheet.descendants(matching: .button).allElementsBoundByIndex.map(\.identifier).sorted(),
+                ids.sorted(), tag)
+            for entry in result.entries { XCTAssertTrue(entry.visible && entry.enabled, tag) }
+            try assertSignOutStartupError(result.probe, tag: tag)
+            // The sensitive confirmation is inventoried only. NEVER click it.
+            sheet.buttons[ids[0]].click()
+            XCTAssertTrue(sheet.waitForNonExistence(timeout: 5), tag)
+            let retired = try XCTUnwrap(try freshProbe("sign-out-" + tag + "-cancel-retired"))
+            let evidence = XCTAttachment(data: retired.bytes, uniformTypeIdentifier: "public.json")
+            evidence.name = "sign-out-" + tag + "-cancel-retired-registry"; evidence.lifetime = .keepAlways; add(evidence)
+            XCTAssertFalse(retired.probe.registrationFailed, tag)
+            XCTAssertEqual(retired.probe.registrations.filter { $0.window == "sign_out_confirmation" }.map(\.id), [],
+                "Cancel must retire the mounts, not just mark them invisible: " + tag)
+            try assertSignOutStartupError(retired.probe, tag: tag + "-cancelled")
+            XCTAssertTrue(signOut.exists && signOut.isEnabled, tag)
+        }
+    }
+
+    @MainActor
+    func testCatalogSignOutFixtureIsNotSelectedByDefault() throws {
+        let app = try launchProbed()
+        defer { finish(app) }
+        guard let settings = openSettings(app) else { return }
+        settings.buttons["settings.tab.hub"].click()
+        XCTAssertTrue(settings.buttons["settings.hub.pair"].waitForExistence(timeout: 5))
+        let fresh = try XCTUnwrap(try freshProbe("sign-out-default-no-fixture"))
+        XCTAssertNil(fresh.probe.signOutFixture)
+        XCTAssertFalse(settings.buttons["settings.hub.sign_out"].exists)
+        XCTAssertFalse(fresh.probe.registrations.contains { $0.window == "sign_out_confirmation" })
     }
 
     // MARK: - hub_pairing (sheet; expanded manual disclosure) from both hosts

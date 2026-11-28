@@ -15,6 +15,8 @@ MARKERS = (
     b'WireProofCredentialFixture', b'CredentialFixtureStore', b'CredentialFixtureLink',
     b'installWireProofHubFixture', b'--sdk-wire-proof-directory',
     b'--sdk-wire-proof-credentials', b'credential-witness',
+    b'CatalogSignOutFixture', b'CatalogSignOutErrorStore', b'CatalogSignOutInertLink',
+    b'--catalog-sign-out-startup-error',
 )
 
 

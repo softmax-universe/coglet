@@ -23,7 +23,7 @@ class ReleaseGateTests(unittest.TestCase):
             alias.symlink_to(actual, target_is_directory=True)
             with patch.object(tempfile, 'tempdir', str(alias)):
                 result = unittest.TestResult()
-                ReleaseBoundaryTests('test_all_ten_markers_rejected_in_either_projection').run(result)
+                ReleaseBoundaryTests('test_all_markers_rejected_in_either_projection').run(result)
             self.assertEqual(result.testsRun, 1)
             self.assertTrue(result.wasSuccessful(), result.errors + result.failures)
 
@@ -108,6 +108,8 @@ class ReleaseBoundaryTests(unittest.TestCase):
         b'WireProofCredentialFixture', b'CredentialFixtureStore', b'CredentialFixtureLink',
         b'installWireProofHubFixture', b'--sdk-wire-proof-directory',
         b'--sdk-wire-proof-credentials', b'credential-witness',
+        b'CatalogSignOutFixture', b'CatalogSignOutErrorStore', b'CatalogSignOutInertLink',
+        b'--catalog-sign-out-startup-error',
     )
 
     def setUp(self):
@@ -160,7 +162,7 @@ class ReleaseBoundaryTests(unittest.TestCase):
     def run_audit(self, *, release=True):
         return self.audit.audit_bundle(self.app, self.output, release=release)
 
-    def test_all_ten_markers_rejected_in_either_projection(self):
+    def test_all_markers_rejected_in_either_projection(self):
         self.assertEqual(self.audit.MARKERS, self.EXPECTED_MARKERS)
         for marker in self.EXPECTED_MARKERS:
             for channel in ('nm', 'strings'):
@@ -345,6 +347,17 @@ class ReleaseBoundaryTests(unittest.TestCase):
                     self.projections = {('Contents/MacOS/Softmax', 'arm64', tool): output}
                     with self.assertRaisesRegex(ValueError, 'empty native inspection output'):
                         self.run_audit()
+
+    def test_debug_requires_every_independent_marker_per_architecture(self):
+        for marker in self.EXPECTED_MARKERS:
+            with self.subTest(marker=marker):
+                rows = [{'image': 'Contents/MacOS/Softmax', 'arch': arch,
+                         'hits': [m.decode() for m in self.EXPECTED_MARKERS
+                                  if arch == 'arm64' or m != marker]}
+                        for arch in ('arm64', 'x86_64')]
+                with self.assertRaisesRegex(ValueError, 'missing Debug markers in x86_64') as caught:
+                    self.audit.validate_debug(rows)
+                self.assertIn(marker.decode(), str(caught.exception))
 
     def test_debug_absent_positive_control_is_rejected(self):
         rows = self.run_audit(release=False)

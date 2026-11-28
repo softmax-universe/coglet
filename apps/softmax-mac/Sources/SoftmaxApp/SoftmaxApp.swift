@@ -357,6 +357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var commandMonitor: Any?
     #if DEBUG
     private var catalogProbeTask: Task<Void, Never>?
+    private var catalogSignOutFixture: CatalogSignOutFixture?
     private var wireProof: AppSurfaceWireProof?
     #endif
 
@@ -687,6 +688,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
               attributes[.type] as? FileAttributeType == .typeDirectory,
               (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o700,
               (attributes[.ownerAccountID] as? NSNumber)?.uint32Value == getuid() else { return }
+        // A closed prerequisite selector, not a sheet opener or credential
+        // fixture. Only this validated, isolated DEBUG catalog launch owns it.
+        if arguments.contains(CatalogSignOutFixture.flag) {
+            do { catalogSignOutFixture = try CatalogSignOutFixture.install(into: model) }
+            catch { model.appControlFailure(.unavailable); return }
+        }
         CogletMenuButton.enableDiagnostics(true)
         struct Probe: Encodable {
             let request: String
@@ -694,6 +701,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let registrationFailed: Bool
             let registrations: [ControlRegistry.Registration]
             let menuDiagnostics: CogletMenuButton.DiagnosticSnapshot
+            let signOutFixture: CatalogSignOutFixture.Witness?
         }
         catalogProbeTask = Task { @MainActor [weak self] in
             var lastRequest: String?
@@ -713,7 +721,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 let probe = Probe(request: request, revision: self.model.appControls.revision,
                     registrationFailed: self.model.appControlRegistrationFailed,
                     registrations: self.model.appControls.registrationInventory(),
-                    menuDiagnostics: CogletMenuButton.diagnosticSnapshot)
+                    menuDiagnostics: CogletMenuButton.diagnosticSnapshot,
+                    signOutFixture: self.catalogSignOutFixture?.witness)
                 do {
                     let output = try JSONEncoder().encode(probe)
                     try output.write(to: directory.appendingPathComponent("response.json"), options: .atomic)

@@ -272,6 +272,40 @@ final class AppSurfaceWireTests: XCTestCase {
             }
             return actionID
         }
+        var refusedActions: [String: String] = [:]
+        func assertRefused(_ actionID: String, reason: String, in frames: [[String: Any]]) throws {
+            let rejects = frames.filter { $0["type"] as? String == "accept"
+                && body($0)["id"] as? String == actionID && body($0)["accepted"] as? Bool == false }
+            let outcomes = frames.filter { $0["type"] as? String == "event"
+                && body($0)["kind"] as? String == "action.outcome" && payload($0)["id"] as? String == actionID }
+            XCTAssertEqual(rejects.count + outcomes.count, 1, "one terminal refusal per attempted effect")
+            for frame in rejects + outcomes {
+                let receipt = frame["type"] as? String == "accept" ? body(frame) : payload(frame)
+                if frame["type"] as? String == "event" {
+                    XCTAssertEqual(receipt["status"] as? String, "failed")
+                }
+                let error = try XCTUnwrap(receipt["error"] as? [String: Any])
+                XCTAssertEqual(error["code"] as? String, reason)
+                XCTAssertEqual(error["message"] as? String, reason)
+                XCTAssertEqual(error["retryable"] as? Bool, false)
+            }
+            XCTAssertFalse(outcomes.contains { payload($0)["status"] as? String == "succeeded" })
+        }
+        func refuse(_ operation: String, _ args: [String: Any], reason: String) throws {
+            // Distinct identity for each attempted effect; never retry a refusal.
+            let actionID = id()
+            XCTAssertNil(refusedActions.updateValue(reason, forKey: actionID))
+            try peer.send(["kind": "act", "operation": operation, "args": args, "id": actionID])
+            try waitFrames { frames in
+                frames.contains { frame in
+                    (frame["type"] as? String == "accept" && body(frame)["id"] as? String == actionID
+                        && body(frame)["accepted"] as? Bool == false)
+                    || (frame["type"] as? String == "event" && body(frame)["kind"] as? String == "action.outcome"
+                        && payload(frame)["id"] as? String == actionID)
+                }
+            }
+            try assertRefused(actionID, reason: reason, in: peer.snapshot())
+        }
         var readsRemaining = 96 // readiness samples and every controls page
         func read(_ operation: String, _ args: [String: Any]) throws -> [String: Any] {
             guard readsRemaining > 0 else { XCTFail("read budget exhausted"); throw WireTestFailure() }
@@ -343,7 +377,42 @@ final class AppSurfaceWireTests: XCTestCase {
         // Navigate changes an OPEN window's route; it must not implicitly open it.
         // Retain a wire-state witness for the closed-window precondition that
         // caused the original native failure, then prove the actual open path.
+        func assertMainAbsent(_ snapshot: [String: Any]) throws {
+            let windows = try XCTUnwrap(snapshot["windows"] as? [[String: Any]])
+            let main = windows.filter { $0["window"] as? String == "main" }
+            XCTAssertEqual(main.count, 1, "main is one explicit closed record, not omitted or duplicated")
+            let record = try XCTUnwrap(main.first)
+            XCTAssertEqual(record["open"] as? Bool, false)
+            XCTAssertTrue(record["route"] is NSNull)
+            XCTAssertTrue(try readControls("main").isEmpty)
+            XCTAssertEqual(app.windows.matching(identifier: "softmax.main").count, 0)
+        }
+        let capabilityFrames = try peer.snapshot().filter { $0["type"] as? String == "capabilities" }
+        XCTAssertEqual(capabilityFrames.count, 1)
+        let advertisedEntries = try XCTUnwrap(body(XCTUnwrap(capabilityFrames.first))["entries"] as? [[String: Any]])
+        let advertisedActions = try advertisedEntries.flatMap { try XCTUnwrap($0["actions"] as? [String]) }
+        let grantFrames = try peer.snapshot().filter { $0["type"] as? String == "grants" }
+        XCTAssertEqual(grantFrames.count, 1)
+        let grantEntries = try XCTUnwrap(body(XCTUnwrap(grantFrames.first))["entries"] as? [[String: Any]])
+        XCTAssertEqual(grantEntries.count, 1)
+        let grantedActions = try XCTUnwrap(XCTUnwrap(grantEntries.first)["operations"] as? [String])
+        for operation in ["softmax.app.open_window", "softmax.app.navigate", "softmax.app.close_window"] {
+            XCTAssertTrue(advertisedActions.contains(operation))
+            XCTAssertTrue(grantedActions.contains(operation))
+        }
         let initial = try state()
+        try assertMainAbsent(initial)
+        // Trace: AppDelegate has no main window. openHost throws unsupported,
+        // mapped by AppSurfaceMailbox.failure to wire unavailable. Navigate is
+        // unavailable at the adapter's closed-window guard. A closed close is
+        // deliberately a successful no-op; it never calls closeHost.
+        try refuse("softmax.app.open_window", ["window": "main"], reason: "unavailable")
+        try assertMainAbsent(state())
+        try refuse("softmax.app.navigate", ["window": "main", "route": "main"], reason: "unavailable")
+        try assertMainAbsent(state())
+        try act("softmax.app.close_window", ["window": "main"])
+        try assertMainAbsent(state())
+        // Ordinary Settings success below proves liveness after the refusals.
         let initialWindows = try XCTUnwrap(initial["windows"] as? [[String: Any]])
         let initialSettings = try XCTUnwrap(initialWindows.first { $0["window"] as? String == "settings" })
         XCTAssertEqual(initialSettings["open"] as? Bool, false)
@@ -419,6 +488,9 @@ final class AppSurfaceWireTests: XCTestCase {
         XCTAssertEqual(peer.process.terminationStatus, 0)
         try wait { peer.drained() }
         try wait { (try? String(contentsOf: directory.appendingPathComponent("status"), encoding: .utf8)) == "closed" }
+        for (actionID, reason) in refusedActions {
+            try assertRefused(actionID, reason: reason, in: peer.snapshot())
+        }
         let ledger = try Data(contentsOf: directory.appendingPathComponent("l/ledger.cbor"))
         let saved = try CogletTypes.CBORCodec.decodeProfile(Array(ledger))
         guard case .map(let entries) = saved else { throw WireTestFailure() }
