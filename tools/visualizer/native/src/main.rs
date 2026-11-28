@@ -9,7 +9,10 @@ use std::{
 };
 type Result<T> = std::result::Result<T, String>;
 
-fn read(path: &str) -> Result<Value> {
+pub(crate) fn parse(raw: &[u8]) -> Result<Value> {
+    strict::parse(raw)
+}
+pub(crate) fn read(path: &str) -> Result<Value> {
     let mut options = fs::OpenOptions::new();
     options.read(true);
     #[cfg(unix)]
@@ -32,7 +35,7 @@ fn read(path: &str) -> Result<Value> {
     }
     strict::parse(&raw)
 }
-fn setup(trace: &Value) -> Result<Value> {
+pub(crate) fn setup(trace: &Value) -> Result<Value> {
     let pin = trace["manifest_hash"].as_str().ok_or("manifest pin")?;
     let raw = hex::decode(trace["blobs"][pin].as_str().ok_or("manifest blob")?)
         .map_err(|e| e.to_string())?;
@@ -90,7 +93,7 @@ fn project(record: &Value) -> Value {
     );
     value
 }
-fn replay(trace: &Value) -> Result<Value> {
+pub(crate) fn replay(trace: &Value) -> Result<Value> {
     // Structural import is NOT guest verification. Run an independent engine
     // from the complete initial setup; never execute the imported receiver.
     Runtime::import_trace(trace)?;
@@ -112,6 +115,13 @@ fn replay(trace: &Value) -> Result<Value> {
     )
 }
 fn fork(trace: &Value, request: &Value, baseline: &Value) -> Result<Value> {
+    fork_result(trace, request, baseline).map(|(report, _)| report)
+}
+pub(crate) fn fork_archive(trace: &Value, request: &Value) -> Result<Value> {
+    let baseline = replay(trace)?;
+    fork_result(trace, request, &baseline).map(|(_, archive)| archive)
+}
+fn fork_result(trace: &Value, request: &Value, baseline: &Value) -> Result<(Value, Value)> {
     let object = request
         .as_object()
         .ok_or("fork request must be an object")?;
@@ -230,11 +240,13 @@ fn fork(trace: &Value, request: &Value, baseline: &Value) -> Result<Value> {
     if !edited {
         return Err("receipt index not found".into());
     }
-    Ok(
+    let archive = runtime.export_trace(&trace["records"][0]["trace_id"])?;
+    Ok((
         json!({"verified_native":true,"baseline_final_hash":baseline["final_hash"],
         "final_hash":hashes.last(),"hashes":hashes,"first_divergence":divergence,"records":projected,
         "qualification":"Native fork with edited external receipt result. All other recorded actions, timers and LLM requests must match exactly; no live effects or providers."}),
-    )
+        archive,
+    ))
 }
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args().skip(1).collect();

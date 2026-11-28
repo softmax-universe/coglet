@@ -13,6 +13,24 @@ fn read(path: &str) -> Value {
 }
 fn run() -> Result<(), String> {
     let args: Vec<_> = std::env::args().collect();
+    match args.get(1).map(String::as_str) {
+        Some("record") | Some("fork-trace") if args.len() == 3 => {
+            let trace = coglet_visualizer_native::read_archive(&args[2])?;
+            let archive = if args[1] == "record" {
+                coglet_visualizer_native::record(&trace)?
+            } else {
+                use std::io::Read;
+                let mut raw = Vec::new();
+                std::io::stdin().take(65_537).read_to_end(&mut raw).map_err(|e| e.to_string())?;
+                if raw.len() > 65_536 { return Err("request too large".into()); }
+                let request = coglet_visualizer_native::parse_request(&raw)?;
+                coglet_visualizer_native::fork_trace(&trace, &request)?
+            };
+            println!("{}", serde_json::to_string(&archive).map_err(|e| e.to_string())?);
+            return Ok(());
+        }
+        _ => {}
+    }
     if args.get(1).map(String::as_str) == Some("prepare") {
         let setup = coglet_cli::package_setup(Path::new(&args[2])).map_err(|e| e.to_string())?;
         let id = setup["manifest"]["id"].clone();

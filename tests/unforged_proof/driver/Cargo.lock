@@ -532,7 +532,20 @@ version = "0.1.0"
 dependencies = [
  "coglet-cli",
  "coglet-runtime",
+ "coglet-visualizer-native",
  "hex",
+ "serde_json",
+]
+
+[[package]]
+name = "coglet-visualizer-native"
+version = "0.1.0"
+dependencies = [
+ "coglet-runtime",
+ "coglet-types",
+ "hex",
+ "libc",
+ "serde",
  "serde_json",
 ]
 

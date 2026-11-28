@@ -56,6 +56,44 @@ recording, fork, factory gate, worker canary, warm/upgrade qualification or seve
 named hosted tests exists yet. The missing-config and unqualified-private CLI
 controls are fast negatives, not the requested hosted tests.
 
+## Local offline-oracle increment (not hosted qualification)
+
+The proof driver now consumes the existing visualizer's offline fork oracle and
+can emit a complete fork trace rather than its display-only projection. Explicit
+`native_replay_checks.py --driver PATH` ran RED, then four native checks passed:
+real nine-step Gridbot reexecution, complete fork archive independently replayed,
+missing receipt refusal, and recursive duplicate/nonregular input refusal. The
+existing 20 fast tests still pass normal and optimized Python. No existing tests
+were removed. Gridbot has four recorded adapter actions/outcomes and **zero model
+requests**; it does not satisfy model-outcome coverage.
+
+Independent increment review `sa-0-af41fa5f` requested stricter ingress, complete
+journal comparison on the materialized execution, and proper shared-module
+factoring. First two are fixed and native tests rerun: the existing strict bounded
+reader/parser is reused; materialization compares all journal fields except
+regenerated chain identity and wall-duration observation. Proper factoring remains
+OPEN: the new library currently compiles main.rs as an internal dead-code module.
+Do not call this final implementation approval. Add further journal-mismatch and
+oversize/symlink controls, run existing CLI tests, and refactor before final review.
+
+`record_oracles.py` actually emitted complete local replay/fork archives, each
+nine steps with four actions and four boundaries. Fork edits the first successful
+adapter outcome; replay final tree is
+`56cdcb744bea9fd625b4a961c434da1082b387b37a60abfcb803f8b239fce9d9`,
+fork final tree is
+`70327de13e51ba416e868b12221cd5f3c1ce2f72ac1b1e5b32bc477f3c0ec338`.
+These are Runtime executions derived from the genuine existing cogletd fixture,
+not new hosted jobs or model/provider runs. Initial capture was before commit;
+recapture on the committed source before using its source provenance.
+
+Read-only transport investigation `sa-0-9e134bca` identified that
+CaosDriverRunner preparation/upload are interleaved; first upload is worker1,
+then driver/resolver/seed/target_meta/ArgTree. CaosClient submit adds pool/engine
+and bundle wrappers. An injected DriverRunner is too late for blanket zero-write
+proof because resolver/seed creation already occurred. Existing native-driver jobs
+return out_trace=None, unlike program jobs. Full privacy and worker-diagnostic
+integration remain work; do not invent counters or silently use subset grants.
+
 ## Reproduce capability only
 
 Check out Unforged f9c627bcc09346b2923583037a10ac9a2fa8ea12 as a sibling of this

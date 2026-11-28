@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 coglet-runtime = { path = "../../../crates/coglet-runtime", features = ["native-engine"] }
 coglet-cli = { path = "../../../crates/coglet-cli" }
+coglet-visualizer-native = { path = "../../../tools/visualizer/native" }
 serde_json = "1"
 hex = "0.4"
 
