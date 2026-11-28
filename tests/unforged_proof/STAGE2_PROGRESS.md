@@ -1,6 +1,14 @@
 # Stage 2 increment: hosted capability discovered, NOT qualification PASS
 
-Latest continuation10: see [GUARDED_EVIDENCE.md](GUARDED_EVIDENCE.md). Independently
+Latest continuation11: see [PREPARED_EVIDENCE.md](PREPARED_EVIDENCE.md). Reviewed
+1cd62a76 connects initial held-source grant before decode/serialization to complete
+recipe grant before state staging and the existing guarded transport. Actual hosted
+prepared model0 requestc70b18b1... has50approvals and exact whole recorded tree;
+source denial starts neither native nor bridge.86fast tests PASS normal/-O.
+Held snapshot acquisition remains outside export seam; ephemeral operator testbed
+is not production/device authority. Factory/no-effects/upgrades/final gates remain.
+
+Previous continuation10: see [GUARDED_EVIDENCE.md](GUARDED_EVIDENCE.md). Independently
 reviewed476ae3 adds complete retained recipe + per-serialization/per-request guard,
 actual guarded model1 execution with51approvals and exact full tree, initial denial
 and real HEAD→POST revocation negative. 67fast normal/-O+5Rust+actual cross-language
