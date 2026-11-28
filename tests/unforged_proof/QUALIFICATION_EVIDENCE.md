@@ -1,5 +1,24 @@
 # Live qualification composition — NOT stage2 PASS
 
+## Latest re-pin (continuation16; distinct from old runs below)
+
+David requested latest Unforged before next hosted batch. Current consumed source
+is `c8aeece23b674824ed48f3ea39999a11a92f7173`; rebuilt unforge SHA256
+`006b0cf4cc7ec5f6084e42742506bf9bf910df1b24c8736b1ee52da02e02f9de`,
+bridge `1fe4b37762d2a0ed6fb2aa49218207e6cbc552643043b237cdefb71ae0d01c83`,
+static driver `8113231a72ac1c0ecb94d022c34278ba7446950d757ed829469d2ac019ef9265`.
+All locked/offline builds and124retained/additive fast tests normal/-O PASS.
+No --unsafe-unsandboxed. This is local build evidence, not newpin hosted PASS.
+
+[NO_EFFECTS_EVIDENCE.md](NO_EFFECTS_EVIDENCE.md) records reviewed closure cut,
+236sourcepins, changeddriver11actualhostedsteps at47cc741/OLDUnforgedf9c627b
+before the bump instruction, and2actual existing Docker image availability jobs.
+Those completed batches are retained unchanged, never relabeled as newpin or
+sameprogram A/B qualification. Image capacity is available; actual oneclient/
+sameresolver/program Coglet A/B controls remain. Original final gates unchanged.
+The older sections below accurately describe their execution-time source and
+then-open gaps; no-effects source-closure gap has since advanced as linked.
+
 ## Reviewed implementation and inventory
 
 New explicit `qualification.py` exposes all seven named `hosted_*` entrypoints.

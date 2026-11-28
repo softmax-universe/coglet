@@ -1,6 +1,18 @@
 # Stage 2 increment: hosted capability discovered, NOT qualification PASS
 
-Latest continuation15: see [QUALIFICATION_EVIDENCE.md](QUALIFICATION_EVIDENCE.md).
+Latest continuation16: [NO_EFFECTS_EVIDENCE.md](NO_EFFECTS_EVIDENCE.md).
+At47cc741, independently source-audited native-only driver closure and236pins;
+124fast normal/-O,6native+3canary PASS. Actual changeddriver no-effects entrypoint
+EXIT0/11unique jobs (2model+9replay), rawfulltrees/canaries independently reverified.
+This batch consumed oldUnforgedf9c627b; NOT relabeled newpin. David08:52 bump acted
+on before subsequent batch: latestUnforgedc8aeece rebuilt unforge006b0cf4...,
+bridge1fe4b377..., staticdriver unchanged8113231a...;124fastnormal/-O PASS again.
+Actual existingstd/bash ANDstd/go image jobs succeeded2/2 with exactdigest/miss
+headers and independently fetched nonce objects. Existing capacity available;
+SAMEclient/resolver/program actualCogletA/B controls still unimplemented.
+Finalnewpinacceptance/CIqueue/main/containingmain remain; NOTstage2PASS.
+
+Previous continuation15: see [QUALIFICATION_EVIDENCE.md](QUALIFICATION_EVIDENCE.md).
 Seven explicit opt-in hosted_* entrypoints now exist, with9newLOCAL orchestration
 cases REDmissingmodule/GREEN,116fast normal/-O PASS and all95baselinefiles/
 453definitions programmatically retained. Corrected plan APPROVEsa-0-e6ba35d5;
