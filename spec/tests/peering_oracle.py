@@ -33,6 +33,7 @@ def admit(request, state):
     # Classification is retained receiver provenance, never a caller flag.
     retained = state['private_record']
     if retained is not None:
+        require(retained['epoch'] >= 1)
         require(request.get('private') == retained)
         require(state['actor_owner'] == [request['actor'], retained['owner'], retained['source'], retained['epoch']])
         require(request['target'] == retained['owner'] and state['private_active'])

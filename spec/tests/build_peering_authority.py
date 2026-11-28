@@ -36,6 +36,10 @@ def outputs():
     add('cross-owner-without-binding', state_changes={'actor_owner': None})
     add('foreign-target', request_changes={'target': 'coglet:'+'0'*64})
     add('stale-source-epoch', request_changes={'private': dict(request['private'], epoch=0)})
+    zero = dict(request['private'], epoch=0)
+    add('consistent-zero-epoch', request_changes={'private': zero},
+        state_changes={'private_record': zero,
+                       'actor_owner': [request['actor'], zero['owner'], zero['source'], 0]})
     add('fenced-source', state_changes={'private_active': False})
     add('omitted-private-cannot-declassify')
     del cases[-1]['request']['private']

@@ -770,6 +770,78 @@
     "result": "permission_denied"
   },
   {
+    "name": "consistent-zero-epoch",
+    "request": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 0
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "state": {
+      "mutual_enrollment": true,
+      "transport_peer": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "local_router": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "household": "22222222222222222222222222222222",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin_binding": [
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "44444444444444444444444444444444"
+      ],
+      "route": [
+        "22222222222222222222222222222222",
+        "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "home.query"
+      ],
+      "killed": false,
+      "authority_current": true,
+      "clock_mapped": true,
+      "now": 999,
+      "sending_policy": [
+        "home.query"
+      ],
+      "receiving_policy": [
+        "home.query"
+      ],
+      "delegation": [
+        "home.query"
+      ],
+      "adapter_grants": [
+        "home.query"
+      ],
+      "private_record": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 0
+      },
+      "actor_owner": [
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        0
+      ],
+      "private_active": true
+    },
+    "result": "permission_denied"
+  },
+  {
     "name": "fenced-source",
     "request": {
       "method": "peer.route",
