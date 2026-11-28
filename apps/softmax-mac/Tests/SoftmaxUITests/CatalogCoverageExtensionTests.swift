@@ -573,7 +573,10 @@ final class SoftmaxCatalogCoverageExtensionTests: XCTestCase {
             ($0, (role: "button", verbs: ["press"], sensitive: $0 == "menu.check_updates" || $0 == "menu.quit"))
         })
         status.click()
-        let menu = app.windows.containing(.button, identifier: "menu.open_chat").firstMatch
+        // The real MenuBarExtra popup is an AX Dialog, not a Window (native
+        // run 46137551839, menu-bar-popup-discovery). Keep the full popup as
+        // the census scope; do not intersect its descendants with registry IDs.
+        let menu = app.dialogs.containing(.button, identifier: "menu.open_chat").firstMatch
         guard menu.waitForExistence(timeout: 5) else {
             let evidence = XCTAttachment(string: app.debugDescription)
             evidence.name = "menu-bar-popup-discovery"; evidence.lifetime = .keepAlways; add(evidence)
