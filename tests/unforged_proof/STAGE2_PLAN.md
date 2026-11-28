@@ -139,6 +139,50 @@ supported sandbox, not a newly invented isolation claim.
    then containing-main hosted rerun. Attach compact durable evidence and finish
    with request_review only after actual stage2 PASS.
 
+## Concrete corrected seams and refusal semantics
+
+- File `crates/coglet-gate/python/coglet_gate/__init__.py`: add
+  `GateService.evaluate_hosted(work, request, rewritten)` using an operator-owned
+  hosted runner configured on the service. Invoke hosted verification before the
+  existing `ArtifactStore.put(..., gate_key, 'evaluation')` signing/publication
+  call used at the end of `evaluate`. Keep the same envelope fields and put
+  complete hosted bindings in its report. Extend tool identity with
+  `hosted_harness_sha256`, `unforge_sha256`, `resolver_oid`, `worker_image`, and
+  `endpoint_identity_sha256`; no tickets/keys in artifacts. On timeout/refusal,
+  sign no artifact and leave the existing challenge unconsumed; only existing
+  `accept_fixture` consumes it. Test failure/retry and no-publication explicitly.
+- Actual `StepReceipt` fields are runner, worker_image, executed, cache, commit;
+  it does NOT contain separate input-tree/resolver fields. Do not invent them.
+  Validate *composition*: all raw receipt-note entries must be unambiguous for
+  that invocation and name the exact returned commit; inspect that commit with
+  replacement objects disabled, verify its tree and ordered program/input parent
+  commits, inspect their trees and the resolver commit/provenance. Input contains
+  nonce/candidate/base/closure/suite/revision pins. Verify this graph against the
+  caller-retained request graph and expected pins, not against self-reported
+  output strings. Raw `refs/notes/receipts` is authoritative, not the
+  `read_latest_step_receipt` convenience API that hides earlier entries.
+  Add previous-identical-data/different-nonce, swapped-output and copied-note
+  negatives. The notes are trusted-client observations of authenticated CAOS
+  responses, NOT independently signed server attestations. Candidate cannot
+  write the trusted client's store. If that supported trust boundary or graph
+  binding is unavailable in deployment, refuse and route the prerequisite;
+  never claim an invented receipt field or stronger remote attestation.
+- Closure authorization uses already-held validated object IDs, lengths and
+  metadata descriptors; computing its grant identity does not serialize private
+  payloads or write Git objects. Explicitly distinguish metadata canonicalization
+  from private-payload serialization in spy counters. Sender/recipient identity
+  comes from operator configuration/authenticated CAOS channel, never the
+  factory request. Recheck the same grant/revocation record just before upload.
+- Worker-side evidence is mandatory: deny logs/counters produced inside the
+  sandbox, with a separate content-addressed diagnostics object bound to the
+  invocation/returned commit (not added to the ABI filesystem tree). Include a
+  deliberately attempted live-model/adapter/network canary proving enforcement
+  detects/refuses, then effectful recorded replay showing zero attempted live
+  calls and nonzero recorded outcomes. Coordinator transport counters alone
+  cannot qualify. Use the supported existing worker sandbox/effect interfaces;
+  if these cannot produce honest observation, preserve that gap rather than
+  add an unreviewed sandbox implementation.
+
 ## Runtime discovery
 
 The broker advertises `caos.prod.connect` (auto-tier), injecting only
