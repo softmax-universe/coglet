@@ -15,7 +15,6 @@ import hashlib
 import json
 import os
 import shutil
-import sys
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType, SimpleNamespace
 
@@ -103,6 +102,30 @@ class Prepared:
     def recipe(self):
         return json.loads(self._recipe)
 
+    def execute(self,*,parent,name,recipe_authority,recipe_grant,recipe_scope,
+                driver,bridge,bridge_sha256,synthetic_transport_only=False,env=None,timeout=240,on_event=None):
+        """Connect granted preparation to the existing trusted guarded bridge.
+
+        All arguments are operator configuration, never candidate fields. Incomplete
+        execution returns a refusal, not an accepted gate artifact. No grant/key is
+        passed in argv or environment. Retain context/fds until child is reaped.
+        """
+        if synthetic_transport_only is not True:
+            raise Refused('synthetic-only preparation transport')
+        self.source_authority.verify(self.source_grant,json.loads(self.source_scope))
+        from guarded_transport import run_guarded
+        try:
+            if Path(driver).read_bytes() != self.sources.driver:
+                raise Refused('operator driver differs from retained source')
+        except OSError:
+            raise Refused('operator driver unavailable') from None
+        with self.stage(parent,name,recipe_authority,recipe_grant,recipe_scope) as staged:
+            command = [str(Path(bridge).absolute()),'guarded-step','--synthetic-transport-only',
+                self.sources.recipient,self.sources.image,self.sources.salt,
+                str(Path(driver).absolute()),staged.path]
+            return run_guarded(command,staged.session,bridge_sha256=bridge_sha256,
+                env=env,timeout=timeout,on_event=on_event)
+
     @contextmanager
     def stage(self,parent,name,authority,grant,scope):
         """Fresh 0700 directory, dirfd/no-follow writes, cleanup on every exit.
@@ -127,6 +150,7 @@ class Prepared:
         fds = {}
         parent_fd = root_fd = None
         made_root = yielded = False
+        active = None
         try:
             absolute = Path(parent).absolute()
             fd = os.open('/',os.O_RDONLY|os.O_DIRECTORY)
@@ -169,11 +193,13 @@ class Prepared:
             session = ApprovalSession(both,grant,scope,retained_blobs=retained)
             yielded = True
             yield SimpleNamespace(path=f'/proc/{os.getpid()}/fd/{root_fd}',session=session)
-        except OSError:
-            if yielded: raise  # preserve errors from the caller, not staging
-            raise Refused('staging filesystem refused') from None
+        except BaseException as error:
+            if isinstance(error,OSError) and not yielded:
+                active = Refused('staging filesystem refused')
+                raise active from None
+            active = error
+            raise
         finally:
-            active = sys.exception()
             errors = []
             for fd in reversed(list(fds.values())):
                 try: os.close(fd)

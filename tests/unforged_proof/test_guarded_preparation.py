@@ -109,6 +109,42 @@ class PreparationTests(unittest.TestCase):
             with prepared.stage(link,'other',self.recipe_authority,grant,scope): pass
         self.assertFalse((self.parent/'other').exists())
 
+    def test_execute_uses_staged_source_and_strong_initial_approval(self):
+        from guarded_transport import digest
+        prepared = self.prepared()
+        scope,grant = self.recipe_grant(prepared)
+        driver = self.parent/'driver'
+        driver.write_bytes(self.sources.driver)
+        bridge = self.parent/'bridge'
+        # A real subprocess requests the actual strong initial approval. It then
+        # exits without executing: incomplete transcript MUST remain refusal.
+        script = ('#!/usr/bin/env python3\nimport json,sys\nfrom pathlib import Path\n'
+            'assert (Path(sys.argv[-1])/"proof-input.json").is_file()\n'
+            'print('+repr(json.dumps(dict(phase='authorize',sequence=1,operation='initial',
+                 endpoint=self.sources.recipient,recipe=prepared.recipe)))+',flush=True)\n'
+            'assert json.loads(input()) == {"approve":1}\n')
+        bridge.write_text(script)
+        bridge.chmod(0o700)
+        result = prepared.execute(parent=self.parent,name='stage',recipe_authority=self.recipe_authority,
+            recipe_grant=grant,recipe_scope=scope,driver=driver,bridge=bridge,
+            bridge_sha256=digest(bridge.read_bytes()),synthetic_transport_only=True)
+        self.assertEqual(result['approvals'],1)
+        self.assertEqual(result['refusal'],'guarded transcript incomplete')
+        self.assertFalse((self.parent/'stage').exists())
+
+    def test_execute_denial_and_missing_synthetic_flag_do_not_spawn(self):
+        prepared = self.prepared()
+        scope,grant = self.recipe_grant(prepared)
+        self.revoked.add(self.grant)
+        from guarded_transport import subprocess
+        with patch.object(subprocess,'Popen',side_effect=AssertionError('spawned')):
+            for flag in (False,True):
+                with self.assertRaises(Refused):
+                    prepared.execute(parent=self.parent,name='stage',recipe_authority=self.recipe_authority,
+                        recipe_grant=grant,recipe_scope=scope,driver=self.parent/'absent',bridge=self.parent/'absent',
+                        bridge_sha256='e'*64,synthetic_transport_only=flag)
+        self.assertFalse((self.parent/'stage').exists())
+
     def test_nonobject_trace_refuses(self):
         for raw in (b'[]',b'null',b'3',b'"x"'):
             values = self.sources.arguments()
@@ -157,6 +193,22 @@ class PreparationTests(unittest.TestCase):
         self.assertEqual(outside.read_bytes(),b'keep')
         self.assertFalse((self.parent/'stage').exists())
         self.assertEqual(len(list(Path('/proc/self/fd').iterdir())),before)
+
+    def test_persistent_cleanup_failure_inside_unrelated_except_refuses(self):
+        prepared = self.prepared()
+        scope,grant = self.recipe_grant(prepared)
+        before = len(list(Path('/proc/self/fd').iterdir()))
+        try:
+            raise ValueError('unrelated handled exception')
+        except ValueError:
+            with patch('guarded_preparation.shutil.rmtree',side_effect=PermissionError('persistent')) as remove:
+                remove.avoids_symlink_attacks = True
+                with self.assertRaises(Refused):
+                    with prepared.stage(self.parent,'stage',self.recipe_authority,grant,scope): pass
+        self.assertEqual(len(list(Path('/proc/self/fd').iterdir())),before)
+        # A genuinely persistent filesystem refusal cannot be magically undone;
+        # mandatory failure reports residual bytes, never silent success.
+        self.assertTrue((self.parent/'stage').exists())
 
     def test_recipe_revocation_stops_next_write(self):
         prepared = self.prepared()
