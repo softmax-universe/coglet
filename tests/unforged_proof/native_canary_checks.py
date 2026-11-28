@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Explicit native loopback canary checks; never part of fast/fake qualification."""
 import argparse
+import os
+import signal
+import socket
 import pathlib
 import subprocess
 import tempfile
@@ -39,6 +42,35 @@ class CanaryChecks(unittest.TestCase):
                 except subprocess.TimeoutExpired:
                     server.kill(); server.communicate()
             self.assertEqual(server.returncode, 0)
+
+    def test_shutdown_drains_kernel_backlog(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            server = subprocess.Popen([DRIVER, 'canary-listen', str(root), 'a'*64], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            streams = []
+            try:
+                for _ in range(100):
+                    if (root/'ready').exists() or server.poll() is not None: break
+                    time.sleep(.02)
+                self.assertTrue((root/'ready').exists())
+                subprocess.run([DRIVER, 'canary-positive', str(root/'ready')], check=True, timeout=5)
+                # Queue real connections while accept cannot run, then request
+                # shutdown. A one-accept-per-loop server loses four of these.
+                os.kill(server.pid, signal.SIGSTOP)
+                port = int((root/'ready').read_text().split()[0])
+                for _ in range(5):
+                    stream = socket.create_connection(('127.0.0.1', port), timeout=1)
+                    stream.sendall(b'a'*64); streams.append(stream)
+                (root/'stop').touch()
+                os.kill(server.pid, signal.SIGCONT)
+                server.communicate(timeout=5)
+                self.assertEqual(server.returncode, 0)
+                self.assertEqual((root/'stats').read_text(), '6 1 0\n')
+            finally:
+                for stream in streams: stream.close()
+                if server.poll() is None:
+                    os.kill(server.pid, signal.SIGCONT)
+                    server.kill(); server.communicate()
 
     def test_invalid_config_never_connects(self):
         with tempfile.TemporaryDirectory() as td:
