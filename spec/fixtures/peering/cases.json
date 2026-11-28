@@ -1,0 +1,777 @@
+[
+  {
+    "name": "peer-enroll",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "correlation_id": "11111111111111111111111111111111",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a7656f66666572a16876657273696f6e738163302e31666d6574686f646b706565722e656e726f6c6c6673656e64657278446875623a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616168726563656976657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626269617474656e64696e6778446875623a6161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616169686f757365686f6c64782032323232323232323232323232323232323232323232323232323232323232326e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "peer-enroll-unknown",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "correlation_id": "11111111111111111111111111111111",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      },
+      "unknown": 0
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enroll-missing-method",
+    "type": "peer-enroll",
+    "value": {
+      "correlation_id": "11111111111111111111111111111111",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enroll-missing-correlation_id",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enroll-missing-household",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "correlation_id": "11111111111111111111111111111111",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enroll-missing-sender",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "correlation_id": "11111111111111111111111111111111",
+      "household": "22222222222222222222222222222222",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enroll-missing-receiver",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "correlation_id": "11111111111111111111111111111111",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enroll-missing-attending",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "correlation_id": "11111111111111111111111111111111",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "offer": {
+        "versions": [
+          "0.1"
+        ]
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enroll-missing-offer",
+    "type": "peer-enroll",
+    "value": {
+      "method": "peer.enroll",
+      "correlation_id": "11111111111111111111111111111111",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "attending": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enrolled",
+    "type": "peer-enrolled",
+    "value": {
+      "method": "peer.enrolled",
+      "correlation_id": "11111111111111111111111111111111",
+      "selection": {
+        "version": "0.1"
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a3666d6574686f646d706565722e656e726f6c6c65646973656c656374696f6ea16776657273696f6e63302e316e636f7272656c6174696f6e5f696478203131313131313131313131313131313131313131313131313131313131313131"
+  },
+  {
+    "name": "peer-enrolled-unknown",
+    "type": "peer-enrolled",
+    "value": {
+      "method": "peer.enrolled",
+      "correlation_id": "11111111111111111111111111111111",
+      "selection": {
+        "version": "0.1"
+      },
+      "unknown": 0
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enrolled-missing-method",
+    "type": "peer-enrolled",
+    "value": {
+      "correlation_id": "11111111111111111111111111111111",
+      "selection": {
+        "version": "0.1"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enrolled-missing-correlation_id",
+    "type": "peer-enrolled",
+    "value": {
+      "method": "peer.enrolled",
+      "selection": {
+        "version": "0.1"
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-enrolled-missing-selection",
+    "type": "peer-enrolled",
+    "value": {
+      "method": "peer.enrolled",
+      "correlation_id": "11111111111111111111111111111111"
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-private",
+    "type": "peer-private",
+    "value": {
+      "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "epoch": 1
+    },
+    "valid": true,
+    "cbor_hex": "a36565706f636801656f776e65727847636f676c65743a6464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646466736f757263657848737572666163653a65656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565"
+  },
+  {
+    "name": "peer-private-unknown",
+    "type": "peer-private",
+    "value": {
+      "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "epoch": 1,
+      "unknown": 0
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-private-missing-source",
+    "type": "peer-private",
+    "value": {
+      "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "epoch": 1
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-private-missing-owner",
+    "type": "peer-private",
+    "value": {
+      "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "epoch": 1
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-private-missing-epoch",
+    "type": "peer-private",
+    "value": {
+      "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": true,
+    "cbor_hex": "ab656163746f72784066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666d6574686f646a706565722e726f757465666f726967696e7847636f676c65743a636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161667461726765747847636f676c65743a64646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464677061796c6f6164a068646561646c696e651903e868726563656976657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626269686f757365686f6c64782032323232323232323232323232323232323232323232323232323232323232326a6361706162696c6974796a686f6d652e71756572796e636f7272656c6174696f6e5f696478203333333333333333333333333333333333333333333333333333333333333333"
+  },
+  {
+    "name": "peer-route-unknown",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "unknown": 0
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-method",
+    "type": "peer-route",
+    "value": {
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-correlation_id",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-household",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-sender",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-receiver",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-origin",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-target",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-actor",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-capability",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "deadline": 1000,
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-deadline",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "payload": {}
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-route-missing-payload",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-accepted",
+    "type": "peer-accepted",
+    "value": {
+      "method": "peer.accepted",
+      "correlation_id": "33333333333333333333333333333333"
+    },
+    "valid": true,
+    "cbor_hex": "a2666d6574686f646d706565722e61636365707465646e636f7272656c6174696f6e5f696478203333333333333333333333333333333333333333333333333333333333333333"
+  },
+  {
+    "name": "peer-accepted-unknown",
+    "type": "peer-accepted",
+    "value": {
+      "method": "peer.accepted",
+      "correlation_id": "33333333333333333333333333333333",
+      "unknown": 0
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-accepted-missing-method",
+    "type": "peer-accepted",
+    "value": {
+      "correlation_id": "33333333333333333333333333333333"
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-accepted-missing-correlation_id",
+    "type": "peer-accepted",
+    "value": {
+      "method": "peer.accepted"
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-failure",
+    "type": "peer-failure",
+    "value": {
+      "method": "peer.failure",
+      "correlation_id": "33333333333333333333333333333333",
+      "error": {
+        "code": "permission_denied",
+        "message": "Unavailable",
+        "retryable": false
+      }
+    },
+    "valid": true,
+    "cbor_hex": "a3656572726f72a364636f6465717065726d697373696f6e5f64656e696564676d6573736167656b556e617661696c61626c6569726574727961626c65f4666d6574686f646c706565722e6661696c7572656e636f7272656c6174696f6e5f696478203333333333333333333333333333333333333333333333333333333333333333"
+  },
+  {
+    "name": "peer-failure-unknown",
+    "type": "peer-failure",
+    "value": {
+      "method": "peer.failure",
+      "correlation_id": "33333333333333333333333333333333",
+      "error": {
+        "code": "permission_denied",
+        "message": "Unavailable",
+        "retryable": false
+      },
+      "unknown": 0
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-failure-missing-method",
+    "type": "peer-failure",
+    "value": {
+      "correlation_id": "33333333333333333333333333333333",
+      "error": {
+        "code": "permission_denied",
+        "message": "Unavailable",
+        "retryable": false
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-failure-missing-correlation_id",
+    "type": "peer-failure",
+    "value": {
+      "method": "peer.failure",
+      "error": {
+        "code": "permission_denied",
+        "message": "Unavailable",
+        "retryable": false
+      }
+    },
+    "valid": false
+  },
+  {
+    "name": "peer-failure-missing-error",
+    "type": "peer-failure",
+    "value": {
+      "method": "peer.failure",
+      "correlation_id": "33333333333333333333333333333333"
+    },
+    "valid": false
+  },
+  {
+    "name": "private-route",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "valid": true,
+    "cbor_hex": "ad656163746f72784066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666d6574686f646a706565722e726f757465666f726967696e7847636f676c65743a636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161667461726765747847636f676c65743a64646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464667469636b657478203434343434343434343434343434343434343434343434343434343434343434677061796c6f6164a06770726976617465a36565706f636801656f776e65727847636f676c65743a6464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646466736f757263657848737572666163653a6565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656568646561646c696e651903e868726563656976657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626269686f757365686f6c64782032323232323232323232323232323232323232323232323232323232323232326a6361706162696c6974796a686f6d652e71756572796e636f7272656c6174696f6e5f696478203333333333333333333333333333333333333333333333333333333333333333"
+  },
+  {
+    "name": "route-invalid-sender",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "valid": false
+  },
+  {
+    "name": "route-invalid-actor",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "not-a-key",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "valid": false
+  },
+  {
+    "name": "route-invalid-deadline",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": -1,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "valid": false
+  },
+  {
+    "name": "route-invalid-private",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {},
+      "ticket": "44444444444444444444444444444444"
+    },
+    "valid": false
+  },
+  {
+    "name": "route-invalid-ticket",
+    "type": "peer-route",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": null
+    },
+    "valid": false
+  },
+  {
+    "name": "root-route",
+    "type": "peering",
+    "value": {
+      "method": "peer.route",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "valid": true,
+    "cbor_hex": "ad656163746f72784066666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666d6574686f646a706565722e726f757465666f726967696e7847636f676c65743a636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636363636673656e64657278446875623a61616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161667461726765747847636f676c65743a64646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464667469636b657478203434343434343434343434343434343434343434343434343434343434343434677061796c6f6164a06770726976617465a36565706f636801656f776e65727847636f676c65743a6464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646464646466736f757263657848737572666163653a6565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656565656568646561646c696e651903e868726563656976657278446875623a6262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626262626269686f757365686f6c64782032323232323232323232323232323232323232323232323232323232323232326a6361706162696c6974796a686f6d652e71756572796e636f7272656c6174696f6e5f696478203333333333333333333333333333333333333333333333333333333333333333"
+  },
+  {
+    "name": "root-unknown-method",
+    "type": "peering",
+    "value": {
+      "method": "hub.inbox",
+      "correlation_id": "33333333333333333333333333333333",
+      "household": "22222222222222222222222222222222",
+      "sender": "hub:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "receiver": "hub:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "origin": "coglet:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "target": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "actor": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "capability": "home.query",
+      "deadline": 1000,
+      "payload": {},
+      "private": {
+        "source": "surface:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "owner": "coglet:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "epoch": 1
+      },
+      "ticket": "44444444444444444444444444444444"
+    },
+    "valid": false
+  }
+]

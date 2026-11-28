@@ -1,0 +1,23 @@
+; Draft ADR-0046; common rules concatenated unchanged. Not a hub frame.
+peering = peer-enroll / peer-enrolled / peer-route / peer-accepted / peer-failure
+peer-enroll = {
+  method: "peer.enroll", correlation_id: correlation-id,
+  household: correlation-id, sender: hub-id, receiver: hub-id,
+  attending: hub-id, offer: version-offer
+}
+peer-enrolled = {
+  method: "peer.enrolled", correlation_id: correlation-id,
+  selection: version-selection
+}
+peer-private = {source: source-id, owner: coglet-id, epoch: uint64}
+peer-route = {
+  method: "peer.route", correlation_id: correlation-id,
+  household: correlation-id, sender: hub-id, receiver: hub-id,
+  origin: coglet-id, target: coglet-id, actor: node-id,
+  ? ticket: correlation-id, capability: capability-name,
+  deadline: uint64, payload: profile-map, ? private: peer-private
+}
+peer-accepted = {method: "peer.accepted", correlation_id: correlation-id}
+peer-failure = {
+  method: "peer.failure", correlation_id: correlation-id, error: error
+}
