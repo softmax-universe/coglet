@@ -60,6 +60,7 @@ def main():
     resolver_tree=git('mktree',data=f'040000 tree {drivers}\tdrivers\n100644 blob {strategy_oid}\tstrategy\n'.encode())
     resolver=git('commit-tree',resolver_tree,data=b'synthetic image resolver\n')
     git('update-ref','refs/heads/resolver',resolver)
+    (out/'resolver-commit.raw').write_bytes(run([a.git.resolve(),'--no-replace-objects',f'--git-dir={gd}','cat-file','commit',resolver]))
     salt=secrets.token_hex(32)
     cmd=[str(a.bridge.resolve()),'synthetic-image-controls','--synthetic-transport-only',a.endpoint,a.image_a,a.image_b,salt,str(out/'os'),resolver,a.driver_sha256,str(state)]
     info=dict(source=run(['git','-C',root,'rev-parse','HEAD']).decode().strip(),upstream=run(['git','-C',root.parent/'unforged','rev-parse','HEAD']).decode().strip(),

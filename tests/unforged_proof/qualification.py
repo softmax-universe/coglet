@@ -70,7 +70,7 @@ def require_effects(trace,key):
 class Qualification:
     def __init__(self,config,output):
         required={'source','endpoint','image',*(k for n in ('driver','bridge','daemon','proof') for k in (n,n+'_sha256'))}
-        if set(config)!=required:raise Unavailable('complete closed operator configuration required')
+        if set(config) not in (required,required|{'image_controls'}):raise Unavailable('complete closed operator configuration required')
         if not isinstance(config['source'],str) or not re.fullmatch('[0-9a-f]{40}',config['source']):raise Unavailable('exact source pin required')
         if not isinstance(config['endpoint'],str) or not re.fullmatch('[0-9a-f]{64}',config['endpoint']):raise Unavailable('exact endpoint pin required')
         if not isinstance(config['image'],str) or not re.fullmatch('native@sha256:[0-9a-f]{64}',config['image']):raise Unavailable('exact native image pin required')
@@ -207,8 +207,24 @@ class Qualification:
         return self.cache['receipt-negatives']
 
     def hosted_changed_image_invalidates_acceptance(self):
-        self.receipt_negatives()
-        raise Unavailable('actual retained-client worker image transition unavailable; changed-pin refusal is NOT upgrade qualification')
+        controls=getattr(self,'c',{}).get('image_controls')
+        keys={'git','unforge','unforge_sha256','upstream','image_a','image_b'}
+        if not isinstance(controls,dict) or set(controls)!=keys:
+            raise Unavailable('actual retained-client image control configuration required; no historical or changed-pin substitute')
+        for name in ('image_a','image_b'):
+            if not isinstance(controls[name],str) or not re.fullmatch('localhost:5000/caos@sha256:[0-9a-f]{64}',controls[name]):
+                raise Unavailable('immutable existing Docker image required')
+        if controls['image_a']==controls['image_b']:raise Unavailable('distinct actual images required')
+        job=self.out/'image-controls'
+        argv=['--synthetic-transport-only','--output',job,'--driver',self.c['driver'],'--bridge',self.c['bridge'],
+              '--driver-sha256',self.c['driver_sha256'],'--bridge-sha256',self.c['bridge_sha256'],'--endpoint',self.c['endpoint']]
+        for name in ('git','unforge','unforge_sha256','image_a','image_b'):argv+=['--'+name.replace('_','-'),controls[name]]
+        require_success(self.python('image-controls','image_probe.py',*argv,timeout=900))
+        verify=['--batch',job,'--source',self.c['source'],'--driver',self.c['driver_sha256'],'--bridge',self.c['bridge_sha256'],
+                '--upstream',controls['upstream'],'--endpoint',self.c['endpoint'],'--image-a',controls['image_a'],'--image-b',controls['image_b']]
+        checked=strict_json(require_success(self.python('image-controls-verify','verify_image_probe.py',*verify,local=True)))
+        (self.out/'image-verification.json').write_text(json.dumps(checked,indent=2)+'\n')
+        return checked
 
     def hosted_missing_receipt_fails_closed(self):
         return self.receipt_negatives()
