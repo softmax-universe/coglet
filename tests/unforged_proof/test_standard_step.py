@@ -21,6 +21,15 @@ class StandardStep(unittest.TestCase):
         for changed in ({'a':b'hello'}, {'a':b'Hello','b/x':b'world'}, {'a':b'hello','c/x':b'world'}):
             self.assertNotEqual(a, snapshot_tree(changed))
 
+    def test_missing_or_false_miss_confirmation_refuses(self):
+        from standard_step import require_fresh
+        baseline = dict(request='a'*40, cache_hit=False,worker_image='image',server_confirmed_nocache=True)
+        require_fresh(baseline,request='a'*40,image='image')
+        for flag in (None,False,0,'true'):
+            value = dict(baseline,server_confirmed_nocache=flag)
+            with self.subTest(flag=flag), self.assertRaises(Refused):
+                require_fresh(value,request='a'*40,image='image')
+
     def test_wire_tree_requires_regular_modes_and_complete_unique_paths(self):
         for rows in ([{'path':'a','mode':'100755','hex':'00'}],
                      [{'path':'a','mode':'100644','hex':'00'}]*2,

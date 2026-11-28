@@ -16,7 +16,7 @@ import subprocess
 from prefix_inputs import step_payload
 from recorded_closure import require_model_reply_closure
 from run import ROOT, run, save
-from standard_step import state_files, snapshot_tree
+from standard_step import state_files, snapshot_tree, require_fresh
 from diagnostic_receipts import verify_isolation_sidecar
 from wire_trees import object_id, file_tree, verify_output
 
@@ -95,8 +95,7 @@ def main():
     worker = source.split('pub const WORKER: &str = r#"',1)[1].split('"#;',1)[0].encode()
     if submitted['worker'] != object_id('blob',worker):
         raise RuntimeError('submitted worker differs from retained source')
-    if executed['request'] != req or executed['cache_hit'] is not False or executed['worker_image'] != args.expected_image:
-        raise RuntimeError('execution identity differs')
+    require_fresh(executed,request=req,image=args.expected_image)
     observations = verify_isolation_sidecar(sidecar['raw_payload'].encode(), sidecar['oid'], request=req, salt=salt)
     actual = verify_output(rows,executed['result_oid'])
     expected = trace['records'][args.step]['output_hash']

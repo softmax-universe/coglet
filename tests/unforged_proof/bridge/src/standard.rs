@@ -129,7 +129,7 @@ pub fn execute(client: &CaosClient, image: &str, salt: &str, driver: &Path, stat
     let result = client.run_arg_tree_detailed(&req, true).map_err(|_| "strict recorded step failed")?;
     println!("{}", json!({"phase":"executed", "request":req,"result_oid":result.oid,"cache_hit":result.cache_hit,
         "worker_image":result.worker_image,"server_confirmed_nocache":result.server_confirmed_nocache}));
-    if result.cache_hit || result.worker_image.as_deref() != Some(image) { return Err("fresh execution/image mismatch"); }
+    if result.cache_hit || !result.server_confirmed_nocache || result.worker_image.as_deref() != Some(image) { return Err("fresh execution/image mismatch"); }
     crate::diagnostics::read_status(client, &req)?;
     read_tree(client, &result.oid, "", 0, &mut (64*1024*1024))?;
     Ok(())

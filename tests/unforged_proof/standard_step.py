@@ -5,6 +5,13 @@ import json
 class Refused(ValueError):
     pass
 
+def require_fresh(value, *, request, image):
+    # This field infers requested nocache + an observed X-Caos-Cache miss.
+    # Require it, but never describe it as a universal server bypass guarantee.
+    if value.get('request') != request or value.get('cache_hit') is not False \
+            or value.get('worker_image') != image or value.get('server_confirmed_nocache') is not True:
+        raise Refused('fresh execution miss/image evidence missing')
+
 def path_parts(path):
     if not isinstance(path, str) or not path or '\0' in path or '\\' in path:
         raise Refused('invalid snapshot path')
